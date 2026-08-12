@@ -4,9 +4,8 @@ import { MaterialDetail } from "./components/MaterialDetail";
 import { MaterialExplorer } from "./components/MaterialExplorer";
 import { MaterialSelector } from "./components/MaterialSelector";
 import { PeriodicTable } from "./components/PeriodicTable";
-import { Formula } from "./components/Formula";
 import { materials } from "./data/materials";
-import { getMaterialStats, getSpaceGroupLabel, getSpaceGroupSymbol } from "./lib/materials";
+import { getMaterialStats } from "./lib/materials";
 
 export default function App() {
   const [selectedId, setSelectedId] = useState(() => getInitialSelectedId());
@@ -56,14 +55,6 @@ export default function App() {
               <span>Continuously updated</span>
               <span>DFT results, DOS, band structures, and stability data are added as calculations finish.</span>
             </div>
-          </div>
-          <div className="hero-panel" aria-label="Selected material summary">
-            <span className="panel-label">Current selection</span>
-            <strong>
-              <Formula formula={selectedMaterial.formula} /> - {getSpaceGroupLabel(getSpaceGroupSymbol(selectedMaterial))}
-            </strong>
-            <span>{selectedMaterial.material_id}</span>
-            <small>{selectedMaterial.calculation_status.replace(/_/g, " ")}</small>
           </div>
         </section>
       </header>

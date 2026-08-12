@@ -94,7 +94,7 @@ main {
   flex-wrap: wrap;
   gap: 10px;
   justify-content: flex-end;
-  margin-bottom: 40px;
+  margin-bottom: 30px;
 }
 
 .top-nav a,
@@ -130,11 +130,9 @@ main {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 420px);
-  gap: 28px;
-  align-items: end;
-  min-height: 440px;
-  padding: 24px 0 0;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  padding: 8px 0 4px;
 }
 
 .hero-copy {
@@ -238,12 +236,12 @@ main {
 
 .hero-lattice {
   position: absolute;
-  right: 9%;
-  top: 96px;
+  right: 6%;
+  top: 14px;
   width: min(46vw, 540px);
-  height: 260px;
+  height: 220px;
   pointer-events: none;
-  opacity: 0.92;
+  opacity: 0.68;
 }
 
 .hero-lattice::before,
