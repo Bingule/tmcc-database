@@ -37,6 +37,12 @@ export default function App() {
           <a href="#methodology">Methodology</a>
         </nav>
         <section className="hero-shell">
+          <div className="hero-lattice" aria-hidden="true">
+            <span className="lattice-node node-nb">Nb</span>
+            <span className="lattice-node node-s">S</span>
+            <span className="lattice-node node-c">C/N</span>
+            <span className="lattice-node node-x">M'</span>
+          </div>
           <div className="hero-copy">
             <p className="eyebrow">TMCC Database v0.1</p>
             <h1>TMCC Materials Database</h1>
@@ -45,6 +51,11 @@ export default function App() {
               A data-first foundation for vdWs M2X2A, intercalated TMCC, and non-vdWs M2XA materials where A can be C or N,
               designed for progressive computational and experimental updates.
             </p>
+            <div className="update-strip" aria-label="Database update status">
+              <span className="status-dot" aria-hidden="true" />
+              <span>Continuously updated</span>
+              <span>DFT results, DOS, band structures, and stability data are added as calculations finish.</span>
+            </div>
           </div>
           <div className="hero-panel" aria-label="Selected material summary">
             <span className="panel-label">Current selection</span>
@@ -52,6 +63,7 @@ export default function App() {
               <Formula formula={selectedMaterial.formula} /> - {getSpaceGroupLabel(getSpaceGroupSymbol(selectedMaterial))}
             </strong>
             <span>{selectedMaterial.material_id}</span>
+            <small>{selectedMaterial.calculation_status.replace(/_/g, " ")}</small>
           </div>
         </section>
       </header>
