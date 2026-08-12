@@ -39,12 +39,6 @@ export default function App() {
           </button>
         </nav>
         <section className="hero-shell">
-          <div className="hero-lattice" aria-hidden="true">
-            <span className="lattice-node node-nb">Nb</span>
-            <span className="lattice-node node-s">S</span>
-            <span className="lattice-node node-c">C/N</span>
-            <span className="lattice-node node-x">M'</span>
-          </div>
           <div className="hero-copy">
             <p className="eyebrow">TMCC Database v0.1</p>
             <h1>TMCC Materials Database</h1>
