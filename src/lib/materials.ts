@@ -98,8 +98,9 @@ export function getMaterialStats(materials: MaterialRecord[]) {
   return {
     totalCompositions: compositions.size,
     totalStructures: materials.length,
-    pristine: materials.filter((material) => material.material_type === "pristine").length,
-    tmIntercalated: materials.filter((material) => material.material_type === "tm_intercalated").length,
+    vdwsTmcc: materials.filter((material) => material.material_type === "pristine").length,
+    intercalatedTmcc: materials.filter((material) => material.material_type === "tm_intercalated").length,
+    nonVdwsM2xa: materials.filter((material) => material.material_type === "m2xa").length,
     experimentallySynthesized: experimental.length,
     computationallyPredicted: calculated.length,
     dynamicallyStable: dynamicallyStable.length,

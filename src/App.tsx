@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Database, FlaskConical, Search, Table2 } from "lucide-react";
+import { Atom, Database, FlaskConical, Layers3, Table2 } from "lucide-react";
 import { MaterialDetail } from "./components/MaterialDetail";
 import { MaterialExplorer } from "./components/MaterialExplorer";
 import { MaterialSelector } from "./components/MaterialSelector";
@@ -59,8 +59,9 @@ export default function App() {
       <section className="stats-grid" aria-label="Database statistics">
         <Stat icon={<Database size={18} />} label="Compositions" value={stats.totalCompositions} />
         <Stat icon={<Table2 size={18} />} label="Structures" value={stats.totalStructures} />
-        <Stat icon={<FlaskConical size={18} />} label="vdWs TMCCs" value={stats.pristine} />
-        <Stat icon={<Search size={18} />} label="Intercalated" value={stats.tmIntercalated} />
+        <Stat icon={<FlaskConical size={18} />} label="vdWs TMCCs" value={stats.vdwsTmcc} />
+        <Stat icon={<Atom size={18} />} label="Intercalated TMCCs" value={stats.intercalatedTmcc} />
+        <Stat icon={<Layers3 size={18} />} label="non-vdWs TMCCs (M2XA)" value={stats.nonVdwsM2xa} />
       </section>
 
       <section id="selector" className="section-grid single">

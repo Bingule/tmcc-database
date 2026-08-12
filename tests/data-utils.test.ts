@@ -84,14 +84,24 @@ describe("database statistics", () => {
           ordering: null,
           configuration: "config01"
         }
+      } as MaterialRecord,
+      {
+        ...baseMaterial,
+        material_id: "TMCC-0011",
+        slug: "nb2sc-p63mmc",
+        material_type: "m2xa",
+        formula: "Nb2SC",
+        host: { formula: "Nb2SC", metal: "Nb", chalcogen: "S", anion: "C" },
+        intercalation: null
       } as MaterialRecord
     ];
 
     expect(getMaterialStats(materials)).toMatchObject({
-      totalCompositions: 2,
-      totalStructures: 2,
-      pristine: 1,
-      tmIntercalated: 1,
+      totalCompositions: 3,
+      totalStructures: 3,
+      vdwsTmcc: 1,
+      intercalatedTmcc: 1,
+      nonVdwsM2xa: 1,
       calculationsInProgress: 0
     });
   });
