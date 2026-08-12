@@ -1,0 +1,200 @@
+import { Download } from "lucide-react";
+import { lazy, Suspense } from "react";
+import { ElectronicStructureViewer } from "./ElectronicStructureViewer";
+import { Formula } from "./Formula";
+import { XrdViewer } from "./XrdViewer";
+import {
+  formatPropertyValue,
+  getSpaceGroupLabel,
+  getSpaceGroupSymbol,
+  getUnavailableLabel,
+  makeStructureDownloadFilename
+} from "../lib/materials";
+import { formatParameterGroup } from "../lib/crystal";
+import { publicAssetPath } from "../lib/paths";
+import type { MaterialRecord } from "../lib/types";
+
+const StructureViewer = lazy(() => import("./StructureViewer"));
+
+export function MaterialDetail({ material }: { material: MaterialRecord }) {
+  return (
+    <section id="material-detail" className="detail">
+      <div className="section-heading">
+        <p className="eyebrow">Material page template</p>
+        <h2><Formula formula={material.formula} /> - {getSpaceGroupLabel(getSpaceGroupSymbol(material))}</h2>
+      </div>
+
+      <div className="detail-grid">
+        <Panel title="Crystal Structure">
+          <Suspense fallback={<div className="structure-viewer"><span>Loading 3D structure viewer...</span></div>}>
+            <StructureViewer material={material} />
+          </Suspense>
+          <div className="button-row compact structure-downloads">
+            <FileButton
+              label="CIF"
+              href={publicAssetPath(material.files.cif)}
+              filename={makeStructureDownloadFilename(material, "cif")}
+            />
+            <FileButton
+              label="POSCAR"
+              href={publicAssetPath(material.files.poscar)}
+              filename={makeStructureDownloadFilename(material, "poscar")}
+            />
+          </div>
+          <Data label="Space group" value={getSpaceGroupLabel(getSpaceGroupSymbol(material))} />
+          <Data label="Space group number" value={getUnavailableLabel(material.structure.space_group_number)} />
+          <Data label="Crystal system" value={getUnavailableLabel(material.structure.crystal_system)} />
+          <Data label="Lattice a, b, c" value={formatParameterGroup(material.structure.lattice_parameters)} />
+          <Data label="Angles alpha, beta, gamma" value={formatParameterGroup(material.structure.angles)} />
+          <Data label="Layer thickness" value={formatUnitValue(material.structure.layer_thickness)} />
+          <Data label="van der Waals gap" value={formatUnitValue(material.structure.vdw_gap)} />
+          <AtomicSitesTable sites={material.structure.atomic_sites} />
+        </Panel>
+
+        <Panel title="XRD / PDF">
+          <XrdViewer material={material} />
+          <div className="embedded-electronic">
+            <h4>DOS / Band Structure</h4>
+            <ElectronicStructureViewer material={material} />
+          </div>
+        </Panel>
+
+        <Panel title="Thermodynamics">
+          <Data label="DFT total energy" value={formatPropertyValue(material.thermodynamics.total_energy)} />
+          <Data label="Formation energy" value={formatPropertyValue(material.thermodynamics.formation_energy)} />
+          <Data label="Energy above hull" value={formatPropertyValue(material.thermodynamics.energy_above_hull)} />
+          <Data label="Relative structure energy" value={formatPropertyValue(material.thermodynamics.relative_structure_energy)} />
+        </Panel>
+
+        <Panel title="Stability And Properties">
+          <Data label="Phonon calculated" value={getUnavailableLabel(material.phonons.phonon_calculated)} />
+          <Data label="Dynamically stable" value={getUnavailableLabel(material.phonons.dynamically_stable)} />
+          <Data label="Electronic character" value={getUnavailableLabel(material.electronic.electronic_character)} />
+          <Data label="Magnetic state" value={getUnavailableLabel(material.electronic.magnetic_ground_state)} />
+          <Data label="Li/Na storage data" value="-" />
+        </Panel>
+
+        <Panel title="Experimental Data">
+          <Data label="Synthesis method" value={getUnavailableLabel(material.structure.synthesis_method, "scientific")} />
+          <Data label="XRD / Raman / microscopy" value="Not available" />
+          <Data label="Reference" value="Not available" />
+        </Panel>
+
+        <Panel title="Calculation Details">
+          <Data label="Software" value={getUnavailableLabel(material.provenance.software)} />
+          <Data label="Functional" value={getUnavailableLabel(material.provenance.exchange_correlation)} />
+          <Data label="Plane-wave cutoff" value={formatUnitValue(material.provenance.plane_wave_cutoff)} />
+          <Data label="K-points" value={formatKPoints(material.provenance.k_points)} />
+          <Data label="Calculation date" value={getUnavailableLabel(material.provenance.calculation_date)} />
+          <Data label="Pseudopotential/setup" value={getUnavailableLabel(material.provenance.pseudopotential)} />
+          <Data label="Workflow version" value={getUnavailableLabel(material.provenance.workflow_version)} />
+        </Panel>
+      </div>
+    </section>
+  );
+}
+
+function Panel({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <article className="panel">
+      <h3>{title}</h3>
+      {children}
+    </article>
+  );
+}
+
+function Data({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="data-row">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function AtomicSitesTable({ sites }: { sites: unknown }) {
+  if (!Array.isArray(sites) || sites.length === 0) return null;
+
+  return (
+    <div className="atomic-sites">
+      <h4>Atomic sites</h4>
+      <table>
+        <thead>
+          <tr>
+            <th>Site</th>
+            <th>Element</th>
+            <th>x</th>
+            <th>y</th>
+            <th>z</th>
+            <th>Occ.</th>
+          </tr>
+        </thead>
+        <tbody>
+          {sites.map((site, index) => {
+            const row = site as { label?: unknown; element?: unknown; fract_x?: unknown; fract_y?: unknown; fract_z?: unknown; occupancy?: unknown };
+            return (
+              <tr key={`${String(row.label)}-${index}`}>
+                <td>{getUnavailableLabel(row.label)}</td>
+                <td>{getUnavailableLabel(row.element)}</td>
+                <td>{formatSiteNumber(row.fract_x)}</td>
+                <td>{formatSiteNumber(row.fract_y)}</td>
+                <td>{formatSiteNumber(row.fract_z)}</td>
+                <td>{formatSiteNumber(row.occupancy)}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function formatSiteNumber(value: unknown) {
+  if (typeof value !== "number") return "-";
+  return Number.isInteger(value) ? String(value) : value.toFixed(5).replace(/0+$/, "").replace(/\.$/, "");
+}
+
+function formatKPoints(value: unknown) {
+  if (!value || typeof value !== "object") return "-";
+  const kpoints = value as { size?: unknown; density?: unknown; gamma?: unknown };
+  if (Array.isArray(kpoints.size)) {
+    const size = kpoints.size.join(" x ");
+    return kpoints.gamma ? `${size}, gamma` : size;
+  }
+  if (typeof kpoints.density === "number") {
+    const density = `density ${kpoints.density}`;
+    return kpoints.gamma ? `${density}, gamma` : density;
+  }
+  return "-";
+}
+
+function formatUnitValue(value: unknown) {
+  if (!value || typeof value !== "object" || !("value" in value) || !("unit" in value)) return "-";
+  const unitValue = value as { value?: unknown; unit?: unknown };
+  if (unitValue.value === null || unitValue.value === undefined) return "-";
+  return `${unitValue.value} ${formatDetailUnit(unitValue.unit)}`.trim();
+}
+
+function formatDetailUnit(unit: unknown) {
+  if (unit === "angstrom") return "Å";
+  if (unit === "degree") return "°";
+  return typeof unit === "string" ? unit : "";
+}
+
+function FileButton({ label, href, filename }: { label: string; href: string | null; filename: string }) {
+  if (!href) {
+    return (
+      <button className="secondary-button" disabled>
+        <Download size={15} />
+        {label}
+      </button>
+    );
+  }
+
+  return (
+    <a className="secondary-button" href={href} download={filename}>
+      <Download size={15} />
+      {label}
+    </a>
+  );
+}

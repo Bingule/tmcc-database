@@ -1,0 +1,19 @@
+{
+  "material_id": "TMCC-0006",
+  "slug": "ta2s2c-r-3m",
+  "family": "TMCC",
+  "material_type": "pristine",
+  "formula": "Ta2S2C",
+  "host": { "formula": "Ta2S2C", "metal": "Ta", "chalcogen": "S", "anion": "C" },
+  "intercalation": null,
+  "experimental_status": null,
+  "calculation_status": "not_calculated",
+  "structure": { "space_group_symbol": "R-3m", "space_group_number": 166, "crystal_system": "trigonal" },
+  "thermodynamics": {},
+  "phonons": {},
+  "mechanical": {},
+  "electronic": {},
+  "energy_storage": {},
+  "files": { "cif": null, "poscar": null },
+  "provenance": { "legacy_ids": ["Ta2S2C-R"] }
+}

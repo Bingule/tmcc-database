@@ -1,0 +1,19 @@
+{
+  "material_id": "TMCC-0002",
+  "slug": "nb2s2c-r-3m",
+  "family": "TMCC",
+  "material_type": "pristine",
+  "formula": "Nb2S2C",
+  "host": { "formula": "Nb2S2C", "metal": "Nb", "chalcogen": "S", "anion": "C" },
+  "intercalation": null,
+  "experimental_status": null,
+  "calculation_status": "not_calculated",
+  "structure": { "space_group_symbol": "R-3m", "space_group_number": 166, "crystal_system": "trigonal" },
+  "thermodynamics": {},
+  "phonons": {},
+  "mechanical": {},
+  "electronic": {},
+  "energy_storage": {},
+  "files": { "cif": null, "poscar": null },
+  "provenance": { "legacy_ids": ["Nb2S2C-R"] }
+}

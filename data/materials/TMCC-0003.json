@@ -1,0 +1,19 @@
+{
+  "material_id": "TMCC-0003",
+  "slug": "nb2se2c-p-3m1",
+  "family": "TMCC",
+  "material_type": "pristine",
+  "formula": "Nb2Se2C",
+  "host": { "formula": "Nb2Se2C", "metal": "Nb", "chalcogen": "Se", "anion": "C" },
+  "intercalation": null,
+  "experimental_status": null,
+  "calculation_status": "not_calculated",
+  "structure": { "space_group_symbol": "P-3m1", "space_group_number": 164, "crystal_system": "trigonal" },
+  "thermodynamics": {},
+  "phonons": {},
+  "mechanical": {},
+  "electronic": {},
+  "energy_storage": {},
+  "files": { "cif": null, "poscar": null },
+  "provenance": { "legacy_ids": ["Nb2Se2C-P"] }
+}

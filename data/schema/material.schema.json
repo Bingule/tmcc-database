@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TMCC material record",
+  "type": "object",
+  "required": [
+    "material_id",
+    "slug",
+    "family",
+    "material_type",
+    "formula",
+    "host",
+    "intercalation",
+    "experimental_status",
+    "calculation_status",
+    "structure",
+    "thermodynamics",
+    "phonons",
+    "mechanical",
+    "electronic",
+    "energy_storage",
+    "files",
+    "provenance"
+  ],
+  "properties": {
+    "material_id": { "type": "string", "pattern": "^TMCC-\\d{4,}$" },
+    "slug": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+    "family": { "const": "TMCC" },
+    "material_type": { "enum": ["pristine", "tm_intercalated", "m2xa"] },
+    "formula": { "type": "string" },
+    "host": {
+      "type": "object",
+      "required": ["formula", "metal", "chalcogen", "anion"],
+      "additionalProperties": false,
+      "properties": {
+        "formula": { "type": "string" },
+        "metal": { "type": "string" },
+        "chalcogen": { "enum": ["S", "Se", "Te"] },
+        "anion": { "enum": ["C", "N"] }
+      }
+    },
+    "intercalation": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["intercalant", "x", "mode", "site", "ordering", "configuration"],
+          "properties": {
+            "intercalant": { "type": "string" },
+            "x": { "type": "number" },
+            "mode": { "enum": ["self", "hetero"] },
+            "site": { "type": ["string", "null"] },
+            "ordering": { "type": ["string", "null"] },
+            "configuration": { "type": "string" }
+          }
+        }
+      ]
+    },
+    "experimental_status": { "enum": [null, "unknown", "experimental", "not_reported"] },
+    "calculation_status": { "enum": ["not_calculated", "calculation_in_progress", "calculated"] },
+    "files": { "type": "object" },
+    "provenance": { "type": "object" }
+  }
+}

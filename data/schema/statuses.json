@@ -1,0 +1,22 @@
+{
+  "a_site_elements": ["C", "N"],
+  "calculation_status": ["not_calculated", "calculation_in_progress", "calculated"],
+  "experimental_status": [null, "unknown", "experimental", "not_reported"],
+  "periodic_table_status": [
+    "experimental",
+    "predicted_stable",
+    "metastable",
+    "unstable",
+    "calculation_in_progress",
+    "not_calculated"
+  ],
+  "notes": {
+    "not_calculated": "No calculation result has been entered.",
+    "calculation_in_progress": "A calculation workflow exists but no validated result is available.",
+    "calculated": "A validated calculation result has been entered.",
+    "experimental": "An experimental report is associated with the material.",
+    "predicted_stable": "Reserved for methodology-defined computational stability classifications.",
+    "metastable": "Reserved for methodology-defined thermodynamic classifications.",
+    "unstable": "Reserved for methodology-defined thermodynamic classifications."
+  }
+}

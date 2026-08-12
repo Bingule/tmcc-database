@@ -1,0 +1,79 @@
+{
+  "material_id": "TMCC-0001",
+  "slug": "nb2s2c-p-3m1",
+  "family": "TMCC",
+  "material_type": "pristine",
+  "formula": "Nb2S2C",
+  "host": {
+    "formula": "Nb2S2C",
+    "metal": "Nb",
+    "chalcogen": "S",
+    "anion": "C"
+  },
+  "intercalation": null,
+  "experimental_status": "experimental",
+  "calculation_status": "calculated",
+  "structure": {
+    "space_group_symbol": "P-3m1",
+    "space_group_number": 164,
+    "crystal_system": "trigonal",
+    "lattice_parameters": {
+      "a": { "value": 3.269, "unit": "angstrom" },
+      "b": { "value": 3.269, "unit": "angstrom" },
+      "c": { "value": 8.547, "unit": "angstrom" }
+    },
+    "angles": {
+      "alpha": { "value": 90, "unit": "degree" },
+      "beta": { "value": 90, "unit": "degree" },
+      "gamma": { "value": 120, "unit": "degree" }
+    },
+    "layer_thickness": { "value": 5.634, "unit": "angstrom" },
+    "vdw_gap": { "value": 2.913, "unit": "angstrom" },
+    "atomic_sites": [
+      { "label": "Nb1", "element": "Nb", "fract_x": 0.66667, "fract_y": 0.33334, "fract_z": 0.86111, "occupancy": 1 },
+      { "label": "Nb2", "element": "Nb", "fract_x": 0.33333, "fract_y": 0.66666, "fract_z": 0.13889, "occupancy": 1 },
+      { "label": "S1", "element": "S", "fract_x": 0.66666, "fract_y": 0.33333, "fract_z": 0.3296, "occupancy": 1 },
+      { "label": "S2", "element": "S", "fract_x": 0.33334, "fract_y": 0.66667, "fract_z": 0.6704, "occupancy": 1 },
+      { "label": "C1", "element": "C", "fract_x": 0, "fract_y": 0, "fract_z": 0, "occupancy": 1 }
+    ]
+  },
+  "thermodynamics": {
+    "total_energy": { "value": -42.63717309249796, "unit": "eV/cell" },
+    "formation_energy": { "value": null, "unit": "eV/formula" },
+    "energy_above_hull": { "value": null, "unit": "eV/atom" },
+    "relative_structure_energy": { "value": null, "unit": "meV/f.u." }
+  },
+  "phonons": {},
+  "mechanical": {},
+  "electronic": {
+    "band_gap": { "value": null, "unit": "eV" },
+    "dos_calculated": false,
+    "band_structure_calculated": false
+  },
+  "energy_storage": {},
+  "files": {
+    "cif": "/structures/TMCC-0001/structure.cif",
+    "poscar": "/structures/TMCC-0001/POSCAR",
+    "dos": null,
+    "band_structure": null
+  },
+  "provenance": {
+    "source": "ICSD CIF supplied by user; cluster calculation",
+    "database_code": "ICSD 95109",
+    "reference": "Journal of Alloys and Compounds 2002, 339, 283-292",
+    "software": "GPAW",
+    "software_version": "24.1.0",
+    "ase_version": "3.22.1",
+    "exchange_correlation": "PBE",
+    "pseudopotential": null,
+    "plane_wave_cutoff": { "value": 520, "unit": "eV" },
+    "k_points": { "size": [7, 7, 1], "gamma": true },
+    "spin_polarization": null,
+    "soc": false,
+    "convergence_criteria": { "density": 5e-7 },
+    "calculation_date": "2026-08-12",
+    "workflow_version": "Nb2S2C-Pbar3m1-template-v0.1",
+    "legacy_ids": ["Nb2S2C-P", "Nb2S2C-Pbar3m1"],
+    "doi": null
+  }
+}

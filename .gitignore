@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.vite/
+*.log
+.tmcc-hosts-result.txt
+cluster_calculations/
