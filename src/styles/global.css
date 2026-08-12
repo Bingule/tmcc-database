@@ -191,6 +191,68 @@ main {
   z-index: 2;
 }
 
+.hero-structure-mark {
+  position: absolute;
+  right: 5%;
+  top: 20px;
+  z-index: 1;
+  width: min(34vw, 420px);
+  height: 210px;
+  pointer-events: none;
+  opacity: 0.82;
+}
+
+.hero-structure-mark::before,
+.hero-structure-mark::after {
+  position: absolute;
+  content: "";
+  inset: 38px 24px 36px 46px;
+  border: 1px solid rgba(39, 86, 106, 0.26);
+  transform: skewX(-28deg) rotate(-7deg);
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.44), transparent),
+    repeating-linear-gradient(0deg, transparent 0 17px, rgba(39, 86, 106, 0.1) 18px 19px);
+}
+
+.hero-structure-mark::after {
+  inset: 70px 70px 14px 0;
+  border-color: rgba(109, 139, 116, 0.22);
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.36), transparent),
+    repeating-linear-gradient(0deg, transparent 0 15px, rgba(109, 139, 116, 0.1) 16px 17px);
+}
+
+.hero-structure-mark span {
+  position: absolute;
+  display: block;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: #315e70;
+  box-shadow:
+    58px 18px 0 #c2a14a,
+    116px 36px 0 #2d3943,
+    174px 54px 0 #7d9f8a,
+    232px 72px 0 #315e70;
+}
+
+.hero-structure-mark span:nth-child(1) {
+  left: 58px;
+  top: 54px;
+}
+
+.hero-structure-mark span:nth-child(2) {
+  left: 22px;
+  top: 106px;
+  opacity: 0.66;
+}
+
+.hero-structure-mark span:nth-child(3) {
+  left: 92px;
+  top: 136px;
+  opacity: 0.46;
+}
+
 .hero-copy h1 {
   margin: 0;
   max-width: 760px;
@@ -1190,6 +1252,10 @@ sub {
   }
 
   .site-header::after {
+    display: none;
+  }
+
+  .hero-structure-mark {
     display: none;
   }
 

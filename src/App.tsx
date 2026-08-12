@@ -39,6 +39,11 @@ export default function App() {
           </button>
         </nav>
         <section className="hero-shell">
+          <div className="hero-structure-mark" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </div>
           <div className="hero-copy">
             <p className="eyebrow">TMCC Database v0.1</p>
             <h1>TMCC Materials Database</h1>
