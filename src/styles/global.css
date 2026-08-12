@@ -98,6 +98,7 @@ main {
 }
 
 .top-nav a,
+.login-button,
 .primary-button,
 .secondary-button {
   display: inline-flex;
@@ -112,6 +113,58 @@ main {
   color: #1f3340;
   background: #fff;
   cursor: pointer;
+}
+
+.top-nav a,
+.login-button {
+  min-height: 38px;
+  border-color: rgba(39, 86, 106, 0.22);
+  color: #244351;
+  background: rgba(255, 255, 255, 0.58);
+  backdrop-filter: blur(8px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.top-nav a:hover,
+.login-button:hover {
+  border-color: rgba(39, 86, 106, 0.42);
+  color: #102c39;
+  background: rgba(239, 247, 244, 0.88);
+  transform: translateY(-1px);
+}
+
+.top-nav a:focus-visible,
+.login-button:focus-visible {
+  outline: 2px solid rgba(39, 86, 106, 0.36);
+  outline-offset: 2px;
+}
+
+.login-button {
+  border-color: rgba(54, 108, 117, 0.46);
+  color: #ffffff;
+  background: linear-gradient(135deg, rgba(39, 86, 106, 0.94), rgba(65, 112, 101, 0.92));
+}
+
+.login-button::after {
+  content: "soon";
+  margin-left: 2px;
+  padding: 2px 5px;
+  border-radius: 999px;
+  color: #21414d;
+  background: rgba(255, 255, 255, 0.76);
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.login-button:hover {
+  color: #ffffff;
+  background: linear-gradient(135deg, rgba(32, 76, 94, 0.98), rgba(72, 126, 110, 0.96));
 }
 
 .primary-button {

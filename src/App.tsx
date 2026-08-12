@@ -34,6 +34,9 @@ export default function App() {
           <a href="#periodic-table">Periodic table</a>
           <a href="#explorer">Explorer</a>
           <a href="#methodology">Methodology</a>
+          <button className="login-button" type="button" title="User accounts will be added with the hosted database backend">
+            Login
+          </button>
         </nav>
         <section className="hero-shell">
           <div className="hero-lattice" aria-hidden="true">
