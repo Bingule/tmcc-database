@@ -33,8 +33,7 @@ export default function App() {
       return;
     }
 
-    window.history.replaceState(null, "", window.location.pathname + window.location.search);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.location.href = "https://tmccdb.org/";
   }
 
   return (
