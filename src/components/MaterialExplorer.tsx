@@ -26,6 +26,19 @@ type Props = {
 };
 
 const MAX_VISIBLE_ELEMENT_SEARCH_RESULTS = 1000;
+type SortKey =
+  | "material_id"
+  | "formula"
+  | "structure_type"
+  | "subclass"
+  | "space_group"
+  | "intercalant"
+  | "sites"
+  | "dft_energy"
+  | "energy_above_hull"
+  | "phonon"
+  | "band_gap";
+type SortDirection = "asc" | "desc";
 
 export function MaterialExplorer({ materials, selectedId, onSelect, elementSearch }: Props) {
   const [query, setQuery] = useState("");
@@ -36,6 +49,10 @@ export function MaterialExplorer({ materials, selectedId, onSelect, elementSearc
   const [structureType, setStructureType] = useState("all");
   const [pageSize, setPageSize] = useState(5);
   const [page, setPage] = useState(1);
+  const [sort, setSort] = useState<{ key: SortKey; direction: SortDirection }>({
+    key: "material_id",
+    direction: "asc"
+  });
   const metals = [...new Set(materials.map((material) => material.host.metal))];
   const chalcogens = [...new Set(materials.map((material) => material.host.chalcogen))];
   const anions = [...new Set(materials.map((material) => material.host.anion))];
@@ -45,7 +62,7 @@ export function MaterialExplorer({ materials, selectedId, onSelect, elementSearc
   const filtered = useMemo(() => {
     const normalizedQuery = query.toLowerCase();
     const elementFiltered = filterMaterialsByElementSet(materials, elementSearch.elements, elementSearch.mode);
-    return elementFiltered.filter((material) => {
+    const matchingMaterials = elementFiltered.filter((material) => {
       const matchesQuery =
         material.material_id.toLowerCase().includes(normalizedQuery) ||
         material.slug.toLowerCase().includes(normalizedQuery) ||
@@ -63,7 +80,8 @@ export function MaterialExplorer({ materials, selectedId, onSelect, elementSearc
         (structureType === "all" || getStructureTypeLabel(material) === structureType)
       );
     });
-  }, [query, metal, chalcogen, anion, subclass, structureType, materials, elementSearch]);
+    return [...matchingMaterials].sort((a, b) => compareMaterials(a, b, sort));
+  }, [query, metal, chalcogen, anion, subclass, structureType, materials, elementSearch, sort]);
   useEffect(() => {
     setPage(1);
   }, [query, metal, chalcogen, anion, subclass, structureType, pageSize, elementSearch.elements, elementSearch.mode]);
@@ -75,6 +93,12 @@ export function MaterialExplorer({ materials, selectedId, onSelect, elementSearc
   const hasTooManyElementMatches =
     elementSearch.elements.length > 0 && filtered.length > MAX_VISIBLE_ELEMENT_SEARCH_RESULTS;
   const visibleMaterials = hasTooManyElementMatches ? [] : filtered.slice(pageStart, pageEnd);
+  const handleSort = (key: SortKey) => {
+    setSort((current) => ({
+      key,
+      direction: current.key === key && current.direction === "asc" ? "desc" : "asc"
+    }));
+  };
 
   return (
     <section id="explorer" className="explorer">
@@ -111,17 +135,17 @@ export function MaterialExplorer({ materials, selectedId, onSelect, elementSearc
             <table className="materials-table">
               <thead>
                 <tr>
-                  <th>Material ID</th>
-                  <th>Formula</th>
-                  <th>Structure Type</th>
-                  <th>Subclass</th>
-                  <th>Space Group</th>
-                  <th>Intercalant</th>
-                  <th>Sites/cell</th>
-                  <ColumnHeader label="DFT Energy" unit="eV/formula" />
-                  <ColumnHeader label="Energy Above Hull" unit="eV/atom" />
-                  <th>Phonon</th>
-                  <ColumnHeader label="Band Gap" unit="eV" />
+                  <SortHeader label="Material ID" sortKey="material_id" activeSort={sort} onSort={handleSort} />
+                  <SortHeader label="Formula" sortKey="formula" activeSort={sort} onSort={handleSort} />
+                  <SortHeader label="Structure Type" sortKey="structure_type" activeSort={sort} onSort={handleSort} />
+                  <SortHeader label="Subclass" sortKey="subclass" activeSort={sort} onSort={handleSort} />
+                  <SortHeader label="Space Group" sortKey="space_group" activeSort={sort} onSort={handleSort} />
+                  <SortHeader label="Intercalant" sortKey="intercalant" activeSort={sort} onSort={handleSort} />
+                  <SortHeader label="Sites/cell" sortKey="sites" activeSort={sort} onSort={handleSort} />
+                  <SortHeader label="DFT Energy" unit="eV/formula" sortKey="dft_energy" activeSort={sort} onSort={handleSort} />
+                  <SortHeader label="Energy Above Hull" unit="eV/atom" sortKey="energy_above_hull" activeSort={sort} onSort={handleSort} />
+                  <SortHeader label="Phonon" sortKey="phonon" activeSort={sort} onSort={handleSort} />
+                  <SortHeader label="Band Gap" unit="eV" sortKey="band_gap" activeSort={sort} onSort={handleSort} />
                 </tr>
               </thead>
               <tbody>
@@ -189,11 +213,90 @@ function formatCompactLatticeSetting(value: string | null) {
   return value?.replace(/\s*\(.+\)$/, "") ?? null;
 }
 
-function ColumnHeader({ label, unit }: { label: string; unit: string }) {
+function compareMaterials(
+  a: MaterialRecord,
+  b: MaterialRecord,
+  sort: { key: SortKey; direction: SortDirection }
+) {
+  const left = getSortValue(a, sort.key);
+  const right = getSortValue(b, sort.key);
+  const multiplier = sort.direction === "asc" ? 1 : -1;
+  let result = 0;
+
+  if (typeof left === "number" || typeof right === "number") {
+    const leftNumber = typeof left === "number" ? left : Number.POSITIVE_INFINITY;
+    const rightNumber = typeof right === "number" ? right : Number.POSITIVE_INFINITY;
+    result = leftNumber - rightNumber;
+  } else {
+    result = String(left).localeCompare(String(right), undefined, { numeric: true, sensitivity: "base" });
+  }
+
+  if (result === 0 && sort.key !== "material_id") {
+    result = a.material_id.localeCompare(b.material_id, undefined, { numeric: true, sensitivity: "base" });
+  }
+
+  return result * multiplier;
+}
+
+function getSortValue(material: MaterialRecord, key: SortKey): string | number {
+  switch (key) {
+    case "material_id":
+      return material.material_id;
+    case "formula":
+      return material.formula;
+    case "structure_type":
+      return formatPropertyValue(material.structure.crystal_system);
+    case "subclass":
+      return getSubclassLabel(material);
+    case "space_group":
+      return String(getSpaceGroupSymbol(material) ?? "");
+    case "intercalant":
+      return getIntercalantLabel(material);
+    case "sites":
+      return numericOrInfinity(getSitesPerCellLabel(material));
+    case "dft_energy":
+      return numericOrInfinity(getDftEnergyPerFormulaUnitLabel(material));
+    case "energy_above_hull":
+      return numericOrInfinity(formatPropertyValue(material.thermodynamics.energy_above_hull));
+    case "phonon":
+      return getPhononStabilityLabel(material);
+    case "band_gap":
+      return numericOrInfinity(formatPropertyValue(material.electronic.band_gap));
+    default:
+      return "";
+  }
+}
+
+function numericOrInfinity(value: unknown) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : Number.POSITIVE_INFINITY;
+}
+
+function SortHeader({
+  label,
+  unit,
+  sortKey,
+  activeSort,
+  onSort
+}: {
+  label: string;
+  unit?: string;
+  sortKey: SortKey;
+  activeSort: { key: SortKey; direction: SortDirection };
+  onSort: (key: SortKey) => void;
+}) {
+  const isActive = activeSort.key === sortKey;
+  const directionLabel = activeSort.direction === "asc" ? "ascending" : "descending";
   return (
-    <th>
-      <span>{label}</span>
-      <small className="column-unit">{unit}</small>
+    <th aria-sort={isActive ? directionLabel : "none"}>
+      <button type="button" className="sort-header-button" onClick={() => onSort(sortKey)}>
+        <span>{label}</span>
+        {unit && <small className="column-unit">{unit}</small>}
+        <span
+          className={`sort-indicator ${isActive ? "active" : ""} ${activeSort.direction}`}
+          aria-hidden="true"
+        />
+      </button>
     </th>
   );
 }

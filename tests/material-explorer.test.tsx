@@ -98,6 +98,62 @@ describe("MaterialExplorer", () => {
     container.remove();
   });
 
+  it("sorts table rows by a clicked column header and toggles direction", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    const materials = [
+      {
+        ...baseMaterial,
+        material_id: "TMCC-0001",
+        slug: "zr2te2c-p-3m1",
+        formula: "Zr2Te2C"
+      },
+      {
+        ...baseMaterial,
+        material_id: "TMCC-0002",
+        slug: "hf2te2c-p-3m1",
+        formula: "Hf2Te2C"
+      },
+      {
+        ...baseMaterial,
+        material_id: "TMCC-0003",
+        slug: "nb2s2c-p-3m1",
+        formula: "Nb2S2C"
+      }
+    ] as MaterialRecord[];
+
+    await act(async () => {
+      root.render(
+        <MaterialExplorer
+          materials={materials}
+          selectedId="TMCC-0001"
+          onSelect={() => undefined}
+          elementSearch={{ elements: [], mode: "only" }}
+        />
+      );
+    });
+
+    const firstMaterialId = () => container.querySelector("tbody tr td button")?.textContent;
+    expect(firstMaterialId()).toBe("TMCC-0001");
+
+    const formulaHeader = [...container.querySelectorAll("button")].find((button) => button.textContent?.includes("Formula"));
+    await act(async () => {
+      formulaHeader?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(firstMaterialId()).toBe("TMCC-0002");
+
+    await act(async () => {
+      formulaHeader?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(firstMaterialId()).toBe("TMCC-0001");
+
+    await act(async () => {
+      root.unmount();
+    });
+    container.remove();
+  });
+
   it("uses pagination for matching materials after an element-table search", () => {
     const markup = renderToStaticMarkup(
       <MaterialExplorer
@@ -140,7 +196,7 @@ describe("MaterialExplorer", () => {
 
     expect(markup).toContain("<span>DFT Energy</span><small class=\"column-unit\">eV/formula</small>");
     expect(markup).toContain("<span>Energy Above Hull</span><small class=\"column-unit\">eV/atom</small>");
-    expect(markup).toContain("<th>Phonon</th>");
+    expect(markup).toContain("<span>Phonon</span>");
     expect(markup).toContain("<span>Band Gap</span><small class=\"column-unit\">eV</small>");
     expect(markup).not.toContain("Formation Energy");
   });
@@ -186,7 +242,7 @@ describe("MaterialExplorer", () => {
       />
     );
 
-    expect(markup).toContain("<th>Sites/cell</th>");
+    expect(markup).toContain("<span>Sites/cell</span>");
   });
 
   it("shows structure type and TMCC subclass columns", () => {
@@ -199,11 +255,11 @@ describe("MaterialExplorer", () => {
       />
     );
 
-    expect(markup).toContain("<th>Structure Type</th>");
-    expect(markup).toContain("<th>Subclass</th>");
+    expect(markup).toContain("<span>Structure Type</span>");
+    expect(markup).toContain("<span>Subclass</span>");
     expect(markup).toContain("<td><span class=\"cell-stack\"><span>trigonal</span></span></td>");
     expect(markup).toContain("<td>TMCDC</td>");
-    expect(markup).toContain("<th>Intercalant</th>");
+    expect(markup).toContain("<span>Intercalant</span>");
   });
 
   it("uses a scoped class for materials-table alignment", () => {

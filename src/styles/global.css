@@ -810,6 +810,48 @@ th {
   background: #f4f6f5;
 }
 
+.sort-header-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.sort-header-button:focus-visible {
+  outline: 2px solid #2f5f73;
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.sort-indicator {
+  width: 0;
+  height: 0;
+  opacity: 0;
+}
+
+.sort-indicator.active {
+  opacity: 1;
+  border-right: 4px solid transparent;
+  border-left: 4px solid transparent;
+}
+
+.sort-indicator.active.asc {
+  border-bottom: 6px solid #2f5f73;
+}
+
+.sort-indicator.active.desc {
+  border-top: 6px solid #2f5f73;
+}
+
 .materials-table th:not(:first-child),
 .materials-table td:not(:first-child) {
   text-align: center;
