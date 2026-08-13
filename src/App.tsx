@@ -98,9 +98,9 @@ export default function App() {
             <p className="subtitle">A materials database for layered transition-metal chalcogenide carbides and nitrides</p>
             <p className="hero-note">
               TMCC is used as the broad family covering M2XA, vdW TMCDC M2X2A, and intercalated
-              vdW derivatives. M is a transition metal, X is S/Se/Te, and A is C or future N.
+              TMCC/TMCDC records. M is a transition metal, X is S/Se/Te, and A is C or future N.
               TMCDC records describe X-M-A-M-X layered units in P-3m1 or R-3m variants; intercalated
-              entries use M&apos;xM2X2A hosts, while M2XA TMCC structures are tracked separately.
+              entries place metal atoms between vdW TMCDC layers, while M2XA TMCC structures are tracked separately.
             </p>
             <div className="update-strip" aria-label="Database update status">
               <span className="status-dot" aria-hidden="true" />

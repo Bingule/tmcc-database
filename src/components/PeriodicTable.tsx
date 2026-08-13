@@ -88,15 +88,15 @@ export function PeriodicTable({ materials, onMetalSelect, onElementSearch }: Pro
           <ul>
             <li>
               <strong>vdW TMCDC</strong>
-              <span>M2X2A · P-3m1 / R-3m</span>
+              <span>M2X2A - P-3m1 / R-3m</span>
             </li>
             <li>
-              <strong>Intercalated vdW TMCDC</strong>
-              <span>M'M2X2A · P/R variants</span>
+              <strong>Intercalated TMCC/TMCDC</strong>
+              <span>M'xM2X2A - metal inserted between vdW TMCDC layers</span>
             </li>
             <li>
               <strong>TMCC</strong>
-              <span>M2XA · P63/mmc</span>
+              <span>M2XA - P63/mmc</span>
             </li>
           </ul>
         </div>
