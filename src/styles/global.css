@@ -424,25 +424,23 @@ main {
   bottom: 8px;
   z-index: 2;
   display: grid;
-  gap: 2px;
+  gap: 3px;
   width: min(34vw, 420px);
-  padding: 10px 14px;
-  border: 1px solid rgba(39, 86, 106, 0.18);
-  border-left: 4px solid rgba(74, 152, 120, 0.72);
-  border-radius: 7px;
+  padding: 8px 12px;
+  border-radius: 6px;
   color: #46555b;
-  background: rgba(255, 255, 255, 0.68);
-  box-shadow: 0 14px 34px rgba(22, 36, 42, 0.08);
-  backdrop-filter: blur(6px);
+  background: rgba(241, 247, 244, 0.58);
+  box-shadow: none;
+  backdrop-filter: blur(3px);
 }
 
 .hero-affiliation strong {
   color: #16232c;
-  font-size: 1rem;
+  font-size: 0.98rem;
 }
 
 .hero-affiliation span {
-  font-size: 0.9rem;
+  font-size: 0.86rem;
   line-height: 1.35;
 }
 

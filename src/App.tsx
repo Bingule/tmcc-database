@@ -112,6 +112,7 @@ export default function App() {
             <strong>Dr. Wu / Dr. Sofer</strong>
             <span>Department of Inorganic Chemistry</span>
             <span>University of Chemistry and Technology Prague</span>
+            <span>wui@vscht.cz · soferz@vscht.cz</span>
           </div>
         </section>
       </header>
