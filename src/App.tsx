@@ -42,7 +42,7 @@ export default function App() {
           <div className="hero-structure-mark" aria-hidden="true">
             <div className="tmcc-wordmark">TMCC</div>
             <div className="structure-family-card family-vdws">
-              <span className="family-label">vdWs M2X2A</span>
+              <span className="family-label">TMCDC M2X2C</span>
               <span className="sheet sheet-top" />
               <span className="sheet sheet-bottom" />
               <span className="atom m atom-1" />
@@ -51,7 +51,7 @@ export default function App() {
               <span className="atom x atom-4" />
             </div>
             <div className="structure-family-card family-intercalated">
-              <span className="family-label">Intercalated</span>
+              <span className="family-label">Intercalated TMCC/TMCDC</span>
               <span className="sheet sheet-top" />
               <span className="sheet sheet-bottom" />
               <span className="atom m atom-1" />
@@ -60,7 +60,7 @@ export default function App() {
               <span className="atom intercalant atom-5" />
             </div>
             <div className="structure-family-card family-m2xa">
-              <span className="family-label">non-vdWs M2XA</span>
+              <span className="family-label">TMCC M2XC/M2XA</span>
               <span className="sheet sheet-single" />
               <span className="atom m atom-1" />
               <span className="atom x atom-2" />
@@ -70,10 +70,11 @@ export default function App() {
           <div className="hero-copy">
             <p className="eyebrow">TMCC Database v0.1</p>
             <h1>TMCC Materials Database</h1>
-            <p className="subtitle">Two-Dimensional Transition-Metal Carbon/Nitrogen Chalcogenides</p>
+            <p className="subtitle">A computational database for layered transition-metal chalcogenide carbides and nitrides</p>
             <p className="hero-note">
-              A data-first foundation for vdWs M2X2A, intercalated TMCC, and non-vdWs M2XA materials where A can be C or N,
-              designed for progressive computational and experimental updates.
+              TMCC is used here as the broad family for M2XC, M2X2C, intercalated, and non-vdW related structures
+              where M is a transition metal, X is S/Se/Te, and the central light element can expand from C to N.
+              TMCDC is the M2X2C carbodichalcogenide subclass with X-M-C-M-X layered units.
             </p>
             <div className="update-strip" aria-label="Database update status">
               <span className="status-dot" aria-hidden="true" />
@@ -87,9 +88,9 @@ export default function App() {
       <section className="stats-grid" aria-label="Database statistics">
         <Stat icon={<Database size={18} />} label="Compositions" value={stats.totalCompositions} />
         <Stat icon={<Table2 size={18} />} label="Structures" value={stats.totalStructures} />
-        <Stat icon={<FlaskConical size={18} />} label="vdWs TMCCs" value={stats.vdwsTmcc} />
-        <Stat icon={<Atom size={18} />} label="Intercalated TMCCs" value={stats.intercalatedTmcc} />
-        <Stat icon={<Layers3 size={18} />} label="non-vdWs TMCCs (M2XA)" value={stats.nonVdwsM2xa} />
+        <Stat icon={<FlaskConical size={18} />} label="TMCDCs (M2X2C)" value={stats.tmcdc} />
+        <Stat icon={<Atom size={18} />} label="Intercalated TMCC/TMCDC" value={stats.intercalatedTmcc} />
+        <Stat icon={<Layers3 size={18} />} label="TMCCs (M2XC / M2XA)" value={stats.nonVdwsM2xa} />
       </section>
 
       <section id="selector" className="section-grid single">
@@ -114,7 +115,8 @@ export default function App() {
         <h2>References / Methodology</h2>
         <p>
           No publications, DOIs, computational parameters, or stability thresholds have been entered in
-          this prototype. Each future calculation record should include software, version, functional,
+          this prototype. TMCC is used as the general material-family name; TMCDC is reserved for M2X2C
+          carbodichalcogenides. Each future calculation record should include software, version, functional,
           pseudopotential/setup, cutoff, k-points, convergence criteria, workflow version, date, and source.
         </p>
         <p className="disclaimer">

@@ -3,6 +3,8 @@
   "slug": "nb2cs-p63mmc",
   "family": "TMCC",
   "material_type": "m2xa",
+  "subclass": "TMCC",
+  "structure_type": "M2XA",
   "formula": "Nb2CS",
   "host": {
     "formula": "Nb2CS",
@@ -33,11 +35,11 @@
     },
     "angles": {
       "alpha": {
-        "value": 90.0,
+        "value": 90,
         "unit": "degree"
       },
       "beta": {
-        "value": 90.0,
+        "value": 90,
         "unit": "degree"
       },
       "gamma": {
@@ -89,16 +91,16 @@
       {
         "label": "C1",
         "element": "C",
-        "fract_x": 0.0,
-        "fract_y": 0.0,
-        "fract_z": 0.0,
+        "fract_x": 0,
+        "fract_y": 0,
+        "fract_z": 0,
         "occupancy": 1
       },
       {
         "label": "C2",
         "element": "C",
-        "fract_x": 0.0,
-        "fract_y": 0.0,
+        "fract_x": 0,
+        "fract_y": 0,
         "fract_z": 0.5,
         "occupancy": 1
       },
@@ -143,7 +145,7 @@
   "mechanical": {},
   "electronic": {
     "band_gap": {
-      "value": 0.0,
+      "value": 0,
       "unit": "eV"
     },
     "fermi_level": {
@@ -180,7 +182,7 @@
     "setups": null,
     "soc": false,
     "convergence_criteria": {
-      "density": 5e-07
+      "density": 5e-7
     },
     "calculation_date": "2026-08-13",
     "workflow_version": "tmcc-five-template-v0.1",

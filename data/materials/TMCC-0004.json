@@ -3,6 +3,8 @@
   "slug": "nb2se2c-r-3m",
   "family": "TMCC",
   "material_type": "pristine",
+  "subclass": "TMCDC",
+  "structure_type": "M2X2C",
   "formula": "Nb2Se2C",
   "host": {
     "formula": "Nb2Se2C",
@@ -33,11 +35,11 @@
     },
     "angles": {
       "alpha": {
-        "value": 90.0,
+        "value": 90,
         "unit": "degree"
       },
       "beta": {
-        "value": 90.0,
+        "value": 90,
         "unit": "degree"
       },
       "gamma": {
@@ -57,16 +59,16 @@
       {
         "label": "Nb1",
         "element": "Nb",
-        "fract_x": 1.0,
-        "fract_y": 1.0,
+        "fract_x": 1,
+        "fract_y": 1,
         "fract_z": 0.62128,
         "occupancy": 1
       },
       {
         "label": "Nb2",
         "element": "Nb",
-        "fract_x": 0.0,
-        "fract_y": 0.0,
+        "fract_x": 0,
+        "fract_y": 0,
         "fract_z": 0.37872,
         "occupancy": 1
       },
@@ -105,16 +107,16 @@
       {
         "label": "Se1",
         "element": "Se",
-        "fract_x": 1.0,
-        "fract_y": 1.0,
+        "fract_x": 1,
+        "fract_y": 1,
         "fract_z": 0.78188,
         "occupancy": 1
       },
       {
         "label": "Se2",
         "element": "Se",
-        "fract_x": 0.0,
-        "fract_y": 0.0,
+        "fract_x": 0,
+        "fract_y": 0,
         "fract_z": 0.21812,
         "occupancy": 1
       },
@@ -153,9 +155,9 @@
       {
         "label": "C1",
         "element": "C",
-        "fract_x": 0.0,
-        "fract_y": 0.0,
-        "fract_z": 0.0,
+        "fract_x": 0,
+        "fract_y": 0,
+        "fract_z": 0,
         "occupancy": 1
       },
       {
@@ -199,7 +201,7 @@
   "mechanical": {},
   "electronic": {
     "band_gap": {
-      "value": 0.0,
+      "value": 0,
       "unit": "eV"
     },
     "fermi_level": {
@@ -236,7 +238,7 @@
     "setups": null,
     "soc": false,
     "convergence_criteria": {
-      "density": 5e-07
+      "density": 5e-7
     },
     "calculation_date": "2026-08-13",
     "workflow_version": "tmcc-fast-static-dos-v0.1",

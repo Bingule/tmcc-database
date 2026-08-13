@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+﻿import { describe, expect, it } from "vitest";
 import {
   filterMaterialsByElementSet,
   formatPropertyValue,
@@ -19,6 +19,8 @@ import type { MaterialRecord } from "../src/lib/types";
 
 const baseMaterial = {
   family: "TMCC",
+  subclass: "TMCDC",
+  structure_type: "M2X2C",
   experimental_status: null,
   calculation_status: "not_calculated",
   structure: {},
@@ -76,6 +78,8 @@ describe("element search", () => {
         material_id: "TMCC-0011",
         slug: "nb2sc-p63mmc",
         material_type: "m2xa",
+        subclass: "TMCC",
+        structure_type: "M2XA",
         formula: "Nb2SC",
         host: { formula: "Nb2SC", metal: "Nb", chalcogen: "S", anion: "C" },
         intercalation: null
@@ -139,6 +143,8 @@ describe("database statistics", () => {
         material_id: "TMCC-0011",
         slug: "nb2sc-p63mmc",
         material_type: "m2xa",
+        subclass: "TMCC",
+        structure_type: "M2XA",
         formula: "Nb2SC",
         host: { formula: "Nb2SC", metal: "Nb", chalcogen: "S", anion: "C" },
         intercalation: null
@@ -148,7 +154,7 @@ describe("database statistics", () => {
     expect(getMaterialStats(materials)).toMatchObject({
       totalCompositions: 3,
       totalStructures: 3,
-      vdwsTmcc: 1,
+      tmcdc: 1,
       intercalatedTmcc: 1,
       nonVdwsM2xa: 1,
       calculationsInProgress: 0
@@ -275,3 +281,4 @@ describe("element search", () => {
     ]);
   });
 });
+

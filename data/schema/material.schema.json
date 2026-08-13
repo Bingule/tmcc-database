@@ -7,6 +7,8 @@
     "slug",
     "family",
     "material_type",
+    "subclass",
+    "structure_type",
     "formula",
     "host",
     "intercalation",
@@ -26,6 +28,8 @@
     "slug": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
     "family": { "const": "TMCC" },
     "material_type": { "enum": ["pristine", "tm_intercalated", "m2xa"] },
+    "subclass": { "enum": ["TMCC", "TMCDC"] },
+    "structure_type": { "enum": ["M2XC", "M2XN", "M2X2C", "M2X2N", "M2XA"] },
     "formula": { "type": "string" },
     "host": {
       "type": "object",

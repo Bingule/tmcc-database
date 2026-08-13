@@ -32,7 +32,7 @@ export function PeriodicTable({ materials, onMetalSelect, onElementSearch }: Pro
         <h2>Element periodic table</h2>
       </div>
       <p className="periodic-note">
-        Select elements such as Nb, S, and C, then search matching TMCC records. Transition metals remain
+        Select elements such as Nb, S, and C, then search matching TMCC/TMCDC records. Transition metals remain
         eligible host M candidates, while C/N and S/Se/Te are used as composition elements.
       </p>
       <div className="element-search-bar" aria-label="Element search">

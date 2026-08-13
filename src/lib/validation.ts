@@ -1,4 +1,4 @@
-import { anions, calculationStatuses, chalcogens, experimentalStatuses, transitionMetals } from "./statuses";
+import { anions, calculationStatuses, chalcogens, experimentalStatuses, periodicTableElements, transitionMetals } from "./statuses";
 import type { MaterialRecord } from "./types";
 
 export type ValidationResult = {
@@ -40,6 +40,14 @@ export function validateMaterialRecords(materials: MaterialRecord[]): Validation
       errors.push(`${material.material_id}: invalid material_type`);
     }
 
+    if (!["TMCC", "TMCDC"].includes(material.subclass)) {
+      errors.push(`${material.material_id}: invalid subclass`);
+    }
+
+    if (!["M2XC", "M2XN", "M2X2C", "M2X2N", "M2XA"].includes(material.structure_type)) {
+      errors.push(`${material.material_id}: invalid structure_type`);
+    }
+
     if (!material.formula || !/^[A-Z][A-Za-z0-9.]*$/.test(material.formula)) {
       errors.push(`${material.material_id}: invalid chemical formula`);
     }
@@ -79,7 +87,7 @@ export function validateMaterialRecords(materials: MaterialRecord[]): Validation
       if (!material.intercalation) {
         errors.push(`${material.material_id}: tm_intercalated material requires intercalation metadata`);
       } else {
-        if (!transitionMetals.includes(material.intercalation.intercalant)) {
+        if (!isMetalElement(material.intercalation.intercalant)) {
           errors.push(`${material.material_id}: invalid intercalant ${material.intercalation.intercalant}`);
         }
         if (typeof material.intercalation.x !== "number" || material.intercalation.x <= 0) {
@@ -103,6 +111,21 @@ export function validateMaterialRecords(materials: MaterialRecord[]): Validation
     valid: errors.length === 0,
     errors
   };
+}
+
+function isMetalElement(symbol: string) {
+  const element = periodicTableElements.find((item) => item.symbol === symbol);
+  return Boolean(
+    element &&
+      [
+        "alkali_metal",
+        "alkaline_earth",
+        "transition_metal",
+        "post_transition",
+        "lanthanide",
+        "actinide"
+      ].includes(element.category)
+  );
 }
 
 function validateNoBareZeroForMissingData(material: MaterialRecord, errors: string[]) {

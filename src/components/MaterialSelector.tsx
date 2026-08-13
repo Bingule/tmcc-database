@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { anions, chalcogens, transitionMetals } from "../lib/statuses";
 import {
   findMaterialsByComposition,
+  getStructureTypeLabel,
   getSpaceGroupLabel,
   getSpaceGroupSymbol,
   makeStructureDownloadFilename
@@ -77,13 +78,13 @@ export function MaterialSelector({ materials, selectedId, onSelect }: Props) {
 
       <div className="segmented three" aria-label="Material type">
         <button className={materialType === "pristine" ? "active" : ""} onClick={() => chooseMode("pristine")}>
-          vdWs TMCC
+          TMCDC (M2X2C)
         </button>
         <button className={materialType === "intercalated" ? "active" : ""} onClick={() => chooseMode("intercalated")}>
-          Intercalated TMCC
+          Intercalated TMCC/TMCDC
         </button>
         <button className={materialType === "single_chalcogen" ? "active" : ""} onClick={() => chooseMode("single_chalcogen")}>
-          non-vdWs TMCC (M2XA)
+          TMCC (M2XC / M2XA)
         </button>
       </div>
 
@@ -247,7 +248,8 @@ export function getSelectorMatches(
   if (materialType === "single_chalcogen") {
     return materials.filter(
       (material) =>
-        material.material_type === "m2xa" &&
+        (material.material_type === "m2xa" || getStructureTypeLabel(material).startsWith("M2X")) &&
+        !getStructureTypeLabel(material).startsWith("M2X2") &&
         material.host.metal === metal &&
         material.host.chalcogen === chalcogen &&
         material.host.anion === anion

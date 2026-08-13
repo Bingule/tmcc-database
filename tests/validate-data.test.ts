@@ -7,6 +7,8 @@ const validMaterial: MaterialRecord = {
   slug: "nb2s2c-p-3m1",
   family: "TMCC",
   material_type: "pristine",
+  subclass: "TMCDC",
+  structure_type: "M2X2C",
   formula: "Nb2S2C",
   host: {
     formula: "Nb2S2C",
@@ -86,6 +88,11 @@ describe("material validation", () => {
     };
 
     expect(validateMaterialRecords([validMaterial, nitride]).valid).toBe(true);
+  });
+
+  it("accepts TMCDC as the M2X2C subclass under the TMCC family", () => {
+    expect(validateMaterialRecords([validMaterial]).errors).not.toContain("TMCC-0001: invalid subclass");
+    expect(validateMaterialRecords([validMaterial]).errors).not.toContain("TMCC-0001: invalid structure_type");
   });
 
   it("rejects A-site elements other than C or N", () => {

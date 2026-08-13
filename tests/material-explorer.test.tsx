@@ -10,6 +10,8 @@ import type { MaterialRecord } from "../src/lib/types";
 const baseMaterial = {
   family: "TMCC",
   material_type: "pristine",
+  subclass: "TMCDC",
+  structure_type: "M2X2C",
   experimental_status: null,
   calculation_status: "not_calculated",
   host: { formula: "Nb2S2C", metal: "Nb", chalcogen: "S", anion: "C" },
@@ -186,6 +188,25 @@ describe("MaterialExplorer", () => {
     expect(markup).toContain("<th>Sites/cell</th>");
   });
 
+  it("shows structure type, general formula, and TMCC subclass columns", () => {
+    const markup = renderToStaticMarkup(
+      <MaterialExplorer
+        materials={makeMaterials(1)}
+        selectedId="TMCC-0001"
+        onSelect={() => undefined}
+        elementSearch={{ elements: [], mode: "only" }}
+      />
+    );
+
+    expect(markup).toContain("<th>Structure Type</th>");
+    expect(markup).toContain("<th>General Formula</th>");
+    expect(markup).toContain("<th>Subclass</th>");
+    expect(markup).toContain("<td><span class=\"cell-stack\"><span>trigonal</span></span></td>");
+    expect(markup).toContain("<td>M2X2C</td>");
+    expect(markup).toContain("<td>TMCDC</td>");
+    expect(markup).toContain("<th>Intercalated TM</th>");
+  });
+
   it("uses a scoped class for materials-table alignment", () => {
     const markup = renderToStaticMarkup(
       <MaterialExplorer
@@ -230,7 +251,7 @@ describe("MaterialExplorer", () => {
     expect(markup).not.toContain("Nb1, Nb2, S1, S2, C1");
   });
 
-  it("keeps R-3m crystal systems trigonal while showing the rhombohedral setting", () => {
+  it("keeps R-3m entries as separate TMCDC structural records", () => {
     const markup = renderToStaticMarkup(
       <MaterialExplorer
         materials={[
@@ -251,7 +272,12 @@ describe("MaterialExplorer", () => {
       />
     );
 
+    expect(markup).toContain("R3\u0305m");
     expect(markup).toContain("trigonal");
     expect(markup).toContain("rhombohedral setting");
+    expect(markup).toContain("M2X2C");
+    expect(markup).toContain("TMCDC");
+    expect(markup).not.toContain("2H");
+    expect(markup).not.toContain("3R");
   });
 });

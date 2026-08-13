@@ -56,6 +56,44 @@ export function getDftEnergyPerFormulaUnitLabel(material: MaterialRecord) {
   return formatNumber(totalEnergy / formulaUnits);
 }
 
+export function getSubclassLabel(material: MaterialRecord) {
+  return material.subclass ?? inferSubclass(material);
+}
+
+export function getStructureTypeLabel(material: MaterialRecord) {
+  return material.structure_type ?? inferStructureType(material);
+}
+
+export function getIntercalatedTransitionMetalLabel(material: MaterialRecord) {
+  return material.intercalation?.intercalant ?? "-";
+}
+
+export function getNumberOfSitesLabel(material: MaterialRecord) {
+  return getSitesPerCellLabel(material);
+}
+
+function inferSubclass(material: MaterialRecord) {
+  return inferStructureType(material).startsWith("M2X2") ? "TMCDC" : "TMCC";
+}
+
+function inferStructureType(material: MaterialRecord) {
+  if (material.material_type === "m2xa") return "M2XA";
+  const formula = material.host?.formula ?? material.formula;
+  const suffix = material.host?.anion === "N" ? "N" : "C";
+  const chalcogenCount = countElementInFormula(formula, material.host?.chalcogen);
+  return chalcogenCount === 2 ? `M2X2${suffix}` : `M2X${suffix}`;
+}
+
+function countElementInFormula(formula: string, element: string | undefined) {
+  if (!element) return 0;
+  const pattern = /([A-Z][a-z]?)(\d+(?:\.\d+)?)?/g;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(formula)) !== null) {
+    if (match[1] === element) return match[2] ? Number(match[2]) : 1;
+  }
+  return 0;
+}
+
 function getFormulaUnitsPerCell(material: MaterialRecord) {
   const sites = material.structure.atomic_sites;
   if (!Array.isArray(sites) || sites.length === 0) return null;
@@ -98,7 +136,7 @@ export function getMaterialStats(materials: MaterialRecord[]) {
   return {
     totalCompositions: compositions.size,
     totalStructures: materials.length,
-    vdwsTmcc: materials.filter((material) => material.material_type === "pristine").length,
+    tmcdc: materials.filter((material) => getSubclassLabel(material) === "TMCDC" && material.material_type !== "tm_intercalated").length,
     intercalatedTmcc: materials.filter((material) => material.material_type === "tm_intercalated").length,
     nonVdwsM2xa: materials.filter((material) => material.material_type === "m2xa").length,
     experimentallySynthesized: experimental.length,
@@ -135,6 +173,7 @@ export function findMaterialsByComposition(
   return materials.filter(
     (material) =>
       material.material_type === "pristine" &&
+      getStructureTypeLabel(material).startsWith("M2X2") &&
       material.host.metal === metal &&
       material.host.chalcogen === chalcogen &&
       material.host.anion === anion

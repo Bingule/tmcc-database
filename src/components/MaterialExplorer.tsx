@@ -4,8 +4,11 @@ import {
   filterMaterialsByElementSet,
   formatPropertyValue,
   getDftEnergyPerFormulaUnitLabel,
+  getIntercalatedTransitionMetalLabel,
   getLatticeSettingLabel,
+  getStructureTypeLabel,
   getSitesPerCellLabel,
+  getSubclassLabel,
   getSpaceGroupLabel,
   getSpaceGroupSymbol
 } from "../lib/materials";
@@ -28,12 +31,15 @@ export function MaterialExplorer({ materials, selectedId, onSelect, elementSearc
   const [metal, setMetal] = useState("all");
   const [chalcogen, setChalcogen] = useState("all");
   const [anion, setAnion] = useState("all");
-  const [type, setType] = useState("all");
+  const [subclass, setSubclass] = useState("all");
+  const [structureType, setStructureType] = useState("all");
   const [pageSize, setPageSize] = useState(5);
   const [page, setPage] = useState(1);
   const metals = [...new Set(materials.map((material) => material.host.metal))];
   const chalcogens = [...new Set(materials.map((material) => material.host.chalcogen))];
   const anions = [...new Set(materials.map((material) => material.host.anion))];
+  const subclasses = [...new Set(materials.map((material) => getSubclassLabel(material)))];
+  const structureTypes = [...new Set(materials.map((material) => getStructureTypeLabel(material)))];
 
   const filtered = useMemo(() => {
     const normalizedQuery = query.toLowerCase();
@@ -43,19 +49,23 @@ export function MaterialExplorer({ materials, selectedId, onSelect, elementSearc
         material.material_id.toLowerCase().includes(normalizedQuery) ||
         material.slug.toLowerCase().includes(normalizedQuery) ||
         material.formula.toLowerCase().includes(normalizedQuery) ||
+        getSubclassLabel(material).toLowerCase().includes(normalizedQuery) ||
+        getStructureTypeLabel(material).toLowerCase().includes(normalizedQuery) ||
+        (material.intercalation?.intercalant ?? "").toLowerCase().includes(normalizedQuery) ||
         String(getSpaceGroupSymbol(material) ?? "").toLowerCase().includes(normalizedQuery);
       return (
         matchesQuery &&
         (metal === "all" || material.host.metal === metal) &&
         (chalcogen === "all" || material.host.chalcogen === chalcogen) &&
         (anion === "all" || material.host.anion === anion) &&
-        (type === "all" || material.material_type === type)
+        (subclass === "all" || getSubclassLabel(material) === subclass) &&
+        (structureType === "all" || getStructureTypeLabel(material) === structureType)
       );
     });
-  }, [query, metal, chalcogen, anion, type, materials, elementSearch]);
+  }, [query, metal, chalcogen, anion, subclass, structureType, materials, elementSearch]);
   useEffect(() => {
     setPage(1);
-  }, [query, metal, chalcogen, anion, type, pageSize, elementSearch.elements, elementSearch.mode]);
+  }, [query, metal, chalcogen, anion, subclass, structureType, pageSize, elementSearch.elements, elementSearch.mode]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
@@ -86,7 +96,8 @@ export function MaterialExplorer({ materials, selectedId, onSelect, elementSearc
         <Filter label="Host metal" value={metal} values={metals} onChange={setMetal} />
         <Filter label="Chalcogen" value={chalcogen} values={chalcogens} onChange={setChalcogen} />
         <Filter label="A-site" value={anion} values={anions} onChange={setAnion} />
-        <Filter label="Type" value={type} values={["pristine", "tm_intercalated", "m2xa"]} onChange={setType} />
+        <Filter label="Subclass" value={subclass} values={subclasses} onChange={setSubclass} />
+        <Filter label="Structure type" value={structureType} values={structureTypes} onChange={setStructureType} />
       </div>
       {hasTooManyElementMatches ? (
         <div className="result-limit-warning" role="status">
@@ -101,9 +112,11 @@ export function MaterialExplorer({ materials, selectedId, onSelect, elementSearc
                 <tr>
                   <th>Material ID</th>
                   <th>Formula</th>
-                  <th>Crystal System</th>
+                  <th>Structure Type</th>
+                  <th>General Formula</th>
+                  <th>Subclass</th>
                   <th>Space Group</th>
-                  <th>Intercalant</th>
+                  <th>Intercalated TM</th>
                   <th>Sites/cell</th>
                   <ColumnHeader label="DFT Energy" unit="eV/f.u." />
                   <ColumnHeader label="Formation Energy" unit="eV/formula" />
@@ -126,8 +139,10 @@ export function MaterialExplorer({ materials, selectedId, onSelect, elementSearc
                         {getLatticeSettingLabel(material) && <small>{getLatticeSettingLabel(material)}</small>}
                       </span>
                     </td>
+                    <td>{getStructureTypeLabel(material)}</td>
+                    <td>{getSubclassLabel(material)}</td>
                     <td>{getSpaceGroupLabel(getSpaceGroupSymbol(material))}</td>
-                    <td>{material.intercalation?.intercalant ?? "-"}</td>
+                    <td>{getIntercalatedTransitionMetalLabel(material)}</td>
                     <td>{getSitesPerCellLabel(material)}</td>
                     <td>{getDftEnergyPerFormulaUnitLabel(material)}</td>
                     <td>{formatPropertyValue(material.thermodynamics.formation_energy)}</td>

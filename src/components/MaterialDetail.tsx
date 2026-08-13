@@ -5,9 +5,14 @@ import { Formula } from "./Formula";
 import { XrdViewer } from "./XrdViewer";
 import {
   formatPropertyValue,
+  getDftEnergyPerFormulaUnitLabel,
+  getIntercalatedTransitionMetalLabel,
   getLatticeSettingLabel,
+  getNumberOfSitesLabel,
   getSpaceGroupLabel,
   getSpaceGroupSymbol,
+  getStructureTypeLabel,
+  getSubclassLabel,
   getUnavailableLabel,
   makeStructureDownloadFilename
 } from "../lib/materials";
@@ -43,8 +48,14 @@ export function MaterialDetail({ material }: { material: MaterialRecord }) {
             />
           </div>
           <Data label="Space group" value={getSpaceGroupLabel(getSpaceGroupSymbol(material))} />
+          <Data label="Formula" value={<Formula formula={material.formula} />} />
+          <Data label="Family" value={material.family} />
+          <Data label="Subclass" value={getSubclassLabel(material)} />
+          <Data label="General formula" value={getStructureTypeLabel(material)} />
+          <Data label="Structure type" value={getUnavailableLabel(material.structure.crystal_system)} />
+          <Data label="Intercalated TM" value={getIntercalatedTransitionMetalLabel(material)} />
+          <Data label="Number of sites" value={getNumberOfSitesLabel(material)} />
           <Data label="Space group number" value={getUnavailableLabel(material.structure.space_group_number)} />
-          <Data label="Crystal system" value={getUnavailableLabel(material.structure.crystal_system)} />
           {getLatticeSettingLabel(material) && (
             <Data label="Lattice setting" value={getLatticeSettingLabel(material)} />
           )}
@@ -64,10 +75,11 @@ export function MaterialDetail({ material }: { material: MaterialRecord }) {
         </Panel>
 
         <Panel title="Thermodynamics">
+          <Data label="DFT energy / f.u." value={getDftEnergyPerFormulaUnitLabel(material)} />
           <Data label="DFT total energy" value={formatPropertyValue(material.thermodynamics.total_energy)} />
-          <Data label="Formation energy" value={formatPropertyValue(material.thermodynamics.formation_energy)} />
+          <Data label="Formation energy (eV/f.u.)" value={formatPropertyValue(material.thermodynamics.formation_energy)} />
           <Data label="Energy above hull" value={formatPropertyValue(material.thermodynamics.energy_above_hull)} />
-          <Data label="Relative structure energy" value={formatPropertyValue(material.thermodynamics.relative_structure_energy)} />
+          <Data label="Relative energy between configurations" value={formatPropertyValue(material.thermodynamics.relative_structure_energy)} />
         </Panel>
 
         <Panel title="Stability And Properties">
