@@ -28,10 +28,22 @@ export default function App() {
     }
   }
 
+  function goHome() {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   return (
     <main>
       <header className="site-header">
         <nav className="top-nav" aria-label="Primary">
+          <button className="nav-button" type="button" onClick={goHome}>
+            Home
+          </button>
           <a href="#selector">Selector</a>
           <a href="#periodic-table">Periodic table</a>
           <a href="#explorer">Explorer</a>
@@ -40,7 +52,19 @@ export default function App() {
             Login
           </button>
         </nav>
-        <section className="hero-shell">
+        <section
+          className="hero-shell home-click-target"
+          role="button"
+          tabIndex={0}
+          title="Back to main page"
+          onClick={goHome}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              goHome();
+            }
+          }}
+        >
           <div className="hero-structure-mark" aria-hidden="true">
             <div className="tmcc-wordmark">TMCC</div>
             <div className="structure-family-card family-vdws">

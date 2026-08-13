@@ -96,6 +96,7 @@ main {
 }
 
 .top-nav a,
+.nav-button,
 .login-button,
 .primary-button,
 .secondary-button {
@@ -114,6 +115,7 @@ main {
 }
 
 .top-nav a,
+.nav-button,
 .login-button {
   min-height: 38px;
   border-color: rgba(39, 86, 106, 0.22);
@@ -129,6 +131,7 @@ main {
 }
 
 .top-nav a:hover,
+.nav-button:hover,
 .login-button:hover {
   border-color: rgba(39, 86, 106, 0.42);
   color: #102c39;
@@ -137,6 +140,7 @@ main {
 }
 
 .top-nav a:focus-visible,
+.nav-button:focus-visible,
 .login-button:focus-visible {
   outline: 2px solid rgba(39, 86, 106, 0.36);
   outline-offset: 2px;
@@ -146,6 +150,10 @@ main {
   border-color: rgba(54, 108, 117, 0.46);
   color: #ffffff;
   background: linear-gradient(135deg, rgba(39, 86, 106, 0.94), rgba(65, 112, 101, 0.92));
+}
+
+.nav-button {
+  appearance: none;
 }
 
 .login-button::after {
@@ -184,6 +192,15 @@ main {
   grid-template-columns: minmax(0, 1fr);
   align-items: start;
   padding: 2px 0 0;
+}
+
+.home-click-target {
+  cursor: pointer;
+}
+
+.home-click-target:focus-visible {
+  outline: 2px solid rgba(39, 86, 106, 0.34);
+  outline-offset: 6px;
 }
 
 .hero-copy {
