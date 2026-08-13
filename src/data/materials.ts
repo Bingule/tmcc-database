@@ -88,6 +88,30 @@ import TMCC0323 from "../../data/materials/TMCC-0323.json";
 import TMCC0324 from "../../data/materials/TMCC-0324.json";
 import TMCC0325 from "../../data/materials/TMCC-0325.json";
 import TMCC0326 from "../../data/materials/TMCC-0326.json";
+import TMCC0401 from "../../data/materials/TMCC-0401.json";
+import TMCC0402 from "../../data/materials/TMCC-0402.json";
+import TMCC0403 from "../../data/materials/TMCC-0403.json";
+import TMCC0407 from "../../data/materials/TMCC-0407.json";
+import TMCC0409 from "../../data/materials/TMCC-0409.json";
+import TMCC0410 from "../../data/materials/TMCC-0410.json";
+import TMCC0411 from "../../data/materials/TMCC-0411.json";
+import TMCC0412 from "../../data/materials/TMCC-0412.json";
+import TMCC0413 from "../../data/materials/TMCC-0413.json";
+import TMCC0414 from "../../data/materials/TMCC-0414.json";
+import TMCC0415 from "../../data/materials/TMCC-0415.json";
+import TMCC0416 from "../../data/materials/TMCC-0416.json";
+import TMCC0417 from "../../data/materials/TMCC-0417.json";
+import TMCC0418 from "../../data/materials/TMCC-0418.json";
+import TMCC0419 from "../../data/materials/TMCC-0419.json";
+import TMCC0420 from "../../data/materials/TMCC-0420.json";
+import TMCC0421 from "../../data/materials/TMCC-0421.json";
+import TMCC0422 from "../../data/materials/TMCC-0422.json";
+import TMCC0423 from "../../data/materials/TMCC-0423.json";
+import TMCC0424 from "../../data/materials/TMCC-0424.json";
+import TMCC0425 from "../../data/materials/TMCC-0425.json";
+import TMCC0426 from "../../data/materials/TMCC-0426.json";
+import TMCC0427 from "../../data/materials/TMCC-0427.json";
+import TMCC0428 from "../../data/materials/TMCC-0428.json";
 
 import type { MaterialRecord } from "../lib/types";
 
@@ -181,5 +205,29 @@ export const materials = [
   TMCC0323,
   TMCC0324,
   TMCC0325,
-  TMCC0326
+  TMCC0326,
+  TMCC0401,
+  TMCC0402,
+  TMCC0403,
+  TMCC0407,
+  TMCC0409,
+  TMCC0410,
+  TMCC0411,
+  TMCC0412,
+  TMCC0413,
+  TMCC0414,
+  TMCC0415,
+  TMCC0416,
+  TMCC0417,
+  TMCC0418,
+  TMCC0419,
+  TMCC0420,
+  TMCC0421,
+  TMCC0422,
+  TMCC0423,
+  TMCC0424,
+  TMCC0425,
+  TMCC0426,
+  TMCC0427,
+  TMCC0428
 ] as MaterialRecord[];
