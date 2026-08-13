@@ -113,10 +113,9 @@ config_path.write_text(json.dumps(config, indent=2, ensure_ascii=False) + "\n", 
 
 cif_path = root / "input" / "structure.cif"
 text = cif_path.read_text(encoding="utf-8", errors="ignore")
-text = re.sub(r"\bNb\b", metal, text)
-text = text.replace("Nb2Te2C", formula)
-text = text.replace("Nb2 Te2 C", f"{metal}2 Te2 C")
-text = text.replace("C1 Nb2 Te2", f"C1 {metal}2 Te2")
+# Replace every Nb token, including CIF type symbols such as Nb0+ and labels
+# such as Nb1. The template is a Nb-only host, so this is intentionally broad.
+text = text.replace("Nb", metal)
 text = text.replace("Niobium", metal)
 cif_path.write_text(text, encoding="utf-8")
 PY
