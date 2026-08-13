@@ -109,7 +109,7 @@ export default function App() {
             </div>
           </div>
           <div className="hero-affiliation" aria-label="Project affiliation">
-            <strong>Dr. Wu</strong>
+            <strong>Dr. Wu / Dr. Sofer</strong>
             <span>Department of Inorganic Chemistry</span>
             <span>University of Chemistry and Technology Prague</span>
           </div>
