@@ -7,7 +7,7 @@ export default defineConfig({
   base: process.env.VITE_BASE_PATH ?? "/",
   plugins: [react()],
   server: {
-    allowedHosts: ["tmcc.database", "tmcc.local"]
+    allowedHosts: ["tmcc.database", "tmcc.local", "tmccdb.org", "www.tmccdb.org"]
   },
   test: {
     environment: "jsdom",
