@@ -87,7 +87,7 @@ function StructureViewer({ material }: { material: MaterialRecord }) {
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xf8faf8);
 
-    const camera = new THREE.PerspectiveCamera(40, mount.clientWidth / mount.clientHeight, 0.1, 1000);
+    const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 1000);
     const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(mount.clientWidth, mount.clientHeight);
@@ -96,6 +96,9 @@ function StructureViewer({ material }: { material: MaterialRecord }) {
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
+    controls.enablePan = false;
+    controls.rotateSpeed = 0.72;
+    controls.zoomSpeed = 0.85;
 
     const group = buildCrystalGroup(structure, supercell, style);
     scene.add(group);
@@ -109,12 +112,13 @@ function StructureViewer({ material }: { material: MaterialRecord }) {
     scene.add(light);
     scene.add(new THREE.AmbientLight(0xffffff, 1.8));
 
-    positionCamera(camera, controls, orientation, Math.max(size.x, size.y, size.z, 5));
+    const span = Math.max(size.x, size.y, size.z, 5);
+    positionCamera(camera, controls, orientation, span);
+    updateOrthographicFrustum(camera, mount.clientWidth, mount.clientHeight, span);
 
     const resizeObserver = new ResizeObserver(() => {
       if (!mount.clientWidth || !mount.clientHeight) return;
-      camera.aspect = mount.clientWidth / mount.clientHeight;
-      camera.updateProjectionMatrix();
+      updateOrthographicFrustum(camera, mount.clientWidth, mount.clientHeight, span);
       renderer.setSize(mount.clientWidth, mount.clientHeight);
     });
     resizeObserver.observe(mount);
@@ -418,14 +422,14 @@ function makeCellEdges(vectors: [THREE.Vector3, THREE.Vector3, THREE.Vector3]) {
 }
 
 function positionCamera(
-  camera: THREE.PerspectiveCamera,
+  camera: THREE.OrthographicCamera,
   controls: OrbitControls,
   orientation: Orientation,
   span: number
 ) {
-  const distance = span * 2.15;
+  const distance = span * 2.6;
   const positions: Record<Orientation, [number, number, number]> = {
-    iso: [distance, -distance, distance * 0.85],
+    iso: [distance * 0.85, -distance, distance * 0.72],
     ab: [0, 0, distance],
     ac: [0, -distance, 0],
     bc: [distance, 0, 0]
@@ -433,6 +437,22 @@ function positionCamera(
   camera.position.set(...positions[orientation]);
   controls.target.set(0, 0, 0);
   controls.update();
+}
+
+function updateOrthographicFrustum(
+  camera: THREE.OrthographicCamera,
+  width: number,
+  height: number,
+  span: number
+) {
+  const aspect = width / Math.max(height, 1);
+  const viewSize = span * 1.45;
+  camera.left = (-viewSize * aspect) / 2;
+  camera.right = (viewSize * aspect) / 2;
+  camera.top = viewSize / 2;
+  camera.bottom = -viewSize / 2;
+  camera.zoom = 1;
+  camera.updateProjectionMatrix();
 }
 
 function getElementStyle(element: string) {
