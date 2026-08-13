@@ -77,7 +77,10 @@ export function PeriodicTable({ materials, onMetalSelect, onElementSearch }: Pro
             <strong>M' intercalant</strong>
             <small>metal between layers</small>
           </div>
-          <p>TMCDC: M2X2A, TMCC: M2XA, with P-3m1 / R-3m / hexagonal entries tracked separately.</p>
+          <p>
+            vdW TMCDC: M2X2A in P-3m1 or R-3m; intercalated vdW TMCDC: M'M2X2A in P/R variants; TMCC:
+            M2XA in P63/mmc.
+          </p>
         </div>
         {periodicTableElements.map((element) => {
           const isHostEligible = transitionMetals.includes(element.symbol);
