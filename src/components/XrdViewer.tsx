@@ -281,6 +281,7 @@ function LineChart<T extends Record<string, number>>({
   onVisibleXRangeChange: (range: [number, number] | null) => void;
 }) {
   const [hovered, setHovered] = useState<{ x: number; y: number; point: T } | null>(null);
+  const [dragRange, setDragRange] = useState<{ startX: number; currentX: number } | null>(null);
   const { width, height } = dimensions;
   const padding = 34;
   const plotWidth = width - padding * 2;
@@ -299,10 +300,30 @@ function LineChart<T extends Record<string, number>>({
     return `${x.toFixed(1)},${y.toFixed(1)}`;
   }).join(" ");
 
-  function handlePointerMove(event: PointerEvent<SVGSVGElement>) {
+  function pointerX(event: PointerEvent<SVGSVGElement> | WheelEvent<SVGSVGElement>) {
     const rect = event.currentTarget.getBoundingClientRect();
     const viewBoxX = (event.clientX - rect.left) / rect.width * width;
-    const clampedX = Math.min(width - padding, Math.max(padding, viewBoxX));
+    return Math.min(width - padding, Math.max(padding, viewBoxX));
+  }
+
+  function valueAtX(x: number) {
+    const ratio = (x - padding) / plotWidth;
+    return minX + ratio * (maxX - minX);
+  }
+
+  function handlePointerDown(event: PointerEvent<SVGSVGElement>) {
+    if (event.button !== 0) return;
+    const x = pointerX(event);
+    setDragRange({ startX: x, currentX: x });
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function handlePointerMove(event: PointerEvent<SVGSVGElement>) {
+    const clampedX = pointerX(event);
+    if (dragRange) {
+      setDragRange({ ...dragRange, currentX: clampedX });
+      return;
+    }
     const ratio = (clampedX - padding) / plotWidth;
     const value = minX + ratio * (maxX - minX);
     const nearest = chartPoints.reduce((best, point) =>
@@ -313,12 +334,27 @@ function LineChart<T extends Record<string, number>>({
     setHovered({ x, y, point: nearest });
   }
 
+  function handlePointerUp(event: PointerEvent<SVGSVGElement>) {
+    if (!dragRange) return;
+    const endX = pointerX(event);
+    const startX = dragRange.startX;
+    setDragRange(null);
+    if (Math.abs(endX - startX) < 8) return;
+    const nextMin = Math.max(fullXRange[0], Math.min(valueAtX(startX), valueAtX(endX)));
+    const nextMax = Math.min(fullXRange[1], Math.max(valueAtX(startX), valueAtX(endX)));
+    if (nextMax - nextMin > (fullXRange[1] - fullXRange[0]) / 100) {
+      onVisibleXRangeChange([nextMin, nextMax]);
+    }
+  }
+
+  function resetZoom() {
+    setDragRange(null);
+    onVisibleXRangeChange(null);
+  }
+
   function handleWheel(event: WheelEvent<SVGSVGElement>) {
     event.preventDefault();
-    const rect = event.currentTarget.getBoundingClientRect();
-    const viewBoxX = (event.clientX - rect.left) / rect.width * width;
-    const clampedX = Math.min(width - padding, Math.max(padding, viewBoxX));
-    const center = minX + (clampedX - padding) / plotWidth * (maxX - minX);
+    const center = valueAtX(pointerX(event));
     const factor = event.deltaY < 0 ? 0.78 : 1.28;
     const nextSpan = Math.min(fullXRange[1] - fullXRange[0], Math.max((fullXRange[1] - fullXRange[0]) / 80, (maxX - minX) * factor));
     const leftRatio = (center - minX) / (maxX - minX || 1);
@@ -344,10 +380,20 @@ function LineChart<T extends Record<string, number>>({
       viewBox={`0 0 ${width} ${height}`}
       role="img"
       aria-label={`${yLabel} curve`}
+      onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
-      onPointerLeave={() => setHovered(null)}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={() => setDragRange(null)}
+      onPointerLeave={() => {
+        setHovered(null);
+        setDragRange(null);
+      }}
       onWheel={handleWheel}
-      onDoubleClick={() => onVisibleXRangeChange(null)}
+      onDoubleClick={resetZoom}
+      onContextMenu={(event) => {
+        event.preventDefault();
+        resetZoom();
+      }}
     >
       <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} />
       {minY < 0 && maxY > 0 && <line className="zero-axis" x1={padding} y1={zeroY} x2={width - padding} y2={zeroY} />}
@@ -362,6 +408,16 @@ function LineChart<T extends Record<string, number>>({
         );
       })}
       <polyline points={polyline} />
+      {dragRange && (
+        <rect
+          className="zoom-selection"
+          x={Math.min(dragRange.startX, dragRange.currentX)}
+          y={padding}
+          width={Math.abs(dragRange.currentX - dragRange.startX)}
+          height={plotHeight}
+          rx={3}
+        />
+      )}
       {hovered && (
         <g className="chart-tooltip">
           <line x1={hovered.x} y1={padding} x2={hovered.x} y2={height - padding} />

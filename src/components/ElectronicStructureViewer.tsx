@@ -1,5 +1,5 @@
 import { Download } from "lucide-react";
-import { type WheelEvent, useEffect, useMemo, useState } from "react";
+import { type PointerEvent, type WheelEvent, useEffect, useMemo, useState } from "react";
 import { makeElectronicDownloadFilename } from "../lib/materials";
 import { publicAssetPath } from "../lib/paths";
 import type { MaterialRecord } from "../lib/types";
@@ -184,6 +184,7 @@ export function ElectronicPlot({
   const dataMaxX = Math.max(...allPoints.map((point) => point.x));
   const fullXRange: [number, number] = fixedXRange ?? [dataMinX, dataMaxX];
   const [zoomRange, setZoomRange] = useState<[number, number] | null>(null);
+  const [dragRange, setDragRange] = useState<{ startX: number; currentX: number } | null>(null);
   const [minX, maxX] = zoomRange ?? fullXRange;
   useEffect(() => setZoomRange(null), [fullXRange[0], fullXRange[1], series]);
   const visibleSeries = useMemo(() => series.map((item) => ({
@@ -208,12 +209,49 @@ export function ElectronicPlot({
     return { label: item.label, points, color: colors[index % colors.length] };
   }), [maxX, maxY, minX, minY, plotHeight, plotWidth, plottedSeries]);
 
-  function handleWheel(event: WheelEvent<SVGSVGElement>) {
-    event.preventDefault();
+  function pointerX(event: PointerEvent<SVGSVGElement> | WheelEvent<SVGSVGElement>) {
     const rect = event.currentTarget.getBoundingClientRect();
     const viewBoxX = (event.clientX - rect.left) / rect.width * width;
-    const clampedX = Math.min(width - padding.right, Math.max(padding.left, viewBoxX));
-    const center = minX + (clampedX - padding.left) / plotWidth * (maxX - minX);
+    return Math.min(width - padding.right, Math.max(padding.left, viewBoxX));
+  }
+
+  function valueAtX(x: number) {
+    return minX + (x - padding.left) / plotWidth * (maxX - minX);
+  }
+
+  function resetZoom() {
+    setDragRange(null);
+    setZoomRange(null);
+  }
+
+  function handlePointerDown(event: PointerEvent<SVGSVGElement>) {
+    if (event.button !== 0) return;
+    const x = pointerX(event);
+    setDragRange({ startX: x, currentX: x });
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function handlePointerMove(event: PointerEvent<SVGSVGElement>) {
+    if (!dragRange) return;
+    setDragRange({ ...dragRange, currentX: pointerX(event) });
+  }
+
+  function handlePointerUp(event: PointerEvent<SVGSVGElement>) {
+    if (!dragRange) return;
+    const endX = pointerX(event);
+    const startX = dragRange.startX;
+    setDragRange(null);
+    if (Math.abs(endX - startX) < 8) return;
+    const nextMin = Math.max(fullXRange[0], Math.min(valueAtX(startX), valueAtX(endX)));
+    const nextMax = Math.min(fullXRange[1], Math.max(valueAtX(startX), valueAtX(endX)));
+    if (nextMax - nextMin > (fullXRange[1] - fullXRange[0]) / 100) {
+      setZoomRange([nextMin, nextMax]);
+    }
+  }
+
+  function handleWheel(event: WheelEvent<SVGSVGElement>) {
+    event.preventDefault();
+    const center = valueAtX(pointerX(event));
     const factor = event.deltaY < 0 ? 0.78 : 1.28;
     const fullSpan = fullXRange[1] - fullXRange[0];
     const nextSpan = Math.min(fullSpan, Math.max(fullSpan / 80, (maxX - minX) * factor));
@@ -240,11 +278,20 @@ export function ElectronicPlot({
       viewBox={`0 0 ${width} ${height}`}
       role="img"
       aria-label={`${yLabel} plot`}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={() => setDragRange(null)}
+      onPointerLeave={() => setDragRange(null)}
       onWheel={handleWheel}
-      onDoubleClick={() => setZoomRange(null)}
+      onDoubleClick={resetZoom}
+      onContextMenu={(event) => {
+        event.preventDefault();
+        resetZoom();
+      }}
     >
       {zoomRange && (
-        <g className="plot-reset" role="button" tabIndex={0} onClick={() => setZoomRange(null)}>
+        <g className="plot-reset" role="button" tabIndex={0} onClick={resetZoom}>
           <rect x={width - padding.right - 96} y="18" width="88" height="24" rx="5" />
           <text x={width - padding.right - 52} y="34">Reset zoom</text>
         </g>
@@ -274,6 +321,16 @@ export function ElectronicPlot({
       ) : null}
       <text className="fermi-value-label" x={padding.left + 4} y="54">{formatFermiLabel(fermiLevel)}</text>
       {paths.map((path) => <polyline key={path.label} points={path.points} stroke={path.color} />)}
+      {dragRange && (
+        <rect
+          className="zoom-selection"
+          x={Math.min(dragRange.startX, dragRange.currentX)}
+          y={padding.top}
+          width={Math.abs(dragRange.currentX - dragRange.startX)}
+          height={plotHeight}
+          rx={3}
+        />
+      )}
       <text className="axis-label" x={padding.left + 4} y={padding.top - 12}>{yLabel}</text>
       <text className="axis-label x-axis-label" x={xAtZero} y={height - 10}>{xLabel}</text>
       <g className="electronic-legend top-legend">
