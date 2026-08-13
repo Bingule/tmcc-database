@@ -1,6 +1,11 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { intercalantOptions, intercalantConcentrationOptions, MaterialSelector } from "../src/components/MaterialSelector";
+import {
+  getSelectorMatches,
+  intercalantOptions,
+  intercalantConcentrationOptions,
+  MaterialSelector
+} from "../src/components/MaterialSelector";
 import { materials } from "../src/data/materials";
 
 describe("MaterialSelector", () => {
@@ -26,5 +31,17 @@ describe("MaterialSelector", () => {
     expect(intercalantOptions[0]).toBe("All");
     expect(intercalantOptions).toContain("Fe");
     expect(intercalantConcentrationOptions).toEqual(["All", "0.125", "0.25", "1/3", "0.5", "1"]);
+  });
+
+  it("matches intercalated materials from host and intercalant filters", () => {
+    expect(getSelectorMatches(materials, "intercalated", "Nb", "S", "C", "Cu", "0.5").map((item) => item.material_id)).toEqual([
+      "TMCC-0009"
+    ]);
+  });
+
+  it("matches non-vdWs M2XA materials from the third selector mode", () => {
+    expect(getSelectorMatches(materials, "single_chalcogen", "Nb", "S", "C").map((item) => item.material_id)).toEqual([
+      "TMCC-0011"
+    ]);
   });
 });

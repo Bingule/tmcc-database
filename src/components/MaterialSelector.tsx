@@ -31,17 +31,41 @@ export function MaterialSelector({ materials, selectedId, onSelect }: Props) {
   const [anion, setAnion] = useState(current.host.anion);
   const [intercalant, setIntercalant] = useState("All");
   const [intercalantConcentration, setIntercalantConcentration] = useState("All");
-  const availableStructures = findMaterialsByComposition(materials, metal, chalcogen, anion);
+  const availableStructures = getSelectorMatches(
+    materials,
+    materialType,
+    metal,
+    chalcogen,
+    anion,
+    intercalant,
+    intercalantConcentration
+  );
   const matched = availableStructures.find((material) => material.material_id === selectedId) ?? availableStructures[0];
-  const downloadable = materialType === "pristine" ? matched : undefined;
+  const downloadable = matched;
 
   function updateSelection(
+    nextType: SelectorMode = materialType,
     nextMetal: string = metal,
     nextChalcogen: string = chalcogen,
-    nextAnion: string = anion
+    nextAnion: string = anion,
+    nextIntercalant: string = intercalant,
+    nextIntercalantConcentration: string = intercalantConcentration
   ) {
-    const next = findMaterialsByComposition(materials, nextMetal, nextChalcogen, nextAnion)[0];
+    const next = getSelectorMatches(
+      materials,
+      nextType,
+      nextMetal,
+      nextChalcogen,
+      nextAnion,
+      nextIntercalant,
+      nextIntercalantConcentration
+    )[0];
     if (next) onSelect(next.material_id);
+  }
+
+  function chooseMode(nextType: SelectorMode) {
+    setMaterialType(nextType);
+    updateSelection(nextType);
   }
 
   return (
@@ -52,13 +76,13 @@ export function MaterialSelector({ materials, selectedId, onSelect }: Props) {
       </div>
 
       <div className="segmented three" aria-label="Material type">
-        <button className={materialType === "pristine" ? "active" : ""} onClick={() => setMaterialType("pristine")}>
+        <button className={materialType === "pristine" ? "active" : ""} onClick={() => chooseMode("pristine")}>
           vdWs TMCC
         </button>
-        <button className={materialType === "intercalated" ? "active" : ""} onClick={() => setMaterialType("intercalated")}>
+        <button className={materialType === "intercalated" ? "active" : ""} onClick={() => chooseMode("intercalated")}>
           Intercalated TMCC
         </button>
-        <button className={materialType === "single_chalcogen" ? "active" : ""} onClick={() => setMaterialType("single_chalcogen")}>
+        <button className={materialType === "single_chalcogen" ? "active" : ""} onClick={() => chooseMode("single_chalcogen")}>
           non-vdWs TMCC (M2XA)
         </button>
       </div>
@@ -71,7 +95,7 @@ export function MaterialSelector({ materials, selectedId, onSelect }: Props) {
               value={metal}
               onChange={(event) => {
                 setMetal(event.target.value);
-                updateSelection(event.target.value, chalcogen, anion);
+                updateSelection(materialType, event.target.value, chalcogen, anion);
               }}
             >
               {metals.map((item) => <option key={item}>{item}</option>)}
@@ -83,7 +107,7 @@ export function MaterialSelector({ materials, selectedId, onSelect }: Props) {
               value={chalcogen}
               onChange={(event) => {
                 setChalcogen(event.target.value as "S" | "Se" | "Te");
-                updateSelection(metal, event.target.value, anion);
+                updateSelection(materialType, metal, event.target.value, anion);
               }}
             >
               {chalcogens.map((item) => <option key={item}>{item}</option>)}
@@ -95,7 +119,7 @@ export function MaterialSelector({ materials, selectedId, onSelect }: Props) {
               value={anion}
               onChange={(event) => {
                 setAnion(event.target.value as "C" | "N");
-                updateSelection(metal, chalcogen, event.target.value);
+                updateSelection(materialType, metal, chalcogen, event.target.value);
               }}
             >
               {anions.map((item) => <option key={item}>{item}</option>)}
@@ -106,40 +130,70 @@ export function MaterialSelector({ materials, selectedId, onSelect }: Props) {
         <div className="intercalated-placeholder">
           <label>
             <span>Intercalant M'</span>
-            <select value={intercalant} onChange={(event) => setIntercalant(event.target.value)}>
+            <select
+              value={intercalant}
+              onChange={(event) => {
+                setIntercalant(event.target.value);
+                updateSelection(materialType, metal, chalcogen, anion, event.target.value, intercalantConcentration);
+              }}
+            >
               {intercalantOptions.map((item) => <option key={item}>{item}</option>)}
             </select>
           </label>
           <label>
             <span>x</span>
-            <select value={intercalantConcentration} onChange={(event) => setIntercalantConcentration(event.target.value)}>
+            <select
+              value={intercalantConcentration}
+              onChange={(event) => {
+                setIntercalantConcentration(event.target.value);
+                updateSelection(materialType, metal, chalcogen, anion, intercalant, event.target.value);
+              }}
+            >
               {intercalantConcentrationOptions.map((item) => <option key={item}>{item}</option>)}
             </select>
           </label>
           <label>
             <span>Host M</span>
-            <select value={metal} onChange={(event) => setMetal(event.target.value)}>
+            <select
+              value={metal}
+              onChange={(event) => {
+                setMetal(event.target.value);
+                updateSelection(materialType, event.target.value, chalcogen, anion);
+              }}
+            >
               {metals.map((item) => <option key={item}>{item}</option>)}
             </select>
           </label>
           <label>
             <span>X</span>
-            <select value={chalcogen} onChange={(event) => setChalcogen(event.target.value as "S" | "Se" | "Te")}>
+            <select
+              value={chalcogen}
+              onChange={(event) => {
+                setChalcogen(event.target.value as "S" | "Se" | "Te");
+                updateSelection(materialType, metal, event.target.value, anion);
+              }}
+            >
               {chalcogens.map((item) => <option key={item}>{item}</option>)}
             </select>
           </label>
           <label>
             <span>A</span>
-            <select value={anion} onChange={(event) => setAnion(event.target.value as "C" | "N")}>
+            <select
+              value={anion}
+              onChange={(event) => {
+                setAnion(event.target.value as "C" | "N");
+                updateSelection(materialType, metal, chalcogen, event.target.value);
+              }}
+            >
               {anions.map((item) => <option key={item}>{item}</option>)}
             </select>
           </label>
           <label><span>Host structure</span><input value={matched ? getSpaceGroupLabel(getSpaceGroupSymbol(matched)) : "Data in progress"} readOnly /></label>
-          <label><span>Configuration</span><input value="Data in progress" readOnly /></label>
+          <label><span>Configuration</span><input value={matched?.intercalation?.configuration ?? "Data in progress"} readOnly /></label>
         </div>
       )}
 
-      {materialType === "pristine" && (
+      {availableStructures.length > 0 && (
         <div className="structure-options compact-inline" aria-label="Available crystal structures">
           {availableStructures.map((material) => (
             <button
@@ -150,6 +204,7 @@ export function MaterialSelector({ materials, selectedId, onSelect }: Props) {
             >
               <Formula formula={material.formula} />
               <span className="structure-option-meta">{getSpaceGroupLabel(getSpaceGroupSymbol(material))}</span>
+              {material.intercalation?.intercalant && <span className="structure-option-meta">{material.intercalation.intercalant} x={material.intercalation.x}</span>}
               <small>{material.material_id}</small>
             </button>
           ))}
@@ -174,6 +229,48 @@ export function MaterialSelector({ materials, selectedId, onSelect }: Props) {
       </div>
     </section>
   );
+}
+
+export function getSelectorMatches(
+  materials: MaterialRecord[],
+  materialType: SelectorMode,
+  metal: string,
+  chalcogen: string,
+  anion: string,
+  intercalant = "All",
+  concentration = "All"
+) {
+  if (materialType === "pristine") {
+    return findMaterialsByComposition(materials, metal, chalcogen, anion);
+  }
+
+  if (materialType === "single_chalcogen") {
+    return materials.filter(
+      (material) =>
+        material.material_type === "m2xa" &&
+        material.host.metal === metal &&
+        material.host.chalcogen === chalcogen &&
+        material.host.anion === anion
+    );
+  }
+
+  return materials.filter((material) => {
+    const x = material.intercalation?.x;
+    return (
+      material.material_type === "tm_intercalated" &&
+      material.host.metal === metal &&
+      material.host.chalcogen === chalcogen &&
+      material.host.anion === anion &&
+      (intercalant === "All" || material.intercalation?.intercalant === intercalant) &&
+      (concentration === "All" || formatConcentration(x) === concentration)
+    );
+  });
+}
+
+function formatConcentration(value: unknown) {
+  if (typeof value !== "number") return "";
+  if (Math.abs(value - 1 / 3) < 1e-5) return "1/3";
+  return String(value);
 }
 
 function DownloadButton({ label, href, filename }: { label: string; href: string | null; filename: string | null }) {
