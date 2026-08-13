@@ -302,7 +302,7 @@ describe("MaterialExplorer", () => {
       />
     );
 
-    expect(markup).toContain("Category filter");
+    expect(markup).toContain("<span>Category</span>");
     expect(markup).toContain("Intercalated TMCC/TMCDC");
     const tableBody = markup.match(/<tbody>(.*)<\/tbody>/s)?.[1] ?? "";
     expect(tableBody).toContain("TMCC-0009");

@@ -24,7 +24,7 @@ type Props = {
     mode: "only" | "at_least";
   };
   categoryFilter?: ExplorerCategoryFilter;
-  onClearCategoryFilter?: () => void;
+  onCategoryFilterChange?: (filter: ExplorerCategoryFilter) => void;
 };
 
 const MAX_VISIBLE_ELEMENT_SEARCH_RESULTS = 1000;
@@ -49,7 +49,7 @@ export function MaterialExplorer({
   onSelect,
   elementSearch,
   categoryFilter = null,
-  onClearCategoryFilter = () => undefined
+  onCategoryFilterChange = () => undefined
 }: Props) {
   const [query, setQuery] = useState("");
   const [metal, setMetal] = useState("all");
@@ -124,16 +124,22 @@ export function MaterialExplorer({
           <small>{elementSearch.mode === "only" ? "Only these elements" : "At least these elements"}</small>
         </div>
       )}
-      {categoryFilter && (
-        <div className="active-element-query">
-          <span>Category filter</span>
-          <strong>{getCategoryFilterLabel(categoryFilter)}</strong>
-          <button type="button" className="inline-clear-button" onClick={onClearCategoryFilter}>
-            Clear
-          </button>
-        </div>
-      )}
       <div className="filters">
+        <label>
+          <span>Category</span>
+          <select
+            value={categoryFilter ?? "all"}
+            onChange={(event) => {
+              const value = event.target.value;
+              onCategoryFilterChange(value === "all" ? null : value as ExplorerCategoryFilter);
+            }}
+          >
+            <option value="all">All</option>
+            <option value="tmcdc">TMCDCs (M2X2C)</option>
+            <option value="intercalated">Intercalated TMCC/TMCDC</option>
+            <option value="tmcc">TMCCs (M2XC / M2XA)</option>
+          </select>
+        </label>
         <label>
           <span>Search</span>
           <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="TMCC-0001, Nb2S2C, P-3m1" />

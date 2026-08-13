@@ -94,21 +94,21 @@ export default function App() {
           label="TMCDCs (M2X2C)"
           value={stats.tmcdc}
           active={explorerCategoryFilter === "tmcdc"}
-          onClick={() => setExplorerCategoryFilter("tmcdc")}
+          onClick={() => setExplorerCategoryFilter((current) => current === "tmcdc" ? null : "tmcdc")}
         />
         <Stat
           icon={<Atom size={18} />}
           label="Intercalated TMCC/TMCDC"
           value={stats.intercalatedTmcc}
           active={explorerCategoryFilter === "intercalated"}
-          onClick={() => setExplorerCategoryFilter("intercalated")}
+          onClick={() => setExplorerCategoryFilter((current) => current === "intercalated" ? null : "intercalated")}
         />
         <Stat
           icon={<Layers3 size={18} />}
           label="TMCCs (M2XC / M2XA)"
           value={stats.nonVdwsM2xa}
           active={explorerCategoryFilter === "tmcc"}
-          onClick={() => setExplorerCategoryFilter("tmcc")}
+          onClick={() => setExplorerCategoryFilter((current) => current === "tmcc" ? null : "tmcc")}
         />
       </section>
 
@@ -132,7 +132,7 @@ export default function App() {
         onSelect={selectMaterial}
         elementSearch={elementSearch}
         categoryFilter={explorerCategoryFilter}
-        onClearCategoryFilter={() => setExplorerCategoryFilter(null)}
+        onCategoryFilterChange={setExplorerCategoryFilter}
       />
 
       <MaterialDetail material={selectedMaterial} />
