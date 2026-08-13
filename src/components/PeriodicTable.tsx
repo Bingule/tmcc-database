@@ -56,6 +56,29 @@ export function PeriodicTable({ materials, onMetalSelect, onElementSearch }: Pro
         </button>
       </div>
       <div className="periodic-table" role="list">
+        <div className="periodic-composition-guide" aria-label="TMCC composition guide">
+          <div>
+            <span className="guide-marker guide-host" />
+            <strong>M host</strong>
+            <small>transition metal</small>
+          </div>
+          <div>
+            <span className="guide-marker guide-chalcogen" />
+            <strong>X layer</strong>
+            <small>S / Se / Te</small>
+          </div>
+          <div>
+            <span className="guide-marker guide-light" />
+            <strong>A center</strong>
+            <small>C / N</small>
+          </div>
+          <div>
+            <span className="guide-marker guide-intercalant" />
+            <strong>M' intercalant</strong>
+            <small>metal between layers</small>
+          </div>
+          <p>TMCDC: M2X2A, TMCC: M2XA, with P-3m1 / R-3m / hexagonal entries tracked separately.</p>
+        </div>
         {periodicTableElements.map((element) => {
           const isHostEligible = transitionMetals.includes(element.symbol);
           const hasRecord = activeMetals.has(element.symbol);
