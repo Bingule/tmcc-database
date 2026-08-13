@@ -86,10 +86,11 @@ export function PeriodicTable({ materials, onMetalSelect, onElementSearch }: Pro
               }}
               aria-pressed={isSelected}
               aria-label={`${element.name} (${element.symbol}): ${hasRecord ? "record available" : isHostEligible ? "host candidate, not calculated" : "composition search element"}`}
+              title={`${element.name} (${element.symbol}) - ${hasRecord ? "record available" : isHostEligible ? "host candidate" : element.category.replaceAll("_", " ")}`}
             >
               <small>{element.atomicNumber}</small>
               <strong>{element.symbol}</strong>
-              <span>{isSelected ? "selected" : hasRecord ? "record" : isHostEligible ? "host M" : element.category.replaceAll("_", " ")}</span>
+              <span aria-hidden="true" />
             </button>
           );
         })}

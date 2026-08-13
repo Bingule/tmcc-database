@@ -707,7 +707,7 @@ input {
 .periodic-table {
   display: grid;
   grid-template-columns: repeat(18, minmax(56px, 1fr));
-  grid-template-rows: repeat(9, minmax(68px, auto));
+  grid-template-rows: repeat(9, minmax(64px, auto));
   gap: 6px;
   overflow-x: auto;
   padding-bottom: 6px;
@@ -751,37 +751,52 @@ input {
 }
 
 .element {
+  position: relative;
   display: grid;
   align-content: center;
+  justify-items: center;
+  gap: 3px;
   min-width: 56px;
-  min-height: 68px;
-  border: 1px solid var(--status-color);
+  min-height: 64px;
+  border: 1.25px solid color-mix(in srgb, var(--status-color) 74%, #1c2a30);
   border-radius: 7px;
   background: var(--status-bg);
   color: var(--status-color);
-  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+  font: inherit;
+  text-align: center;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
 }
 
 .element small {
-  font-size: 0.62rem;
-  color: #66747c;
+  font-size: 0.68rem;
+  line-height: 1;
+  color: #53636b;
+  font-weight: 600;
 }
 
 .element strong {
   display: block;
   color: #17242a;
-  font-size: 1rem;
+  font-size: 1.16rem;
+  line-height: 1.05;
+  font-weight: 800;
 }
 
 .element span {
   display: block;
-  margin-top: 4px;
-  font-size: 0.56rem;
-  line-height: 1.1;
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--status-color);
+  opacity: 0.55;
 }
 
 .element.available {
-  outline: 2px solid rgba(47, 125, 92, 0.38);
+  outline: 2px solid rgba(47, 125, 92, 0.42);
+  box-shadow: 0 1px 4px rgba(23, 36, 42, 0.08);
 }
 
 .element.selected {
@@ -795,7 +810,7 @@ input {
 }
 
 .element.context-only {
-  opacity: 0.6;
+  opacity: 0.7;
 }
 
 .element:disabled {
