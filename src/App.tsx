@@ -40,9 +40,32 @@ export default function App() {
         </nav>
         <section className="hero-shell">
           <div className="hero-structure-mark" aria-hidden="true">
-            <span />
-            <span />
-            <span />
+            <div className="tmcc-wordmark">TMCC</div>
+            <div className="structure-family-card family-vdws">
+              <span className="family-label">vdWs M2X2A</span>
+              <span className="sheet sheet-top" />
+              <span className="sheet sheet-bottom" />
+              <span className="atom m atom-1" />
+              <span className="atom x atom-2" />
+              <span className="atom a atom-3" />
+              <span className="atom x atom-4" />
+            </div>
+            <div className="structure-family-card family-intercalated">
+              <span className="family-label">Intercalated</span>
+              <span className="sheet sheet-top" />
+              <span className="sheet sheet-bottom" />
+              <span className="atom m atom-1" />
+              <span className="atom x atom-2" />
+              <span className="atom a atom-3" />
+              <span className="atom intercalant atom-5" />
+            </div>
+            <div className="structure-family-card family-m2xa">
+              <span className="family-label">non-vdWs M2XA</span>
+              <span className="sheet sheet-single" />
+              <span className="atom m atom-1" />
+              <span className="atom x atom-2" />
+              <span className="atom a atom-3" />
+            </div>
           </div>
           <div className="hero-copy">
             <p className="eyebrow">TMCC Database v0.1</p>

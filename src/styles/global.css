@@ -193,64 +193,155 @@ main {
 
 .hero-structure-mark {
   position: absolute;
-  right: 5%;
-  top: 20px;
+  right: 3%;
+  top: 38px;
   z-index: 1;
-  width: min(34vw, 420px);
-  height: 210px;
+  width: min(42vw, 560px);
+  height: 244px;
   pointer-events: none;
-  opacity: 0.82;
+  opacity: 0.94;
 }
 
-.hero-structure-mark::before,
-.hero-structure-mark::after {
+.tmcc-wordmark {
   position: absolute;
-  content: "";
-  inset: 38px 24px 36px 46px;
-  border: 1px solid rgba(39, 86, 106, 0.26);
-  transform: skewX(-28deg) rotate(-7deg);
-  background:
-    linear-gradient(90deg, rgba(255, 255, 255, 0.44), transparent),
-    repeating-linear-gradient(0deg, transparent 0 17px, rgba(39, 86, 106, 0.1) 18px 19px);
+  right: 18px;
+  top: 2px;
+  color: rgba(39, 86, 106, 0.1);
+  font-size: clamp(2.6rem, 5vw, 4.8rem);
+  font-weight: 800;
+  letter-spacing: 0.08em;
 }
 
-.hero-structure-mark::after {
-  inset: 70px 70px 14px 0;
-  border-color: rgba(109, 139, 116, 0.22);
+.structure-family-card {
+  position: absolute;
+  width: 190px;
+  height: 132px;
+  border: 1px solid rgba(39, 86, 106, 0.24);
+  border-radius: 8px;
   background:
-    linear-gradient(90deg, rgba(255, 255, 255, 0.36), transparent),
-    repeating-linear-gradient(0deg, transparent 0 15px, rgba(109, 139, 116, 0.1) 16px 17px);
+    linear-gradient(135deg, rgba(255, 255, 255, 0.62), rgba(237, 244, 242, 0.28)),
+    repeating-linear-gradient(0deg, transparent 0 19px, rgba(39, 86, 106, 0.06) 20px 21px);
+  box-shadow:
+    0 18px 44px rgba(39, 86, 106, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.84);
 }
 
-.hero-structure-mark span {
+.family-vdws {
+  left: 0;
+  top: 62px;
+  transform: rotate(-7deg);
+}
+
+.family-intercalated {
+  left: 172px;
+  top: 28px;
+  transform: rotate(4deg);
+}
+
+.family-m2xa {
+  left: 338px;
+  top: 82px;
+  transform: rotate(-4deg);
+}
+
+.family-label {
+  position: absolute;
+  left: 12px;
+  top: 10px;
+  color: #254c5b;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.sheet {
+  position: absolute;
+  left: 30px;
+  width: 122px;
+  height: 34px;
+  border: 1px solid rgba(39, 86, 106, 0.38);
+  transform: skewX(-28deg);
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.6), transparent),
+    repeating-linear-gradient(90deg, transparent 0 13px, rgba(39, 86, 106, 0.13) 14px 15px);
+}
+
+.sheet-top {
+  top: 48px;
+}
+
+.sheet-bottom {
+  top: 78px;
+  border-color: rgba(109, 139, 116, 0.34);
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.48), transparent),
+    repeating-linear-gradient(90deg, transparent 0 13px, rgba(109, 139, 116, 0.13) 14px 15px);
+}
+
+.sheet-single {
+  top: 66px;
+  height: 42px;
+  border-color: rgba(55, 80, 90, 0.36);
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.56), transparent),
+    repeating-linear-gradient(90deg, transparent 0 12px, rgba(39, 86, 106, 0.12) 13px 14px),
+    repeating-linear-gradient(0deg, transparent 0 13px, rgba(194, 161, 74, 0.14) 14px 15px);
+}
+
+.atom {
   position: absolute;
   display: block;
-  width: 9px;
-  height: 9px;
+  width: 10px;
+  height: 10px;
   border-radius: 999px;
-  background: #315e70;
-  box-shadow:
-    58px 18px 0 #c2a14a,
-    116px 36px 0 #2d3943,
-    174px 54px 0 #7d9f8a,
-    232px 72px 0 #315e70;
+  box-shadow: 0 2px 7px rgba(17, 27, 37, 0.18);
 }
 
-.hero-structure-mark span:nth-child(1) {
+.atom.m {
+  background: #315e70;
+}
+
+.atom.x {
+  background: #c2a14a;
+}
+
+.atom.a {
+  background: #2d3943;
+}
+
+.atom.intercalant {
+  width: 12px;
+  height: 12px;
+  background: #8d5f50;
+  box-shadow:
+    0 0 0 4px rgba(141, 95, 80, 0.12),
+    0 2px 8px rgba(17, 27, 37, 0.18);
+}
+
+.atom-1 {
   left: 58px;
+  top: 61px;
+}
+
+.atom-2 {
+  left: 96px;
   top: 54px;
 }
 
-.hero-structure-mark span:nth-child(2) {
-  left: 22px;
-  top: 106px;
-  opacity: 0.66;
+.atom-3 {
+  left: 122px;
+  top: 88px;
 }
 
-.hero-structure-mark span:nth-child(3) {
-  left: 92px;
-  top: 136px;
-  opacity: 0.46;
+.atom-4 {
+  left: 74px;
+  top: 96px;
+}
+
+.atom-5 {
+  left: 91px;
+  top: 72px;
 }
 
 .hero-copy h1 {
