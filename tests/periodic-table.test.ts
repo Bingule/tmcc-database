@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { parseElementQuery } from "../src/components/PeriodicTable";
 import { periodicTableElements, transitionMetals } from "../src/lib/statuses";
 
 describe("periodic table data", () => {
@@ -13,5 +14,12 @@ describe("periodic table data", () => {
     expect(transitionMetals).toContain("Nb");
     expect(transitionMetals).toContain("Ta");
     expect(transitionMetals).not.toContain("C");
+  });
+
+  it("parses typed element-search queries", () => {
+    expect(parseElementQuery("Nb-S-C")).toEqual(["Nb", "S", "C"]);
+    expect(parseElementQuery("Nb, S C")).toEqual(["Nb", "S", "C"]);
+    expect(parseElementQuery("Nb2S2C")).toEqual(["Nb", "S", "C"]);
+    expect(parseElementQuery("S")).toEqual(["S"]);
   });
 });

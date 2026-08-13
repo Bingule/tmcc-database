@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { materialStatuses, periodicTableElements, transitionMetals } from "../lib/statuses";
 import type { MaterialRecord } from "../lib/types";
 
@@ -10,18 +10,20 @@ type Props = {
 
 export function PeriodicTable({ materials, onMetalSelect, onElementSearch }: Props) {
   const activeMetals = new Set(materials.map((material) => material.host.metal));
-  const [selectedElements, setSelectedElements] = useState<string[]>([]);
+  const [elementQuery, setElementQuery] = useState("");
   const [mode, setMode] = useState<"only" | "at_least">("only");
+  const selectedElements = useMemo(() => parseElementQuery(elementQuery), [elementQuery]);
   const formulaQuery = selectedElements.join("-");
 
   function toggleElement(symbol: string) {
-    setSelectedElements((current) =>
-      current.includes(symbol) ? current.filter((item) => item !== symbol) : [...current, symbol]
-    );
+    const next = selectedElements.includes(symbol)
+      ? selectedElements.filter((item) => item !== symbol)
+      : [...selectedElements, symbol];
+    setElementQuery(next.join("-"));
   }
 
   function clearSelection() {
-    setSelectedElements([]);
+    setElementQuery("");
     onElementSearch([], mode);
   }
 
@@ -36,10 +38,16 @@ export function PeriodicTable({ materials, onMetalSelect, onElementSearch }: Pro
         eligible host M candidates, while C/N and S/Se/Te are used as composition elements.
       </p>
       <div className="element-search-bar" aria-label="Element search">
-        <div className="element-query">
+        <label className="element-query">
           <span>Materials</span>
-          <strong>{formulaQuery || "Select elements"}</strong>
-        </div>
+          <input
+            value={elementQuery}
+            onChange={(event) => setElementQuery(event.target.value)}
+            placeholder="Select elements or type Nb-S-C"
+            aria-label="Selected elements"
+          />
+          {formulaQuery && <small>Parsed: {formulaQuery}</small>}
+        </label>
         <div className="segmented compact" aria-label="Element search mode">
           <button className={mode === "only" ? "active" : ""} onClick={() => setMode("only")}>
             Only Elements
@@ -141,4 +149,27 @@ export function PeriodicTable({ materials, onMetalSelect, onElementSearch }: Pro
       </div>
     </section>
   );
+}
+
+export function parseElementQuery(query: string) {
+  const symbols = new Set(periodicTableElements.map((element) => element.symbol));
+  const trimmed = query.trim();
+  if (!trimmed) return [];
+
+  const separated = /[\s,;+\-/]/.test(trimmed);
+  const tokens = separated
+    ? trimmed.split(/[\s,;+\-/]+/)
+    : trimmed.match(/[A-Z][a-z]?/g) ?? [trimmed];
+  const parsed: string[] = [];
+
+  for (const token of tokens) {
+    const alpha = token.replace(/[^a-zA-Z]/g, "");
+    if (!alpha) continue;
+    const normalized = alpha.charAt(0).toUpperCase() + alpha.slice(1).toLowerCase();
+    if (symbols.has(normalized) && !parsed.includes(normalized)) {
+      parsed.push(normalized);
+    }
+  }
+
+  return parsed;
 }

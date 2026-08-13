@@ -868,14 +868,36 @@ input {
 
 .element-query span,
 .active-element-query span,
+.element-query small,
 .active-element-query small {
   color: #65737a;
   font-size: 0.78rem;
 }
 
-.element-query strong,
+.element-query input,
 .active-element-query strong {
   font-size: 1.15rem;
+}
+
+.element-query input {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  color: #111b25;
+  background: transparent;
+  font-weight: 800;
+  outline: none;
+}
+
+.element-query input::placeholder {
+  color: #111b25;
+  opacity: 1;
+}
+
+.element-query small {
+  line-height: 1.2;
 }
 
 .active-element-query {
