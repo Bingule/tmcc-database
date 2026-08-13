@@ -333,8 +333,10 @@ function SortHeader({
   return (
     <th aria-sort={isActive ? directionLabel : "none"}>
       <button type="button" className="sort-header-button" onClick={() => onSort(sortKey)}>
-        <span>{label}</span>
-        {unit && <small className="column-unit">{unit}</small>}
+        <span className="column-heading-text">
+          <span>{label}</span>
+          {unit && <small className="column-unit">{unit}</small>}
+        </span>
         <span
           className={`sort-indicator ${isActive ? "active" : ""} ${activeSort.direction}`}
           aria-hidden="true"

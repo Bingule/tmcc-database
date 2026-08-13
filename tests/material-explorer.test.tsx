@@ -194,10 +194,10 @@ describe("MaterialExplorer", () => {
       />
     );
 
-    expect(markup).toContain("<span>DFT Energy</span><small class=\"column-unit\">eV/formula</small>");
-    expect(markup).toContain("<span>Energy Above Hull</span><small class=\"column-unit\">eV/atom</small>");
+    expect(markup).toContain("<span class=\"column-heading-text\"><span>DFT Energy</span><small class=\"column-unit\">eV/formula</small></span>");
+    expect(markup).toContain("<span class=\"column-heading-text\"><span>Energy Above Hull</span><small class=\"column-unit\">eV/atom</small></span>");
     expect(markup).toContain("<span>Phonon</span>");
-    expect(markup).toContain("<span>Band Gap</span><small class=\"column-unit\">eV</small>");
+    expect(markup).toContain("<span class=\"column-heading-text\"><span>Band Gap</span><small class=\"column-unit\">eV</small></span>");
     expect(markup).not.toContain("Formation Energy");
   });
 
