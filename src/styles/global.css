@@ -759,9 +759,9 @@ input {
   align-self: stretch;
   display: grid;
   grid-template-columns: repeat(4, minmax(120px, 1fr));
-  gap: 10px;
+  gap: 10px 14px;
   align-content: center;
-  padding: 14px 16px;
+  padding: 16px 18px;
   border: 1px solid rgba(76, 114, 117, 0.24);
   border-radius: 10px;
   background:
@@ -792,12 +792,35 @@ input {
   line-height: 1.2;
 }
 
-.periodic-composition-guide p {
+.periodic-composition-guide ul {
   grid-column: 1 / -1;
-  margin: 2px 0 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.periodic-composition-guide li {
+  display: grid;
+  gap: 3px;
+  min-height: 48px;
+  padding: 8px 10px;
+  border: 1px solid rgba(76, 114, 117, 0.16);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.46);
+}
+
+.periodic-composition-guide li strong {
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+}
+
+.periodic-composition-guide li span {
   color: #395057;
-  font-size: 0.82rem;
-  line-height: 1.45;
+  font-size: 0.75rem;
+  line-height: 1.25;
 }
 
 .guide-marker {
