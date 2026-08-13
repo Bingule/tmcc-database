@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { ElectronicStructureViewer, parseDosCsv } from "../src/components/ElectronicStructureViewer";
+import { ElectronicPlot, ElectronicStructureViewer, parseDosCsv } from "../src/components/ElectronicStructureViewer";
 import type { MaterialRecord } from "../src/lib/types";
 
 describe("ElectronicStructureViewer", () => {
@@ -26,5 +26,26 @@ describe("ElectronicStructureViewer", () => {
 
     expect(markup).toContain('href="/figures/TMCC-0001/dos.csv"');
     expect(markup).toContain("Download DOS CSV");
+  });
+
+  it("places the curve legend above the plot and shows the real Fermi level separately", () => {
+    const markup = renderToStaticMarkup(
+      <ElectronicPlot
+        series={[
+          { label: "Total up", points: [{ x: -6, y: 0 }, { x: 0, y: 2 }, { x: 6, y: 1 }] },
+          { label: "Nb d up", points: [{ x: -6, y: 0 }, { x: 0, y: 1 }, { x: 6, y: 0.5 }] }
+        ]}
+        xLabel="Energy - Ef (eV)"
+        yLabel="DOS"
+        fermiReference="vertical"
+        fermiLevel={5.4321}
+        fixedXRange={[-6, 6]}
+      />
+    );
+
+    expect(markup).toContain("electronic-legend top-legend");
+    expect(markup).toContain("Ef = 5.432 eV");
+    expect(markup).toContain(">Ef</text>");
+    expect(markup).not.toContain("translate(52, 299)");
   });
 });

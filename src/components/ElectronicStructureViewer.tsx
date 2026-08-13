@@ -158,7 +158,7 @@ function labelFromHeader(header: string) {
     .join(" ");
 }
 
-function ElectronicPlot({
+export function ElectronicPlot({
   series,
   xLabel,
   yLabel,
@@ -174,8 +174,8 @@ function ElectronicPlot({
   fixedXRange: [number, number] | null;
 }) {
   const width = 780;
-  const height = 300;
-  const padding = { top: 34, right: 34, bottom: 58, left: 52 };
+  const height = 320;
+  const padding = { top: 78, right: 34, bottom: 48, left: 52 };
   const plotWidth = width - padding.left - padding.right;
   const plotHeight = height - padding.top - padding.bottom;
   const allPoints = series.flatMap((item) => item.points);
@@ -215,21 +215,22 @@ function ElectronicPlot({
       {fermiReference === "vertical" && xAtZero >= padding.left && xAtZero <= width - padding.right ? (
         <>
           <line className="fermi-line" x1={xAtZero} y1={padding.top} x2={xAtZero} y2={height - padding.bottom} />
-          <text className="fermi-label" x={xAtZero + 7} y={padding.top + 14}>{formatFermiLabel(fermiLevel)}</text>
+          <text className="fermi-label" x={xAtZero + 7} y={padding.top + 14}>Ef</text>
         </>
       ) : null}
       {fermiReference === "horizontal" && yAtZero >= padding.top && yAtZero <= height - padding.bottom ? (
         <>
           <line className="fermi-line" x1={padding.left} y1={yAtZero} x2={width - padding.right} y2={yAtZero} />
-          <text className="fermi-label" x={width - padding.right - 74} y={yAtZero - 6}>{formatFermiLabel(fermiLevel)}</text>
+          <text className="fermi-label" x={width - padding.right - 20} y={yAtZero - 6}>Ef</text>
         </>
       ) : null}
+      <text className="fermi-value-label" x={padding.left + 4} y="54">{formatFermiLabel(fermiLevel)}</text>
       {paths.map((path) => <polyline key={path.label} points={path.points} stroke={path.color} />)}
       <text className="axis-label" x={padding.left + 4} y={padding.top - 12}>{yLabel}</text>
       <text className="axis-label x-axis-label" x={xAtZero} y={height - 10}>{xLabel}</text>
-      <g className="electronic-legend">
+      <g className="electronic-legend top-legend">
         {paths.slice(0, 8).map((path, index) => (
-          <g key={path.label} transform={`translate(${padding.left + (index % 4) * 145}, ${height - 31 + Math.floor(index / 4) * 12})`}>
+          <g key={path.label} transform={`translate(${padding.left + 112 + (index % 4) * 145}, ${22 + Math.floor(index / 4) * 16})`}>
             <line x1="0" y1="-3" x2="14" y2="-3" stroke={path.color} />
             <text x="18" y="0">{path.label}</text>
           </g>
