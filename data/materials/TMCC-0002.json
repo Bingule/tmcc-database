@@ -203,12 +203,11 @@
       "unit": "eV"
     },
     "fermi_level": {
-      "value": 8.98112,
+      "value": 8.981120176186824,
       "unit": "eV"
     },
     "dos_calculated": true,
-    "band_structure_calculated": false,
-    "electronic_character": "metallic"
+    "band_structure_calculated": false
   },
   "energy_storage": {},
   "files": {
@@ -231,7 +230,10 @@
       "density": 2.5,
       "gamma": true
     },
-    "spin_polarization": null,
+    "spin_polarization": false,
+    "initial_magnetic_moments": {},
+    "dft_u": null,
+    "setups": null,
     "soc": false,
     "convergence_criteria": {
       "density": 5e-07

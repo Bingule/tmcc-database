@@ -143,21 +143,21 @@
   "mechanical": {},
   "electronic": {
     "band_gap": {
-      "value": null,
+      "value": 0.0,
       "unit": "eV"
     },
     "fermi_level": {
-      "value": 12.18543,
+      "value": 12.185425875635095,
       "unit": "eV"
     },
-    "dos_calculated": false,
+    "dos_calculated": true,
     "band_structure_calculated": false
   },
   "energy_storage": {},
   "files": {
     "cif": "/structures/TMCC-0011/structure.cif",
     "poscar": "/structures/TMCC-0011/POSCAR",
-    "dos": null,
+    "dos": "/figures/TMCC-0011/dos.csv",
     "band_structure": null
   },
   "provenance": {
@@ -174,7 +174,10 @@
       "density": 2.5,
       "gamma": true
     },
-    "spin_polarization": null,
+    "spin_polarization": false,
+    "initial_magnetic_moments": {},
+    "dft_u": null,
+    "setups": null,
     "soc": false,
     "convergence_criteria": {
       "density": 5e-07

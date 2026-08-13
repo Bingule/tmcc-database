@@ -2,6 +2,8 @@ $ErrorActionPreference = 'Stop'
 
 $Root = Split-Path -Parent $PSScriptRoot
 $ClusterRoot = Join-Path $Root 'cluster_calculations'
+$BundledPython = Join-Path $env:USERPROFILE '.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe'
+$Python = if (Test-Path -LiteralPath $BundledPython) { $BundledPython } else { 'python' }
 $Templates = @(
   @{ Folder = 'Nb2S2C-Pbar3m1'; MaterialId = 'TMCC-0001' },
   @{ Folder = 'Nb2S2C-Rbar3m'; MaterialId = 'TMCC-0002' },
@@ -32,17 +34,18 @@ foreach ($Template in $Templates) {
   if (Test-Path -LiteralPath $StructureSource) {
     $StructureTarget = Join-Path $Root "public\structures\$MaterialId"
     New-Item -ItemType Directory -Force -Path $StructureTarget | Out-Null
-    Copy-Item -LiteralPath (Join-Path $StructureSource '*') -Destination $StructureTarget -Force
+    Copy-Item -Path (Join-Path $StructureSource '*') -Destination $StructureTarget -Force
   }
 
   $FigureSource = Join-Path $Bundle 'figures'
   if (Test-Path -LiteralPath $FigureSource) {
     $FigureTarget = Join-Path $Root "public\figures\$MaterialId"
     New-Item -ItemType Directory -Force -Path $FigureTarget | Out-Null
-    Copy-Item -LiteralPath (Join-Path $FigureSource '*') -Destination $FigureTarget -Force
+    Copy-Item -Path (Join-Path $FigureSource '*') -Destination $FigureTarget -Force
   }
 
   Write-Host "Imported $MaterialId from $Bundle"
 }
 
-& "$Root\cluster_calculations\build_five_template_summary_xlsx.py"
+& $Python "$Root\cluster_calculations\build_five_template_summary_xlsx.py"
+& $Python "$Root\cluster_calculations\build_progress_tracker_xlsx.py"
