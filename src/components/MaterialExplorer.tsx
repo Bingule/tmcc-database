@@ -117,6 +117,13 @@ export function MaterialExplorer({
     }));
   };
 
+  const selectAndScrollToDetail = (materialId: string) => {
+    onSelect(materialId);
+    window.setTimeout(() => {
+      document.getElementById("material-detail")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
+  };
+
   return (
     <section id="explorer" className="explorer">
       <div className="section-heading">
@@ -185,9 +192,19 @@ export function MaterialExplorer({
                   <tr
                     key={material.material_id}
                     className={material.material_id === selectedId ? "selected-row" : ""}
-                    onClick={() => onSelect(material.material_id)}
+                    onClick={() => selectAndScrollToDetail(material.material_id)}
                   >
-                    <td><button type="button" onClick={() => onSelect(material.material_id)}>{material.material_id}</button></td>
+                    <td>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          selectAndScrollToDetail(material.material_id);
+                        }}
+                      >
+                        {material.material_id}
+                      </button>
+                    </td>
                     <td><Formula formula={material.formula} /></td>
                     <td>
                       <span className="cell-stack">
