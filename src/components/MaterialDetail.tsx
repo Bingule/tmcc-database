@@ -85,6 +85,9 @@ export function MaterialDetail({ material }: { material: MaterialRecord }) {
           <Data label="Functional" value={getUnavailableLabel(material.provenance.exchange_correlation)} />
           <Data label="Plane-wave cutoff" value={formatUnitValue(material.provenance.plane_wave_cutoff)} />
           <Data label="K-points" value={formatKPoints(material.provenance.k_points)} />
+          <Data label="Spin polarization" value={formatBooleanSetting(material.provenance.spin_polarization)} />
+          <Data label="Initial magnetic moments" value={formatMagneticMoments(material.provenance.initial_magnetic_moments)} />
+          <Data label="DFT+U" value={formatDftU(material.provenance.dft_u)} />
           <Data label="Calculation date" value={getUnavailableLabel(material.provenance.calculation_date)} />
           <Data label="Pseudopotential/setup" value={getUnavailableLabel(material.provenance.pseudopotential)} />
           <Data label="Workflow version" value={getUnavailableLabel(material.provenance.workflow_version)} />
@@ -166,6 +169,33 @@ function formatKPoints(value: unknown) {
     return kpoints.gamma ? `${density}, gamma` : density;
   }
   return "-";
+}
+
+function formatBooleanSetting(value: unknown) {
+  if (value === true) return "yes";
+  if (value === false) return "no";
+  return "-";
+}
+
+function formatMagneticMoments(value: unknown) {
+  if (!value || typeof value !== "object") return "-";
+  const entries = Object.entries(value as Record<string, unknown>)
+    .filter(([, moment]) => typeof moment === "number" && moment !== 0)
+    .map(([element, moment]) => `${element}=${moment} μB`);
+
+  return entries.length > 0 ? entries.join(", ") : "-";
+}
+
+function formatDftU(value: unknown) {
+  if (!value || typeof value !== "object") return "not used";
+  const dftU = value as { enabled?: unknown; element?: unknown; orbital?: unknown; u_eff_ev?: unknown };
+  if (dftU.enabled === false) return "not used";
+  if (dftU.enabled === true && typeof dftU.element === "string" && typeof dftU.u_eff_ev === "number") {
+    const orbital = typeof dftU.orbital === "string" ? dftU.orbital : "d";
+    return `${dftU.element}-${orbital}, Ueff=${dftU.u_eff_ev} eV`;
+  }
+
+  return "not used";
 }
 
 function formatUnitValue(value: unknown) {
