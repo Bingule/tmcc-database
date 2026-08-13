@@ -273,6 +273,7 @@ describe("MaterialExplorer", () => {
     expect(markup).toContain("R3\u0305m");
     expect(markup).toContain("trigonal");
     expect(markup).toContain("rhombohedral setting");
+    expect(markup).not.toContain("rhombohedral setting (hexagonal axes)");
     expect(markup).toContain("TMCDC");
     expect(markup).not.toContain("2H");
     expect(markup).not.toContain("3R");

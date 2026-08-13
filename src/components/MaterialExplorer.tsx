@@ -135,7 +135,7 @@ export function MaterialExplorer({ materials, selectedId, onSelect, elementSearc
                     <td>
                       <span className="cell-stack">
                         <span>{formatPropertyValue(material.structure.crystal_system)}</span>
-                        {getLatticeSettingLabel(material) && <small>{getLatticeSettingLabel(material)}</small>}
+                        {getLatticeSettingLabel(material) && <small>{formatCompactLatticeSetting(getLatticeSettingLabel(material))}</small>}
                       </span>
                     </td>
                     <td>{getSubclassLabel(material)}</td>
@@ -182,6 +182,10 @@ export function MaterialExplorer({ materials, selectedId, onSelect, elementSearc
       )}
     </section>
   );
+}
+
+function formatCompactLatticeSetting(value: string | null) {
+  return value?.replace(/\s*\(.+\)$/, "") ?? null;
 }
 
 function ColumnHeader({ label, unit }: { label: string; unit: string }) {
