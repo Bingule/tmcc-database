@@ -109,10 +109,18 @@ export function formatParameterGroup(value: unknown) {
       if (item.value === null || item.value === undefined || item.value === "") {
         return `${key}=-`;
       }
-      return `${key}=${item.value} ${formatUnit(item.unit)}`.trim();
+      return `${key}=${formatParameterValue(item.value)} ${formatUnit(item.unit)}`.trim();
     });
 
   return entries.length > 0 ? entries.join(", ") : "-";
+}
+
+function formatParameterValue(value: unknown) {
+  if (typeof value !== "number") {
+    return String(value);
+  }
+
+  return value.toFixed(3).replace(/\.?0+$/, "");
 }
 
 function getNumericTag(lines: string[], tag: string) {

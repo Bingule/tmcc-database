@@ -69,6 +69,8 @@ export function ElectronicStructureViewer({ material }: { material: MaterialReco
             xLabel={mode === "dos" ? "Energy - Ef (eV)" : "k-path"}
             yLabel={mode === "dos" ? "DOS" : "Energy (eV)"}
             fermiReference={mode === "dos" ? "vertical" : "horizontal"}
+            fermiLevel={readNumericUnitValue(material.electronic?.fermi_level)}
+            fixedXRange={mode === "dos" ? [-6, 6] : null}
           />
         ) : (
           <div className="electronic-placeholder">
@@ -160,56 +162,74 @@ function ElectronicPlot({
   series,
   xLabel,
   yLabel,
-  fermiReference
+  fermiReference,
+  fermiLevel,
+  fixedXRange
 }: {
   series: PlotSeries[];
   xLabel: string;
   yLabel: string;
   fermiReference: "vertical" | "horizontal";
+  fermiLevel: number | null;
+  fixedXRange: [number, number] | null;
 }) {
   const width = 780;
-  const height = 280;
-  const padding = 38;
+  const height = 300;
+  const padding = { top: 34, right: 34, bottom: 58, left: 52 };
+  const plotWidth = width - padding.left - padding.right;
+  const plotHeight = height - padding.top - padding.bottom;
   const allPoints = series.flatMap((item) => item.points);
-  const minX = Math.min(...allPoints.map((point) => point.x));
-  const maxX = Math.max(...allPoints.map((point) => point.x));
+  const dataMinX = Math.min(...allPoints.map((point) => point.x));
+  const dataMaxX = Math.max(...allPoints.map((point) => point.x));
+  const minX = fixedXRange ? fixedXRange[0] : dataMinX;
+  const maxX = fixedXRange ? fixedXRange[1] : dataMaxX;
   const minY = Math.min(...allPoints.map((point) => point.y));
   const maxY = Math.max(...allPoints.map((point) => point.y));
   const colors = ["#0f1720", "#7b8790", "#27566a", "#b48b21", "#4f7f67", "#8a617a", "#a35b4f", "#5466a3"];
-  const xAtZero = padding + (0 - minX) / (maxX - minX || 1) * (width - padding * 2);
-  const yAtZero = height - padding - (0 - minY) / (maxY - minY || 1) * (height - padding * 2);
+  const xAtZero = padding.left + (0 - minX) / (maxX - minX || 1) * plotWidth;
+  const yAtZero = height - padding.bottom - (0 - minY) / (maxY - minY || 1) * plotHeight;
+  const xTicks = fixedXRange ? rangeTicks(fixedXRange[0], fixedXRange[1], 1) : rangeTicks(minX, maxX, (maxX - minX) / 6);
 
   const paths = useMemo(() => series.map((item, index) => {
     const points = item.points.map((point) => {
-      const x = padding + (point.x - minX) / (maxX - minX || 1) * (width - padding * 2);
-      const y = height - padding - (point.y - minY) / (maxY - minY || 1) * (height - padding * 2);
+      const x = padding.left + (point.x - minX) / (maxX - minX || 1) * plotWidth;
+      const y = height - padding.bottom - (point.y - minY) / (maxY - minY || 1) * plotHeight;
       return `${x.toFixed(1)},${y.toFixed(1)}`;
     }).join(" ");
     return { label: item.label, points, color: colors[index % colors.length] };
-  }), [maxX, maxY, minX, minY, series]);
+  }), [maxX, maxY, minX, minY, plotHeight, plotWidth, series]);
 
   return (
     <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${yLabel} plot`}>
-      <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} />
-      <line x1={padding} y1={padding} x2={padding} y2={height - padding} />
-      {fermiReference === "vertical" && xAtZero >= padding && xAtZero <= width - padding ? (
+      <line x1={padding.left} y1={height - padding.bottom} x2={width - padding.right} y2={height - padding.bottom} />
+      <line x1={padding.left} y1={padding.top} x2={padding.left} y2={height - padding.bottom} />
+      {xTicks.map((tick) => {
+        const x = padding.left + (tick - minX) / (maxX - minX || 1) * plotWidth;
+        return (
+          <g key={tick} className="electronic-axis-tick">
+            <line x1={x} y1={height - padding.bottom} x2={x} y2={height - padding.bottom + 5} />
+            <text x={x} y={height - padding.bottom + 20}>{formatTick(tick)}</text>
+          </g>
+        );
+      })}
+      {fermiReference === "vertical" && xAtZero >= padding.left && xAtZero <= width - padding.right ? (
         <>
-          <line className="fermi-line" x1={xAtZero} y1={padding} x2={xAtZero} y2={height - padding} />
-          <text className="fermi-label" x={xAtZero + 5} y={padding + 12}>Ef</text>
+          <line className="fermi-line" x1={xAtZero} y1={padding.top} x2={xAtZero} y2={height - padding.bottom} />
+          <text className="fermi-label" x={xAtZero + 7} y={padding.top + 14}>{formatFermiLabel(fermiLevel)}</text>
         </>
       ) : null}
-      {fermiReference === "horizontal" && yAtZero >= padding && yAtZero <= height - padding ? (
+      {fermiReference === "horizontal" && yAtZero >= padding.top && yAtZero <= height - padding.bottom ? (
         <>
-          <line className="fermi-line" x1={padding} y1={yAtZero} x2={width - padding} y2={yAtZero} />
-          <text className="fermi-label" x={width - padding - 22} y={yAtZero - 5}>Ef</text>
+          <line className="fermi-line" x1={padding.left} y1={yAtZero} x2={width - padding.right} y2={yAtZero} />
+          <text className="fermi-label" x={width - padding.right - 74} y={yAtZero - 6}>{formatFermiLabel(fermiLevel)}</text>
         </>
       ) : null}
       {paths.map((path) => <polyline key={path.label} points={path.points} stroke={path.color} />)}
-      <text x={padding + 4} y={padding - 10}>{yLabel}</text>
-      <text x={width - padding - 80} y={height - 9}>{xLabel}</text>
+      <text className="axis-label" x={padding.left + 4} y={padding.top - 12}>{yLabel}</text>
+      <text className="axis-label x-axis-label" x={xAtZero} y={height - 10}>{xLabel}</text>
       <g className="electronic-legend">
         {paths.slice(0, 8).map((path, index) => (
-          <g key={path.label} transform={`translate(${padding + (index % 4) * 145}, ${height - 23 + Math.floor(index / 4) * 12})`}>
+          <g key={path.label} transform={`translate(${padding.left + (index % 4) * 145}, ${height - 31 + Math.floor(index / 4) * 12})`}>
             <line x1="0" y1="-3" x2="14" y2="-3" stroke={path.color} />
             <text x="18" y="0">{path.label}</text>
           </g>
@@ -217,4 +237,28 @@ function ElectronicPlot({
       </g>
     </svg>
   );
+}
+
+function readNumericUnitValue(value: unknown) {
+  if (!value || typeof value !== "object" || !("value" in value)) return null;
+  const unitValue = value as { value?: unknown };
+  return typeof unitValue.value === "number" ? unitValue.value : null;
+}
+
+function rangeTicks(min: number, max: number, step: number) {
+  if (!Number.isFinite(min) || !Number.isFinite(max) || !Number.isFinite(step) || step <= 0) return [];
+  const start = Math.ceil(min / step) * step;
+  const ticks: number[] = [];
+  for (let tick = start; tick <= max + step * 0.001; tick += step) {
+    ticks.push(Number(tick.toFixed(6)));
+  }
+  return ticks;
+}
+
+function formatTick(value: number) {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+function formatFermiLabel(value: number | null) {
+  return value === null ? "Ef" : `Ef = ${value.toFixed(3)} eV`;
 }

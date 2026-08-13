@@ -4,6 +4,7 @@ import {
   filterMaterialsByElementSet,
   formatPropertyValue,
   getDftEnergyPerFormulaUnitLabel,
+  getLatticeSettingLabel,
   getSitesPerCellLabel,
   getSpaceGroupLabel,
   getSpaceGroupSymbol
@@ -108,7 +109,12 @@ export function MaterialExplorer({ materials, selectedId, onSelect, elementSearc
               >
                 <td><button type="button" onClick={() => onSelect(material.material_id)}>{material.material_id}</button></td>
                 <td><Formula formula={material.formula} /></td>
-                <td>{formatPropertyValue(material.structure.crystal_system)}</td>
+                <td>
+                  <span className="cell-stack">
+                    <span>{formatPropertyValue(material.structure.crystal_system)}</span>
+                    {getLatticeSettingLabel(material) && <small>{getLatticeSettingLabel(material)}</small>}
+                  </span>
+                </td>
                 <td>{getSpaceGroupLabel(getSpaceGroupSymbol(material))}</td>
                 <td>{material.intercalation?.intercalant ?? "-"}</td>
                 <td>{getSitesPerCellLabel(material)}</td>

@@ -5,6 +5,7 @@ import {
   formatFormulaParts,
   getSpaceGroupLabel,
   getElementsFromFormula,
+  getLatticeSettingLabel,
   getMaterialStats,
   getUnavailableLabel,
   makeIntercalatedFormula,
@@ -142,6 +143,21 @@ describe("structure identity", () => {
     expect(getSpaceGroupLabel("P-3m1")).toBe("P3\u0305m1");
     expect(getSpaceGroupLabel("R-3m")).toBe("R3\u0305m");
     expect(getSpaceGroupLabel(null)).toBe("-");
+  });
+
+  it("labels R-centered trigonal space groups with their rhombohedral setting", () => {
+    const material = {
+      ...baseMaterial,
+      material_id: "TMCC-0002",
+      slug: "nb2s2c-r-3m",
+      material_type: "pristine",
+      formula: "Nb2S2C",
+      host: { formula: "Nb2S2C", metal: "Nb", chalcogen: "S", anion: "C" },
+      structure: { space_group_symbol: "R-3m" },
+      intercalation: null
+    } as MaterialRecord;
+
+    expect(getLatticeSettingLabel(material)).toBe("rhombohedral setting (hexagonal axes)");
   });
 
   it("creates material and space-group download filenames", () => {

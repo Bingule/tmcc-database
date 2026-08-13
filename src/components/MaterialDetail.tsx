@@ -5,6 +5,7 @@ import { Formula } from "./Formula";
 import { XrdViewer } from "./XrdViewer";
 import {
   formatPropertyValue,
+  getLatticeSettingLabel,
   getSpaceGroupLabel,
   getSpaceGroupSymbol,
   getUnavailableLabel,
@@ -44,6 +45,9 @@ export function MaterialDetail({ material }: { material: MaterialRecord }) {
           <Data label="Space group" value={getSpaceGroupLabel(getSpaceGroupSymbol(material))} />
           <Data label="Space group number" value={getUnavailableLabel(material.structure.space_group_number)} />
           <Data label="Crystal system" value={getUnavailableLabel(material.structure.crystal_system)} />
+          {getLatticeSettingLabel(material) && (
+            <Data label="Lattice setting" value={getLatticeSettingLabel(material)} />
+          )}
           <Data label="Lattice a, b, c" value={formatParameterGroup(material.structure.lattice_parameters)} />
           <Data label="Angles alpha, beta, gamma" value={formatParameterGroup(material.structure.angles)} />
           <Data label="Layer thickness" value={formatUnitValue(material.structure.layer_thickness)} />

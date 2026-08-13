@@ -145,6 +145,15 @@ export function getSpaceGroupSymbol(material: MaterialRecord) {
   return material.structure.space_group_symbol ?? material.structure.space_group ?? null;
 }
 
+export function getLatticeSettingLabel(material: MaterialRecord) {
+  const normalized = String(getSpaceGroupSymbol(material) ?? "").replace(/\s+/g, "").toUpperCase();
+  if (normalized.startsWith("R")) {
+    return "rhombohedral setting (hexagonal axes)";
+  }
+
+  return null;
+}
+
 export function getSpaceGroupLabel(symbol: unknown) {
   if (symbol === null || symbol === undefined || symbol === "") {
     return "-";

@@ -213,4 +213,29 @@ describe("MaterialExplorer", () => {
     expect(markup).toContain("<td>5</td>");
     expect(markup).not.toContain("Nb1, Nb2, S1, S2, C1");
   });
+
+  it("keeps R-3m crystal systems trigonal while showing the rhombohedral setting", () => {
+    const markup = renderToStaticMarkup(
+      <MaterialExplorer
+        materials={[
+          {
+            ...baseMaterial,
+            material_id: "TMCC-0002",
+            slug: "nb2s2c-r-3m",
+            formula: "Nb2S2C",
+            structure: {
+              ...baseMaterial.structure,
+              space_group_symbol: "R-3m"
+            }
+          } as MaterialRecord
+        ]}
+        selectedId="TMCC-0002"
+        onSelect={() => undefined}
+        elementSearch={{ elements: [], mode: "only" }}
+      />
+    );
+
+    expect(markup).toContain("trigonal");
+    expect(markup).toContain("rhombohedral setting");
+  });
 });

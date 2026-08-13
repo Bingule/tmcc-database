@@ -46,3 +46,23 @@ describe("CIF structure parsing", () => {
     ).toBe("a=3.269 Å, b=3.269 Å, c=8.547 Å");
   });
 });
+
+describe("crystal parameter display precision", () => {
+  it("rounds floating point lattice and angle artifacts for display", () => {
+    expect(
+      formatParameterGroup({
+        a: { value: 3.271, unit: "angstrom" },
+        b: { value: 3.2709999999999995, unit: "angstrom" },
+        c: { value: 25.478, unit: "angstrom" }
+      })
+    ).toContain("b=3.271");
+
+    expect(
+      formatParameterGroup({
+        alpha: { value: 90, unit: "degree" },
+        beta: { value: 90, unit: "degree" },
+        gamma: { value: 119.99999999999999, unit: "degree" }
+      })
+    ).toContain("gamma=120");
+  });
+});

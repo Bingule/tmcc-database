@@ -76,4 +76,14 @@ describe("MaterialDetail", () => {
     expect(markup).toContain("van der Waals gap");
     expect(markup).toContain("2.91 Å");
   });
+
+  it("shows the rhombohedral setting note for R-3m materials", () => {
+    const material = materials.find((item) => item.material_id === "TMCC-0002") ?? materials[1];
+    const markup = renderToStaticMarkup(<MaterialDetail material={material} />);
+
+    expect(markup).toContain("Crystal system");
+    expect(markup).toContain("trigonal");
+    expect(markup).toContain("Lattice setting");
+    expect(markup).toContain("rhombohedral setting (hexagonal axes)");
+  });
 });
