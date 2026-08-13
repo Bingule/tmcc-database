@@ -110,6 +110,22 @@ describe("MaterialExplorer", () => {
     expect(markup).not.toContain("TMCC-0012");
   });
 
+  it("asks for a more specific element search when more than 1000 records match", () => {
+    const markup = renderToStaticMarkup(
+      <MaterialExplorer
+        materials={makeMaterials(1001)}
+        selectedId="TMCC-0001"
+        onSelect={() => undefined}
+        elementSearch={{ elements: ["Nb"], mode: "only" }}
+      />
+    );
+
+    expect(markup).toContain("More than 1000 matching materials");
+    expect(markup).toContain("Please add more elements or filters");
+    expect(markup).not.toContain("materials-table");
+    expect(markup).not.toContain("<td><button");
+  });
+
   it("renders long property units on a separate header line", () => {
     const markup = renderToStaticMarkup(
       <MaterialExplorer

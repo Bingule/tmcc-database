@@ -207,12 +207,12 @@ export function filterMaterialsByElementSet(
     return materials;
   }
 
-  const selected = [...selectedElements].sort();
+  const selected = [...new Set(selectedElements)];
 
   return materials.filter((material) => {
-    const elements = getElementsFromFormula(material.formula).sort();
+    const elements = getElementsFromFormula(material.formula);
     if (mode === "only") {
-      return elements.length === selected.length && selected.every((element, index) => element === elements[index]);
+      return selected.every((element) => elements.includes(element));
     }
 
     return selected.every((element) => elements.includes(element));

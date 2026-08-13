@@ -5,7 +5,7 @@ import { MaterialExplorer } from "./components/MaterialExplorer";
 import { MaterialSelector } from "./components/MaterialSelector";
 import { PeriodicTable } from "./components/PeriodicTable";
 import { materials } from "./data/materials";
-import { getMaterialStats } from "./lib/materials";
+import { filterMaterialsByElementSet, getMaterialStats } from "./lib/materials";
 
 export default function App() {
   const [selectedId, setSelectedId] = useState(() => getInitialSelectedId());
@@ -101,11 +101,7 @@ export default function App() {
         if (match) selectMaterial(match.material_id);
       }} onElementSearch={(elements, mode) => {
         setElementSearch({ elements, mode });
-        const elementSet = new Set(elements);
-        const match = materials.find((material) => {
-          const materialElements = [material.host.metal, material.host.chalcogen, material.host.anion];
-          return materialElements.every((element) => elementSet.has(element));
-        });
+        const match = filterMaterialsByElementSet(materials, elements, mode)[0];
         if (match) selectMaterial(match.material_id);
         document.getElementById("explorer")?.scrollIntoView({ behavior: "smooth", block: "start" });
       }} />

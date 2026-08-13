@@ -852,6 +852,25 @@ td button {
   background: #eef5f2;
 }
 
+.result-limit-warning {
+  display: grid;
+  gap: 6px;
+  margin-top: 16px;
+  padding: 18px 20px;
+  border: 1px solid rgba(194, 161, 74, 0.42);
+  border-radius: 8px;
+  color: #3b464b;
+  background: rgba(251, 248, 236, 0.82);
+}
+
+.result-limit-warning strong {
+  color: #243942;
+}
+
+.result-limit-warning span {
+  color: #617077;
+}
+
 .pagination-bar {
   display: flex;
   align-items: center;

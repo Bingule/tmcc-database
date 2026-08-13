@@ -59,6 +59,53 @@ describe("missing value labels", () => {
   });
 });
 
+describe("element search", () => {
+  it("matches materials that contain any selected subset of elements", () => {
+    const materials: MaterialRecord[] = [
+      {
+        ...baseMaterial,
+        material_id: "TMCC-0001",
+        slug: "nb2s2c-p-3m1",
+        material_type: "pristine",
+        formula: "Nb2S2C",
+        host: { formula: "Nb2S2C", metal: "Nb", chalcogen: "S", anion: "C" },
+        intercalation: null
+      } as MaterialRecord,
+      {
+        ...baseMaterial,
+        material_id: "TMCC-0011",
+        slug: "nb2sc-p63mmc",
+        material_type: "m2xa",
+        formula: "Nb2SC",
+        host: { formula: "Nb2SC", metal: "Nb", chalcogen: "S", anion: "C" },
+        intercalation: null
+      } as MaterialRecord,
+      {
+        ...baseMaterial,
+        material_id: "TMCC-0021",
+        slug: "ta2te2n-p-3m1",
+        material_type: "pristine",
+        formula: "Ta2Te2N",
+        host: { formula: "Ta2Te2N", metal: "Ta", chalcogen: "Te", anion: "N" },
+        intercalation: null
+      } as MaterialRecord
+    ];
+
+    expect(filterMaterialsByElementSet(materials, ["Nb"], "only").map((item) => item.material_id)).toEqual([
+      "TMCC-0001",
+      "TMCC-0011"
+    ]);
+    expect(filterMaterialsByElementSet(materials, ["Nb", "S"], "only").map((item) => item.material_id)).toEqual([
+      "TMCC-0001",
+      "TMCC-0011"
+    ]);
+    expect(filterMaterialsByElementSet(materials, ["Nb", "S", "C"], "only").map((item) => item.material_id)).toEqual([
+      "TMCC-0001",
+      "TMCC-0011"
+    ]);
+  });
+});
+
 describe("database statistics", () => {
   it("calculates record counts from materials rather than constants", () => {
     const materials: MaterialRecord[] = [

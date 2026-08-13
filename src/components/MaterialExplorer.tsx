@@ -21,6 +21,8 @@ type Props = {
   };
 };
 
+const MAX_VISIBLE_ELEMENT_SEARCH_RESULTS = 1000;
+
 export function MaterialExplorer({ materials, selectedId, onSelect, elementSearch }: Props) {
   const [query, setQuery] = useState("");
   const [metal, setMetal] = useState("all");
@@ -59,7 +61,9 @@ export function MaterialExplorer({ materials, selectedId, onSelect, elementSearc
   const currentPage = Math.min(page, totalPages);
   const pageStart = (currentPage - 1) * pageSize;
   const pageEnd = Math.min(pageStart + pageSize, filtered.length);
-  const visibleMaterials = filtered.slice(pageStart, pageEnd);
+  const hasTooManyElementMatches =
+    elementSearch.elements.length > 0 && filtered.length > MAX_VISIBLE_ELEMENT_SEARCH_RESULTS;
+  const visibleMaterials = hasTooManyElementMatches ? [] : filtered.slice(pageStart, pageEnd);
 
   return (
     <section id="explorer" className="explorer">
@@ -84,76 +88,85 @@ export function MaterialExplorer({ materials, selectedId, onSelect, elementSearc
         <Filter label="A-site" value={anion} values={anions} onChange={setAnion} />
         <Filter label="Type" value={type} values={["pristine", "tm_intercalated", "m2xa"]} onChange={setType} />
       </div>
-      <div className="table-wrap">
-        <table className="materials-table">
-          <thead>
-            <tr>
-              <th>Material ID</th>
-              <th>Formula</th>
-              <th>Crystal System</th>
-              <th>Space Group</th>
-              <th>Intercalant</th>
-              <th>Sites/cell</th>
-              <ColumnHeader label="DFT Energy" unit="eV/f.u." />
-              <ColumnHeader label="Formation Energy" unit="eV/formula" />
-              <ColumnHeader label="Energy Above Hull" unit="eV/atom" />
-              <ColumnHeader label="Band Gap" unit="eV" />
-            </tr>
-          </thead>
-          <tbody>
-            {visibleMaterials.map((material) => (
-              <tr
-                key={material.material_id}
-                className={material.material_id === selectedId ? "selected-row" : ""}
-                onClick={() => onSelect(material.material_id)}
-              >
-                <td><button type="button" onClick={() => onSelect(material.material_id)}>{material.material_id}</button></td>
-                <td><Formula formula={material.formula} /></td>
-                <td>
-                  <span className="cell-stack">
-                    <span>{formatPropertyValue(material.structure.crystal_system)}</span>
-                    {getLatticeSettingLabel(material) && <small>{getLatticeSettingLabel(material)}</small>}
-                  </span>
-                </td>
-                <td>{getSpaceGroupLabel(getSpaceGroupSymbol(material))}</td>
-                <td>{material.intercalation?.intercalant ?? "-"}</td>
-                <td>{getSitesPerCellLabel(material)}</td>
-                <td>{getDftEnergyPerFormulaUnitLabel(material)}</td>
-                <td>{formatPropertyValue(material.thermodynamics.formation_energy)}</td>
-                <td>{formatPropertyValue(material.thermodynamics.energy_above_hull)}</td>
-                <td>{formatPropertyValue(material.electronic.band_gap)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <div className="pagination-bar" aria-label="Materials table pagination">
-        <div className="page-size-controls">
-          <span>Rows per page</span>
-          {[5, 10, 20, 50].map((size) => (
-            <button
-              key={size}
-              type="button"
-              className={pageSize === size ? "active" : ""}
-              onClick={() => setPageSize(size)}
-            >
-              {size}
-            </button>
-          ))}
+      {hasTooManyElementMatches ? (
+        <div className="result-limit-warning" role="status">
+          <strong>More than 1000 matching materials</strong>
+          <span>Please add more elements or filters to make the search more specific.</span>
         </div>
-        <span className="page-summary">
-          {filtered.length === 0 ? "0 of 0" : `${pageStart + 1}-${pageEnd} of ${filtered.length}`}
-        </span>
-        <div className="page-nav">
-          <button type="button" onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={currentPage === 1}>
-            Previous
-          </button>
-          <span>{currentPage} / {totalPages}</span>
-          <button type="button" onClick={() => setPage((value) => Math.min(totalPages, value + 1))} disabled={currentPage === totalPages}>
-            Next
-          </button>
-        </div>
-      </div>
+      ) : (
+        <>
+          <div className="table-wrap">
+            <table className="materials-table">
+              <thead>
+                <tr>
+                  <th>Material ID</th>
+                  <th>Formula</th>
+                  <th>Crystal System</th>
+                  <th>Space Group</th>
+                  <th>Intercalant</th>
+                  <th>Sites/cell</th>
+                  <ColumnHeader label="DFT Energy" unit="eV/f.u." />
+                  <ColumnHeader label="Formation Energy" unit="eV/formula" />
+                  <ColumnHeader label="Energy Above Hull" unit="eV/atom" />
+                  <ColumnHeader label="Band Gap" unit="eV" />
+                </tr>
+              </thead>
+              <tbody>
+                {visibleMaterials.map((material) => (
+                  <tr
+                    key={material.material_id}
+                    className={material.material_id === selectedId ? "selected-row" : ""}
+                    onClick={() => onSelect(material.material_id)}
+                  >
+                    <td><button type="button" onClick={() => onSelect(material.material_id)}>{material.material_id}</button></td>
+                    <td><Formula formula={material.formula} /></td>
+                    <td>
+                      <span className="cell-stack">
+                        <span>{formatPropertyValue(material.structure.crystal_system)}</span>
+                        {getLatticeSettingLabel(material) && <small>{getLatticeSettingLabel(material)}</small>}
+                      </span>
+                    </td>
+                    <td>{getSpaceGroupLabel(getSpaceGroupSymbol(material))}</td>
+                    <td>{material.intercalation?.intercalant ?? "-"}</td>
+                    <td>{getSitesPerCellLabel(material)}</td>
+                    <td>{getDftEnergyPerFormulaUnitLabel(material)}</td>
+                    <td>{formatPropertyValue(material.thermodynamics.formation_energy)}</td>
+                    <td>{formatPropertyValue(material.thermodynamics.energy_above_hull)}</td>
+                    <td>{formatPropertyValue(material.electronic.band_gap)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="pagination-bar" aria-label="Materials table pagination">
+            <div className="page-size-controls">
+              <span>Rows per page</span>
+              {[5, 10, 20, 50].map((size) => (
+                <button
+                  key={size}
+                  type="button"
+                  className={pageSize === size ? "active" : ""}
+                  onClick={() => setPageSize(size)}
+                >
+                  {size}
+                </button>
+              ))}
+            </div>
+            <span className="page-summary">
+              {filtered.length === 0 ? "0 of 0" : `${pageStart + 1}-${pageEnd} of ${filtered.length}`}
+            </span>
+            <div className="page-nav">
+              <button type="button" onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={currentPage === 1}>
+                Previous
+              </button>
+              <span>{currentPage} / {totalPages}</span>
+              <button type="button" onClick={() => setPage((value) => Math.min(totalPages, value + 1))} disabled={currentPage === totalPages}>
+                Next
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </section>
   );
 }
