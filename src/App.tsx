@@ -95,16 +95,17 @@ export default function App() {
           <div className="hero-copy">
             <p className="eyebrow">TMCC Database v0.1</p>
             <h1>TMCC Materials Database</h1>
-            <p className="subtitle">A computational database for layered transition-metal chalcogenide carbides and nitrides</p>
+            <p className="subtitle">A materials database for layered transition-metal chalcogenide carbides and nitrides</p>
             <p className="hero-note">
-              TMCC is used here as the broad family for M2XC, M2X2C, intercalated, and non-vdW related structures
-              where M is a transition metal, X is S/Se/Te, and the central light element can expand from C to N.
-              TMCDC is the M2X2C carbodichalcogenide subclass with X-M-C-M-X layered units.
+              TMCC is used as the broad family covering M2XA, vdW TMCDC M2X2A, and intercalated
+              vdW derivatives. M is a transition metal, X is S/Se/Te, and A is C or future N.
+              TMCDC records describe X-M-A-M-X layered units in P-3m1 or R-3m variants; intercalated
+              entries use M&apos;xM2X2A hosts, while M2XA TMCC structures are tracked separately.
             </p>
             <div className="update-strip" aria-label="Database update status">
               <span className="status-dot" aria-hidden="true" />
               <span>Continuously updated</span>
-              <span>DFT results, DOS, band structures, and stability data are added as calculations finish.</span>
+              <span>DFT results, DOS, structural files, and experimental records are added as calculations and measurements finish.</span>
             </div>
           </div>
           <div className="hero-affiliation" aria-label="Project affiliation">
@@ -177,10 +178,11 @@ export default function App() {
       <section id="methodology" className="methodology">
         <h2>References / Methodology</h2>
         <p>
-          No publications, DOIs, computational parameters, or stability thresholds have been entered in
-          this prototype. TMCC is used as the general material-family name; TMCDC is reserved for M2X2C
-          carbodichalcogenides. Each future calculation record should include software, version, functional,
-          pseudopotential/setup, cutoff, k-points, convergence criteria, workflow version, date, and source.
+          No publications, DOIs, experimental datasets, or stability thresholds have been entered in
+          this prototype. TMCC is used as the general material-family name; TMCDC is reserved for vdW
+          M2X2A carbodichalcogenide/carbonitride structures and their intercalated derivatives. Each future
+          record should include calculation settings, structural files, experimental source files where
+          available, workflow version, date, and source.
         </p>
         <p className="disclaimer">
           Computationally predicted materials have not necessarily been experimentally synthesized.
