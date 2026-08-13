@@ -121,7 +121,7 @@
   "mechanical": {},
   "electronic": {
     "band_gap": {
-      "value": null,
+      "value": 0,
       "unit": "eV"
     },
     "fermi_level": {
