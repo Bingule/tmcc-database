@@ -251,6 +251,7 @@ export function ElectronicPlot({
 
   function handleWheel(event: WheelEvent<SVGSVGElement>) {
     event.preventDefault();
+    event.stopPropagation();
     const center = valueAtX(pointerX(event));
     const factor = event.deltaY < 0 ? 0.78 : 1.28;
     const fullSpan = fullXRange[1] - fullXRange[0];

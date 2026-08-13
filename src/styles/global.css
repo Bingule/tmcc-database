@@ -1383,6 +1383,7 @@ td button {
   min-height: 285px;
   place-items: center;
   overflow: hidden;
+  overscroll-behavior: contain;
   border: 1px solid #d6dfdc;
   border-radius: 7px;
   color: #607078;
@@ -1538,6 +1539,7 @@ td button {
   display: grid;
   min-height: 320px;
   place-items: center;
+  overscroll-behavior: contain;
   border: 1px solid #d6dfdc;
   border-radius: 7px;
   background: #fbfcfb;

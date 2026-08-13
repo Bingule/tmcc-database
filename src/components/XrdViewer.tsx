@@ -354,6 +354,7 @@ function LineChart<T extends Record<string, number>>({
 
   function handleWheel(event: WheelEvent<SVGSVGElement>) {
     event.preventDefault();
+    event.stopPropagation();
     const center = valueAtX(pointerX(event));
     const factor = event.deltaY < 0 ? 0.78 : 1.28;
     const nextSpan = Math.min(fullXRange[1] - fullXRange[0], Math.max((fullXRange[1] - fullXRange[0]) / 80, (maxX - minX) * factor));
