@@ -130,7 +130,7 @@ export function MaterialSelector({ materials, selectedId, onSelect }: Props) {
       ) : (
         <div className="intercalated-placeholder">
           <label>
-            <span>Intercalant M'</span>
+            <span>Intercalant</span>
             <select
               value={intercalant}
               onChange={(event) => {

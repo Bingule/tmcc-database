@@ -64,7 +64,7 @@ export function getStructureTypeLabel(material: MaterialRecord) {
   return material.structure_type ?? inferStructureType(material);
 }
 
-export function getIntercalatedTransitionMetalLabel(material: MaterialRecord) {
+export function getIntercalantLabel(material: MaterialRecord) {
   return material.intercalation?.intercalant ?? "-";
 }
 

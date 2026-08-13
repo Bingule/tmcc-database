@@ -4,7 +4,7 @@ import {
   filterMaterialsByElementSet,
   formatPropertyValue,
   getDftEnergyPerFormulaUnitLabel,
-  getIntercalatedTransitionMetalLabel,
+  getIntercalantLabel,
   getLatticeSettingLabel,
   getStructureTypeLabel,
   getSitesPerCellLabel,
@@ -115,7 +115,7 @@ export function MaterialExplorer({ materials, selectedId, onSelect, elementSearc
                   <th>Structure Type</th>
                   <th>Subclass</th>
                   <th>Space Group</th>
-                  <th><span>Intercalated</span><small className="column-unit">TM</small></th>
+                  <th>Intercalant</th>
                   <th>Sites/cell</th>
                   <ColumnHeader label="DFT Energy" unit="eV/formula" />
                   <ColumnHeader label="Formation Energy" unit="eV/formula" />
@@ -140,7 +140,7 @@ export function MaterialExplorer({ materials, selectedId, onSelect, elementSearc
                     </td>
                     <td>{getSubclassLabel(material)}</td>
                     <td>{getSpaceGroupLabel(getSpaceGroupSymbol(material))}</td>
-                    <td>{getIntercalatedTransitionMetalLabel(material)}</td>
+                    <td>{getIntercalantLabel(material)}</td>
                     <td>{getSitesPerCellLabel(material)}</td>
                     <td>{getDftEnergyPerFormulaUnitLabel(material)}</td>
                     <td>{formatPropertyValue(material.thermodynamics.formation_energy)}</td>

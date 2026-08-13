@@ -6,7 +6,7 @@ import { XrdViewer } from "./XrdViewer";
 import {
   formatPropertyValue,
   getDftEnergyPerFormulaUnitLabel,
-  getIntercalatedTransitionMetalLabel,
+  getIntercalantLabel,
   getLatticeSettingLabel,
   getNumberOfSitesLabel,
   getSpaceGroupLabel,
@@ -53,7 +53,7 @@ export function MaterialDetail({ material }: { material: MaterialRecord }) {
           <Data label="Subclass" value={getSubclassLabel(material)} />
           <Data label="General formula" value={getStructureTypeLabel(material)} />
           <Data label="Structure type" value={getUnavailableLabel(material.structure.crystal_system)} />
-          <Data label="Intercalated TM" value={getIntercalatedTransitionMetalLabel(material)} />
+          <Data label="Intercalant" value={getIntercalantLabel(material)} />
           <Data label="Number of sites" value={getNumberOfSitesLabel(material)} />
           <Data label="Space group number" value={getUnavailableLabel(material.structure.space_group_number)} />
           {getLatticeSettingLabel(material) && (

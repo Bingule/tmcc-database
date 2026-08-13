@@ -202,7 +202,7 @@ describe("MaterialExplorer", () => {
     expect(markup).toContain("<th>Subclass</th>");
     expect(markup).toContain("<td><span class=\"cell-stack\"><span>trigonal</span></span></td>");
     expect(markup).toContain("<td>TMCDC</td>");
-    expect(markup).toContain("<th><span>Intercalated</span><small class=\"column-unit\">TM</small></th>");
+    expect(markup).toContain("<th>Intercalant</th>");
   });
 
   it("uses a scoped class for materials-table alignment", () => {
