@@ -453,6 +453,28 @@ main {
   border: 1px solid #dce2df;
   border-radius: 8px;
   background: #fff;
+  color: inherit;
+  text-align: left;
+}
+
+.stat-button {
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.stat-button:hover {
+  border-color: #89a6a3;
+  background: #f6faf8;
+}
+
+.stat-button:active {
+  transform: translateY(1px);
+}
+
+.stat-button.active {
+  border-color: #2f5d6f;
+  background: #eef6f3;
+  box-shadow: inset 4px 0 0 #2f5d6f;
 }
 
 .stat strong {
@@ -462,6 +484,21 @@ main {
 .stat span {
   color: #5f6f74;
   line-height: 1.35;
+}
+
+.inline-clear-button {
+  justify-self: end;
+  padding: 8px 12px;
+  border: 1px solid #c9d5d2;
+  border-radius: 7px;
+  background: #fff;
+  color: #2f5d6f;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.inline-clear-button:hover {
+  background: #f3f7f5;
 }
 
 .section-grid {

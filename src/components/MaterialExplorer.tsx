@@ -23,9 +23,12 @@ type Props = {
     elements: string[];
     mode: "only" | "at_least";
   };
+  categoryFilter?: ExplorerCategoryFilter;
+  onClearCategoryFilter?: () => void;
 };
 
 const MAX_VISIBLE_ELEMENT_SEARCH_RESULTS = 1000;
+export type ExplorerCategoryFilter = "tmcdc" | "intercalated" | "tmcc" | null;
 type SortKey =
   | "material_id"
   | "formula"
@@ -40,7 +43,14 @@ type SortKey =
   | "band_gap";
 type SortDirection = "asc" | "desc";
 
-export function MaterialExplorer({ materials, selectedId, onSelect, elementSearch }: Props) {
+export function MaterialExplorer({
+  materials,
+  selectedId,
+  onSelect,
+  elementSearch,
+  categoryFilter = null,
+  onClearCategoryFilter = () => undefined
+}: Props) {
   const [query, setQuery] = useState("");
   const [metal, setMetal] = useState("all");
   const [chalcogen, setChalcogen] = useState("all");
@@ -61,7 +71,8 @@ export function MaterialExplorer({ materials, selectedId, onSelect, elementSearc
 
   const filtered = useMemo(() => {
     const normalizedQuery = query.toLowerCase();
-    const elementFiltered = filterMaterialsByElementSet(materials, elementSearch.elements, elementSearch.mode);
+    const categoryFiltered = filterMaterialsByCategory(materials, categoryFilter);
+    const elementFiltered = filterMaterialsByElementSet(categoryFiltered, elementSearch.elements, elementSearch.mode);
     const matchingMaterials = elementFiltered.filter((material) => {
       const matchesQuery =
         material.material_id.toLowerCase().includes(normalizedQuery) ||
@@ -81,10 +92,10 @@ export function MaterialExplorer({ materials, selectedId, onSelect, elementSearc
       );
     });
     return [...matchingMaterials].sort((a, b) => compareMaterials(a, b, sort));
-  }, [query, metal, chalcogen, anion, subclass, structureType, materials, elementSearch, sort]);
+  }, [query, metal, chalcogen, anion, subclass, structureType, materials, elementSearch, sort, categoryFilter]);
   useEffect(() => {
     setPage(1);
-  }, [query, metal, chalcogen, anion, subclass, structureType, pageSize, elementSearch.elements, elementSearch.mode]);
+  }, [query, metal, chalcogen, anion, subclass, structureType, pageSize, elementSearch.elements, elementSearch.mode, categoryFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
@@ -111,6 +122,15 @@ export function MaterialExplorer({ materials, selectedId, onSelect, elementSearc
           <span>Element query</span>
           <strong>{elementSearch.elements.join("-")}</strong>
           <small>{elementSearch.mode === "only" ? "Only these elements" : "At least these elements"}</small>
+        </div>
+      )}
+      {categoryFilter && (
+        <div className="active-element-query">
+          <span>Category filter</span>
+          <strong>{getCategoryFilterLabel(categoryFilter)}</strong>
+          <button type="button" className="inline-clear-button" onClick={onClearCategoryFilter}>
+            Clear
+          </button>
         </div>
       )}
       <div className="filters">
@@ -207,6 +227,29 @@ export function MaterialExplorer({ materials, selectedId, onSelect, elementSearc
       )}
     </section>
   );
+}
+
+function filterMaterialsByCategory(materials: MaterialRecord[], categoryFilter: ExplorerCategoryFilter) {
+  if (!categoryFilter) return materials;
+
+  return materials.filter((material) => {
+    if (categoryFilter === "intercalated") {
+      return material.material_type === "tm_intercalated";
+    }
+
+    if (categoryFilter === "tmcdc") {
+      return getSubclassLabel(material) === "TMCDC" && material.material_type !== "tm_intercalated";
+    }
+
+    return getSubclassLabel(material) === "TMCC" && material.material_type !== "tm_intercalated";
+  });
+}
+
+function getCategoryFilterLabel(categoryFilter: ExplorerCategoryFilter) {
+  if (categoryFilter === "tmcdc") return "TMCDCs (M2X2C)";
+  if (categoryFilter === "intercalated") return "Intercalated TMCC/TMCDC";
+  if (categoryFilter === "tmcc") return "TMCCs (M2XC / M2XA)";
+  return "";
 }
 
 function formatCompactLatticeSetting(value: string | null) {

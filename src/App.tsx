@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Atom, Database, FlaskConical, Layers3, Table2 } from "lucide-react";
 import { MaterialDetail } from "./components/MaterialDetail";
-import { MaterialExplorer } from "./components/MaterialExplorer";
+import { MaterialExplorer, type ExplorerCategoryFilter } from "./components/MaterialExplorer";
 import { MaterialSelector } from "./components/MaterialSelector";
 import { PeriodicTable } from "./components/PeriodicTable";
 import { materials } from "./data/materials";
@@ -13,6 +13,7 @@ export default function App() {
     elements: [],
     mode: "only"
   });
+  const [explorerCategoryFilter, setExplorerCategoryFilter] = useState<ExplorerCategoryFilter>(null);
   const selectedMaterial = materials.find((material) => material.material_id === selectedId) ?? materials[0];
   const stats = useMemo(() => getMaterialStats(materials), []);
 
@@ -88,9 +89,27 @@ export default function App() {
       <section className="stats-grid" aria-label="Database statistics">
         <Stat icon={<Database size={18} />} label="Compositions" value={stats.totalCompositions} />
         <Stat icon={<Table2 size={18} />} label="Structures" value={stats.totalStructures} />
-        <Stat icon={<FlaskConical size={18} />} label="TMCDCs (M2X2C)" value={stats.tmcdc} />
-        <Stat icon={<Atom size={18} />} label="Intercalated TMCC/TMCDC" value={stats.intercalatedTmcc} />
-        <Stat icon={<Layers3 size={18} />} label="TMCCs (M2XC / M2XA)" value={stats.nonVdwsM2xa} />
+        <Stat
+          icon={<FlaskConical size={18} />}
+          label="TMCDCs (M2X2C)"
+          value={stats.tmcdc}
+          active={explorerCategoryFilter === "tmcdc"}
+          onClick={() => setExplorerCategoryFilter("tmcdc")}
+        />
+        <Stat
+          icon={<Atom size={18} />}
+          label="Intercalated TMCC/TMCDC"
+          value={stats.intercalatedTmcc}
+          active={explorerCategoryFilter === "intercalated"}
+          onClick={() => setExplorerCategoryFilter("intercalated")}
+        />
+        <Stat
+          icon={<Layers3 size={18} />}
+          label="TMCCs (M2XC / M2XA)"
+          value={stats.nonVdwsM2xa}
+          active={explorerCategoryFilter === "tmcc"}
+          onClick={() => setExplorerCategoryFilter("tmcc")}
+        />
       </section>
 
       <section id="selector" className="section-grid single">
@@ -107,7 +126,14 @@ export default function App() {
         document.getElementById("explorer")?.scrollIntoView({ behavior: "smooth", block: "start" });
       }} />
 
-      <MaterialExplorer materials={materials} selectedId={selectedId} onSelect={selectMaterial} elementSearch={elementSearch} />
+      <MaterialExplorer
+        materials={materials}
+        selectedId={selectedId}
+        onSelect={selectMaterial}
+        elementSearch={elementSearch}
+        categoryFilter={explorerCategoryFilter}
+        onClearCategoryFilter={() => setExplorerCategoryFilter(null)}
+      />
 
       <MaterialDetail material={selectedMaterial} />
 
@@ -147,12 +173,46 @@ function getInitialSelectedId() {
   return match?.material_id ?? materials[0]?.material_id ?? "";
 }
 
-function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
-  return (
-    <article className="stat">
+function Stat({
+  icon,
+  label,
+  value,
+  active = false,
+  onClick
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+  active?: boolean;
+  onClick?: () => void;
+}) {
+  const content = (
+    <>
       <div>{icon}</div>
       <strong>{value}</strong>
       <span>{label}</span>
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        className={`stat stat-button ${active ? "active" : ""}`}
+        onClick={() => {
+          onClick();
+          document.getElementById("explorer")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }}
+        aria-pressed={active}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <article className="stat">
+      {content}
     </article>
   );
 }

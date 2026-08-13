@@ -262,6 +262,54 @@ describe("MaterialExplorer", () => {
     expect(markup).toContain("<span>Intercalant</span>");
   });
 
+  it("filters rows by the summary-card category selection", () => {
+    const materials = [
+      {
+        ...baseMaterial,
+        material_id: "TMCC-0001",
+        slug: "nb2s2c-p-3m1",
+        formula: "Nb2S2C",
+        subclass: "TMCDC",
+        material_type: "pristine"
+      },
+      {
+        ...baseMaterial,
+        material_id: "TMCC-0009",
+        slug: "cu0-5-nb2s2c-p-3m1",
+        formula: "Cu0.5Nb2S2C",
+        subclass: "TMCDC",
+        material_type: "tm_intercalated",
+        intercalation: { intercalant: "Cu" }
+      },
+      {
+        ...baseMaterial,
+        material_id: "TMCC-0011",
+        slug: "nb2cs-p63mmc",
+        formula: "Nb2CS",
+        subclass: "TMCC",
+        material_type: "m2xa",
+        structure_type: "M2XA"
+      }
+    ] as MaterialRecord[];
+
+    const markup = renderToStaticMarkup(
+      <MaterialExplorer
+        materials={materials}
+        selectedId="TMCC-0001"
+        onSelect={() => undefined}
+        elementSearch={{ elements: [], mode: "only" }}
+        categoryFilter="intercalated"
+      />
+    );
+
+    expect(markup).toContain("Category filter");
+    expect(markup).toContain("Intercalated TMCC/TMCDC");
+    const tableBody = markup.match(/<tbody>(.*)<\/tbody>/s)?.[1] ?? "";
+    expect(tableBody).toContain("TMCC-0009");
+    expect(tableBody).not.toContain("TMCC-0001");
+    expect(tableBody).not.toContain("TMCC-0011");
+  });
+
   it("uses a scoped class for materials-table alignment", () => {
     const markup = renderToStaticMarkup(
       <MaterialExplorer
