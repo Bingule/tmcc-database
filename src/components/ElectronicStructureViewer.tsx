@@ -1,5 +1,6 @@
 import { Download } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { makeElectronicDownloadFilename } from "../lib/materials";
 import { publicAssetPath } from "../lib/paths";
 import type { MaterialRecord } from "../lib/types";
 
@@ -56,7 +57,7 @@ export function ElectronicStructureViewer({ material }: { material: MaterialReco
         </button>
       </div>
       {file ? (
-        <a className="secondary-button electronic-download" href={file} download={mode === "dos" ? "DOS.csv" : "band_structure.csv"}>
+        <a className="secondary-button electronic-download" href={file} download={makeElectronicDownloadFilename(material, mode)}>
           <Download size={15} />
           {mode === "dos" ? "Download DOS CSV" : "Download Band CSV"}
         </a>

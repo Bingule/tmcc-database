@@ -12,6 +12,7 @@ import {
   makePristineFormula,
   makeSingleChalcogenFormula,
   findMaterialsByComposition,
+  makeElectronicDownloadFilename,
   makeStructureDownloadFilename
 } from "../src/lib/materials";
 import type { MaterialRecord } from "../src/lib/types";
@@ -174,6 +175,8 @@ describe("structure identity", () => {
 
     expect(makeStructureDownloadFilename(material, "cif")).toBe("Nb2S2C-P-3m1.cif");
     expect(makeStructureDownloadFilename(material, "poscar")).toBe("Nb2S2C-P-3m1.POSCAR");
+    expect(makeElectronicDownloadFilename(material, "dos")).toBe("Nb2S2C-P-3m1-DOS.csv");
+    expect(makeElectronicDownloadFilename(material, "band")).toBe("Nb2S2C-P-3m1-Band-Structure.csv");
   });
 });
 

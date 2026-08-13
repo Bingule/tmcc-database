@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ElectronicPlot, ElectronicStructureViewer, parseDosCsv } from "../src/components/ElectronicStructureViewer";
-import type { MaterialRecord } from "../src/lib/types";
+import { materials } from "../src/data/materials";
 
 describe("ElectronicStructureViewer", () => {
   it("parses total and projected DOS columns as separate curves", () => {
@@ -19,12 +19,14 @@ describe("ElectronicStructureViewer", () => {
 
   it("offers the DOS CSV for download when curve data is configured", () => {
     const material = {
-      files: { dos: "/figures/TMCC-0001/dos.csv", band_structure: null }
-    } as MaterialRecord;
+      ...materials[0],
+      files: { ...materials[0].files, dos: "/figures/TMCC-0001/dos.csv", band_structure: null }
+    };
 
     const markup = renderToStaticMarkup(<ElectronicStructureViewer material={material} />);
 
     expect(markup).toContain('href="/figures/TMCC-0001/dos.csv"');
+    expect(markup).toContain('download="Nb2S2C-P-3m1-DOS.csv"');
     expect(markup).toContain("Download DOS CSV");
   });
 

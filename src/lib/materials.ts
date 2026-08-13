@@ -163,14 +163,23 @@ export function getSpaceGroupLabel(symbol: unknown) {
 }
 
 export function makeStructureDownloadFilename(material: MaterialRecord, kind: "cif" | "poscar") {
-  const spaceGroup = String(getSpaceGroupSymbol(material) ?? "structure");
   const suffix = kind === "cif" ? "cif" : "POSCAR";
-  const baseName = `${material.formula}-${spaceGroup}`
+  const baseName = makeMaterialSpaceGroupBaseName(material);
+
+  return `${baseName}.${suffix}`;
+}
+
+export function makeElectronicDownloadFilename(material: MaterialRecord, kind: "dos" | "band") {
+  const suffix = kind === "dos" ? "DOS.csv" : "Band-Structure.csv";
+  return `${makeMaterialSpaceGroupBaseName(material)}-${suffix}`;
+}
+
+function makeMaterialSpaceGroupBaseName(material: MaterialRecord) {
+  const spaceGroup = String(getSpaceGroupSymbol(material) ?? "structure");
+  return `${material.formula}-${spaceGroup}`
     .replace(/[^A-Za-z0-9.-]+/g, "-")
     .replace(/--+/g, "-")
     .replace(/^-|-$/g, "");
-
-  return kind === "cif" ? `${baseName}.${suffix}` : `${baseName}.${suffix}`;
 }
 
 export type ElementSearchMode = "only" | "at_least";
