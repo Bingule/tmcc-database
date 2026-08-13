@@ -31,6 +31,10 @@ export type MaterialFiles = {
   band_structure?: string | null;
   dos?: string | null;
   pdos?: string | null;
+  experimental_xrd?: string | null;
+  raman?: string | null;
+  sem?: string | null;
+  reference?: string | null;
   phonon?: string | null;
   elf?: string | null;
   charge_density?: string | null;

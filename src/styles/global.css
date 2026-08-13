@@ -1068,6 +1068,28 @@ td button {
   font-weight: 650;
 }
 
+.experimental-file-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.experimental-file-button {
+  min-height: 34px;
+  padding: 0 16px;
+}
+
+.reference-link {
+  color: #285b70;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(40, 91, 112, 0.35);
+}
+
+.reference-link:hover {
+  color: #173d4e;
+  border-bottom-color: #173d4e;
+}
+
 .atomic-sites {
   margin-top: 12px;
 }
@@ -1498,6 +1520,35 @@ td button {
   padding: 14px;
   border-left: 5px solid #8a6a15;
   background: #fbf4d9;
+}
+
+.methodology-contact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  margin-top: 16px;
+  color: #46555b;
+}
+
+.methodology-contact span {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #5d715f;
+}
+
+.methodology-contact a {
+  color: #285b70;
+  font-weight: 700;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(40, 91, 112, 0.35);
+}
+
+.methodology-contact a:hover {
+  color: #173d4e;
+  border-bottom-color: #173d4e;
 }
 
 footer {

@@ -91,8 +91,8 @@ export function MaterialDetail({ material }: { material: MaterialRecord }) {
 
         <Panel title="Experimental Data">
           <Data label="Synthesis method" value={getUnavailableLabel(material.structure.synthesis_method, "scientific")} />
-          <Data label="XRD / Raman / microscopy" value="Not available" />
-          <Data label="Reference" value="Not available" />
+          <Data label="Experimental files" value={<ExperimentalFiles material={material} />} />
+          <Data label="Reference" value={<ReferenceValue material={material} />} />
         </Panel>
 
         <Panel title="Calculation Details">
@@ -128,6 +128,70 @@ function Data({ label, value }: { label: string; value: React.ReactNode }) {
       <strong>{value}</strong>
     </div>
   );
+}
+
+function ExperimentalFiles({ material }: { material: MaterialRecord }) {
+  const entries = [
+    { label: "XRD", href: publicAssetPath(material.files.experimental_xrd ?? null) },
+    { label: "Raman", href: publicAssetPath(material.files.raman ?? null) },
+    { label: "SEM", href: publicAssetPath(material.files.sem ?? null) }
+  ];
+
+  return (
+    <div className="experimental-file-row">
+      {entries.map((entry) => (
+        <ExperimentalFileButton key={entry.label} label={entry.label} href={entry.href} />
+      ))}
+    </div>
+  );
+}
+
+function ExperimentalFileButton({ label, href }: { label: string; href: string | null }) {
+  if (!href) {
+    return (
+      <button className="secondary-button experimental-file-button" disabled>
+        {label}
+      </button>
+    );
+  }
+
+  return (
+    <a className="secondary-button experimental-file-button" href={href} target="_blank" rel="noreferrer">
+      {label}
+    </a>
+  );
+}
+
+function ReferenceValue({ material }: { material: MaterialRecord }) {
+  const reference =
+    readString(material.provenance.reference) ??
+    readString(material.provenance.doi) ??
+    readString(material.provenance.source) ??
+    readString(material.files.reference);
+
+  if (!reference) return "Not available";
+
+  const href = getReferenceHref(reference);
+  if (!href) return reference;
+
+  return (
+    <a className="reference-link" href={href} target="_blank" rel="noreferrer">
+      {reference}
+    </a>
+  );
+}
+
+function readString(value: unknown) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed && trimmed !== "-" ? trimmed : null;
+}
+
+function getReferenceHref(reference: string) {
+  if (/^https?:\/\//i.test(reference)) return reference;
+  if (/^10\.\S+\/\S+$/i.test(reference)) return `https://doi.org/${reference}`;
+  if (/^\/?(structures|figures)\//.test(reference)) return publicAssetPath(reference);
+  return null;
 }
 
 function AtomicSitesTable({ sites }: { sites: unknown }) {

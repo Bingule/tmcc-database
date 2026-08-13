@@ -182,6 +182,11 @@ export default function App() {
           Stability classifications depend on the computational methodology and should not be interpreted
           as guarantees of experimental synthesizability.
         </p>
+        <div className="methodology-contact" aria-label="Contact">
+          <span>Contact</span>
+          <a href="mailto:wui@vscht.cz">wui@vscht.cz</a>
+          <a href="mailto:soferz@vscht.cz">soferz@vscht.cz</a>
+        </div>
       </section>
 
       <footer>
