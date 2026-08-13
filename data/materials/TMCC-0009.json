@@ -1,16 +1,23 @@
 {
-  "material_id": "TMCC-0001",
-  "slug": "nb2s2c-p-3m1",
+  "material_id": "TMCC-0009",
+  "slug": "cu0-5-nb2s2c-p-3m1-config01",
   "family": "TMCC",
-  "material_type": "pristine",
-  "formula": "Nb2S2C",
+  "material_type": "tm_intercalated",
+  "formula": "Cu0.5Nb2S2C",
   "host": {
     "formula": "Nb2S2C",
     "metal": "Nb",
     "chalcogen": "S",
     "anion": "C"
   },
-  "intercalation": null,
+  "intercalation": {
+    "intercalant": "Cu",
+    "x": 0.5,
+    "mode": "hetero",
+    "site": null,
+    "ordering": "ordered approximant",
+    "configuration": "config01"
+  },
   "experimental_status": "experimental",
   "calculation_status": "calculated",
   "structure": {
@@ -19,15 +26,15 @@
     "crystal_system": "trigonal",
     "lattice_parameters": {
       "a": {
-        "value": 3.269,
+        "value": 3.3121,
         "unit": "angstrom"
       },
       "b": {
-        "value": 3.269,
+        "value": 3.3120999999999996,
         "unit": "angstrom"
       },
       "c": {
-        "value": 8.547,
+        "value": 9.0113,
         "unit": "angstrom"
       }
     },
@@ -41,33 +48,49 @@
         "unit": "degree"
       },
       "gamma": {
-        "value": 119.99999999999997,
+        "value": 119.99999999999999,
         "unit": "degree"
       }
     },
     "layer_thickness": {
-      "value": 5.637,
+      "value": 7.362,
       "unit": "angstrom"
     },
     "vdw_gap": {
-      "value": 2.91,
+      "value": 1.649,
       "unit": "angstrom"
     },
     "atomic_sites": [
       {
+        "label": "Cu1",
+        "element": "Cu",
+        "fract_x": 0.66667,
+        "fract_y": 0.33333,
+        "fract_z": 0.57656,
+        "occupancy": 1
+      },
+      {
+        "label": "Cu2",
+        "element": "Cu",
+        "fract_x": 0.33333,
+        "fract_y": 0.66667,
+        "fract_z": 0.42344,
+        "occupancy": 1
+      },
+      {
         "label": "Nb1",
         "element": "Nb",
-        "fract_x": 0.66668,
-        "fract_y": 0.33334,
-        "fract_z": 0.8612,
+        "fract_x": 0.66667,
+        "fract_y": 0.33333,
+        "fract_z": 0.88563,
         "occupancy": 1
       },
       {
         "label": "Nb2",
         "element": "Nb",
-        "fract_x": 0.33332,
-        "fract_y": 0.66666,
-        "fract_z": 0.1388,
+        "fract_x": 0.33333,
+        "fract_y": 0.66667,
+        "fract_z": 0.11437,
         "occupancy": 1
       },
       {
@@ -75,7 +98,7 @@
         "element": "S",
         "fract_x": 0.66666,
         "fract_y": 0.33333,
-        "fract_z": 0.32977,
+        "fract_z": 0.29739,
         "occupancy": 1
       },
       {
@@ -83,7 +106,7 @@
         "element": "S",
         "fract_x": 0.33334,
         "fract_y": 0.66667,
-        "fract_z": 0.67023,
+        "fract_z": 0.70261,
         "occupancy": 1
       },
       {
@@ -98,7 +121,7 @@
   },
   "thermodynamics": {
     "total_energy": {
-      "value": -42.710731860935965,
+      "value": -47.506051902963655,
       "unit": "eV/cell"
     },
     "formation_energy": {
@@ -132,9 +155,9 @@
   },
   "energy_storage": {},
   "files": {
-    "cif": "/structures/TMCC-0001/structure.cif",
-    "poscar": "/structures/TMCC-0001/POSCAR",
-    "dos": "/figures/TMCC-0001/dos.csv",
+    "cif": "/structures/TMCC-0009/structure.cif",
+    "poscar": "/structures/TMCC-0009/POSCAR",
+    "dos": "/figures/TMCC-0009/dos.csv",
     "band_structure": null
   },
   "provenance": {

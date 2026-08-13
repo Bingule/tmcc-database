@@ -41,9 +41,9 @@ describe("MaterialDetail", () => {
     expect(markup).toContain("Plane-wave cutoff");
     expect(markup).toContain("520 eV");
     expect(markup).toContain("K-points");
-    expect(markup).toContain("7 x 7 x 1, gamma");
+    expect(markup).toContain("density 2.5, gamma");
     expect(markup).toContain("Calculation date");
-    expect(markup).toContain("2026-08-12");
+    expect(markup).toContain("2026-08-13");
   });
 
   it("formats k-point density settings from rerun calculations", () => {
@@ -72,8 +72,8 @@ describe("MaterialDetail", () => {
     const markup = renderToStaticMarkup(<MaterialDetail material={materials[0]} />);
 
     expect(markup).toContain("Layer thickness");
-    expect(markup).toContain("5.634 Å");
+    expect(markup).toContain("5.637 Å");
     expect(markup).toContain("van der Waals gap");
-    expect(markup).toContain("2.913 Å");
+    expect(markup).toContain("2.91 Å");
   });
 });
