@@ -88,7 +88,13 @@ export default function App() {
 
       <section className="stats-grid" aria-label="Database statistics">
         <Stat icon={<Database size={18} />} label="Compositions" value={stats.totalCompositions} />
-        <Stat icon={<Table2 size={18} />} label="Structures" value={stats.totalStructures} />
+        <Stat
+          icon={<Table2 size={18} />}
+          label="Structures"
+          value={stats.totalStructures}
+          active={explorerCategoryFilter === null}
+          onClick={() => setExplorerCategoryFilter(null)}
+        />
         <Stat
           icon={<FlaskConical size={18} />}
           label="TMCDCs (M2X2C)"
