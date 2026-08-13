@@ -139,9 +139,10 @@ describe("MaterialExplorer", () => {
     );
 
     expect(markup).toContain("<span>DFT Energy</span><small class=\"column-unit\">eV/formula</small>");
-    expect(markup).toContain("<span>Formation Energy</span><small class=\"column-unit\">eV/formula</small>");
     expect(markup).toContain("<span>Energy Above Hull</span><small class=\"column-unit\">eV/atom</small>");
+    expect(markup).toContain("<th>Phonon</th>");
     expect(markup).toContain("<span>Band Gap</span><small class=\"column-unit\">eV</small>");
+    expect(markup).not.toContain("Formation Energy");
   });
 
   it("shows DFT energy per formula unit and dashes for missing table values", () => {
@@ -159,7 +160,7 @@ describe("MaterialExplorer", () => {
             },
             thermodynamics: {
               total_energy: { value: -42.63717309249796, unit: "eV/cell" },
-              formation_energy: { value: null, unit: "eV/formula" }
+              energy_above_hull: { value: null, unit: "eV/atom" }
             },
             electronic: { band_gap: { value: null, unit: "eV" } }
           } as MaterialRecord

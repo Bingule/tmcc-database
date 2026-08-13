@@ -77,7 +77,6 @@ export function MaterialDetail({ material }: { material: MaterialRecord }) {
         <Panel title="Thermodynamics">
           <Data label="DFT energy / f.u." value={getDftEnergyPerFormulaUnitLabel(material)} />
           <Data label="DFT total energy" value={formatPropertyValue(material.thermodynamics.total_energy)} />
-          <Data label="Formation energy (eV/f.u.)" value={formatPropertyValue(material.thermodynamics.formation_energy)} />
           <Data label="Energy above hull" value={formatPropertyValue(material.thermodynamics.energy_above_hull)} />
           <Data label="Relative energy between configurations" value={formatPropertyValue(material.thermodynamics.relative_structure_energy)} />
         </Panel>

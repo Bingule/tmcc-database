@@ -72,6 +72,13 @@ export function getNumberOfSitesLabel(material: MaterialRecord) {
   return getSitesPerCellLabel(material);
 }
 
+export function getPhononStabilityLabel(material: MaterialRecord) {
+  const dynamicallyStable = material.phonons?.dynamically_stable;
+  if (dynamicallyStable === true) return "Stable";
+  if (dynamicallyStable === false) return "Unstable";
+  return "-";
+}
+
 function inferSubclass(material: MaterialRecord) {
   return inferStructureType(material).startsWith("M2X2") ? "TMCDC" : "TMCC";
 }

@@ -6,6 +6,7 @@ import {
   getDftEnergyPerFormulaUnitLabel,
   getIntercalantLabel,
   getLatticeSettingLabel,
+  getPhononStabilityLabel,
   getStructureTypeLabel,
   getSitesPerCellLabel,
   getSubclassLabel,
@@ -118,8 +119,8 @@ export function MaterialExplorer({ materials, selectedId, onSelect, elementSearc
                   <th>Intercalant</th>
                   <th>Sites/cell</th>
                   <ColumnHeader label="DFT Energy" unit="eV/formula" />
-                  <ColumnHeader label="Formation Energy" unit="eV/formula" />
                   <ColumnHeader label="Energy Above Hull" unit="eV/atom" />
+                  <th>Phonon</th>
                   <ColumnHeader label="Band Gap" unit="eV" />
                 </tr>
               </thead>
@@ -143,8 +144,8 @@ export function MaterialExplorer({ materials, selectedId, onSelect, elementSearc
                     <td>{getIntercalantLabel(material)}</td>
                     <td>{getSitesPerCellLabel(material)}</td>
                     <td>{getDftEnergyPerFormulaUnitLabel(material)}</td>
-                    <td>{formatPropertyValue(material.thermodynamics.formation_energy)}</td>
                     <td>{formatPropertyValue(material.thermodynamics.energy_above_hull)}</td>
+                    <td>{getPhononStabilityLabel(material)}</td>
                     <td>{formatPropertyValue(material.electronic.band_gap)}</td>
                   </tr>
                 ))}
