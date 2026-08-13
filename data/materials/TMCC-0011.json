@@ -1,33 +1,33 @@
 {
-  "material_id": "TMCC-0002",
-  "slug": "nb2s2c-r-3m",
+  "material_id": "TMCC-0011",
+  "slug": "nb2cs-p63mmc",
   "family": "TMCC",
-  "material_type": "pristine",
-  "formula": "Nb2S2C",
+  "material_type": "m2xa",
+  "formula": "Nb2CS",
   "host": {
-    "formula": "Nb2S2C",
+    "formula": "Nb2CS",
     "metal": "Nb",
     "chalcogen": "S",
     "anion": "C"
   },
   "intercalation": null,
-  "experimental_status": "experimental",
+  "experimental_status": "unknown",
   "calculation_status": "calculated",
   "structure": {
-    "space_group_symbol": "R-3m",
-    "space_group_number": 166,
-    "crystal_system": "trigonal",
+    "space_group_symbol": "P63/mmc",
+    "space_group_number": 194,
+    "crystal_system": "hexagonal",
     "lattice_parameters": {
       "a": {
-        "value": 3.271,
+        "value": 3.3436,
         "unit": "angstrom"
       },
       "b": {
-        "value": 3.2709999999999995,
+        "value": 3.3435999999999995,
         "unit": "angstrom"
       },
       "c": {
-        "value": 25.478,
+        "value": 11.5809,
         "unit": "angstrom"
       }
     },
@@ -46,28 +46,28 @@
       }
     },
     "layer_thickness": {
-      "value": 22.614,
+      "value": 9.78,
       "unit": "angstrom"
     },
     "vdw_gap": {
-      "value": 2.864,
+      "value": 1.801,
       "unit": "angstrom"
     },
     "atomic_sites": [
       {
         "label": "Nb1",
         "element": "Nb",
-        "fract_x": 1.0,
-        "fract_y": 1.0,
-        "fract_z": 0.62013,
+        "fract_x": 0.33333,
+        "fract_y": 0.66667,
+        "fract_z": 0.40554,
         "occupancy": 1
       },
       {
         "label": "Nb2",
         "element": "Nb",
-        "fract_x": 0.0,
-        "fract_y": 0.0,
-        "fract_z": 0.37987,
+        "fract_x": 0.66667,
+        "fract_y": 0.33333,
+        "fract_z": 0.59446,
         "occupancy": 1
       },
       {
@@ -75,79 +75,15 @@
         "element": "Nb",
         "fract_x": 0.66667,
         "fract_y": 0.33333,
-        "fract_z": 0.95346,
+        "fract_z": 0.90554,
         "occupancy": 1
       },
       {
         "label": "Nb4",
         "element": "Nb",
-        "fract_x": 0.66667,
-        "fract_y": 0.33333,
-        "fract_z": 0.71321,
-        "occupancy": 1
-      },
-      {
-        "label": "Nb5",
-        "element": "Nb",
         "fract_x": 0.33333,
         "fract_y": 0.66667,
-        "fract_z": 0.28679,
-        "occupancy": 1
-      },
-      {
-        "label": "Nb6",
-        "element": "Nb",
-        "fract_x": 0.33333,
-        "fract_y": 0.66667,
-        "fract_z": 0.04654,
-        "occupancy": 1
-      },
-      {
-        "label": "S1",
-        "element": "S",
-        "fract_x": 1.0,
-        "fract_y": 1.0,
-        "fract_z": 0.77713,
-        "occupancy": 1
-      },
-      {
-        "label": "S2",
-        "element": "S",
-        "fract_x": 0.0,
-        "fract_y": 0.0,
-        "fract_z": 0.22287,
-        "occupancy": 1
-      },
-      {
-        "label": "S3",
-        "element": "S",
-        "fract_x": 0.66667,
-        "fract_y": 0.33333,
-        "fract_z": 0.11047,
-        "occupancy": 1
-      },
-      {
-        "label": "S4",
-        "element": "S",
-        "fract_x": 0.66667,
-        "fract_y": 0.33333,
-        "fract_z": 0.5562,
-        "occupancy": 1
-      },
-      {
-        "label": "S5",
-        "element": "S",
-        "fract_x": 0.33333,
-        "fract_y": 0.66667,
-        "fract_z": 0.4438,
-        "occupancy": 1
-      },
-      {
-        "label": "S6",
-        "element": "S",
-        "fract_x": 0.33333,
-        "fract_y": 0.66667,
-        "fract_z": 0.88953,
+        "fract_z": 0.09446,
         "occupancy": 1
       },
       {
@@ -161,24 +97,32 @@
       {
         "label": "C2",
         "element": "C",
-        "fract_x": 0.66667,
-        "fract_y": 0.33333,
-        "fract_z": 0.33333,
+        "fract_x": 0.0,
+        "fract_y": 0.0,
+        "fract_z": 0.5,
         "occupancy": 1
       },
       {
-        "label": "C3",
-        "element": "C",
+        "label": "S1",
+        "element": "S",
         "fract_x": 0.33333,
         "fract_y": 0.66667,
-        "fract_z": 0.66667,
+        "fract_z": 0.75,
+        "occupancy": 1
+      },
+      {
+        "label": "S2",
+        "element": "S",
+        "fract_x": 0.66667,
+        "fract_y": 0.33333,
+        "fract_z": 0.25,
         "occupancy": 1
       }
     ]
   },
   "thermodynamics": {
     "total_energy": {
-      "value": -128.084426342545,
+      "value": -74.76657660115798,
       "unit": "eV/cell"
     },
     "formation_energy": {
@@ -199,22 +143,21 @@
   "mechanical": {},
   "electronic": {
     "band_gap": {
-      "value": 0.0,
+      "value": null,
       "unit": "eV"
     },
     "fermi_level": {
       "value": null,
       "unit": "eV"
     },
-    "dos_calculated": true,
-    "band_structure_calculated": false,
-    "electronic_character": "metallic"
+    "dos_calculated": false,
+    "band_structure_calculated": false
   },
   "energy_storage": {},
   "files": {
-    "cif": "/structures/TMCC-0002/structure.cif",
-    "poscar": "/structures/TMCC-0002/POSCAR",
-    "dos": "/figures/TMCC-0002/dos.csv",
+    "cif": "/structures/TMCC-0011/structure.cif",
+    "poscar": "/structures/TMCC-0011/POSCAR",
+    "dos": null,
     "band_structure": null
   },
   "provenance": {
