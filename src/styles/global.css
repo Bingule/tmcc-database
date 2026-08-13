@@ -1333,6 +1333,13 @@ td button {
   justify-content: space-between;
 }
 
+.chart-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .xrd-header h4 {
   margin: 0;
   font-size: 1rem;
@@ -1411,13 +1418,6 @@ td button {
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 1.1;
-  vector-effect: non-scaling-stroke;
-}
-
-.xrd-chart .xrd-stick {
-  stroke: #27566a;
-  stroke-linecap: round;
-  stroke-width: 1.15;
   vector-effect: non-scaling-stroke;
 }
 
@@ -1590,6 +1590,22 @@ td button {
   fill: #c93434;
   font-size: 13px;
   font-weight: 800;
+}
+
+.plot-reset {
+  cursor: pointer;
+}
+
+.plot-reset rect {
+  fill: #f8fbfa;
+  stroke: #c7d3cf;
+}
+
+.plot-reset text {
+  fill: #405058;
+  font-size: 11px;
+  font-weight: 700;
+  text-anchor: middle;
 }
 
 .electronic-legend text {

@@ -1,7 +1,7 @@
 import { Download } from "lucide-react";
-import { type PointerEvent, useEffect, useMemo, useState } from "react";
+import { type PointerEvent, type WheelEvent, useEffect, useMemo, useState } from "react";
 import { parseCifStructure, type ParsedCrystalStructure } from "../lib/crystal";
-import { exportPairDistributionCsv, exportXrdCsv, radiationPresets, simulatePairDistribution, simulateXrdPattern, type XrdPeak } from "../lib/xrd";
+import { exportPairDistributionCsv, exportXrdCsv, radiationPresets, simulatePairDistribution, simulateXrdPattern } from "../lib/xrd";
 import { getSpaceGroupSymbol } from "../lib/materials";
 import { publicAssetPath } from "../lib/paths";
 import type { MaterialRecord } from "../lib/types";
@@ -30,6 +30,8 @@ export function XrdViewer({ material }: { material: MaterialRecord }) {
   const [maxR, setMaxR] = useState(12);
   const [radiation, setRadiation] = useState(radiationPresets[0].label);
   const [wavelength, setWavelength] = useState(radiationPresets[0].wavelength);
+  const [xrdZoom, setXrdZoom] = useState<[number, number] | null>(null);
+  const [pdfZoom, setPdfZoom] = useState<[number, number] | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -62,10 +64,13 @@ export function XrdViewer({ material }: { material: MaterialRecord }) {
 
   const pattern = useMemo(() => {
     if (!structure) return null;
+    const peakWidth = Math.max(0.025, 0.16 * Math.min(wavelength / 1.5406, 1));
     return simulateXrdPattern(structure, {
       wavelength,
       minTwoTheta,
-      maxTwoTheta
+      maxTwoTheta,
+      peakWidth,
+      step: Math.max(0.008, peakWidth / 3)
     });
   }, [structure, wavelength, minTwoTheta, maxTwoTheta]);
   const pairDistribution = useMemo(() => {
@@ -100,6 +105,9 @@ export function XrdViewer({ material }: { material: MaterialRecord }) {
     downloadCsv(exportPairDistributionCsv(pairDistribution), makePdfFilename(material));
   }
 
+  useEffect(() => setXrdZoom(null), [minTwoTheta, maxTwoTheta, wavelength]);
+  useEffect(() => setPdfZoom(null), [minR, maxR, wavelength, minTwoTheta, maxTwoTheta]);
+
   function downloadCsv(content: string, filename: string) {
     const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -117,10 +125,13 @@ export function XrdViewer({ material }: { material: MaterialRecord }) {
           <h4>Simulated XRD</h4>
           <p>Powder pattern estimated from the current CIF structure.</p>
         </div>
-        <button className="secondary-button" type="button" onClick={exportCsv} disabled={!pattern}>
-          <Download size={15} />
-          Export CSV
-        </button>
+        <div className="chart-actions">
+          {xrdZoom && <button className="secondary-button" type="button" onClick={() => setXrdZoom(null)}>Reset zoom</button>}
+          <button className="secondary-button" type="button" onClick={exportCsv} disabled={!pattern}>
+            <Download size={15} />
+            Export CSV
+          </button>
+        </div>
       </div>
 
       <div className="xrd-controls">
@@ -169,13 +180,16 @@ export function XrdViewer({ material }: { material: MaterialRecord }) {
 
       <div className="xrd-chart">
         {pattern ? (
-          <StickChart
-            peaks={pattern.peaks}
-            minX={minTwoTheta}
-            maxX={maxTwoTheta}
+          <LineChart
+            points={pattern.points}
+            xKey="twoTheta"
+            yKey="intensity"
             xUnit="deg"
             yLabel="Intensity"
             dimensions={chartDimensions.standard}
+            visibleXRange={xrdZoom ?? [minTwoTheta, maxTwoTheta]}
+            fullXRange={[minTwoTheta, maxTwoTheta]}
+            onVisibleXRangeChange={setXrdZoom}
           />
         ) : <span>{status}</span>}
       </div>
@@ -186,10 +200,13 @@ export function XrdViewer({ material }: { material: MaterialRecord }) {
             <h4>Pair Distribution Function</h4>
             <p>r-space distribution estimated from the same wavelength and 2theta window.</p>
           </div>
-          <button className="secondary-button" type="button" onClick={exportPdfCsv} disabled={!pairDistribution}>
-            <Download size={15} />
-            Export PDF CSV
-          </button>
+          <div className="chart-actions">
+            {pdfZoom && <button className="secondary-button" type="button" onClick={() => setPdfZoom(null)}>Reset zoom</button>}
+            <button className="secondary-button" type="button" onClick={exportPdfCsv} disabled={!pairDistribution}>
+              <Download size={15} />
+              Export PDF CSV
+            </button>
+          </div>
         </div>
         <div className="xrd-controls pdf-controls">
           <label>
@@ -224,6 +241,9 @@ export function XrdViewer({ material }: { material: MaterialRecord }) {
               xUnit="Angstrom"
               yLabel="G(r)"
               dimensions={chartDimensions.compact}
+              visibleXRange={pdfZoom ?? [minR, maxR]}
+              fullXRange={[minR, maxR]}
+              onVisibleXRangeChange={setPdfZoom}
             />
           ) : (
             <span>{status}</span>
@@ -239,106 +259,16 @@ export function clampWavelength(value: number) {
   return Math.min(customWavelengthRange.max, Math.max(customWavelengthRange.min, value));
 }
 
-function StickChart({
-  peaks,
-  minX,
-  maxX,
-  xUnit,
-  yLabel,
-  dimensions
-}: {
-  peaks: XrdPeak[];
-  minX: number;
-  maxX: number;
-  xUnit: string;
-  yLabel: string;
-  dimensions: { width: number; height: number };
-}) {
-  const [hovered, setHovered] = useState<{ x: number; y: number; peak: XrdPeak } | null>(null);
-  const { width, height } = dimensions;
-  const padding = 34;
-  const plotWidth = width - padding * 2;
-  const plotHeight = height - padding * 2;
-  const xTicks = makeAxisTicks(minX, maxX);
-  const yMax = Math.max(...peaks.map((peak) => peak.intensity), 1);
-  const baselineY = height - padding;
-
-  function xFor(value: number) {
-    return padding + (value - minX) / (maxX - minX || 1) * plotWidth;
-  }
-
-  function yFor(value: number) {
-    return baselineY - value / yMax * plotHeight;
-  }
-
-  function handlePointerMove(event: PointerEvent<SVGSVGElement>) {
-    if (peaks.length === 0) return;
-    const rect = event.currentTarget.getBoundingClientRect();
-    const viewBoxX = (event.clientX - rect.left) / rect.width * width;
-    const clampedX = Math.min(width - padding, Math.max(padding, viewBoxX));
-    const ratio = (clampedX - padding) / plotWidth;
-    const value = minX + ratio * (maxX - minX);
-    const nearest = peaks.reduce((best, peak) =>
-      Math.abs(peak.twoTheta - value) < Math.abs(best.twoTheta - value) ? peak : best
-    , peaks[0]);
-    setHovered({ x: xFor(nearest.twoTheta), y: yFor(nearest.intensity), peak: nearest });
-  }
-
-  return (
-    <svg
-      viewBox={`0 0 ${width} ${height}`}
-      role="img"
-      aria-label={`${yLabel} stick pattern`}
-      onPointerMove={handlePointerMove}
-      onPointerLeave={() => setHovered(null)}
-    >
-      <line x1={padding} y1={baselineY} x2={width - padding} y2={baselineY} />
-      <line x1={padding} y1={padding} x2={padding} y2={baselineY} />
-      {xTicks.map((tick) => {
-        const x = xFor(tick);
-        return (
-          <g key={tick.toFixed(3)} className="axis-tick">
-            <line x1={x} y1={baselineY} x2={x} y2={baselineY + 4} />
-            <text x={x} y={height - 8}>{tick.toFixed(maxX - minX <= 15 ? 1 : 0)}</text>
-          </g>
-        );
-      })}
-      {peaks.map((peak, index) => {
-        const x = xFor(peak.twoTheta);
-        return (
-          <line
-            key={`${peak.twoTheta.toFixed(4)}-${index}`}
-            className="xrd-stick"
-            x1={x}
-            y1={baselineY}
-            x2={x}
-            y2={yFor(peak.intensity)}
-          />
-        );
-      })}
-      {hovered && (
-        <g className="chart-tooltip">
-          <line x1={hovered.x} y1={padding} x2={hovered.x} y2={baselineY} />
-          <circle cx={hovered.x} cy={hovered.y} r={3} />
-          <rect x={Math.min(hovered.x + 8, width - 172)} y={Math.max(8, hovered.y - 30)} width={164} height={24} rx={4} />
-          <text x={Math.min(hovered.x + 15, width - 165)} y={Math.max(23, hovered.y - 14)}>
-            {hovered.peak.twoTheta.toFixed(2)} {xUnit}, {hovered.peak.intensity.toFixed(1)}
-          </text>
-        </g>
-      )}
-      <text x={width - padding - 74} y={height - 8}>{xUnit}</text>
-      <text x={padding + 4} y={padding - 8}>{yLabel}</text>
-    </svg>
-  );
-}
-
 function LineChart<T extends Record<string, number>>({
   points,
   xKey,
   yKey,
   xUnit,
   yLabel,
-  dimensions
+  dimensions,
+  visibleXRange,
+  fullXRange,
+  onVisibleXRangeChange
 }: {
   points: T[];
   xKey: keyof T;
@@ -346,20 +276,24 @@ function LineChart<T extends Record<string, number>>({
   xUnit: string;
   yLabel: string;
   dimensions: { width: number; height: number };
+  visibleXRange: [number, number];
+  fullXRange: [number, number];
+  onVisibleXRangeChange: (range: [number, number] | null) => void;
 }) {
   const [hovered, setHovered] = useState<{ x: number; y: number; point: T } | null>(null);
   const { width, height } = dimensions;
   const padding = 34;
   const plotWidth = width - padding * 2;
   const plotHeight = height - padding * 2;
-  const minX = points[0]?.[xKey] ?? 0;
-  const maxX = points[points.length - 1]?.[xKey] ?? 1;
-  const minY = Math.min(...points.map((point) => point[yKey]), 0);
-  const maxY = Math.max(...points.map((point) => point[yKey]), 1);
+  const [minX, maxX] = visibleXRange;
+  const visiblePoints = points.filter((point) => point[xKey] >= minX && point[xKey] <= maxX);
+  const chartPoints = visiblePoints.length > 1 ? visiblePoints : points;
+  const minY = Math.min(...chartPoints.map((point) => point[yKey]), 0);
+  const maxY = Math.max(...chartPoints.map((point) => point[yKey]), 1);
   const ySpan = maxY - minY || 1;
   const zeroY = height - padding - (0 - minY) / ySpan * plotHeight;
   const xTicks = makeAxisTicks(Number(minX), Number(maxX));
-  const polyline = points.map((point) => {
+  const polyline = chartPoints.map((point) => {
     const x = padding + (point[xKey] - minX) / (maxX - minX || 1) * plotWidth;
     const y = height - padding - (point[yKey] - minY) / ySpan * plotHeight;
     return `${x.toFixed(1)},${y.toFixed(1)}`;
@@ -371,12 +305,38 @@ function LineChart<T extends Record<string, number>>({
     const clampedX = Math.min(width - padding, Math.max(padding, viewBoxX));
     const ratio = (clampedX - padding) / plotWidth;
     const value = minX + ratio * (maxX - minX);
-    const nearest = points.reduce((best, point) =>
+    const nearest = chartPoints.reduce((best, point) =>
       Math.abs(point[xKey] - value) < Math.abs(best[xKey] - value) ? point : best
-    , points[0]);
+    , chartPoints[0]);
     const x = padding + (nearest[xKey] - minX) / (maxX - minX || 1) * plotWidth;
     const y = height - padding - (nearest[yKey] - minY) / ySpan * plotHeight;
     setHovered({ x, y, point: nearest });
+  }
+
+  function handleWheel(event: WheelEvent<SVGSVGElement>) {
+    event.preventDefault();
+    const rect = event.currentTarget.getBoundingClientRect();
+    const viewBoxX = (event.clientX - rect.left) / rect.width * width;
+    const clampedX = Math.min(width - padding, Math.max(padding, viewBoxX));
+    const center = minX + (clampedX - padding) / plotWidth * (maxX - minX);
+    const factor = event.deltaY < 0 ? 0.78 : 1.28;
+    const nextSpan = Math.min(fullXRange[1] - fullXRange[0], Math.max((fullXRange[1] - fullXRange[0]) / 80, (maxX - minX) * factor));
+    const leftRatio = (center - minX) / (maxX - minX || 1);
+    let nextMin = center - nextSpan * leftRatio;
+    let nextMax = nextMin + nextSpan;
+    if (nextMin < fullXRange[0]) {
+      nextMin = fullXRange[0];
+      nextMax = nextMin + nextSpan;
+    }
+    if (nextMax > fullXRange[1]) {
+      nextMax = fullXRange[1];
+      nextMin = nextMax - nextSpan;
+    }
+    onVisibleXRangeChange(
+      Math.abs(nextMin - fullXRange[0]) < 1e-6 && Math.abs(nextMax - fullXRange[1]) < 1e-6
+        ? null
+        : [nextMin, nextMax]
+    );
   }
 
   return (
@@ -386,6 +346,8 @@ function LineChart<T extends Record<string, number>>({
       aria-label={`${yLabel} curve`}
       onPointerMove={handlePointerMove}
       onPointerLeave={() => setHovered(null)}
+      onWheel={handleWheel}
+      onDoubleClick={() => onVisibleXRangeChange(null)}
     >
       <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} />
       {minY < 0 && maxY > 0 && <line className="zero-axis" x1={padding} y1={zeroY} x2={width - padding} y2={zeroY} />}

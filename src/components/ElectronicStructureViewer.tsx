@@ -1,5 +1,5 @@
 import { Download } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { type WheelEvent, useEffect, useMemo, useState } from "react";
 import { makeElectronicDownloadFilename } from "../lib/materials";
 import { publicAssetPath } from "../lib/paths";
 import type { MaterialRecord } from "../lib/types";
@@ -182,26 +182,73 @@ export function ElectronicPlot({
   const allPoints = series.flatMap((item) => item.points);
   const dataMinX = Math.min(...allPoints.map((point) => point.x));
   const dataMaxX = Math.max(...allPoints.map((point) => point.x));
-  const minX = fixedXRange ? fixedXRange[0] : dataMinX;
-  const maxX = fixedXRange ? fixedXRange[1] : dataMaxX;
-  const minY = Math.min(...allPoints.map((point) => point.y));
-  const maxY = Math.max(...allPoints.map((point) => point.y));
+  const fullXRange: [number, number] = fixedXRange ?? [dataMinX, dataMaxX];
+  const [zoomRange, setZoomRange] = useState<[number, number] | null>(null);
+  const [minX, maxX] = zoomRange ?? fullXRange;
+  useEffect(() => setZoomRange(null), [fullXRange[0], fullXRange[1], series]);
+  const visibleSeries = useMemo(() => series.map((item) => ({
+    ...item,
+    points: item.points.filter((point) => point.x >= minX && point.x <= maxX)
+  })).filter((item) => item.points.length > 1), [maxX, minX, series]);
+  const plottedSeries = visibleSeries.length > 0 ? visibleSeries : series;
+  const plottedPoints = plottedSeries.flatMap((item) => item.points);
+  const minY = Math.min(...plottedPoints.map((point) => point.y));
+  const maxY = Math.max(...plottedPoints.map((point) => point.y));
   const colors = ["#0f1720", "#7b8790", "#27566a", "#b48b21", "#4f7f67", "#8a617a", "#a35b4f", "#5466a3"];
   const xAtZero = padding.left + (0 - minX) / (maxX - minX || 1) * plotWidth;
   const yAtZero = height - padding.bottom - (0 - minY) / (maxY - minY || 1) * plotHeight;
   const xTicks = fixedXRange ? rangeTicks(fixedXRange[0], fixedXRange[1], 1) : rangeTicks(minX, maxX, (maxX - minX) / 6);
 
-  const paths = useMemo(() => series.map((item, index) => {
+  const paths = useMemo(() => plottedSeries.map((item, index) => {
     const points = item.points.map((point) => {
       const x = padding.left + (point.x - minX) / (maxX - minX || 1) * plotWidth;
       const y = height - padding.bottom - (point.y - minY) / (maxY - minY || 1) * plotHeight;
       return `${x.toFixed(1)},${y.toFixed(1)}`;
     }).join(" ");
     return { label: item.label, points, color: colors[index % colors.length] };
-  }), [maxX, maxY, minX, minY, plotHeight, plotWidth, series]);
+  }), [maxX, maxY, minX, minY, plotHeight, plotWidth, plottedSeries]);
+
+  function handleWheel(event: WheelEvent<SVGSVGElement>) {
+    event.preventDefault();
+    const rect = event.currentTarget.getBoundingClientRect();
+    const viewBoxX = (event.clientX - rect.left) / rect.width * width;
+    const clampedX = Math.min(width - padding.right, Math.max(padding.left, viewBoxX));
+    const center = minX + (clampedX - padding.left) / plotWidth * (maxX - minX);
+    const factor = event.deltaY < 0 ? 0.78 : 1.28;
+    const fullSpan = fullXRange[1] - fullXRange[0];
+    const nextSpan = Math.min(fullSpan, Math.max(fullSpan / 80, (maxX - minX) * factor));
+    const leftRatio = (center - minX) / (maxX - minX || 1);
+    let nextMin = center - nextSpan * leftRatio;
+    let nextMax = nextMin + nextSpan;
+    if (nextMin < fullXRange[0]) {
+      nextMin = fullXRange[0];
+      nextMax = nextMin + nextSpan;
+    }
+    if (nextMax > fullXRange[1]) {
+      nextMax = fullXRange[1];
+      nextMin = nextMax - nextSpan;
+    }
+    setZoomRange(
+      Math.abs(nextMin - fullXRange[0]) < 1e-6 && Math.abs(nextMax - fullXRange[1]) < 1e-6
+        ? null
+        : [nextMin, nextMax]
+    );
+  }
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${yLabel} plot`}>
+    <svg
+      viewBox={`0 0 ${width} ${height}`}
+      role="img"
+      aria-label={`${yLabel} plot`}
+      onWheel={handleWheel}
+      onDoubleClick={() => setZoomRange(null)}
+    >
+      {zoomRange && (
+        <g className="plot-reset" role="button" tabIndex={0} onClick={() => setZoomRange(null)}>
+          <rect x={width - padding.right - 96} y="18" width="88" height="24" rx="5" />
+          <text x={width - padding.right - 52} y="34">Reset zoom</text>
+        </g>
+      )}
       <line x1={padding.left} y1={height - padding.bottom} x2={width - padding.right} y2={height - padding.bottom} />
       <line x1={padding.left} y1={padding.top} x2={padding.left} y2={height - padding.bottom} />
       {xTicks.map((tick) => {
