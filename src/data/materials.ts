@@ -1,4 +1,4 @@
-﻿import TMCC0001 from "../../data/materials/TMCC-0001.json";
+import TMCC0001 from "../../data/materials/TMCC-0001.json";
 import TMCC0002 from "../../data/materials/TMCC-0002.json";
 import TMCC0003 from "../../data/materials/TMCC-0003.json";
 import TMCC0004 from "../../data/materials/TMCC-0004.json";
@@ -62,6 +62,33 @@ import TMCC0223 from "../../data/materials/TMCC-0223.json";
 import TMCC0224 from "../../data/materials/TMCC-0224.json";
 import TMCC0225 from "../../data/materials/TMCC-0225.json";
 import TMCC0226 from "../../data/materials/TMCC-0226.json";
+import TMCC0301 from "../../data/materials/TMCC-0301.json";
+import TMCC0302 from "../../data/materials/TMCC-0302.json";
+import TMCC0303 from "../../data/materials/TMCC-0303.json";
+import TMCC0304 from "../../data/materials/TMCC-0304.json";
+import TMCC0305 from "../../data/materials/TMCC-0305.json";
+import TMCC0306 from "../../data/materials/TMCC-0306.json";
+import TMCC0307 from "../../data/materials/TMCC-0307.json";
+import TMCC0308 from "../../data/materials/TMCC-0308.json";
+import TMCC0309 from "../../data/materials/TMCC-0309.json";
+import TMCC0310 from "../../data/materials/TMCC-0310.json";
+import TMCC0311 from "../../data/materials/TMCC-0311.json";
+import TMCC0312 from "../../data/materials/TMCC-0312.json";
+import TMCC0313 from "../../data/materials/TMCC-0313.json";
+import TMCC0314 from "../../data/materials/TMCC-0314.json";
+import TMCC0315 from "../../data/materials/TMCC-0315.json";
+import TMCC0316 from "../../data/materials/TMCC-0316.json";
+import TMCC0317 from "../../data/materials/TMCC-0317.json";
+import TMCC0318 from "../../data/materials/TMCC-0318.json";
+import TMCC0319 from "../../data/materials/TMCC-0319.json";
+import TMCC0320 from "../../data/materials/TMCC-0320.json";
+import TMCC0321 from "../../data/materials/TMCC-0321.json";
+import TMCC0322 from "../../data/materials/TMCC-0322.json";
+import TMCC0323 from "../../data/materials/TMCC-0323.json";
+import TMCC0324 from "../../data/materials/TMCC-0324.json";
+import TMCC0325 from "../../data/materials/TMCC-0325.json";
+import TMCC0326 from "../../data/materials/TMCC-0326.json";
+
 import type { MaterialRecord } from "../lib/types";
 
 export const materials = [
@@ -128,5 +155,31 @@ export const materials = [
   TMCC0223,
   TMCC0224,
   TMCC0225,
-  TMCC0226
+  TMCC0226,
+  TMCC0301,
+  TMCC0302,
+  TMCC0303,
+  TMCC0304,
+  TMCC0305,
+  TMCC0306,
+  TMCC0307,
+  TMCC0308,
+  TMCC0309,
+  TMCC0310,
+  TMCC0311,
+  TMCC0312,
+  TMCC0313,
+  TMCC0314,
+  TMCC0315,
+  TMCC0316,
+  TMCC0317,
+  TMCC0318,
+  TMCC0319,
+  TMCC0320,
+  TMCC0321,
+  TMCC0322,
+  TMCC0323,
+  TMCC0324,
+  TMCC0325,
+  TMCC0326
 ] as MaterialRecord[];
