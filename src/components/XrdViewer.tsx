@@ -1,13 +1,13 @@
 import { Download } from "lucide-react";
 import { type PointerEvent, useEffect, useMemo, useState } from "react";
 import { parseCifStructure, type ParsedCrystalStructure } from "../lib/crystal";
-import { exportPairDistributionCsv, exportXrdCsv, radiationPresets, simulatePairDistribution, simulateXrdPattern } from "../lib/xrd";
+import { exportPairDistributionCsv, exportXrdCsv, radiationPresets, simulatePairDistribution, simulateXrdPattern, type XrdPeak } from "../lib/xrd";
 import { getSpaceGroupSymbol } from "../lib/materials";
 import { publicAssetPath } from "../lib/paths";
 import type { MaterialRecord } from "../lib/types";
 
 const customRadiation = "Custom wavelength";
-const customWavelengthRange = { min: 0.5, max: 2.5 };
+const customWavelengthRange = { min: 0.05, max: 2.5 };
 
 export const chartDimensions = {
   standard: { width: 780, height: 270 },
@@ -162,17 +162,17 @@ export function XrdViewer({ material }: { material: MaterialRecord }) {
             onChange={(event) => updateCustomWavelength(Number(event.target.value))}
           />
           {radiation === customRadiation && (
-            <small className="wavelength-hint">Custom range: 0.5-2.5 A</small>
+            <small className="wavelength-hint">Custom range: 0.05-2.5 A</small>
           )}
         </label>
       </div>
 
       <div className="xrd-chart">
         {pattern ? (
-          <LineChart
-            points={pattern.points}
-            xKey="twoTheta"
-            yKey="intensity"
+          <StickChart
+            peaks={pattern.peaks}
+            minX={minTwoTheta}
+            maxX={maxTwoTheta}
             xUnit="deg"
             yLabel="Intensity"
             dimensions={chartDimensions.standard}
@@ -237,6 +237,99 @@ export function XrdViewer({ material }: { material: MaterialRecord }) {
 export function clampWavelength(value: number) {
   if (!Number.isFinite(value)) return radiationPresets[0].wavelength;
   return Math.min(customWavelengthRange.max, Math.max(customWavelengthRange.min, value));
+}
+
+function StickChart({
+  peaks,
+  minX,
+  maxX,
+  xUnit,
+  yLabel,
+  dimensions
+}: {
+  peaks: XrdPeak[];
+  minX: number;
+  maxX: number;
+  xUnit: string;
+  yLabel: string;
+  dimensions: { width: number; height: number };
+}) {
+  const [hovered, setHovered] = useState<{ x: number; y: number; peak: XrdPeak } | null>(null);
+  const { width, height } = dimensions;
+  const padding = 34;
+  const plotWidth = width - padding * 2;
+  const plotHeight = height - padding * 2;
+  const xTicks = makeAxisTicks(minX, maxX);
+  const yMax = Math.max(...peaks.map((peak) => peak.intensity), 1);
+  const baselineY = height - padding;
+
+  function xFor(value: number) {
+    return padding + (value - minX) / (maxX - minX || 1) * plotWidth;
+  }
+
+  function yFor(value: number) {
+    return baselineY - value / yMax * plotHeight;
+  }
+
+  function handlePointerMove(event: PointerEvent<SVGSVGElement>) {
+    if (peaks.length === 0) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const viewBoxX = (event.clientX - rect.left) / rect.width * width;
+    const clampedX = Math.min(width - padding, Math.max(padding, viewBoxX));
+    const ratio = (clampedX - padding) / plotWidth;
+    const value = minX + ratio * (maxX - minX);
+    const nearest = peaks.reduce((best, peak) =>
+      Math.abs(peak.twoTheta - value) < Math.abs(best.twoTheta - value) ? peak : best
+    , peaks[0]);
+    setHovered({ x: xFor(nearest.twoTheta), y: yFor(nearest.intensity), peak: nearest });
+  }
+
+  return (
+    <svg
+      viewBox={`0 0 ${width} ${height}`}
+      role="img"
+      aria-label={`${yLabel} stick pattern`}
+      onPointerMove={handlePointerMove}
+      onPointerLeave={() => setHovered(null)}
+    >
+      <line x1={padding} y1={baselineY} x2={width - padding} y2={baselineY} />
+      <line x1={padding} y1={padding} x2={padding} y2={baselineY} />
+      {xTicks.map((tick) => {
+        const x = xFor(tick);
+        return (
+          <g key={tick.toFixed(3)} className="axis-tick">
+            <line x1={x} y1={baselineY} x2={x} y2={baselineY + 4} />
+            <text x={x} y={height - 8}>{tick.toFixed(maxX - minX <= 15 ? 1 : 0)}</text>
+          </g>
+        );
+      })}
+      {peaks.map((peak, index) => {
+        const x = xFor(peak.twoTheta);
+        return (
+          <line
+            key={`${peak.twoTheta.toFixed(4)}-${index}`}
+            className="xrd-stick"
+            x1={x}
+            y1={baselineY}
+            x2={x}
+            y2={yFor(peak.intensity)}
+          />
+        );
+      })}
+      {hovered && (
+        <g className="chart-tooltip">
+          <line x1={hovered.x} y1={padding} x2={hovered.x} y2={baselineY} />
+          <circle cx={hovered.x} cy={hovered.y} r={3} />
+          <rect x={Math.min(hovered.x + 8, width - 172)} y={Math.max(8, hovered.y - 30)} width={164} height={24} rx={4} />
+          <text x={Math.min(hovered.x + 15, width - 165)} y={Math.max(23, hovered.y - 14)}>
+            {hovered.peak.twoTheta.toFixed(2)} {xUnit}, {hovered.peak.intensity.toFixed(1)}
+          </text>
+        </g>
+      )}
+      <text x={width - padding - 74} y={height - 8}>{xUnit}</text>
+      <text x={padding + 4} y={padding - 8}>{yLabel}</text>
+    </svg>
+  );
 }
 
 function LineChart<T extends Record<string, number>>({

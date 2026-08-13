@@ -1414,6 +1414,13 @@ td button {
   vector-effect: non-scaling-stroke;
 }
 
+.xrd-chart .xrd-stick {
+  stroke: #27566a;
+  stroke-linecap: round;
+  stroke-width: 1.15;
+  vector-effect: non-scaling-stroke;
+}
+
 .xrd-chart text {
   fill: #607078;
   font-size: 10px;

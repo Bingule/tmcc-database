@@ -96,8 +96,9 @@ describe("XRD simulation", () => {
     expect(makeAxisTicks(5, 90).length).toBeGreaterThanOrEqual(7);
   });
 
-  it("keeps custom XRD wavelengths inside the supported viewer range", () => {
-    expect(clampWavelength(0.1609)).toBe(0.5);
+  it("accepts synchrotron-style short custom XRD wavelengths inside the viewer range", () => {
+    expect(clampWavelength(0.1609)).toBe(0.1609);
+    expect(clampWavelength(0.01)).toBe(0.05);
     expect(clampWavelength(1.2345)).toBe(1.2345);
     expect(clampWavelength(3.1)).toBe(2.5);
   });
