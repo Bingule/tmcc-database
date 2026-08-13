@@ -33,7 +33,14 @@ export function formatPropertyValue(value: unknown) {
     if (unitValue.value === null || unitValue.value === undefined || unitValue.value === "") {
       return "-";
     }
+    if (typeof unitValue.value === "number") {
+      return formatNumber(unitValue.value);
+    }
     return String(unitValue.value);
+  }
+
+  if (typeof value === "number") {
+    return formatNumber(value);
   }
 
   return String(value);
