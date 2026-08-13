@@ -27,6 +27,7 @@ import TMCC0112 from "../../data/materials/TMCC-0112.json";
 import TMCC0113 from "../../data/materials/TMCC-0113.json";
 import TMCC0114 from "../../data/materials/TMCC-0114.json";
 import TMCC0115 from "../../data/materials/TMCC-0115.json";
+import TMCC0119 from "../../data/materials/TMCC-0119.json";
 import type { MaterialRecord } from "../lib/types";
 
 export const materials = [
@@ -58,5 +59,6 @@ export const materials = [
   TMCC0112,
   TMCC0113,
   TMCC0114,
-  TMCC0115
+  TMCC0115,
+  TMCC0119
 ] as MaterialRecord[];
