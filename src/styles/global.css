@@ -420,27 +420,27 @@ main {
 
 .hero-affiliation {
   position: absolute;
-  right: 3%;
-  bottom: 8px;
+  right: 1.8%;
+  bottom: 2px;
   z-index: 2;
   display: grid;
-  gap: 3px;
-  width: min(34vw, 420px);
-  padding: 8px 12px;
+  gap: 2px;
+  width: min(30vw, 360px);
+  padding: 7px 10px;
   border-radius: 6px;
-  color: #46555b;
-  background: rgba(241, 247, 244, 0.58);
+  color: rgba(70, 85, 91, 0.82);
+  background: rgba(241, 247, 244, 0.42);
   box-shadow: none;
-  backdrop-filter: blur(3px);
+  backdrop-filter: blur(2px);
 }
 
 .hero-affiliation strong {
-  color: #16232c;
-  font-size: 0.98rem;
+  color: rgba(22, 35, 44, 0.84);
+  font-size: 0.88rem;
 }
 
 .hero-affiliation span {
-  font-size: 0.86rem;
+  font-size: 0.78rem;
   line-height: 1.35;
 }
 
