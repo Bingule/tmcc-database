@@ -25,6 +25,7 @@ type Props = {
   };
   categoryFilter?: ExplorerCategoryFilter;
   onCategoryFilterChange?: (filter: ExplorerCategoryFilter) => void;
+  onResultCountChange?: (count: number) => void;
 };
 
 const MAX_VISIBLE_ELEMENT_SEARCH_RESULTS = 1000;
@@ -49,7 +50,8 @@ export function MaterialExplorer({
   onSelect,
   elementSearch,
   categoryFilter = null,
-  onCategoryFilterChange = () => undefined
+  onCategoryFilterChange = () => undefined,
+  onResultCountChange = () => undefined
 }: Props) {
   const [query, setQuery] = useState("");
   const [metal, setMetal] = useState("all");
@@ -104,6 +106,10 @@ export function MaterialExplorer({
   const hasTooManyElementMatches =
     elementSearch.elements.length > 0 && filtered.length > MAX_VISIBLE_ELEMENT_SEARCH_RESULTS;
   const visibleMaterials = hasTooManyElementMatches ? [] : filtered.slice(pageStart, pageEnd);
+  useEffect(() => {
+    onResultCountChange(filtered.length);
+  }, [filtered.length, onResultCountChange]);
+
   const handleSort = (key: SortKey) => {
     setSort((current) => ({
       key,

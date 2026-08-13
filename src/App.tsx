@@ -14,6 +14,7 @@ export default function App() {
     mode: "only"
   });
   const [explorerCategoryFilter, setExplorerCategoryFilter] = useState<ExplorerCategoryFilter>(null);
+  const [explorerResultCount, setExplorerResultCount] = useState(materials.length);
   const selectedMaterial = materials.find((material) => material.material_id === selectedId) ?? materials[0];
   const stats = useMemo(() => getMaterialStats(materials), []);
 
@@ -139,9 +140,10 @@ export default function App() {
         elementSearch={elementSearch}
         categoryFilter={explorerCategoryFilter}
         onCategoryFilterChange={setExplorerCategoryFilter}
+        onResultCountChange={setExplorerResultCount}
       />
 
-      <MaterialDetail material={selectedMaterial} />
+      {explorerResultCount > 0 && <MaterialDetail material={selectedMaterial} />}
 
       <section id="methodology" className="methodology">
         <h2>References / Methodology</h2>
