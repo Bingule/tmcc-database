@@ -183,9 +183,14 @@ export default function App() {
           as guarantees of experimental synthesizability.
         </p>
         <div className="methodology-contact" aria-label="Contact">
-          <span>Contact</span>
-          <a href="mailto:wui@vscht.cz">wui@vscht.cz</a>
-          <a href="mailto:soferz@vscht.cz">soferz@vscht.cz</a>
+          <span className="contact-label">Contact</span>
+          <div className="contact-details">
+            <div className="contact-links">
+              <a href="mailto:wui@vscht.cz">Dr. Wu: wui@vscht.cz</a>
+              <a href="mailto:soferz@vscht.cz">Dr. Sofer: soferz@vscht.cz</a>
+            </div>
+            <p>Department of Inorganic Chemistry, University of Chemistry and Technology Prague, Technická 5, 166 28 Prague, Czech Republic.</p>
+          </div>
         </div>
       </section>
 

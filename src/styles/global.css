@@ -1523,20 +1523,38 @@ td button {
 }
 
 .methodology-contact {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px 16px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px 18px;
+  align-items: start;
   margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #edf0ee;
   color: #46555b;
 }
 
-.methodology-contact span {
+.contact-label {
   font-size: 0.78rem;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #5d715f;
+}
+
+.contact-details {
+  display: grid;
+  gap: 6px;
+}
+
+.contact-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+}
+
+.methodology-contact p {
+  margin: 0;
+  line-height: 1.55;
 }
 
 .methodology-contact a {
