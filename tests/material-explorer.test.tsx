@@ -138,7 +138,7 @@ describe("MaterialExplorer", () => {
       />
     );
 
-    expect(markup).toContain("<span>DFT Energy</span><small class=\"column-unit\">eV/f.u.</small>");
+    expect(markup).toContain("<span>DFT Energy</span><small class=\"column-unit\">eV/formula</small>");
     expect(markup).toContain("<span>Formation Energy</span><small class=\"column-unit\">eV/formula</small>");
     expect(markup).toContain("<span>Energy Above Hull</span><small class=\"column-unit\">eV/atom</small>");
     expect(markup).toContain("<span>Band Gap</span><small class=\"column-unit\">eV</small>");
@@ -202,7 +202,7 @@ describe("MaterialExplorer", () => {
     expect(markup).toContain("<th>Subclass</th>");
     expect(markup).toContain("<td><span class=\"cell-stack\"><span>trigonal</span></span></td>");
     expect(markup).toContain("<td>TMCDC</td>");
-    expect(markup).toContain("<th>Intercalated TM</th>");
+    expect(markup).toContain("<th><span>Intercalated</span><small class=\"column-unit\">TM</small></th>");
   });
 
   it("uses a scoped class for materials-table alignment", () => {

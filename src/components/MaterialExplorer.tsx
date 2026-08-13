@@ -115,9 +115,9 @@ export function MaterialExplorer({ materials, selectedId, onSelect, elementSearc
                   <th>Structure Type</th>
                   <th>Subclass</th>
                   <th>Space Group</th>
-                  <th>Intercalated TM</th>
+                  <th><span>Intercalated</span><small className="column-unit">TM</small></th>
                   <th>Sites/cell</th>
-                  <ColumnHeader label="DFT Energy" unit="eV/f.u." />
+                  <ColumnHeader label="DFT Energy" unit="eV/formula" />
                   <ColumnHeader label="Formation Energy" unit="eV/formula" />
                   <ColumnHeader label="Energy Above Hull" unit="eV/atom" />
                   <ColumnHeader label="Band Gap" unit="eV" />
