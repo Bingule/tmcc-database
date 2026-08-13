@@ -46,7 +46,7 @@
       }
     },
     "layer_thickness": {
-      "value": 22.614,
+      "value": 5.629,
       "unit": "angstrom"
     },
     "vdw_gap": {
@@ -203,7 +203,7 @@
       "unit": "eV"
     },
     "fermi_level": {
-      "value": null,
+      "value": 8.98112,
       "unit": "eV"
     },
     "dos_calculated": true,

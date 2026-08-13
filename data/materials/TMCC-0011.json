@@ -147,7 +147,7 @@
       "unit": "eV"
     },
     "fermi_level": {
-      "value": null,
+      "value": 12.18543,
       "unit": "eV"
     },
     "dos_calculated": false,

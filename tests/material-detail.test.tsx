@@ -86,4 +86,12 @@ describe("MaterialDetail", () => {
     expect(markup).toContain("Lattice setting");
     expect(markup).toContain("rhombohedral setting (hexagonal axes)");
   });
+
+  it("reports the per-layer thickness for R-3m hexagonal cells", () => {
+    const material = materials.find((item) => item.material_id === "TMCC-0002") ?? materials[1];
+    const markup = renderToStaticMarkup(<MaterialDetail material={material} />);
+
+    expect(markup).toContain("5.629");
+    expect(markup).not.toContain("22.614");
+  });
 });
