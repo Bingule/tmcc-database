@@ -91,6 +91,7 @@ import TMCC0326 from "../../data/materials/TMCC-0326.json";
 import TMCC0401 from "../../data/materials/TMCC-0401.json";
 import TMCC0402 from "../../data/materials/TMCC-0402.json";
 import TMCC0403 from "../../data/materials/TMCC-0403.json";
+import TMCC0405 from "../../data/materials/TMCC-0405.json";
 import TMCC0407 from "../../data/materials/TMCC-0407.json";
 import TMCC0408 from "../../data/materials/TMCC-0408.json";
 import TMCC0409 from "../../data/materials/TMCC-0409.json";
@@ -210,6 +211,7 @@ export const materials = [
   TMCC0401,
   TMCC0402,
   TMCC0403,
+  TMCC0405,
   TMCC0407,
   TMCC0408,
   TMCC0409,
