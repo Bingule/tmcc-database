@@ -7,6 +7,7 @@ import { publicAssetPath } from "../lib/paths";
 import type { MaterialRecord } from "../lib/types";
 
 const customRadiation = "Custom wavelength";
+const customWavelengthRange = { min: 0.5, max: 2.5 };
 
 export const chartDimensions = {
   standard: { width: 780, height: 270 },
@@ -84,6 +85,11 @@ export function XrdViewer({ material }: { material: MaterialRecord }) {
     if (preset) setWavelength(preset.wavelength);
   }
 
+  function updateCustomWavelength(next: number) {
+    setRadiation(customRadiation);
+    setWavelength(clampWavelength(next));
+  }
+
   function exportCsv() {
     if (!pattern) return;
     downloadCsv(exportXrdCsv(pattern.points), makeXrdFilename(material));
@@ -149,14 +155,15 @@ export function XrdViewer({ material }: { material: MaterialRecord }) {
           <span>Wavelength (Angstrom)</span>
           <input
             type="number"
-            min={0.1}
+            min={customWavelengthRange.min}
+            max={customWavelengthRange.max}
             step={0.0001}
             value={wavelength}
-            onChange={(event) => {
-              setRadiation(customRadiation);
-              setWavelength(Number(event.target.value));
-            }}
+            onChange={(event) => updateCustomWavelength(Number(event.target.value))}
           />
+          {radiation === customRadiation && (
+            <small className="wavelength-hint">Custom range: 0.5-2.5 A</small>
+          )}
         </label>
       </div>
 
@@ -225,6 +232,11 @@ export function XrdViewer({ material }: { material: MaterialRecord }) {
       </div>
     </div>
   );
+}
+
+export function clampWavelength(value: number) {
+  if (!Number.isFinite(value)) return radiationPresets[0].wavelength;
+  return Math.min(customWavelengthRange.max, Math.max(customWavelengthRange.min, value));
 }
 
 function LineChart<T extends Record<string, number>>({

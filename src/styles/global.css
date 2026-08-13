@@ -1359,6 +1359,12 @@ td button {
   font-size: 0.76rem;
 }
 
+.wavelength-hint {
+  color: var(--muted);
+  font-size: 0.68rem;
+  line-height: 1.05;
+}
+
 .xrd-controls input,
 .xrd-controls select {
   min-height: 34px;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chartDimensions, makeAxisTicks } from "../src/components/XrdViewer";
+import { chartDimensions, clampWavelength, makeAxisTicks } from "../src/components/XrdViewer";
 import { parseCifStructure } from "../src/lib/crystal";
 import { exportPairDistributionCsv, exportXrdCsv, simulatePairDistribution, simulateXrdPattern } from "../src/lib/xrd";
 
@@ -94,5 +94,11 @@ describe("XRD simulation", () => {
     expect(chartDimensions.standard.height).toBe(270);
     expect(chartDimensions.compact.height).toBe(225);
     expect(makeAxisTicks(5, 90).length).toBeGreaterThanOrEqual(7);
+  });
+
+  it("keeps custom XRD wavelengths inside the supported viewer range", () => {
+    expect(clampWavelength(0.1609)).toBe(0.5);
+    expect(clampWavelength(1.2345)).toBe(1.2345);
+    expect(clampWavelength(3.1)).toBe(2.5);
   });
 });
