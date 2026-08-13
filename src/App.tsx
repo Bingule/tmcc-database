@@ -15,12 +15,16 @@ export default function App() {
   });
   const [explorerCategoryFilter, setExplorerCategoryFilter] = useState<ExplorerCategoryFilter>(null);
   const [explorerResultCount, setExplorerResultCount] = useState(materials.length);
-  const selectedMaterial = materials.find((material) => material.material_id === selectedId) ?? materials[0];
+
+  const selectedMaterial =
+    materials.find((material) => material.material_id === selectedId) ?? materials[0];
+
   const stats = useMemo(() => getMaterialStats(materials), []);
 
   function selectMaterial(materialId: string) {
     setSelectedId(materialId);
     const next = materials.find((material) => material.material_id === materialId);
+
     if (next && typeof window !== "undefined") {
       const url = new URL(window.location.href);
       url.searchParams.set("material", next.slug);
@@ -43,14 +47,21 @@ export default function App() {
           <button className="nav-button" type="button" onClick={goHome}>
             Home
           </button>
+
           <a href="#selector">Selector</a>
           <a href="#periodic-table">Periodic table</a>
           <a href="#explorer">Explorer</a>
           <a href="#methodology">Methodology</a>
-          <button className="login-button" type="button" title="User accounts will be added with the hosted database backend">
+
+          <button
+            className="login-button"
+            type="button"
+            title="User accounts will be added with the hosted database backend"
+          >
             Login
           </button>
         </nav>
+
         <section
           className="hero-shell home-click-target"
           role="button"
@@ -66,6 +77,7 @@ export default function App() {
         >
           <div className="hero-structure-mark" aria-hidden="true">
             <div className="tmcc-wordmark">TMCC</div>
+
             <div className="structure-family-card family-vdws">
               <span className="family-label">TMCDC M2X2C</span>
               <span className="sheet sheet-top" />
@@ -75,6 +87,7 @@ export default function App() {
               <span className="atom a atom-3" />
               <span className="atom x atom-4" />
             </div>
+
             <div className="structure-family-card family-intercalated">
               <span className="family-label">Intercalated TMCC/TMCDC</span>
               <span className="sheet sheet-top" />
@@ -84,6 +97,7 @@ export default function App() {
               <span className="atom a atom-3" />
               <span className="atom intercalant atom-5" />
             </div>
+
             <div className="structure-family-card family-m2xa">
               <span className="family-label">TMCC M2XC/M2XA</span>
               <span className="sheet sheet-single" />
@@ -92,22 +106,35 @@ export default function App() {
               <span className="atom a atom-3" />
             </div>
           </div>
+
           <div className="hero-copy">
             <p className="eyebrow">TMCC Database v0.1</p>
-            <h1>TMCC Materials Database</h1>
-            <p className="subtitle">A materials database for layered transition-metal chalcogenide carbides and nitrides</p>
-            <p className="hero-note">
-              TMCC is used as the broad family covering M2XA, vdW TMCDC M2X2A, and intercalated
-              TMCC/TMCDC records. M is a transition metal, X is S/Se/Te, and A is C or future N.
-              TMCDC records describe X-M-A-M-X layered units in P-3m1 or R-3m variants; intercalated
-              entries place metal atoms between vdW TMCDC layers, while M2XA TMCC structures are tracked separately.
+
+            <h1>Transition Metal Carbochalcogenide (TMCC) Database</h1>
+
+            <p className="subtitle">
+              A database for transition metal carbochalcogenides, including TMCC,
+              TMCDC, and intercalated layered materials
             </p>
+
+            <p className="hero-note">
+              TMCC is used as the broad family covering M2XA, vdW TMCDC M2X2A, and
+              intercalated TMCC/TMCDC records. M is a transition metal, X is S/Se/Te,
+              and A is C or future N. TMCDC records describe X-M-A-M-X layered units
+              in P-3m1 or R-3m variants; intercalated entries place metal atoms between
+              vdW TMCDC layers, while M2XA TMCC structures are tracked separately.
+            </p>
+
             <div className="update-strip" aria-label="Database update status">
               <span className="status-dot" aria-hidden="true" />
               <span>Continuously updated</span>
-              <span>DFT results, DOS, structural files, and experimental records are added as calculations and measurements finish.</span>
+              <span>
+                DFT results, DOS, structural files, and experimental records are added
+                as calculations and measurements finish.
+              </span>
             </div>
           </div>
+
           <div className="hero-affiliation" aria-label="Project affiliation">
             <strong>Dr. Wu / Dr. Sofer</strong>
             <span>Department of Inorganic Chemistry</span>
@@ -118,7 +145,12 @@ export default function App() {
       </header>
 
       <section className="stats-grid" aria-label="Database statistics">
-        <Stat icon={<Database size={18} />} label="Compositions" value={stats.totalCompositions} />
+        <Stat
+          icon={<Database size={18} />}
+          label="Compositions"
+          value={stats.totalCompositions}
+        />
+
         <Stat
           icon={<Table2 size={18} />}
           label="Structures"
@@ -126,42 +158,81 @@ export default function App() {
           active={explorerCategoryFilter === null}
           onClick={() => setExplorerCategoryFilter(null)}
         />
+
         <Stat
           icon={<FlaskConical size={18} />}
           label="TMCDCs (M2X2C)"
           value={stats.tmcdc}
           active={explorerCategoryFilter === "tmcdc"}
-          onClick={() => setExplorerCategoryFilter((current) => current === "tmcdc" ? null : "tmcdc")}
+          onClick={() =>
+            setExplorerCategoryFilter((current) =>
+              current === "tmcdc" ? null : "tmcdc"
+            )
+          }
         />
+
         <Stat
           icon={<Atom size={18} />}
           label="Intercalated TMCC/TMCDC"
           value={stats.intercalatedTmcc}
           active={explorerCategoryFilter === "intercalated"}
-          onClick={() => setExplorerCategoryFilter((current) => current === "intercalated" ? null : "intercalated")}
+          onClick={() =>
+            setExplorerCategoryFilter((current) =>
+              current === "intercalated" ? null : "intercalated"
+            )
+          }
         />
+
         <Stat
           icon={<Layers3 size={18} />}
           label="TMCCs (M2XC / M2XA)"
           value={stats.nonVdwsM2xa}
           active={explorerCategoryFilter === "tmcc"}
-          onClick={() => setExplorerCategoryFilter((current) => current === "tmcc" ? null : "tmcc")}
+          onClick={() =>
+            setExplorerCategoryFilter((current) =>
+              current === "tmcc" ? null : "tmcc"
+            )
+          }
         />
       </section>
 
       <section id="selector" className="section-grid single">
-        <MaterialSelector materials={materials} selectedId={selectedId} onSelect={selectMaterial} />
+        <MaterialSelector
+          materials={materials}
+          selectedId={selectedId}
+          onSelect={selectMaterial}
+        />
       </section>
 
-      <PeriodicTable materials={materials} onMetalSelect={(metal) => {
-        const match = materials.find((material) => material.host.metal === metal);
-        if (match) selectMaterial(match.material_id);
-      }} onElementSearch={(elements, mode) => {
-        setElementSearch({ elements, mode });
-        const match = filterMaterialsByElementSet(materials, elements, mode)[0];
-        if (match) selectMaterial(match.material_id);
-        document.getElementById("explorer")?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }} />
+      <PeriodicTable
+        materials={materials}
+        onMetalSelect={(metal) => {
+          const match = materials.find(
+            (material) => material.host.metal === metal
+          );
+
+          if (match) {
+            selectMaterial(match.material_id);
+          }
+        }}
+        onElementSearch={(elements, mode) => {
+          setElementSearch({ elements, mode });
+
+          const match = filterMaterialsByElementSet(
+            materials,
+            elements,
+            mode
+          )[0];
+
+          if (match) {
+            selectMaterial(match.material_id);
+          }
+
+          document
+            .getElementById("explorer")
+            ?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }}
+      />
 
       <MaterialExplorer
         materials={materials}
@@ -173,30 +244,48 @@ export default function App() {
         onResultCountChange={setExplorerResultCount}
       />
 
-      {explorerResultCount > 0 && <MaterialDetail material={selectedMaterial} />}
+      {explorerResultCount > 0 && (
+        <MaterialDetail material={selectedMaterial} />
+      )}
 
       <section id="methodology" className="methodology">
         <h2>References / Methodology</h2>
+
         <p>
-          No publications, DOIs, experimental datasets, or stability thresholds have been entered in
-          this prototype. TMCC is used as the general material-family name; TMCDC is reserved for vdW
-          M2X2A carbodichalcogenide/carbonitride structures and their intercalated derivatives. Each future
-          record should include calculation settings, structural files, experimental source files where
-          available, workflow version, date, and source.
+          No publications, DOIs, experimental datasets, or stability thresholds
+          have been entered in this prototype. TMCC is used as the general
+          material-family name; TMCDC is reserved for vdW M2X2A
+          carbodichalcogenide/carbonitride structures and their intercalated
+          derivatives. Each future record should include calculation settings,
+          structural files, experimental source files where available, workflow
+          version, date, and source.
         </p>
+
         <p className="disclaimer">
-          Computationally predicted materials have not necessarily been experimentally synthesized.
-          Stability classifications depend on the computational methodology and should not be interpreted
-          as guarantees of experimental synthesizability.
+          Computationally predicted materials have not necessarily been
+          experimentally synthesized. Stability classifications depend on the
+          computational methodology and should not be interpreted as guarantees
+          of experimental synthesizability.
         </p>
+
         <div className="methodology-contact" aria-label="Contact">
           <span className="contact-label">Contact</span>
+
           <div className="contact-details">
             <div className="contact-links">
-              <a href="mailto:wui@vscht.cz">Dr. Wu: wui@vscht.cz</a>
-              <a href="mailto:soferz@vscht.cz">Dr. Sofer: soferz@vscht.cz</a>
+              <a href="mailto:wui@vscht.cz">
+                Dr. Wu: wui@vscht.cz
+              </a>
+
+              <a href="mailto:soferz@vscht.cz">
+                Dr. Sofer: soferz@vscht.cz
+              </a>
             </div>
-            <p>Department of Inorganic Chemistry, University of Chemistry and Technology Prague, Technická 5, 166 28 Prague, Czech Republic.</p>
+
+            <p>
+              Department of Inorganic Chemistry, University of Chemistry and
+              Technology Prague, Technická 5, 166 28 Prague, Czech Republic.
+            </p>
           </div>
         </div>
       </section>
@@ -215,10 +304,16 @@ function getInitialSelectedId() {
     return materials[0]?.material_id ?? "";
   }
 
-  const materialParam = new URLSearchParams(window.location.search).get("material");
+  const materialParam = new URLSearchParams(
+    window.location.search
+  ).get("material");
+
   const match = materials.find(
-    (material) => material.slug === materialParam || material.material_id === materialParam
+    (material) =>
+      material.slug === materialParam ||
+      material.material_id === materialParam
   );
+
   return match?.material_id ?? materials[0]?.material_id ?? "";
 }
 
@@ -250,7 +345,13 @@ function Stat({
         className={`stat stat-button ${active ? "active" : ""}`}
         onClick={() => {
           onClick();
-          document.getElementById("explorer")?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+          document
+            .getElementById("explorer")
+            ?.scrollIntoView({
+              behavior: "smooth",
+              block: "start"
+            });
         }}
         aria-pressed={active}
       >
@@ -259,9 +360,5 @@ function Stat({
     );
   }
 
-  return (
-    <article className="stat">
-      {content}
-    </article>
-  );
+  return <article className="stat">{content}</article>;
 }
