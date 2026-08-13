@@ -1,0 +1,190 @@
+{
+  "material_id": "TMCC-0012",
+  "slug": "cu0-5-ta2s2c-p-3m1-config01",
+  "family": "TMCC",
+  "material_type": "tm_intercalated",
+  "formula": "Cu0.5Ta2S2C",
+  "host": {
+    "formula": "Ta2S2C",
+    "metal": "Ta",
+    "chalcogen": "S",
+    "anion": "C"
+  },
+  "intercalation": {
+    "intercalant": "Cu",
+    "x": 0.5,
+    "mode": "hetero",
+    "site": null,
+    "ordering": "ordered approximant",
+    "configuration": "config01"
+  },
+  "experimental_status": "experimental",
+  "calculation_status": "calculated",
+  "structure": {
+    "space_group_symbol": "P-3m1",
+    "space_group_number": 164,
+    "crystal_system": "trigonal",
+    "lattice_parameters": {
+      "a": {
+        "value": 3.3121,
+        "unit": "angstrom"
+      },
+      "b": {
+        "value": 3.3120999999999996,
+        "unit": "angstrom"
+      },
+      "c": {
+        "value": 9.0113,
+        "unit": "angstrom"
+      }
+    },
+    "angles": {
+      "alpha": {
+        "value": 90.0,
+        "unit": "degree"
+      },
+      "beta": {
+        "value": 90.0,
+        "unit": "degree"
+      },
+      "gamma": {
+        "value": 119.99999999999999,
+        "unit": "degree"
+      }
+    },
+    "layer_thickness": {
+      "value": 7.372,
+      "unit": "angstrom"
+    },
+    "vdw_gap": {
+      "value": 1.639,
+      "unit": "angstrom"
+    },
+    "atomic_sites": [
+      {
+        "label": "Cu1",
+        "element": "Cu",
+        "fract_x": 0.66667,
+        "fract_y": 0.33333,
+        "fract_z": 0.57635,
+        "occupancy": 1
+      },
+      {
+        "label": "Cu2",
+        "element": "Cu",
+        "fract_x": 0.33333,
+        "fract_y": 0.66667,
+        "fract_z": 0.42365,
+        "occupancy": 1
+      },
+      {
+        "label": "Ta1",
+        "element": "Ta",
+        "fract_x": 0.66667,
+        "fract_y": 0.33333,
+        "fract_z": 0.88557,
+        "occupancy": 1
+      },
+      {
+        "label": "Ta2",
+        "element": "Ta",
+        "fract_x": 0.33333,
+        "fract_y": 0.66667,
+        "fract_z": 0.11443,
+        "occupancy": 1
+      },
+      {
+        "label": "S1",
+        "element": "S",
+        "fract_x": 0.66666,
+        "fract_y": 0.33333,
+        "fract_z": 0.29632,
+        "occupancy": 1
+      },
+      {
+        "label": "S2",
+        "element": "S",
+        "fract_x": 0.33334,
+        "fract_y": 0.66667,
+        "fract_z": 0.70368,
+        "occupancy": 1
+      },
+      {
+        "label": "C1",
+        "element": "C",
+        "fract_x": 0.0,
+        "fract_y": 0.0,
+        "fract_z": 0.0,
+        "occupancy": 1
+      }
+    ]
+  },
+  "thermodynamics": {
+    "total_energy": {
+      "value": -46.003898613679965,
+      "unit": "eV/cell"
+    },
+    "formation_energy": {
+      "value": null,
+      "unit": "eV/formula"
+    },
+    "energy_above_hull": {
+      "value": null,
+      "unit": "eV/atom"
+    },
+    "relative_structure_energy": {
+      "value": null,
+      "unit": "meV/f.u."
+    },
+    "reference_energies_per_atom": {}
+  },
+  "phonons": {},
+  "mechanical": {},
+  "electronic": {
+    "band_gap": {
+      "value": 0.02656,
+      "unit": "eV"
+    },
+    "fermi_level": {
+      "value": 13.109883984005512,
+      "unit": "eV"
+    },
+    "dos_calculated": true,
+    "band_structure_calculated": true
+  },
+  "energy_storage": {},
+  "files": {
+    "cif": "/structures/TMCC-0012/structure.cif",
+    "poscar": "/structures/TMCC-0012/POSCAR",
+    "dos": "/figures/TMCC-0012/dos.csv",
+    "band_structure": "/figures/TMCC-0012/band_structure.csv"
+  },
+  "provenance": {
+    "software": "GPAW",
+    "software_version": null,
+    "ase_version": null,
+    "exchange_correlation": "PBE",
+    "pseudopotential": null,
+    "plane_wave_cutoff": {
+      "value": 520,
+      "unit": "eV"
+    },
+    "k_points": {
+      "density": 2.5,
+      "gamma": true
+    },
+    "spin_polarization": false,
+    "initial_magnetic_moments": {},
+    "dft_u": null,
+    "setups": null,
+    "soc": false,
+    "convergence_criteria": {
+      "density": 5e-07
+    },
+    "calculation_date": "2026-08-13",
+    "workflow_version": "tmcc-five-template-v0.1",
+    "source": "cluster calculation",
+    "formation_energy_reference_note": null,
+    "doi": null
+  }
+}
