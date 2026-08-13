@@ -418,6 +418,34 @@ main {
   color: #51636b;
 }
 
+.hero-affiliation {
+  position: absolute;
+  right: 3%;
+  bottom: 8px;
+  z-index: 2;
+  display: grid;
+  gap: 2px;
+  width: min(34vw, 420px);
+  padding: 10px 14px;
+  border: 1px solid rgba(39, 86, 106, 0.18);
+  border-left: 4px solid rgba(74, 152, 120, 0.72);
+  border-radius: 7px;
+  color: #46555b;
+  background: rgba(255, 255, 255, 0.68);
+  box-shadow: 0 14px 34px rgba(22, 36, 42, 0.08);
+  backdrop-filter: blur(6px);
+}
+
+.hero-affiliation strong {
+  color: #16232c;
+  font-size: 1rem;
+}
+
+.hero-affiliation span {
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
 .status-dot {
   width: 9px;
   height: 9px;
@@ -1611,6 +1639,14 @@ sub {
 
   .update-strip span:last-child {
     grid-column: 1 / -1;
+  }
+
+  .hero-affiliation {
+    position: relative;
+    right: auto;
+    bottom: auto;
+    width: 100%;
+    margin-top: 12px;
   }
 
   .hero-shell,

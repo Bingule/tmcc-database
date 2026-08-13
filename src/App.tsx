@@ -108,6 +108,11 @@ export default function App() {
               <span>DFT results, DOS, band structures, and stability data are added as calculations finish.</span>
             </div>
           </div>
+          <div className="hero-affiliation" aria-label="Project affiliation">
+            <strong>Dr. Wu</strong>
+            <span>Department of Inorganic Chemistry</span>
+            <span>University of Chemistry and Technology Prague</span>
+          </div>
         </section>
       </header>
 
