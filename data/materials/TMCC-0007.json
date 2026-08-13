@@ -98,7 +98,7 @@
   },
   "thermodynamics": {
     "total_energy": {
-      "value": -39.703975830859925,
+      "value": -39.7039758308562,
       "unit": "eV/cell"
     },
     "formation_energy": {
@@ -119,22 +119,22 @@
   "mechanical": {},
   "electronic": {
     "band_gap": {
-      "value": null,
+      "value": 0.008614,
       "unit": "eV"
     },
     "fermi_level": {
-      "value": null,
+      "value": 10.821871819967871,
       "unit": "eV"
     },
-    "dos_calculated": false,
-    "band_structure_calculated": false
+    "dos_calculated": true,
+    "band_structure_calculated": true
   },
   "energy_storage": {},
   "files": {
     "cif": "/structures/TMCC-0007/structure.cif",
     "poscar": "/structures/TMCC-0007/POSCAR",
-    "dos": null,
-    "band_structure": null
+    "dos": "/figures/TMCC-0007/dos.csv",
+    "band_structure": "/figures/TMCC-0007/band_structure.csv"
   },
   "provenance": {
     "software": "GPAW",
