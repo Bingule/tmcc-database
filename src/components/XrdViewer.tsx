@@ -245,25 +245,29 @@ function LineChart<T extends Record<string, number>>({
   const [hovered, setHovered] = useState<{ x: number; y: number; point: T } | null>(null);
   const { width, height } = dimensions;
   const padding = 34;
+  const plotWidth = width - padding * 2;
+  const plotHeight = height - padding * 2;
   const minX = points[0]?.[xKey] ?? 0;
   const maxX = points[points.length - 1]?.[xKey] ?? 1;
   const maxY = Math.max(...points.map((point) => point[yKey]), 1);
   const xTicks = makeAxisTicks(Number(minX), Number(maxX));
   const polyline = points.map((point) => {
-    const x = padding + (point[xKey] - minX) / (maxX - minX || 1) * (width - padding * 2);
-    const y = height - padding - point[yKey] / maxY * (height - padding * 2);
+    const x = padding + (point[xKey] - minX) / (maxX - minX || 1) * plotWidth;
+    const y = height - padding - point[yKey] / maxY * plotHeight;
     return `${x.toFixed(1)},${y.toFixed(1)}`;
   }).join(" ");
 
   function handlePointerMove(event: PointerEvent<SVGSVGElement>) {
     const rect = event.currentTarget.getBoundingClientRect();
-    const ratio = (event.clientX - rect.left) / rect.width;
+    const viewBoxX = (event.clientX - rect.left) / rect.width * width;
+    const clampedX = Math.min(width - padding, Math.max(padding, viewBoxX));
+    const ratio = (clampedX - padding) / plotWidth;
     const value = minX + ratio * (maxX - minX);
     const nearest = points.reduce((best, point) =>
       Math.abs(point[xKey] - value) < Math.abs(best[xKey] - value) ? point : best
     , points[0]);
-    const x = padding + (nearest[xKey] - minX) / (maxX - minX || 1) * (width - padding * 2);
-    const y = height - padding - nearest[yKey] / maxY * (height - padding * 2);
+    const x = padding + (nearest[xKey] - minX) / (maxX - minX || 1) * plotWidth;
+    const y = height - padding - nearest[yKey] / maxY * plotHeight;
     setHovered({ x, y, point: nearest });
   }
 
@@ -278,7 +282,7 @@ function LineChart<T extends Record<string, number>>({
       <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} />
       <line x1={padding} y1={padding} x2={padding} y2={height - padding} />
       {xTicks.map((tick) => {
-        const x = padding + (tick - Number(minX)) / (Number(maxX) - Number(minX) || 1) * (width - padding * 2);
+        const x = padding + (tick - Number(minX)) / (Number(maxX) - Number(minX) || 1) * plotWidth;
         return (
           <g key={tick.toFixed(3)} className="axis-tick">
             <line x1={x} y1={height - padding} x2={x} y2={height - padding + 4} />
