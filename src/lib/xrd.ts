@@ -86,7 +86,7 @@ export function exportXrdCsv(points: XrdPoint[]) {
 
 export function exportPairDistributionCsv(points: PairDistributionPoint[]) {
   return [
-    "r_angstrom,intensity",
+    "r_angstrom,G_r_reduced",
     ...points.map((point) => `${point.r.toFixed(3)},${point.intensity.toFixed(4)}`)
   ].join("\n");
 }
@@ -142,10 +142,25 @@ export function simulatePairDistribution(
     points.push({ r: round(r, 3), intensity });
   }
 
-  const maxIntensity = Math.max(...points.map((point) => point.intensity), 0);
-  return maxIntensity > 0
-    ? points.map((point) => ({ ...point, intensity: round(point.intensity / maxIntensity * 100, 4) }))
-    : points;
+  const reduced = makeReducedPairDistribution(points, rStep);
+  const maxAbs = Math.max(...reduced.map((point) => Math.abs(point.intensity)), 0);
+  return maxAbs > 0
+    ? reduced.map((point) => ({ ...point, intensity: round(point.intensity / maxAbs * 100, 4) }))
+    : reduced;
+}
+
+function makeReducedPairDistribution(points: PairDistributionPoint[], step: number) {
+  const backgroundWindow = Math.max(9, Math.round(0.9 / step));
+  return points.map((point, index) => {
+    const start = Math.max(0, index - backgroundWindow);
+    const end = Math.min(points.length, index + backgroundWindow + 1);
+    const local = points.slice(start, end);
+    const background = local.reduce((sum, item) => sum + item.intensity, 0) / Math.max(local.length, 1);
+    return {
+      r: point.r,
+      intensity: (point.intensity - background) * point.r
+    };
+  });
 }
 
 function generatePeaks(

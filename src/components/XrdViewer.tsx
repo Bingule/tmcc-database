@@ -249,11 +249,14 @@ function LineChart<T extends Record<string, number>>({
   const plotHeight = height - padding * 2;
   const minX = points[0]?.[xKey] ?? 0;
   const maxX = points[points.length - 1]?.[xKey] ?? 1;
+  const minY = Math.min(...points.map((point) => point[yKey]), 0);
   const maxY = Math.max(...points.map((point) => point[yKey]), 1);
+  const ySpan = maxY - minY || 1;
+  const zeroY = height - padding - (0 - minY) / ySpan * plotHeight;
   const xTicks = makeAxisTicks(Number(minX), Number(maxX));
   const polyline = points.map((point) => {
     const x = padding + (point[xKey] - minX) / (maxX - minX || 1) * plotWidth;
-    const y = height - padding - point[yKey] / maxY * plotHeight;
+    const y = height - padding - (point[yKey] - minY) / ySpan * plotHeight;
     return `${x.toFixed(1)},${y.toFixed(1)}`;
   }).join(" ");
 
@@ -267,7 +270,7 @@ function LineChart<T extends Record<string, number>>({
       Math.abs(point[xKey] - value) < Math.abs(best[xKey] - value) ? point : best
     , points[0]);
     const x = padding + (nearest[xKey] - minX) / (maxX - minX || 1) * plotWidth;
-    const y = height - padding - nearest[yKey] / maxY * plotHeight;
+    const y = height - padding - (nearest[yKey] - minY) / ySpan * plotHeight;
     setHovered({ x, y, point: nearest });
   }
 
@@ -280,6 +283,7 @@ function LineChart<T extends Record<string, number>>({
       onPointerLeave={() => setHovered(null)}
     >
       <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} />
+      {minY < 0 && maxY > 0 && <line className="zero-axis" x1={padding} y1={zeroY} x2={width - padding} y2={zeroY} />}
       <line x1={padding} y1={padding} x2={padding} y2={height - padding} />
       {xTicks.map((tick) => {
         const x = padding + (tick - Number(minX)) / (Number(maxX) - Number(minX) || 1) * plotWidth;

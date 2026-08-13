@@ -71,6 +71,7 @@ describe("XRD simulation", () => {
     expect(pdf[0].r).toBeGreaterThanOrEqual(1);
     expect(pdf[pdf.length - 1].r).toBeLessThanOrEqual(8);
     expect(Math.max(...pdf.map((point) => point.intensity))).toBeCloseTo(100);
+    expect(Math.min(...pdf.map((point) => point.intensity))).toBeLessThan(0);
   });
 
   it("exports pair distribution points as CSV", () => {
@@ -85,7 +86,7 @@ describe("XRD simulation", () => {
 
     const csv = exportPairDistributionCsv(pdf);
 
-    expect(csv.startsWith("r_angstrom,intensity")).toBe(true);
+    expect(csv.startsWith("r_angstrom,G_r_reduced")).toBe(true);
     expect(csv.split("\n").length).toBe(pdf.length + 1);
   });
 

@@ -1394,6 +1394,11 @@ td button {
   vector-effect: non-scaling-stroke;
 }
 
+.xrd-chart .zero-axis {
+  stroke: rgba(39, 86, 106, 0.58);
+  stroke-width: 0.75;
+}
+
 .xrd-chart polyline {
   fill: none;
   stroke: #27566a;
