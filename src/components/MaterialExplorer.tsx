@@ -113,7 +113,6 @@ export function MaterialExplorer({ materials, selectedId, onSelect, elementSearc
                   <th>Material ID</th>
                   <th>Formula</th>
                   <th>Structure Type</th>
-                  <th>General Formula</th>
                   <th>Subclass</th>
                   <th>Space Group</th>
                   <th>Intercalated TM</th>
@@ -139,7 +138,6 @@ export function MaterialExplorer({ materials, selectedId, onSelect, elementSearc
                         {getLatticeSettingLabel(material) && <small>{getLatticeSettingLabel(material)}</small>}
                       </span>
                     </td>
-                    <td>{getStructureTypeLabel(material)}</td>
                     <td>{getSubclassLabel(material)}</td>
                     <td>{getSpaceGroupLabel(getSpaceGroupSymbol(material))}</td>
                     <td>{getIntercalatedTransitionMetalLabel(material)}</td>

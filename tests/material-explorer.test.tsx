@@ -188,7 +188,7 @@ describe("MaterialExplorer", () => {
     expect(markup).toContain("<th>Sites/cell</th>");
   });
 
-  it("shows structure type, general formula, and TMCC subclass columns", () => {
+  it("shows structure type and TMCC subclass columns", () => {
     const markup = renderToStaticMarkup(
       <MaterialExplorer
         materials={makeMaterials(1)}
@@ -199,10 +199,8 @@ describe("MaterialExplorer", () => {
     );
 
     expect(markup).toContain("<th>Structure Type</th>");
-    expect(markup).toContain("<th>General Formula</th>");
     expect(markup).toContain("<th>Subclass</th>");
     expect(markup).toContain("<td><span class=\"cell-stack\"><span>trigonal</span></span></td>");
-    expect(markup).toContain("<td>M2X2C</td>");
     expect(markup).toContain("<td>TMCDC</td>");
     expect(markup).toContain("<th>Intercalated TM</th>");
   });
@@ -275,7 +273,6 @@ describe("MaterialExplorer", () => {
     expect(markup).toContain("R3\u0305m");
     expect(markup).toContain("trigonal");
     expect(markup).toContain("rhombohedral setting");
-    expect(markup).toContain("M2X2C");
     expect(markup).toContain("TMCDC");
     expect(markup).not.toContain("2H");
     expect(markup).not.toContain("3R");
