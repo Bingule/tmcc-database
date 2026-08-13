@@ -33,11 +33,11 @@
     },
     "angles": {
       "alpha": {
-        "value": 90.0,
+        "value": 90,
         "unit": "degree"
       },
       "beta": {
-        "value": 90.0,
+        "value": 90,
         "unit": "degree"
       },
       "gamma": {
@@ -89,9 +89,9 @@
       {
         "label": "C1",
         "element": "C",
-        "fract_x": 0.0,
-        "fract_y": 0.0,
-        "fract_z": 0.0,
+        "fract_x": 0,
+        "fract_y": 0,
+        "fract_z": 0,
         "occupancy": 1
       }
     ]
@@ -119,7 +119,7 @@
   "mechanical": {},
   "electronic": {
     "band_gap": {
-      "value": null,
+      "value": 0,
       "unit": "eV"
     },
     "fermi_level": {
@@ -127,7 +127,9 @@
       "unit": "eV"
     },
     "dos_calculated": true,
-    "band_structure_calculated": false
+    "band_structure_calculated": false,
+    "electronic_character": "metallic (DOS-derived)",
+    "band_gap_source": "DOS-derived from exported GPAW DOS near Ef"
   },
   "energy_storage": {},
   "files": {
@@ -156,7 +158,7 @@
     "setups": null,
     "soc": false,
     "convergence_criteria": {
-      "density": 5e-07
+      "density": 5e-7
     },
     "calculation_date": "2026-08-13",
     "workflow_version": "tmcc-generated-s-p-remaining-series-v0.1",
