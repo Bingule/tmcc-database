@@ -470,6 +470,12 @@ input {
   margin: 0 0 18px;
 }
 
+.structure-options.compact-inline {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+}
+
 .structure-options button {
   display: grid;
   gap: 4px;
@@ -481,6 +487,15 @@ input {
   background: #fff;
   text-align: left;
   cursor: pointer;
+}
+
+.structure-options.compact-inline button {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  padding: 9px 12px;
 }
 
 .structure-options button.active {
@@ -495,6 +510,10 @@ input {
 
 .structure-options small {
   color: #64737a;
+}
+
+.structure-options.compact-inline small {
+  margin-left: auto;
 }
 
 .button-row {

@@ -140,7 +140,7 @@ export function MaterialSelector({ materials, selectedId, onSelect }: Props) {
       )}
 
       {materialType === "pristine" && (
-        <div className="structure-options" aria-label="Available crystal structures">
+        <div className="structure-options compact-inline" aria-label="Available crystal structures">
           {availableStructures.map((material) => (
             <button
               key={material.material_id}
@@ -149,7 +149,7 @@ export function MaterialSelector({ materials, selectedId, onSelect }: Props) {
               onClick={() => onSelect(material.material_id)}
             >
               <Formula formula={material.formula} />
-              <span>{getSpaceGroupLabel(getSpaceGroupSymbol(material))}</span>
+              <span className="structure-option-meta">{getSpaceGroupLabel(getSpaceGroupSymbol(material))}</span>
               <small>{material.material_id}</small>
             </button>
           ))}

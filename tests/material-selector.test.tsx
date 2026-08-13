@@ -13,6 +13,15 @@ describe("MaterialSelector", () => {
     expect(markup).not.toContain("formula-preview");
   });
 
+  it("renders available structures as compact inline options", () => {
+    const markup = renderToStaticMarkup(
+      <MaterialSelector materials={materials} selectedId="TMCC-0001" onSelect={() => undefined} />
+    );
+
+    expect(markup).toContain("structure-options compact-inline");
+    expect(markup).toContain("structure-option-meta");
+  });
+
   it("supports all intercalants and the one-third concentration option", () => {
     expect(intercalantOptions[0]).toBe("All");
     expect(intercalantOptions).toContain("Fe");
