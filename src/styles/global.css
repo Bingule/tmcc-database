@@ -477,6 +477,8 @@ main {
   color: #263846;
   line-height: 1.55;
   font-weight: 500;
+  text-align: justify;
+  text-align-last: left;
 }
 
 .hero-seo-line {
@@ -620,7 +622,7 @@ main {
 .layer-diagram svg {
   width: 100%;
   max-width: 250px;
-  height: 126px;
+  height: 124px;
   overflow: visible;
 }
 
@@ -629,12 +631,12 @@ main {
 }
 
 .layer-diagram.tmcc svg {
-  max-width: 300px;
+  max-width: 280px;
 }
 
 .layer-diagram line {
-  stroke: rgba(58, 106, 107, 0.62);
-  stroke-width: 2.1;
+  stroke: rgba(58, 106, 107, 0.56);
+  stroke-width: 1.9;
   stroke-linecap: round;
 }
 
