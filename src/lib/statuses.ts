@@ -169,7 +169,7 @@ export const calculationStatuses = [
   "calculated"
 ] as const;
 
-export const experimentalStatuses = ["unknown", "experimental", "not_reported"] as const;
+export const experimentalStatuses = ["unknown", "experimental", "not_reported", "computational"] as const;
 
 export const materialStatuses = {
   experimental: {

@@ -167,5 +167,7 @@
     "source": "cluster calculation",
     "formation_energy_reference_note": null,
     "doi": null
-  }
+  },
+  "subclass": "TMCDC",
+  "structure_type": "M2X2C"
 }

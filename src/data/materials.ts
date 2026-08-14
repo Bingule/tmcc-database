@@ -1,4 +1,4 @@
-﻿import TMCC0001 from "../../data/materials/TMCC-0001.json";
+import TMCC0001 from "../../data/materials/TMCC-0001.json";
 import TMCC0002 from "../../data/materials/TMCC-0002.json";
 import TMCC0003 from "../../data/materials/TMCC-0003.json";
 import TMCC0004 from "../../data/materials/TMCC-0004.json";
@@ -117,6 +117,118 @@ import TMCC0428 from "../../data/materials/TMCC-0428.json";
 import TMCC0501 from "../../data/materials/TMCC-0501.json";
 import TMCC0502 from "../../data/materials/TMCC-0502.json";
 import TMCC0503 from "../../data/materials/TMCC-0503.json";
+import TMCC0507 from "../../data/materials/TMCC-0507.json";
+import TMCC0509 from "../../data/materials/TMCC-0509.json";
+import TMCC0510 from "../../data/materials/TMCC-0510.json";
+import TMCC0511 from "../../data/materials/TMCC-0511.json";
+import TMCC0512 from "../../data/materials/TMCC-0512.json";
+import TMCC0513 from "../../data/materials/TMCC-0513.json";
+import TMCC0514 from "../../data/materials/TMCC-0514.json";
+import TMCC0516 from "../../data/materials/TMCC-0516.json";
+import TMCC0517 from "../../data/materials/TMCC-0517.json";
+import TMCC0519 from "../../data/materials/TMCC-0519.json";
+import TMCC0520 from "../../data/materials/TMCC-0520.json";
+import TMCC0521 from "../../data/materials/TMCC-0521.json";
+import TMCC0522 from "../../data/materials/TMCC-0522.json";
+import TMCC0523 from "../../data/materials/TMCC-0523.json";
+import TMCC0524 from "../../data/materials/TMCC-0524.json";
+import TMCC0525 from "../../data/materials/TMCC-0525.json";
+import TMCC0526 from "../../data/materials/TMCC-0526.json";
+import TMCC6001 from "../../data/materials/TMCC-6001.json";
+import TMCC6002 from "../../data/materials/TMCC-6002.json";
+import TMCC6003 from "../../data/materials/TMCC-6003.json";
+import TMCC6004 from "../../data/materials/TMCC-6004.json";
+import TMCC6005 from "../../data/materials/TMCC-6005.json";
+import TMCC6009 from "../../data/materials/TMCC-6009.json";
+import TMCC6010 from "../../data/materials/TMCC-6010.json";
+import TMCC6011 from "../../data/materials/TMCC-6011.json";
+import TMCC6012 from "../../data/materials/TMCC-6012.json";
+import TMCC6013 from "../../data/materials/TMCC-6013.json";
+import TMCC7001 from "../../data/materials/TMCC-7001.json";
+import TMCC7002 from "../../data/materials/TMCC-7002.json";
+import TMCC7003 from "../../data/materials/TMCC-7003.json";
+import TMCC7004 from "../../data/materials/TMCC-7004.json";
+import TMCC7005 from "../../data/materials/TMCC-7005.json";
+import TMCC7009 from "../../data/materials/TMCC-7009.json";
+import TMCC7010 from "../../data/materials/TMCC-7010.json";
+import TMCC7011 from "../../data/materials/TMCC-7011.json";
+import TMCC7012 from "../../data/materials/TMCC-7012.json";
+import TMCC7013 from "../../data/materials/TMCC-7013.json";
+import TMCC7014 from "../../data/materials/TMCC-7014.json";
+import TMCC7015 from "../../data/materials/TMCC-7015.json";
+import TMCC7016 from "../../data/materials/TMCC-7016.json";
+import TMCC7018 from "../../data/materials/TMCC-7018.json";
+import TMCC8881 from "../../data/materials/TMCC-8881.json";
+import TMCC8882 from "../../data/materials/TMCC-8882.json";
+import TMCC8883 from "../../data/materials/TMCC-8883.json";
+import TMCC8884 from "../../data/materials/TMCC-8884.json";
+import TMCC8885 from "../../data/materials/TMCC-8885.json";
+import TMCC8886 from "../../data/materials/TMCC-8886.json";
+import TMCC8887 from "../../data/materials/TMCC-8887.json";
+import TMCC8888 from "../../data/materials/TMCC-8888.json";
+import TMCC8889 from "../../data/materials/TMCC-8889.json";
+import TMCC8890 from "../../data/materials/TMCC-8890.json";
+import TMCC8891 from "../../data/materials/TMCC-8891.json";
+import TMCC8892 from "../../data/materials/TMCC-8892.json";
+import TMCC8893 from "../../data/materials/TMCC-8893.json";
+import TMCC8894 from "../../data/materials/TMCC-8894.json";
+import TMCC8895 from "../../data/materials/TMCC-8895.json";
+import TMCC8896 from "../../data/materials/TMCC-8896.json";
+import TMCC8897 from "../../data/materials/TMCC-8897.json";
+import TMCC8898 from "../../data/materials/TMCC-8898.json";
+import TMCC8899 from "../../data/materials/TMCC-8899.json";
+import TMCC8900 from "../../data/materials/TMCC-8900.json";
+import TMCC8913 from "../../data/materials/TMCC-8913.json";
+import TMCC8916 from "../../data/materials/TMCC-8916.json";
+import TMCC8917 from "../../data/materials/TMCC-8917.json";
+import TMCC8918 from "../../data/materials/TMCC-8918.json";
+import TMCC8919 from "../../data/materials/TMCC-8919.json";
+import TMCC8920 from "../../data/materials/TMCC-8920.json";
+import TMCC8921 from "../../data/materials/TMCC-8921.json";
+import TMCC8922 from "../../data/materials/TMCC-8922.json";
+import TMCC8923 from "../../data/materials/TMCC-8923.json";
+import TMCC8924 from "../../data/materials/TMCC-8924.json";
+import TMCC8925 from "../../data/materials/TMCC-8925.json";
+import TMCC8926 from "../../data/materials/TMCC-8926.json";
+import TMCC8927 from "../../data/materials/TMCC-8927.json";
+import TMCC8928 from "../../data/materials/TMCC-8928.json";
+import TMCC8929 from "../../data/materials/TMCC-8929.json";
+import TMCC8930 from "../../data/materials/TMCC-8930.json";
+import TMCC8931 from "../../data/materials/TMCC-8931.json";
+import TMCC8932 from "../../data/materials/TMCC-8932.json";
+import TMCC8933 from "../../data/materials/TMCC-8933.json";
+import TMCC8934 from "../../data/materials/TMCC-8934.json";
+import TMCC8935 from "../../data/materials/TMCC-8935.json";
+import TMCC8936 from "../../data/materials/TMCC-8936.json";
+import TMCC8937 from "../../data/materials/TMCC-8937.json";
+import TMCC8938 from "../../data/materials/TMCC-8938.json";
+import TMCC8939 from "../../data/materials/TMCC-8939.json";
+import TMCC8940 from "../../data/materials/TMCC-8940.json";
+import TMCC8941 from "../../data/materials/TMCC-8941.json";
+import TMCC8942 from "../../data/materials/TMCC-8942.json";
+import TMCC8943 from "../../data/materials/TMCC-8943.json";
+import TMCC8944 from "../../data/materials/TMCC-8944.json";
+import TMCC8945 from "../../data/materials/TMCC-8945.json";
+import TMCC8946 from "../../data/materials/TMCC-8946.json";
+import TMCC8947 from "../../data/materials/TMCC-8947.json";
+import TMCC8948 from "../../data/materials/TMCC-8948.json";
+import TMCC8949 from "../../data/materials/TMCC-8949.json";
+import TMCC8950 from "../../data/materials/TMCC-8950.json";
+import TMCC8951 from "../../data/materials/TMCC-8951.json";
+import TMCC8952 from "../../data/materials/TMCC-8952.json";
+import TMCC8953 from "../../data/materials/TMCC-8953.json";
+import TMCC8954 from "../../data/materials/TMCC-8954.json";
+import TMCC8955 from "../../data/materials/TMCC-8955.json";
+import TMCC8956 from "../../data/materials/TMCC-8956.json";
+import TMCC8957 from "../../data/materials/TMCC-8957.json";
+import TMCC8958 from "../../data/materials/TMCC-8958.json";
+import TMCC8959 from "../../data/materials/TMCC-8959.json";
+import TMCC8961 from "../../data/materials/TMCC-8961.json";
+import TMCC8962 from "../../data/materials/TMCC-8962.json";
+import TMCC8963 from "../../data/materials/TMCC-8963.json";
+import TMCC8964 from "../../data/materials/TMCC-8964.json";
+import TMCC8970 from "../../data/materials/TMCC-8970.json";
+import TMCC8971 from "../../data/materials/TMCC-8971.json";
 
 import type { MaterialRecord } from "../lib/types";
 
@@ -239,6 +351,117 @@ export const materials = [
   TMCC0428,
   TMCC0501,
   TMCC0502,
-  TMCC0503
+  TMCC0503,
+  TMCC0507,
+  TMCC0509,
+  TMCC0510,
+  TMCC0511,
+  TMCC0512,
+  TMCC0513,
+  TMCC0514,
+  TMCC0516,
+  TMCC0517,
+  TMCC0519,
+  TMCC0520,
+  TMCC0521,
+  TMCC0522,
+  TMCC0523,
+  TMCC0524,
+  TMCC0525,
+  TMCC0526,
+  TMCC6001,
+  TMCC6002,
+  TMCC6003,
+  TMCC6004,
+  TMCC6005,
+  TMCC6009,
+  TMCC6010,
+  TMCC6011,
+  TMCC6012,
+  TMCC6013,
+  TMCC7001,
+  TMCC7002,
+  TMCC7003,
+  TMCC7004,
+  TMCC7005,
+  TMCC7009,
+  TMCC7010,
+  TMCC7011,
+  TMCC7012,
+  TMCC7013,
+  TMCC7014,
+  TMCC7015,
+  TMCC7016,
+  TMCC7018,
+  TMCC8881,
+  TMCC8882,
+  TMCC8883,
+  TMCC8884,
+  TMCC8885,
+  TMCC8886,
+  TMCC8887,
+  TMCC8888,
+  TMCC8889,
+  TMCC8890,
+  TMCC8891,
+  TMCC8892,
+  TMCC8893,
+  TMCC8894,
+  TMCC8895,
+  TMCC8896,
+  TMCC8897,
+  TMCC8898,
+  TMCC8899,
+  TMCC8900,
+  TMCC8913,
+  TMCC8916,
+  TMCC8917,
+  TMCC8918,
+  TMCC8919,
+  TMCC8920,
+  TMCC8921,
+  TMCC8922,
+  TMCC8923,
+  TMCC8924,
+  TMCC8925,
+  TMCC8926,
+  TMCC8927,
+  TMCC8928,
+  TMCC8929,
+  TMCC8930,
+  TMCC8931,
+  TMCC8932,
+  TMCC8933,
+  TMCC8934,
+  TMCC8935,
+  TMCC8936,
+  TMCC8937,
+  TMCC8938,
+  TMCC8939,
+  TMCC8940,
+  TMCC8941,
+  TMCC8942,
+  TMCC8943,
+  TMCC8944,
+  TMCC8945,
+  TMCC8946,
+  TMCC8947,
+  TMCC8948,
+  TMCC8949,
+  TMCC8950,
+  TMCC8951,
+  TMCC8952,
+  TMCC8953,
+  TMCC8954,
+  TMCC8955,
+  TMCC8956,
+  TMCC8957,
+  TMCC8958,
+  TMCC8959,
+  TMCC8961,
+  TMCC8962,
+  TMCC8963,
+  TMCC8964,
+  TMCC8970,
+  TMCC8971
 ] as MaterialRecord[];
-

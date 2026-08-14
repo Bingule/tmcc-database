@@ -40,7 +40,7 @@ const transitionMetals = new Set([
 const chalcogens = new Set(["S", "Se", "Te"]);
 const anions = new Set(["C", "N"]);
 const calculationStatuses = new Set(["not_calculated", "calculation_in_progress", "calculated"]);
-const experimentalStatuses = new Set(["unknown", "experimental", "not_reported"]);
+const experimentalStatuses = new Set(["unknown", "experimental", "not_reported", "computational"]);
 
 function readMaterials() {
   return fs
@@ -74,7 +74,7 @@ function validate(records) {
     slugs.add(record.slug);
 
     if (record.family !== "TMCC") errors.push(`${record.material_id}: family must be TMCC`);
-    if (!["pristine", "tm_intercalated"].includes(record.material_type)) {
+    if (!["pristine", "tm_intercalated", "m2xa"].includes(record.material_type)) {
       errors.push(`${record.material_id}: invalid material_type`);
     }
     if (!record.formula || !/^[A-Z][A-Za-z0-9.]*$/.test(record.formula)) {

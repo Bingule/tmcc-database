@@ -59,7 +59,7 @@
         }
       ]
     },
-    "experimental_status": { "enum": [null, "unknown", "experimental", "not_reported"] },
+    "experimental_status": { "enum": [null, "unknown", "experimental", "not_reported", "computational"] },
     "calculation_status": { "enum": ["not_calculated", "calculation_in_progress", "calculated"] },
     "files": { "type": "object" },
     "provenance": { "type": "object" }

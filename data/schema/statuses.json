@@ -1,7 +1,7 @@
 {
   "a_site_elements": ["C", "N"],
   "calculation_status": ["not_calculated", "calculation_in_progress", "calculated"],
-  "experimental_status": [null, "unknown", "experimental", "not_reported"],
+  "experimental_status": [null, "unknown", "experimental", "not_reported", "computational"],
   "periodic_table_status": [
     "experimental",
     "predicted_stable",

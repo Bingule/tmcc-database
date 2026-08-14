@@ -25,7 +25,8 @@ ensure_runner() {
 #!/usr/bin/env bash
 set -euo pipefail
 
-cd "${PBS_O_WORKDIR:-$PWD}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
 mkdir -p work
 
 export PYTHONPATH="$PWD/scripts:${PYTHONPATH:-}"

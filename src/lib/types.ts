@@ -2,7 +2,7 @@ export type MaterialType = "pristine" | "tm_intercalated" | "m2xa";
 export type MaterialSubclass = "TMCC" | "TMCDC";
 export type StructureType = "M2XC" | "M2XN" | "M2X2C" | "M2X2N" | "M2XA";
 export type CalculationStatus = "not_calculated" | "calculation_in_progress" | "calculated";
-export type ExperimentalStatus = null | "unknown" | "experimental" | "not_reported";
+export type ExperimentalStatus = null | "unknown" | "experimental" | "not_reported" | "computational";
 export type IntercalationMode = "self" | "hetero";
 export type UnitValue = {
   value: number | null;
