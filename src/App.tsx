@@ -314,7 +314,7 @@ function WhatIsTmccSchematic() {
       <div className="schematic-legend" aria-hidden="true">
         <span><i className="legend-m" /> M = transition metal</span>
         <span><i className="legend-x" /> X = S, Se, Te</span>
-        <span><i className="legend-c" /> C = carbon</span>
+        <span><i className="legend-c" /> C = carbon / nitrogen</span>
       </div>
       <div className="feature-strip" aria-label="TMCC features">
         <Feature icon={<Zap size={18} />} title="Metallic conductivity" text="Conductive M-C backbone for electron transport." />
