@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Atom, Database, FlaskConical, Layers3, Table2 } from "lucide-react";
+import { Atom, CircleDot, Database, FlaskConical, Layers3, ShieldCheck, Table2, Zap } from "lucide-react";
 import { MaterialDetail } from "./components/MaterialDetail";
 import { MaterialExplorer, type ExplorerCategoryFilter } from "./components/MaterialExplorer";
 import { MaterialSelector } from "./components/MaterialSelector";
@@ -43,25 +43,24 @@ export default function App() {
   return (
     <main>
       <header className="site-header">
-        <nav className="top-nav" aria-label="Primary">
-          <button className="nav-button" type="button" onClick={goHome}>
-            Home
+        <div className="hero-topbar">
+          <button className="brand-lockup" type="button" onClick={goHome} aria-label="TMCC Database home">
+            <span className="brand-mark" aria-hidden="true" />
+            <span>TMCC Database <b>v0.1</b></span>
           </button>
-
-          <a href="#selector">Selector</a>
-          <a href="#periodic-table">Periodic table</a>
-          <a href="#explorer">Explorer</a>
-          <a href="#methodology">Methodology</a>
-
-          <button
-            className="login-button"
-            type="button"
-            title="User accounts will be added with the hosted database backend"
-          >
-            Login
-          </button>
-        </nav>
-
+          <nav className="top-nav" aria-label="Primary">
+            <button className="nav-button" type="button" onClick={goHome}>
+              Home
+            </button>
+            <a href="#selector">Selector</a>
+            <a href="#periodic-table">Periodic table</a>
+            <a href="#explorer">Explorer</a>
+            <a href="#methodology">Methodology</a>
+            <button className="login-button" type="button" title="User accounts will be added with the hosted database backend">
+              Login
+            </button>
+          </nav>
+        </div>
         <section
           className="hero-shell home-click-target"
           role="button"
@@ -75,54 +74,18 @@ export default function App() {
             }
           }}
         >
-          <div className="hero-structure-mark" aria-hidden="true">
-            <div className="tmcc-wordmark">TMCC</div>
-
-            <div className="structure-family-card family-vdws">
-              <span className="family-label">TMCDC M2X2C</span>
-              <span className="sheet sheet-top" />
-              <span className="sheet sheet-bottom" />
-              <span className="atom m atom-1" />
-              <span className="atom x atom-2" />
-              <span className="atom a atom-3" />
-              <span className="atom x atom-4" />
-            </div>
-
-            <div className="structure-family-card family-intercalated">
-              <span className="family-label">Intercalated TMCC/TMCDC</span>
-              <span className="sheet sheet-top" />
-              <span className="sheet sheet-bottom" />
-              <span className="atom m atom-1" />
-              <span className="atom x atom-2" />
-              <span className="atom a atom-3" />
-              <span className="atom intercalant atom-5" />
-            </div>
-
-            <div className="structure-family-card family-m2xa">
-              <span className="family-label">TMCC M2XC/M2XA</span>
-              <span className="sheet sheet-single" />
-              <span className="atom m atom-1" />
-              <span className="atom x atom-2" />
-              <span className="atom a atom-3" />
-            </div>
-          </div>
-
           <div className="hero-copy">
-            <p className="eyebrow">TMCC Database v0.1</p>
-
-            <h1>Transition Metal Carbochalcogenide (TMCC) Database</h1>
-
-            <p className="subtitle">
-              A database for transition metal carbochalcogenides, including TMCC,
-              TMCDC, and intercalated layered materials
-            </p>
-
+            <p className="eyebrow">Transition Metal Carbochalcogenide</p>
+            <h1>TMCC Materials Database</h1>
+            <p className="subtitle">A materials database for layered transition-metal chalcogenide carbides, nitrides, and related intercalated structures.</p>
             <p className="hero-note">
-              TMCC is used as the broad family covering M2XA, vdW TMCDC M2X2A, and
-              intercalated TMCC/TMCDC records. M is a transition metal, X is S/Se/Te,
-              and A is C or future N. TMCDC records describe X-M-A-M-X layered units
-              in P-3m1 or R-3m variants; intercalated entries place metal atoms between
-              vdW TMCDC layers, while M2XA TMCC structures are tracked separately.
+              The TMCC Database is a materials database for transition metal carbochalcogenides (TMCCs),
+              covering TMCC, TMCDC, and intercalated layered materials. TMCC is the broad family for
+              M2XA, M2X2A, and metal-intercalated records where M is a transition metal, X is S/Se/Te,
+              and A is C or N. TMCDC is the M2X2A subclass with X-M-A-M-X layered units.
+            </p>
+            <p className="hero-seo-line">
+              The term transition metal carbo-chalcogenide is used here as a searchable synonym for TMCC materials.
             </p>
 
             <div className="update-strip" aria-label="Database update status">
@@ -134,7 +97,7 @@ export default function App() {
               </span>
             </div>
           </div>
-
+          <WhatIsTmccSchematic />
           <div className="hero-affiliation" aria-label="Project affiliation">
             <strong>Dr. Wu / Dr. Sofer</strong>
             <span>Department of Inorganic Chemistry</span>
@@ -296,6 +259,87 @@ export default function App() {
         <span>{materials.length} records</span>
       </footer>
     </main>
+  );
+}
+
+function WhatIsTmccSchematic() {
+  return (
+    <aside className="tmcc-schematic" aria-label="What is a TMCC schematic">
+      <div className="schematic-heading">
+        <h2>What is a TMCC?</h2>
+        <p>TMD-like and MXene-like motifs combine into a layered TMCC monolayer.</p>
+      </div>
+      <div className="schematic-flow" aria-hidden="true">
+        <LayerDiagram type="tmd" title="TMD-like layer" formula="X-M-X" />
+        <span className="flow-symbol">+</span>
+        <LayerDiagram type="mxene" title="MXene-like layer" formula="M-C-M" />
+        <span className="flow-symbol arrow">→</span>
+        <LayerDiagram type="tmcc" title="TMCC monolayer" formula="X-M-C-M-X" />
+      </div>
+      <div className="schematic-legend" aria-hidden="true">
+        <span><i className="legend-m" /> M = transition metal</span>
+        <span><i className="legend-x" /> X = S, Se, Te</span>
+        <span><i className="legend-c" /> C = carbon</span>
+      </div>
+      <div className="feature-strip" aria-label="TMCC features">
+        <Feature icon={<Zap size={18} />} title="Metallic conductivity" text="Conductive M-C backbone for electron transport." />
+        <Feature icon={<CircleDot size={18} />} title="Active chalcogen surfaces" text="Outer S/Se/Te layers expose reactive sites." />
+        <Feature icon={<ShieldCheck size={18} />} title="Robust M2C backbone" text="Covalent M-C bonding stabilizes the central slab." />
+        <Feature icon={<Layers3 size={18} />} title="vdW interlayer space" text="Layer gaps support intercalation and ion access." />
+      </div>
+    </aside>
+  );
+}
+
+function LayerDiagram({ type, title, formula }: { type: "tmd" | "mxene" | "tmcc"; title: string; formula: string }) {
+  const nodes = {
+    tmd: [
+      ["x", 28, 60], ["m", 62, 34], ["x", 96, 60],
+      ["x", 62, 104], ["m", 96, 78], ["x", 130, 104]
+    ],
+    mxene: [
+      ["m", 24, 78], ["c", 58, 52], ["m", 92, 78],
+      ["m", 58, 104], ["c", 92, 78], ["m", 126, 104]
+    ],
+    tmcc: [
+      ["x", 24, 54], ["m", 58, 82], ["c", 92, 54], ["m", 126, 82], ["x", 160, 54],
+      ["x", 58, 116], ["m", 92, 88], ["c", 126, 116], ["m", 160, 88], ["x", 194, 116]
+    ]
+  }[type];
+
+  const bonds = {
+    tmd: [[0, 1], [1, 2], [1, 3], [3, 4], [4, 5], [2, 4]],
+    mxene: [[0, 1], [1, 2], [1, 3], [3, 4], [4, 5], [2, 4]],
+    tmcc: [[0, 1], [1, 2], [2, 3], [3, 4], [1, 5], [5, 6], [6, 7], [7, 8], [8, 9], [3, 9], [2, 6], [7, 3]]
+  }[type];
+
+  const viewBox = type === "tmcc" ? "0 0 218 142" : "0 0 154 142";
+
+  return (
+    <div className={`layer-diagram ${type}`}>
+      <strong>{title}</strong>
+      <span>{formula}</span>
+      <svg viewBox={viewBox} role="img" aria-label={`${title} ${formula}`}>
+        {bonds.map(([from, to]) => {
+          const start = nodes[from];
+          const end = nodes[to];
+          return <line key={`${from}-${to}`} x1={start[1]} y1={start[2]} x2={end[1]} y2={end[2]} />;
+        })}
+        {nodes.map(([kind, x, y], index) => (
+          <circle key={`${kind}-${index}`} className={`schematic-atom ${kind}`} cx={Number(x)} cy={Number(y)} r={kind === "c" ? 6 : 8} />
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+function Feature({ icon, title, text }: { icon: React.ReactNode; title: string; text: string }) {
+  return (
+    <article className="feature-item">
+      <span aria-hidden="true">{icon}</span>
+      <strong>{title}</strong>
+      <p>{text}</p>
+    </article>
   );
 }
 
