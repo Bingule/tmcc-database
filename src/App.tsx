@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Atom, CircleDot, Database, FlaskConical, Layers3, ShieldCheck, Table2, Zap } from "lucide-react";
+import { ArrowRight, Atom, CircleDot, Database, FlaskConical, Layers3, Search, ShieldCheck, Table2, Zap } from "lucide-react";
 import { MaterialDetail } from "./components/MaterialDetail";
 import { MaterialExplorer, type ExplorerCategoryFilter } from "./components/MaterialExplorer";
 import { MaterialSelector } from "./components/MaterialSelector";
@@ -110,56 +110,88 @@ export default function App() {
         </section>
       </header>
 
-      <section className="stats-grid" aria-label="Database statistics">
-        <Stat
-          icon={<Database size={18} />}
-          label="Compositions"
-          value={stats.totalCompositions}
-        />
+      <section className="database-glance" aria-label="Database at a glance">
+        <div className="glance-main">
+          <div className="glance-heading">
+            <h2>Database at a glance</h2>
+            <p>Click a category to filter the materials explorer.</p>
+          </div>
+          <div className="stats-grid" aria-label="Database statistics">
+            <Stat
+              icon={<Database size={18} />}
+              label="Compositions"
+              value={stats.totalCompositions}
+            />
 
-        <Stat
-          icon={<Table2 size={18} />}
-          label="Structures"
-          value={stats.totalStructures}
-          active={explorerCategoryFilter === null}
-          onClick={() => setExplorerCategoryFilter(null)}
-        />
+            <Stat
+              icon={<Table2 size={18} />}
+              label="Structures"
+              value={stats.totalStructures}
+              active={explorerCategoryFilter === null}
+              onClick={() => setExplorerCategoryFilter(null)}
+            />
 
-        <Stat
-          icon={<FlaskConical size={18} />}
-          label="TMCDCs (M2X2C)"
-          value={stats.tmcdc}
-          active={explorerCategoryFilter === "tmcdc"}
-          onClick={() =>
-            setExplorerCategoryFilter((current) =>
-              current === "tmcdc" ? null : "tmcdc"
-            )
-          }
-        />
+            <Stat
+              icon={<FlaskConical size={18} />}
+              label="TMCDCs (M2X2C)"
+              value={stats.tmcdc}
+              active={explorerCategoryFilter === "tmcdc"}
+              onClick={() =>
+                setExplorerCategoryFilter((current) =>
+                  current === "tmcdc" ? null : "tmcdc"
+                )
+              }
+            />
 
-        <Stat
-          icon={<Atom size={18} />}
-          label="Intercalated TMCC/TMCDC"
-          value={stats.intercalatedTmcc}
-          active={explorerCategoryFilter === "intercalated"}
-          onClick={() =>
-            setExplorerCategoryFilter((current) =>
-              current === "intercalated" ? null : "intercalated"
-            )
-          }
-        />
+            <Stat
+              icon={<Atom size={18} />}
+              label="Intercalated TMCC/TMCDC"
+              value={stats.intercalatedTmcc}
+              active={explorerCategoryFilter === "intercalated"}
+              onClick={() =>
+                setExplorerCategoryFilter((current) =>
+                  current === "intercalated" ? null : "intercalated"
+                )
+              }
+            />
 
-        <Stat
-          icon={<Layers3 size={18} />}
-          label="TMCCs (M2XC / M2XA)"
-          value={stats.nonVdwsM2xa}
-          active={explorerCategoryFilter === "tmcc"}
-          onClick={() =>
-            setExplorerCategoryFilter((current) =>
-              current === "tmcc" ? null : "tmcc"
-            )
-          }
-        />
+            <Stat
+              icon={<Layers3 size={18} />}
+              label="TMCCs (M2XC / M2XA)"
+              value={stats.nonVdwsM2xa}
+              active={explorerCategoryFilter === "tmcc"}
+              onClick={() =>
+                setExplorerCategoryFilter((current) =>
+                  current === "tmcc" ? null : "tmcc"
+                )
+              }
+            />
+          </div>
+        </div>
+        <aside className="glance-actions" aria-label="Explore the database">
+          <h2>Explore the database</h2>
+          <a className="glance-action search-action" href="#selector">
+            <Search size={18} />
+            <span>Search & Selector</span>
+            <ArrowRight size={18} />
+          </a>
+          <a className="glance-action table-action" href="#periodic-table">
+            <Table2 size={18} />
+            <span>Periodic Table</span>
+            <ArrowRight size={18} />
+          </a>
+          <a className="glance-action explorer-action" href="#explorer">
+            <FlaskConical size={18} />
+            <span>Data Explorer</span>
+            <ArrowRight size={18} />
+          </a>
+        </aside>
+        <a className="latest-update-row" href="#explorer">
+          <span className="latest-icon"><Database size={17} /></span>
+          <strong>Latest update</strong>
+          <span>DFT calculations and experimental records are continuously added.</span>
+          <ArrowRight size={18} />
+        </a>
       </section>
 
       <section id="selector" className="section-grid single">
