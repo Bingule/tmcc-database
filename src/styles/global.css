@@ -231,10 +231,10 @@ main {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: minmax(360px, 0.92fr) minmax(540px, 1.08fr);
+  grid-template-columns: minmax(520px, 0.9fr) minmax(660px, 1.1fr);
   align-items: center;
-  gap: 28px;
-  min-height: 470px;
+  gap: 34px;
+  min-height: 430px;
   padding: 8px 0 0;
 }
 
@@ -446,22 +446,33 @@ main {
 
 .hero-copy h1 {
   margin: 0;
-  max-width: 760px;
-  font-size: clamp(2.55rem, 6vw, 5.4rem);
+  max-width: 740px;
+  font-size: clamp(3.1rem, 5.5vw, 5.25rem);
   line-height: 0.96;
   letter-spacing: 0;
   color: #111b25;
   text-shadow: 0 10px 30px rgba(255, 255, 255, 0.86);
 }
 
+.hero-copy h1 span {
+  display: block;
+}
+
+.hero-copy h1 span:last-child {
+  font-size: clamp(2.25rem, 3.55vw, 3.85rem);
+  line-height: 1.04;
+  white-space: nowrap;
+}
+
 .subtitle {
   margin: 14px 0 0;
-  font-size: clamp(1.1rem, 2vw, 1.55rem);
+  max-width: 650px;
+  font-size: clamp(1.05rem, 1.7vw, 1.4rem);
   color: #49616d;
 }
 
 .hero-note {
-  max-width: 68ch;
+  max-width: 70ch;
   margin: 14px 0 0;
   color: #263846;
   line-height: 1.55;
@@ -544,7 +555,8 @@ main {
   align-content: center;
   gap: 14px;
   min-width: 0;
-  padding: 10px 0 44px;
+  padding: 8px 0 42px 18px;
+  transform: translateX(18px);
 }
 
 .schematic-heading {
@@ -568,8 +580,8 @@ main {
 
 .schematic-flow {
   display: grid;
-  grid-template-columns: minmax(130px, 1fr) auto minmax(130px, 1fr) auto minmax(170px, 1.25fr);
-  gap: 10px;
+  grid-template-columns: minmax(150px, 0.9fr) auto minmax(210px, 1.12fr) auto minmax(210px, 1.15fr);
+  gap: 12px;
   align-items: center;
 }
 
@@ -607,18 +619,22 @@ main {
 
 .layer-diagram svg {
   width: 100%;
-  max-width: 210px;
-  height: 132px;
+  max-width: 250px;
+  height: 126px;
   overflow: visible;
 }
 
-.layer-diagram.tmcc svg {
+.layer-diagram.mxene svg {
   max-width: 260px;
+}
+
+.layer-diagram.tmcc svg {
+  max-width: 300px;
 }
 
 .layer-diagram line {
   stroke: rgba(58, 106, 107, 0.62);
-  stroke-width: 2.2;
+  stroke-width: 2.1;
   stroke-linecap: round;
 }
 
@@ -681,7 +697,7 @@ main {
 .feature-strip {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
+  gap: 14px;
 }
 
 .feature-item {
@@ -2088,6 +2104,7 @@ sub {
 
   .tmcc-schematic {
     padding-bottom: 10px;
+    transform: none;
   }
 
   .schematic-flow {
@@ -2160,6 +2177,10 @@ sub {
 }
 
 @media (max-width: 520px) {
+  .hero-copy h1 span:last-child {
+    white-space: normal;
+  }
+
   .feature-strip {
     grid-template-columns: 1fr;
   }

@@ -76,7 +76,10 @@ export default function App() {
         >
           <div className="hero-copy">
             <p className="eyebrow">Transition Metal Carbochalcogenide</p>
-            <h1>TMCC Materials Database</h1>
+            <h1>
+              <span>TMCC</span>
+              <span>Materials Database</span>
+            </h1>
             <p className="subtitle">A materials database for layered transition-metal chalcogenide carbides, nitrides, and related intercalated structures.</p>
             <p className="hero-note">
               The TMCC Database is a materials database for transition metal carbochalcogenides (TMCCs),
@@ -294,26 +297,31 @@ function WhatIsTmccSchematic() {
 function LayerDiagram({ type, title, formula }: { type: "tmd" | "mxene" | "tmcc"; title: string; formula: string }) {
   const nodes = {
     tmd: [
-      ["x", 28, 60], ["m", 62, 34], ["x", 96, 60],
-      ["x", 62, 104], ["m", 96, 78], ["x", 130, 104]
+      ["x", 18, 94], ["m", 50, 60], ["x", 82, 94],
+      ["x", 50, 24], ["m", 114, 60], ["x", 146, 24],
+      ["x", 146, 94], ["m", 178, 60], ["x", 210, 94],
+      ["x", 178, 24]
     ],
     mxene: [
-      ["m", 24, 78], ["c", 58, 52], ["m", 92, 78],
-      ["m", 58, 104], ["c", 92, 78], ["m", 126, 104]
+      ["m", 18, 78], ["c", 48, 48], ["m", 78, 78],
+      ["c", 108, 48], ["m", 138, 78], ["c", 168, 48],
+      ["m", 198, 78], ["c", 48, 108], ["m", 78, 138],
+      ["c", 108, 108], ["m", 138, 138], ["c", 168, 108]
     ],
     tmcc: [
-      ["x", 24, 54], ["m", 58, 82], ["c", 92, 54], ["m", 126, 82], ["x", 160, 54],
-      ["x", 58, 116], ["m", 92, 88], ["c", 126, 116], ["m", 160, 88], ["x", 194, 116]
+      ["x", 18, 30], ["m", 48, 62], ["c", 78, 90], ["m", 108, 62], ["x", 138, 30],
+      ["x", 48, 138], ["m", 78, 108], ["c", 108, 90], ["m", 138, 108], ["x", 168, 138],
+      ["x", 198, 30], ["m", 168, 62], ["c", 198, 90], ["m", 228, 108], ["x", 258, 138]
     ]
   }[type];
 
   const bonds = {
-    tmd: [[0, 1], [1, 2], [1, 3], [3, 4], [4, 5], [2, 4]],
-    mxene: [[0, 1], [1, 2], [1, 3], [3, 4], [4, 5], [2, 4]],
-    tmcc: [[0, 1], [1, 2], [2, 3], [3, 4], [1, 5], [5, 6], [6, 7], [7, 8], [8, 9], [3, 9], [2, 6], [7, 3]]
+    tmd: [[0, 1], [1, 2], [1, 3], [3, 4], [4, 5], [4, 6], [6, 7], [7, 8], [7, 9]],
+    mxene: [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [0, 7], [7, 8], [8, 9], [9, 10], [10, 11], [11, 6], [2, 7], [4, 9]],
+    tmcc: [[0, 1], [1, 2], [2, 3], [3, 4], [4, 11], [11, 10], [1, 5], [5, 6], [6, 7], [7, 8], [8, 9], [8, 13], [13, 14], [11, 12], [12, 13], [3, 7], [7, 11]]
   }[type];
 
-  const viewBox = type === "tmcc" ? "0 0 218 142" : "0 0 154 142";
+  const viewBox = type === "tmd" ? "0 0 228 160" : type === "mxene" ? "0 0 216 160" : "0 0 276 168";
 
   return (
     <div className={`layer-diagram ${type}`}>
