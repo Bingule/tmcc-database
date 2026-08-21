@@ -9,6 +9,21 @@ export type UnitValue = {
   unit: string;
 };
 
+export type StructureProperties = Record<string, unknown> & {
+  cell_volume?: UnitValue;
+  density?: UnitValue;
+};
+
+export type ThermodynamicsProperties = Record<string, unknown> & {
+  formation_energy?: UnitValue;
+  formation_energy_per_atom?: UnitValue;
+};
+
+export type MechanicalProperties = Record<string, unknown> & {
+  mechanically_stable?: boolean | null;
+  elastic_constants?: Record<string, unknown> | null;
+};
+
 export type HostDescriptor = {
   formula: string;
   metal: string;
@@ -53,10 +68,10 @@ export type MaterialRecord = {
   intercalation: IntercalationDescriptor | null;
   experimental_status: ExperimentalStatus;
   calculation_status: CalculationStatus;
-  structure: Record<string, unknown>;
-  thermodynamics: Record<string, unknown>;
+  structure: StructureProperties;
+  thermodynamics: ThermodynamicsProperties;
   phonons: Record<string, unknown>;
-  mechanical: Record<string, unknown>;
+  mechanical: MechanicalProperties;
   electronic: Record<string, unknown>;
   energy_storage: Record<string, unknown>;
   files: MaterialFiles;

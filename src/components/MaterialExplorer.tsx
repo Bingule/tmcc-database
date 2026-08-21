@@ -4,9 +4,9 @@ import {
   filterMaterialsByElementSet,
   formatPropertyValue,
   getDftEnergyPerFormulaUnitLabel,
+  getFormationEnergyPerAtomLabel,
   getIntercalantLabel,
   getLatticeSettingLabel,
-  getPhononStabilityLabel,
   getStructureTypeLabel,
   getSitesPerCellLabel,
   getSubclassLabel,
@@ -39,8 +39,8 @@ type SortKey =
   | "intercalant"
   | "sites"
   | "dft_energy"
+  | "formation_energy"
   | "energy_above_hull"
-  | "phonon"
   | "band_gap";
 type SortDirection = "asc" | "desc";
 
@@ -181,9 +181,9 @@ export function MaterialExplorer({
                   <SortHeader label="Space Group" sortKey="space_group" activeSort={sort} onSort={handleSort} />
                   <SortHeader label="Intercalant" sortKey="intercalant" activeSort={sort} onSort={handleSort} />
                   <SortHeader label="Sites/cell" sortKey="sites" activeSort={sort} onSort={handleSort} />
-                  <SortHeader label="DFT Energy" unit="eV/formula" sortKey="dft_energy" activeSort={sort} onSort={handleSort} />
-                  <SortHeader label="Energy Above Hull" unit="eV/atom" sortKey="energy_above_hull" activeSort={sort} onSort={handleSort} />
-                  <SortHeader label="Phonon" sortKey="phonon" activeSort={sort} onSort={handleSort} />
+                  <SortHeader label="E_DFT" unit="eV/f.u." sortKey="dft_energy" activeSort={sort} onSort={handleSort} />
+                  <SortHeader label="E_form" unit="eV/atom" sortKey="formation_energy" activeSort={sort} onSort={handleSort} />
+                  <SortHeader label="E_hull" unit="eV/atom" sortKey="energy_above_hull" activeSort={sort} onSort={handleSort} />
                   <SortHeader label="Band Gap" unit="eV" sortKey="band_gap" activeSort={sort} onSort={handleSort} />
                 </tr>
               </thead>
@@ -217,8 +217,8 @@ export function MaterialExplorer({
                     <td>{getIntercalantLabel(material)}</td>
                     <td>{getSitesPerCellLabel(material)}</td>
                     <td>{getDftEnergyPerFormulaUnitLabel(material)}</td>
+                    <td>{getFormationEnergyPerAtomLabel(material)}</td>
                     <td>{formatPropertyValue(material.thermodynamics.energy_above_hull)}</td>
-                    <td>{getPhononStabilityLabel(material)}</td>
                     <td>{formatPropertyValue(material.electronic.band_gap)}</td>
                   </tr>
                 ))}
@@ -328,10 +328,10 @@ function getSortValue(material: MaterialRecord, key: SortKey): string | number {
       return numericOrInfinity(getSitesPerCellLabel(material));
     case "dft_energy":
       return numericOrInfinity(getDftEnergyPerFormulaUnitLabel(material));
+    case "formation_energy":
+      return numericOrInfinity(getFormationEnergyPerAtomLabel(material));
     case "energy_above_hull":
       return numericOrInfinity(formatPropertyValue(material.thermodynamics.energy_above_hull));
-    case "phonon":
-      return getPhononStabilityLabel(material);
     case "band_gap":
       return numericOrInfinity(formatPropertyValue(material.electronic.band_gap));
     default:

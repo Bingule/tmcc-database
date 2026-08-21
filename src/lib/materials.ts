@@ -63,6 +63,84 @@ export function getDftEnergyPerFormulaUnitLabel(material: MaterialRecord) {
   return formatNumber(totalEnergy / formulaUnits);
 }
 
+export function getFormationEnergyPerAtom(material: MaterialRecord) {
+  const explicit = material.thermodynamics.formation_energy_per_atom;
+  const explicitValue = readNumericValue(explicit);
+  if (explicitValue !== null) return explicitValue;
+
+  const formationEnergy = material.thermodynamics.formation_energy;
+  const value = readNumericValue(formationEnergy);
+  if (value === null) return null;
+  const unit = readUnit(formationEnergy);
+  if (unit === "eV/atom") return value;
+  if (unit !== "eV/formula" && unit !== "eV/f.u.") return null;
+  const atomsPerFormula = countAtomsInFormula(material.formula);
+  return atomsPerFormula ? value / atomsPerFormula : null;
+}
+
+export function getFormationEnergyPerAtomLabel(material: MaterialRecord) {
+  const value = getFormationEnergyPerAtom(material);
+  return value === null ? "-" : formatNumber(value);
+}
+
+export function getCellVolume(material: MaterialRecord) {
+  const explicit = readNumericValue(material.structure.cell_volume);
+  if (explicit !== null) return explicit;
+
+  const lattice = material.structure.lattice_parameters as Record<string, unknown> | undefined;
+  const angles = material.structure.angles as Record<string, unknown> | undefined;
+  const a = readNumericValue(lattice?.a);
+  const b = readNumericValue(lattice?.b);
+  const c = readNumericValue(lattice?.c);
+  const alpha = readNumericValue(angles?.alpha);
+  const beta = readNumericValue(angles?.beta);
+  const gamma = readNumericValue(angles?.gamma);
+  if ([a, b, c, alpha, beta, gamma].some((value) => value === null)) return null;
+
+  const alphaRad = degreesToRadians(alpha as number);
+  const betaRad = degreesToRadians(beta as number);
+  const gammaRad = degreesToRadians(gamma as number);
+  const factor = 1 + 2 * Math.cos(alphaRad) * Math.cos(betaRad) * Math.cos(gammaRad)
+    - Math.cos(alphaRad) ** 2 - Math.cos(betaRad) ** 2 - Math.cos(gammaRad) ** 2;
+  if (factor <= 0) return null;
+  return (a as number) * (b as number) * (c as number) * Math.sqrt(factor);
+}
+
+export function getCellVolumeLabel(material: MaterialRecord) {
+  const value = getCellVolume(material);
+  return value === null ? "-" : formatNumber(value);
+}
+
+export function getDensity(material: MaterialRecord) {
+  const explicit = readNumericValue(material.structure.density);
+  if (explicit !== null) return explicit;
+  const volume = getCellVolume(material);
+  const sites = material.structure.atomic_sites;
+  if (!volume || !Array.isArray(sites) || sites.length === 0) return null;
+
+  let mass = 0;
+  for (const site of sites) {
+    if (!site || typeof site !== "object") return null;
+    const { element, occupancy } = site as { element?: unknown; occupancy?: unknown };
+    if (typeof element !== "string" || !(element in ATOMIC_MASSES)) return null;
+    const siteOccupancy = typeof occupancy === "number" ? occupancy : 1;
+    mass += ATOMIC_MASSES[element] * siteOccupancy;
+  }
+  return mass * ATOMIC_MASS_DENSITY_FACTOR / volume;
+}
+
+export function getDensityLabel(material: MaterialRecord) {
+  const value = getDensity(material);
+  return value === null ? "-" : formatNumber(value);
+}
+
+export function getMechanicalStabilityLabel(material: MaterialRecord) {
+  const stable = material.mechanical.mechanically_stable;
+  if (stable === true) return "Stable";
+  if (stable === false) return "Unstable";
+  return "Pending";
+}
+
 export function getSubclassLabel(material: MaterialRecord) {
   return material.subclass ?? inferSubclass(material);
 }
@@ -131,6 +209,29 @@ function readNumericValue(value: unknown) {
   const unitValue = value as { value?: unknown };
   return typeof unitValue.value === "number" ? unitValue.value : null;
 }
+
+function readUnit(value: unknown) {
+  if (!value || typeof value !== "object" || !("unit" in value)) return null;
+  const unit = (value as { unit?: unknown }).unit;
+  return typeof unit === "string" ? unit : null;
+}
+
+function degreesToRadians(value: number) {
+  return value * Math.PI / 180;
+}
+
+const ATOMIC_MASS_DENSITY_FACTOR = 1.6605390666;
+const ATOMIC_MASSES: Record<string, number> = {
+  Li: 6.94, B: 10.81, C: 12.011, N: 14.007, Na: 22.98976928, Mg: 24.305,
+  Al: 26.9815385, Si: 28.085, P: 30.973761998, S: 32.06, K: 39.0983, Ca: 40.078,
+  Sc: 44.955908, Ti: 47.867, V: 50.9415, Cr: 51.9961, Mn: 54.938044, Fe: 55.845,
+  Co: 58.933194, Ni: 58.6934, Cu: 63.546, Zn: 65.38, Ga: 69.723, Ge: 72.63,
+  As: 74.921595, Se: 78.971, Y: 88.90584, Zr: 91.224, Nb: 92.90637, Mo: 95.95,
+  Tc: 98, Ru: 101.07, Rh: 102.9055, Pd: 106.42, Ag: 107.8682, Cd: 112.414,
+  In: 114.818, Sn: 118.71, Sb: 121.76, Te: 127.6, Hf: 178.49, Ta: 180.94788,
+  W: 183.84, Re: 186.207, Os: 190.23, Ir: 192.217, Pt: 195.084, Au: 196.966569,
+  Hg: 200.592, Pb: 207.2, Bi: 208.9804
+};
 
 function formatNumber(value: number) {
   return Number.isInteger(value) ? String(value) : value.toFixed(6).replace(/0+$/, "").replace(/\.$/, "");

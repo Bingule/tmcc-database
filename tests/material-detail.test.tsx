@@ -77,6 +77,40 @@ describe("MaterialDetail", () => {
     expect(markup).toContain("2.91 Å");
   });
 
+  it("renders derived crystal and normalized thermodynamic properties", () => {
+    const material = {
+      ...materials[0],
+      thermodynamics: {
+        ...materials[0].thermodynamics,
+        formation_energy: { value: -1.25, unit: "eV/formula" },
+        energy_above_hull: { value: 0.012, unit: "eV/atom" }
+      },
+      mechanical: { mechanically_stable: true }
+    };
+    const markup = renderToStaticMarkup(<MaterialDetail material={material} />);
+
+    expect(markup).toContain("Cell volume (Å³)");
+    expect(markup).toContain("Density (g/cm³)");
+    expect(markup).toContain("E_DFT / f.u.");
+    expect(markup).toContain("E_form (eV/atom)");
+    expect(markup).toContain("-0.25");
+    expect(markup).toContain("E_hull (eV/atom)");
+    expect(markup).not.toContain("DFT total energy");
+    expect(markup).toContain("Mechanical stability");
+    expect(markup).toContain("Stable");
+  });
+
+  it("shows pending mechanical stability without inferring it from elastic constants", () => {
+    const material = {
+      ...materials[0],
+      mechanical: { elastic_constants: { C11: 100 } }
+    };
+    const markup = renderToStaticMarkup(<MaterialDetail material={material} />);
+
+    expect(markup).toContain("Mechanical stability");
+    expect(markup).toContain("Pending");
+  });
+
   it("shows the rhombohedral setting note for R-3m materials", () => {
     const material = materials.find((item) => item.material_id === "TMCC-0002") ?? materials[1];
     const markup = renderToStaticMarkup(<MaterialDetail material={material} />);

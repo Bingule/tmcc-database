@@ -6,8 +6,12 @@ import { XrdViewer } from "./XrdViewer";
 import {
   formatPropertyValue,
   getDftEnergyPerFormulaUnitLabel,
+  getCellVolumeLabel,
+  getDensityLabel,
+  getFormationEnergyPerAtomLabel,
   getIntercalantLabel,
   getLatticeSettingLabel,
+  getMechanicalStabilityLabel,
   getNumberOfSitesLabel,
   getSpaceGroupLabel,
   getSpaceGroupSymbol,
@@ -61,6 +65,8 @@ export function MaterialDetail({ material }: { material: MaterialRecord }) {
           )}
           <Data label="Lattice a, b, c" value={formatParameterGroup(material.structure.lattice_parameters)} />
           <Data label="Angles alpha, beta, gamma" value={formatParameterGroup(material.structure.angles)} />
+          <Data label="Cell volume (Å³)" value={getCellVolumeLabel(material)} />
+          <Data label="Density (g/cm³)" value={getDensityLabel(material)} />
           <Data label="Layer thickness" value={formatUnitValue(material.structure.layer_thickness)} />
           <Data label="van der Waals gap" value={formatUnitValue(material.structure.vdw_gap)} />
           <AtomicSitesTable sites={material.structure.atomic_sites} />
@@ -75,15 +81,16 @@ export function MaterialDetail({ material }: { material: MaterialRecord }) {
         </Panel>
 
         <Panel title="Thermodynamics">
-          <Data label="DFT energy / f.u." value={getDftEnergyPerFormulaUnitLabel(material)} />
-          <Data label="DFT total energy" value={formatPropertyValue(material.thermodynamics.total_energy)} />
-          <Data label="Energy above hull" value={formatPropertyValue(material.thermodynamics.energy_above_hull)} />
+          <Data label="E_DFT / f.u." value={getDftEnergyPerFormulaUnitLabel(material)} />
+          <Data label="E_form (eV/atom)" value={getFormationEnergyPerAtomLabel(material)} />
+          <Data label="E_hull (eV/atom)" value={formatPropertyValue(material.thermodynamics.energy_above_hull)} />
           <Data label="Relative energy between configurations" value={formatPropertyValue(material.thermodynamics.relative_structure_energy)} />
         </Panel>
 
         <Panel title="Stability And Properties">
           <Data label="Phonon calculated" value={getUnavailableLabel(material.phonons.phonon_calculated)} />
           <Data label="Dynamically stable" value={getUnavailableLabel(material.phonons.dynamically_stable)} />
+          <Data label="Mechanical stability" value={getMechanicalStabilityLabel(material)} />
           <Data label="Electronic character" value={getUnavailableLabel(material.electronic.electronic_character)} />
           <Data label="Magnetic state" value={getUnavailableLabel(material.electronic.magnetic_ground_state)} />
           <Data label="Li/Na storage data" value="-" />

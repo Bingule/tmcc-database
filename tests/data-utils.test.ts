@@ -6,6 +6,10 @@ import {
   getSpaceGroupLabel,
   getElementsFromFormula,
   getLatticeSettingLabel,
+  getCellVolume,
+  getDensity,
+  getFormationEnergyPerAtom,
+  getMechanicalStabilityLabel,
   getMaterialStats,
   getUnavailableLabel,
   makeIntercalatedFormula,
@@ -58,6 +62,49 @@ describe("missing value labels", () => {
     expect(formatPropertyValue({ value: -0.42, unit: "eV/formula" })).toBe("-0.42");
     expect(formatPropertyValue({ value: null, unit: "eV/atom" })).toBe("-");
     expect(formatPropertyValue(undefined)).toBe("-");
+  });
+});
+
+describe("derived material properties", () => {
+  const material = {
+    ...baseMaterial,
+    material_id: "TMCC-9999",
+    slug: "c-test-cell",
+    material_type: "pristine",
+    formula: "C",
+    host: { formula: "C", metal: "Nb", chalcogen: "S", anion: "C" },
+    intercalation: null,
+    structure: {
+      lattice_parameters: {
+        a: { value: 2, unit: "angstrom" },
+        b: { value: 2, unit: "angstrom" },
+        c: { value: 2, unit: "angstrom" }
+      },
+      angles: {
+        alpha: { value: 90, unit: "degree" },
+        beta: { value: 90, unit: "degree" },
+        gamma: { value: 90, unit: "degree" }
+      },
+      atomic_sites: [{ element: "C", occupancy: 1 }]
+    },
+    thermodynamics: {
+      formation_energy: { value: -2, unit: "eV/formula" }
+    }
+  } as MaterialRecord;
+
+  it("computes cell volume and density from the final cell and atomic sites", () => {
+    expect(getCellVolume(material)).toBeCloseTo(8);
+    expect(getDensity(material)).toBeCloseTo(2.493, 3);
+  });
+
+  it("normalizes formation energy to eV per atom", () => {
+    expect(getFormationEnergyPerAtom(material)).toBe(-2);
+  });
+
+  it("keeps mechanical stability tri-state and independent of elastic constants", () => {
+    expect(getMechanicalStabilityLabel({ ...material, mechanical: { mechanically_stable: true } })).toBe("Stable");
+    expect(getMechanicalStabilityLabel({ ...material, mechanical: { mechanically_stable: false } })).toBe("Unstable");
+    expect(getMechanicalStabilityLabel({ ...material, mechanical: { elastic_constants: { C11: 100 } } })).toBe("Pending");
   });
 });
 

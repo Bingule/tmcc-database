@@ -194,11 +194,11 @@ describe("MaterialExplorer", () => {
       />
     );
 
-    expect(markup).toContain("<span class=\"column-heading-text\"><span>DFT Energy</span><small class=\"column-unit\">eV/formula</small></span>");
-    expect(markup).toContain("<span class=\"column-heading-text\"><span>Energy Above Hull</span><small class=\"column-unit\">eV/atom</small></span>");
-    expect(markup).toContain("<span>Phonon</span>");
+    expect(markup).toContain("<span class=\"column-heading-text\"><span>E_DFT</span><small class=\"column-unit\">eV/f.u.</small></span>");
+    expect(markup).toContain("<span class=\"column-heading-text\"><span>E_form</span><small class=\"column-unit\">eV/atom</small></span>");
+    expect(markup).toContain("<span class=\"column-heading-text\"><span>E_hull</span><small class=\"column-unit\">eV/atom</small></span>");
+    expect(markup).not.toContain("<span>Phonon</span>");
     expect(markup).toContain("<span class=\"column-heading-text\"><span>Band Gap</span><small class=\"column-unit\">eV</small></span>");
-    expect(markup).not.toContain("Formation Energy");
   });
 
   it("shows DFT energy per formula unit and dashes for missing table values", () => {
@@ -216,6 +216,7 @@ describe("MaterialExplorer", () => {
             },
             thermodynamics: {
               total_energy: { value: -42.63717309249796, unit: "eV/cell" },
+              formation_energy: { value: -1.25, unit: "eV/formula" },
               energy_above_hull: { value: null, unit: "eV/atom" }
             },
             electronic: { band_gap: { value: null, unit: "eV" } }
@@ -228,6 +229,7 @@ describe("MaterialExplorer", () => {
     );
 
     expect(markup).toContain("-42.637173");
+    expect(markup).toContain("-0.25");
     expect(markup).toContain("<td>-</td>");
     expect(markup).not.toContain("Not calculated");
   });

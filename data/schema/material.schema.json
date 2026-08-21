@@ -61,7 +61,42 @@
     },
     "experimental_status": { "enum": [null, "unknown", "experimental", "not_reported", "computational"] },
     "calculation_status": { "enum": ["not_calculated", "calculation_in_progress", "calculated"] },
+    "structure": {
+      "type": "object",
+      "properties": {
+        "cell_volume": { "$ref": "#/$defs/unitValue" },
+        "density": { "$ref": "#/$defs/unitValue" }
+      },
+      "additionalProperties": true
+    },
+    "thermodynamics": {
+      "type": "object",
+      "properties": {
+        "formation_energy": { "$ref": "#/$defs/unitValue" },
+        "formation_energy_per_atom": { "$ref": "#/$defs/unitValue" }
+      },
+      "additionalProperties": true
+    },
+    "mechanical": {
+      "type": "object",
+      "properties": {
+        "mechanically_stable": { "type": ["boolean", "null"] },
+        "elastic_constants": { "type": ["object", "null"] }
+      },
+      "additionalProperties": true
+    },
     "files": { "type": "object" },
     "provenance": { "type": "object" }
+  },
+  "$defs": {
+    "unitValue": {
+      "type": "object",
+      "required": ["value", "unit"],
+      "properties": {
+        "value": { "type": ["number", "null"] },
+        "unit": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
   }
 }
