@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       Ti6S6P3
+_chemical_formula_sum              "Ti6 S6 P3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Ti  Ti1       1.0  0.49020  0.50980  0.64247  1.0000
+  Ti  Ti2       1.0  0.50980  0.49020  0.35753  1.0000
+  Ti  Ti3       1.0  0.66679  0.33321  0.97276  1.0000
+  Ti  Ti4       1.0  0.15666  0.84334  0.69695  1.0000
+  Ti  Ti5       1.0  0.84334  0.15666  0.30305  1.0000
+  Ti  Ti6       1.0  0.33321  0.66679  0.02724  1.0000
+  S   S1        1.0  0.16550  0.83450  0.79075  1.0000
+  S   S2        1.0  0.83450  0.16550  0.20925  1.0000
+  S   S3        1.0  0.33508  0.66492  0.12117  1.0000
+  S   S4        1.0  0.49878  0.50122  0.54878  1.0000
+  S   S5        1.0  0.50122  0.49878  0.45122  1.0000
+  S   S6        1.0  0.66492  0.33508  0.87883  1.0000
+  P   P1        1.0  0.00000  0.00000  0.00000  1.0000
+  P   P2        1.0  0.17658  0.82342  0.33029  1.0000
+  P   P3        1.0  0.82342  0.17658  0.66971  1.0000

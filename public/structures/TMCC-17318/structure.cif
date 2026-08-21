@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       Nb6S6Bi3
+_chemical_formula_sum              "Nb6 S6 Bi3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Nb  Nb1       1.0  0.00121  0.99879  0.57809  1.0000
+  Nb  Nb2       1.0  0.99879  0.00121  0.42191  1.0000
+  Nb  Nb3       1.0  0.77235  0.22765  0.91151  1.0000
+  Nb  Nb4       1.0  0.75491  0.24509  0.75315  1.0000
+  Nb  Nb5       1.0  0.24509  0.75491  0.24685  1.0000
+  Nb  Nb6       1.0  0.22765  0.77235  0.08849  1.0000
+  S   S1        1.0  0.08296  0.91704  0.78035  1.0000
+  S   S2        1.0  0.91704  0.08296  0.21965  1.0000
+  S   S3        1.0  0.57042  0.42958  0.11617  1.0000
+  S   S4        1.0  0.66398  0.33602  0.55063  1.0000
+  S   S5        1.0  0.33602  0.66398  0.44937  1.0000
+  S   S6        1.0  0.42958  0.57042  0.88383  1.0000
+  Bi  Bi1       1.0  0.00000  0.00000  0.00000  1.0000
+  Bi  Bi2       1.0  0.75261  0.24739  0.33009  1.0000
+  Bi  Bi3       1.0  0.24739  0.75261  0.66991  1.0000

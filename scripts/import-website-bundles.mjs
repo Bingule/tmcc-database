@@ -53,6 +53,17 @@ function normalizeRecord(record) {
 
 function classifyRecord(record) {
   const formula = String(record.host?.formula ?? record.formula ?? "").replace(/\s/g, "");
+  const pBlockAnion = "(?:P|As|Sb|Bi|Si|Ge|Sn|Pb|B|Al|Ga|In)";
+  if (new RegExp(`2(?:S|Se|Te)2${pBlockAnion}$`).test(formula)) {
+    return { subclass: "TMCDC", structure_type: "M2X2A", material_type: record.material_type };
+  }
+  if (new RegExp(`2(?:S|Se|Te)${pBlockAnion}$`).test(formula)) {
+    return {
+      subclass: "TMCC",
+      structure_type: "M2XA",
+      material_type: record.material_type === "pristine" ? "m2xa" : record.material_type,
+    };
+  }
   if (/2(?:S|Se|Te)2N/.test(formula)) {
     return { subclass: "TMCDC", structure_type: "M2X2N", material_type: record.material_type };
   }

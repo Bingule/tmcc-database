@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       Li3Hg6N3S6
+_chemical_formula_sum              "Li3 Hg6 N3 S6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Li  Li1       1.0  0.00000  0.00000  0.00000  0.5000
+  Li  Li2       1.0  0.63347  0.36653  0.33022  0.5000
+  Li  Li3       1.0  0.36653  0.63347  0.66978  0.5000
+  Hg  Hg1       1.0  0.98717  0.01283  0.90156  1.0000
+  Hg  Hg2       1.0  0.01283  0.98717  0.09844  1.0000
+  Hg  Hg3       1.0  0.70619  0.29381  0.23166  1.0000
+  Hg  Hg4       1.0  0.66160  0.33840  0.43269  1.0000
+  Hg  Hg5       1.0  0.33840  0.66160  0.56731  1.0000
+  Hg  Hg6       1.0  0.29381  0.70619  0.76834  1.0000
+  N   N1        1.0  0.00000  0.00000  0.50000  1.0000
+  N   N2        1.0  0.50079  0.49921  0.83710  1.0000
+  N   N3        1.0  0.49921  0.50079  0.16290  1.0000
+  S   S1        1.0  0.02219  0.97781  0.67026  1.0000
+  S   S2        1.0  0.97781  0.02219  0.32974  1.0000
+  S   S3        1.0  0.67592  0.32408  0.00005  1.0000
+  S   S4        1.0  0.70643  0.29357  0.66987  1.0000
+  S   S5        1.0  0.29357  0.70643  0.33013  1.0000
+  S   S6        1.0  0.32408  0.67592  0.99995  1.0000

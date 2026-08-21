@@ -85,7 +85,7 @@ export default function App() {
               The TMCC Database is a materials database for transition metal carbochalcogenides (TMCCs),
               covering TMCC, TMCDC, and intercalated layered materials. TMCC is the broad family for
               M2XA, M2X2A, and metal-intercalated records where M is a transition metal, X is S/Se/Te,
-              and A is C or N. TMCDC is the M2X2A subclass with X-M-A-M-X layered units.
+              and A is C, N, or a supported p-block element. TMCDC is the M2X2A subclass with X-M-A-M-X layered units.
             </p>
             <p className="hero-seo-line">
               The term transition metal carbo-chalcogenide is used here as a searchable synonym for TMCC materials.

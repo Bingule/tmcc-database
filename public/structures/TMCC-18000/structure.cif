@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       Au6Te6Ga3
+_chemical_formula_sum              "Au6 Te6 Ga3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Au  Au1       1.0  0.98997  0.01003  0.59896  1.0000
+  Au  Au2       1.0  0.01003  0.98997  0.40104  1.0000
+  Au  Au3       1.0  0.65789  0.34211  0.93711  1.0000
+  Au  Au4       1.0  0.67568  0.32432  0.72386  1.0000
+  Au  Au5       1.0  0.32432  0.67568  0.27614  1.0000
+  Au  Au6       1.0  0.34211  0.65789  0.06289  1.0000
+  Te  Te1       1.0  0.02291  0.97709  0.79597  1.0000
+  Te  Te2       1.0  0.97709  0.02291  0.20403  1.0000
+  Te  Te3       1.0  0.68983  0.31017  0.13579  1.0000
+  Te  Te4       1.0  0.64565  0.35435  0.53038  1.0000
+  Te  Te5       1.0  0.35435  0.64565  0.46962  1.0000
+  Te  Te6       1.0  0.31017  0.68983  0.86421  1.0000
+  Ga  Ga1       1.0  0.00000  0.00000  0.00000  1.0000
+  Ga  Ga2       1.0  0.66862  0.33138  0.33822  1.0000
+  Ga  Ga3       1.0  0.33138  0.66862  0.66178  1.0000

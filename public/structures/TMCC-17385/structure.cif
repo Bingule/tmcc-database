@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       Ta6Te6Bi3
+_chemical_formula_sum              "Ta6 Te6 Bi3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Ta  Ta1       1.0  0.96883  0.03117  0.58835  1.0000
+  Ta  Ta2       1.0  0.03117  0.96883  0.41165  1.0000
+  Ta  Ta3       1.0  0.55460  0.44540  0.92338  1.0000
+  Ta  Ta4       1.0  0.69284  0.30716  0.74339  1.0000
+  Ta  Ta5       1.0  0.30716  0.69284  0.25661  1.0000
+  Ta  Ta6       1.0  0.44540  0.55460  0.07662  1.0000
+  Te  Te1       1.0  0.01763  0.98237  0.78462  1.0000
+  Te  Te2       1.0  0.98237  0.01763  0.21538  1.0000
+  Te  Te3       1.0  0.76948  0.23052  0.11828  1.0000
+  Te  Te4       1.0  0.63088  0.36912  0.54712  1.0000
+  Te  Te5       1.0  0.36912  0.63088  0.45288  1.0000
+  Te  Te6       1.0  0.23052  0.76948  0.88172  1.0000
+  Bi  Bi1       1.0  1.00000  1.00000  0.00000  1.0000
+  Bi  Bi2       1.0  0.77560  0.22440  0.33226  1.0000
+  Bi  Bi3       1.0  0.22440  0.77560  0.66774  1.0000

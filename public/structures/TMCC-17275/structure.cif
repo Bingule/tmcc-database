@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       Au6Se6Sb3
+_chemical_formula_sum              "Au6 Se6 Sb3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Au  Au1       1.0  0.97379  0.02621  0.59261  1.0000
+  Au  Au2       1.0  0.02621  0.97379  0.40739  1.0000
+  Au  Au3       1.0  0.64038  0.35962  0.92573  1.0000
+  Au  Au4       1.0  0.63807  0.36193  0.74554  1.0000
+  Au  Au5       1.0  0.36193  0.63807  0.25446  1.0000
+  Au  Au6       1.0  0.35962  0.64038  0.07427  1.0000
+  Se  Se1       1.0  0.99727  0.00273  0.81562  1.0000
+  Se  Se2       1.0  0.00273  0.99727  0.18438  1.0000
+  Se  Se3       1.0  0.70691  0.29309  0.14434  1.0000
+  Se  Se4       1.0  0.68747  0.31253  0.52021  1.0000
+  Se  Se5       1.0  0.31253  0.68747  0.47979  1.0000
+  Se  Se6       1.0  0.29309  0.70691  0.85566  1.0000
+  Sb  Sb1       1.0  0.00000  0.00000  0.00000  1.0000
+  Sb  Sb2       1.0  0.74416  0.25584  0.33004  1.0000
+  Sb  Sb3       1.0  0.25584  0.74416  0.66996  1.0000

@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       V6S6Bi3
+_chemical_formula_sum              "V6 S6 Bi3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  V   V1        1.0  0.00848  0.99152  0.57823  1.0000
+  V   V2        1.0  0.99152  0.00848  0.42177  1.0000
+  V   V3        1.0  0.78050  0.21950  0.91185  1.0000
+  V   V4        1.0  0.74310  0.25690  0.75314  1.0000
+  V   V5        1.0  0.25690  0.74310  0.24686  1.0000
+  V   V6        1.0  0.21950  0.78050  0.08815  1.0000
+  S   S1        1.0  0.07069  0.92931  0.77800  1.0000
+  S   S2        1.0  0.92931  0.07069  0.22200  1.0000
+  S   S3        1.0  0.56136  0.43864  0.11304  1.0000
+  S   S4        1.0  0.67111  0.32889  0.55368  1.0000
+  S   S5        1.0  0.32889  0.67111  0.44632  1.0000
+  S   S6        1.0  0.43864  0.56136  0.88696  1.0000
+  Bi  Bi1       1.0  0.00000  0.00000  0.00000  1.0000
+  Bi  Bi2       1.0  0.75547  0.24453  0.32886  1.0000
+  Bi  Bi3       1.0  0.24453  0.75547  0.67114  1.0000

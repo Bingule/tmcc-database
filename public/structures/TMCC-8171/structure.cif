@@ -1,0 +1,32 @@
+data_image0
+_chemical_formula_structural       Ti2Zr2S2C
+_chemical_formula_sum              "Ti2 Zr2 S2 C1"
+_cell_length_a       3.3121
+_cell_length_b       3.3121
+_cell_length_c       9.0113
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Ti  Ti1       1.0  0.66666  0.33333  0.57762  0.2600
+  Ti  Ti2       1.0  0.33334  0.66667  0.42238  0.2600
+  Zr  Zr1       1.0  0.66667  0.33333  0.87911  1.0000
+  Zr  Zr2       1.0  0.33333  0.66667  0.12089  1.0000
+  S   S1        1.0  0.66667  0.33334  0.29383  1.0000
+  S   S2        1.0  0.33333  0.66666  0.70617  1.0000
+  C   C1        1.0  0.00000  0.00000  0.00000  1.0000

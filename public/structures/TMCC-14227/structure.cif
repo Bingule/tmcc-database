@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       Na3Rh6N3S6
+_chemical_formula_sum              "Na3 Rh6 N3 S6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Na  Na1       1.0  0.00000  0.00000  0.00000  0.5000
+  Na  Na2       1.0  0.66667  0.33333  0.33334  0.5000
+  Na  Na3       1.0  0.33333  0.66667  0.66666  0.5000
+  Rh  Rh1       1.0  0.99996  0.00004  0.87507  1.0000
+  Rh  Rh2       1.0  0.00004  0.99996  0.12493  1.0000
+  Rh  Rh3       1.0  0.66670  0.33330  0.20827  1.0000
+  Rh  Rh4       1.0  0.66667  0.33333  0.45832  1.0000
+  Rh  Rh5       1.0  0.33333  0.66667  0.54168  1.0000
+  Rh  Rh6       1.0  0.33330  0.66670  0.79173  1.0000
+  N   N1        1.0  0.00000  0.00000  0.50000  1.0000
+  N   N2        1.0  0.66672  0.33328  0.83353  1.0000
+  N   N3        1.0  0.33328  0.66672  0.16647  1.0000
+  S   S1        1.0  0.00001  0.99999  0.75046  1.0000
+  S   S2        1.0  0.99999  0.00001  0.24954  1.0000
+  S   S3        1.0  0.66666  0.33334  0.08371  1.0000
+  S   S4        1.0  0.66667  0.33333  0.58292  1.0000
+  S   S5        1.0  0.33333  0.66667  0.41708  1.0000
+  S   S6        1.0  0.33334  0.66666  0.91629  1.0000

@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       Zn6Te6Ga3
+_chemical_formula_sum              "Zn6 Te6 Ga3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Zn  Zn1       1.0  0.98865  0.01135  0.59235  1.0000
+  Zn  Zn2       1.0  0.01135  0.98865  0.40765  1.0000
+  Zn  Zn3       1.0  0.70661  0.29339  0.93240  1.0000
+  Zn  Zn4       1.0  0.60065  0.39935  0.71993  1.0000
+  Zn  Zn5       1.0  0.39935  0.60065  0.28007  1.0000
+  Zn  Zn6       1.0  0.29339  0.70661  0.06760  1.0000
+  Te  Te1       1.0  0.08599  0.91401  0.78759  1.0000
+  Te  Te2       1.0  0.91401  0.08599  0.21241  1.0000
+  Te  Te3       1.0  0.62785  0.37215  0.13438  1.0000
+  Te  Te4       1.0  0.66172  0.33828  0.53171  1.0000
+  Te  Te5       1.0  0.33828  0.66172  0.46829  1.0000
+  Te  Te6       1.0  0.37215  0.62785  0.86562  1.0000
+  Ga  Ga1       1.0  0.00000  0.00000  0.00000  1.0000
+  Ga  Ga2       1.0  0.71514  0.28486  0.34322  1.0000
+  Ga  Ga3       1.0  0.28486  0.71514  0.65678  1.0000

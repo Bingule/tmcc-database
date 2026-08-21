@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       Cu6Te6Pb3
+_chemical_formula_sum              "Cu6 Te6 Pb3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Cu  Cu1       1.0  0.99009  0.00991  0.60243  1.0000
+  Cu  Cu2       1.0  0.00991  0.99009  0.39757  1.0000
+  Cu  Cu3       1.0  0.69345  0.30655  0.93106  1.0000
+  Cu  Cu4       1.0  0.65506  0.34494  0.73929  1.0000
+  Cu  Cu5       1.0  0.34494  0.65506  0.26071  1.0000
+  Cu  Cu6       1.0  0.30655  0.69345  0.06894  1.0000
+  Te  Te1       1.0  0.07503  0.92497  0.80135  1.0000
+  Te  Te2       1.0  0.92497  0.07503  0.19865  1.0000
+  Te  Te3       1.0  0.63645  0.36355  0.13036  1.0000
+  Te  Te4       1.0  0.69475  0.30525  0.53716  1.0000
+  Te  Te5       1.0  0.30525  0.69475  0.46284  1.0000
+  Te  Te6       1.0  0.36355  0.63645  0.86964  1.0000
+  Pb  Pb1       1.0  0.00000  0.00000  0.00000  1.0000
+  Pb  Pb2       1.0  0.70612  0.29388  0.32822  1.0000
+  Pb  Pb3       1.0  0.29388  0.70612  0.67178  1.0000

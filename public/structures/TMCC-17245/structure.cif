@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       Pt6S6Sb3
+_chemical_formula_sum              "Pt6 S6 Sb3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Pt  Pt1       1.0  0.00129  0.99871  0.59808  1.0000
+  Pt  Pt2       1.0  0.99871  0.00129  0.40192  1.0000
+  Pt  Pt3       1.0  0.66795  0.33205  0.93144  1.0000
+  Pt  Pt4       1.0  0.66537  0.33463  0.73520  1.0000
+  Pt  Pt5       1.0  0.33463  0.66537  0.26480  1.0000
+  Pt  Pt6       1.0  0.33205  0.66795  0.06856  1.0000
+  S   S1        1.0  0.01533  0.98467  0.82053  1.0000
+  S   S2        1.0  0.98467  0.01533  0.17947  1.0000
+  S   S3        1.0  0.68200  0.31800  0.15382  1.0000
+  S   S4        1.0  0.65135  0.34865  0.51280  1.0000
+  S   S5        1.0  0.34865  0.65135  0.48720  1.0000
+  S   S6        1.0  0.31800  0.68200  0.84618  1.0000
+  Sb  Sb1       1.0  0.00000  0.00000  0.00000  1.0000
+  Sb  Sb2       1.0  0.66668  0.33332  0.33337  1.0000
+  Sb  Sb3       1.0  0.33332  0.66668  0.66663  1.0000

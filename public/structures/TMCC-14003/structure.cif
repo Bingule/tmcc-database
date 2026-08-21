@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       Mg3Sc6N3S6
+_chemical_formula_sum              "Mg3 Sc6 N3 S6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Mg  Mg1       1.0  0.00000  0.00000  0.00000  0.5000
+  Mg  Mg2       1.0  0.18870  0.81130  0.32757  0.5000
+  Mg  Mg3       1.0  0.81130  0.18870  0.67243  0.5000
+  Sc  Sc1       1.0  0.91490  0.08510  0.87093  1.0000
+  Sc  Sc2       1.0  0.08510  0.91490  0.12907  1.0000
+  Sc  Sc3       1.0  0.53513  0.46487  0.23584  1.0000
+  Sc  Sc4       1.0  0.74809  0.25191  0.45524  1.0000
+  Sc  Sc5       1.0  0.25191  0.74809  0.54476  1.0000
+  Sc  Sc6       1.0  0.46487  0.53513  0.76416  1.0000
+  N   N1        1.0  0.00000  0.00000  0.50000  1.0000
+  N   N2        1.0  0.76640  0.23360  0.79355  1.0000
+  N   N3        1.0  0.23360  0.76640  0.20645  1.0000
+  S   S1        1.0  0.14074  0.85926  0.80020  1.0000
+  S   S2        1.0  0.85926  0.14074  0.19980  1.0000
+  S   S3        1.0  0.75353  0.24647  0.10582  1.0000
+  S   S4        1.0  0.61231  0.38769  0.57896  1.0000
+  S   S5        1.0  0.38769  0.61231  0.42104  1.0000
+  S   S6        1.0  0.24647  0.75353  0.89418  1.0000

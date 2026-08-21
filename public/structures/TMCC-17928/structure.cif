@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       Mo6S6Ga3
+_chemical_formula_sum              "Mo6 S6 Ga3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Mo  Mo1       1.0  0.99998  0.00002  0.57602  1.0000
+  Mo  Mo2       1.0  0.00002  0.99998  0.42398  1.0000
+  Mo  Mo3       1.0  0.66670  0.33330  0.90936  1.0000
+  Mo  Mo4       1.0  0.66668  0.33332  0.75731  1.0000
+  Mo  Mo5       1.0  0.33332  0.66668  0.24269  1.0000
+  Mo  Mo6       1.0  0.33330  0.66670  0.09064  1.0000
+  S   S1        1.0  0.00002  0.99998  0.78419  1.0000
+  S   S2        1.0  0.99998  0.00002  0.21581  1.0000
+  S   S3        1.0  0.66663  0.33337  0.11752  1.0000
+  S   S4        1.0  0.66665  0.33335  0.54915  1.0000
+  S   S5        1.0  0.33335  0.66665  0.45085  1.0000
+  S   S6        1.0  0.33337  0.66663  0.88248  1.0000
+  Ga  Ga1       1.0  0.00000  0.00000  0.00000  1.0000
+  Ga  Ga2       1.0  0.66666  0.33334  0.33333  1.0000
+  Ga  Ga3       1.0  0.33334  0.66666  0.66667  1.0000

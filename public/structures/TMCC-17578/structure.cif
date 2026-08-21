@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       Zr6S6Sn3
+_chemical_formula_sum              "Zr6 S6 Sn3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Zr  Zr1       1.0  0.00003  0.99997  0.54796  1.0000
+  Zr  Zr2       1.0  0.99997  0.00003  0.45204  1.0000
+  Zr  Zr3       1.0  0.66696  0.33304  0.88129  1.0000
+  Zr  Zr4       1.0  0.66698  0.33302  0.78538  1.0000
+  Zr  Zr5       1.0  0.33302  0.66698  0.21462  1.0000
+  Zr  Zr6       1.0  0.33304  0.66696  0.11871  1.0000
+  S   S1        1.0  0.00029  0.99971  0.82210  1.0000
+  S   S2        1.0  0.99971  0.00029  0.17790  1.0000
+  S   S3        1.0  0.66637  0.33363  0.15543  1.0000
+  S   S4        1.0  0.66666  0.33334  0.51123  1.0000
+  S   S5        1.0  0.33334  0.66666  0.48877  1.0000
+  S   S6        1.0  0.33363  0.66637  0.84457  1.0000
+  Sn  Sn1       1.0  0.00000  0.00000  0.00000  1.0000
+  Sn  Sn2       1.0  0.66850  0.33150  0.33334  1.0000
+  Sn  Sn3       1.0  0.33150  0.66850  0.66666  1.0000

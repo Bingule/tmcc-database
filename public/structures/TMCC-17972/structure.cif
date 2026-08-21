@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       Hg6Se6Ga3
+_chemical_formula_sum              "Hg6 Se6 Ga3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Hg  Hg1       1.0  0.00967  0.99033  0.58699  1.0000
+  Hg  Hg2       1.0  0.99033  0.00967  0.41301  1.0000
+  Hg  Hg3       1.0  0.65806  0.34194  0.92017  1.0000
+  Hg  Hg4       1.0  0.67256  0.32744  0.74744  1.0000
+  Hg  Hg5       1.0  0.32744  0.67256  0.25256  1.0000
+  Hg  Hg6       1.0  0.34194  0.65806  0.07983  1.0000
+  Se  Se1       1.0  0.01709  0.98291  0.81835  1.0000
+  Se  Se2       1.0  0.98291  0.01709  0.18165  1.0000
+  Se  Se3       1.0  0.68486  0.31514  0.15075  1.0000
+  Se  Se4       1.0  0.68648  0.31352  0.51520  1.0000
+  Se  Se5       1.0  0.31352  0.68648  0.48480  1.0000
+  Se  Se6       1.0  0.31514  0.68486  0.84925  1.0000
+  Ga  Ga1       1.0  0.00000  0.00000  0.00000  1.0000
+  Ga  Ga2       1.0  0.67504  0.32496  0.33241  1.0000
+  Ga  Ga3       1.0  0.32496  0.67504  0.66759  1.0000

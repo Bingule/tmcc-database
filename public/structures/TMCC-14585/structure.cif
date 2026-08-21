@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       Ag3Hf6N3Se6
+_chemical_formula_sum              "Ag3 Hf6 N3 Se6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Ag  Ag1       1.0  0.00000  0.00000  0.00000  0.5000
+  Ag  Ag2       1.0  0.70095  0.29905  0.32862  0.5000
+  Ag  Ag3       1.0  0.29905  0.70095  0.67138  0.5000
+  Hf  Hf1       1.0  0.78236  0.21764  0.85857  1.0000
+  Hf  Hf2       1.0  0.21764  0.78236  0.14143  1.0000
+  Hf  Hf3       1.0  0.89979  0.10021  0.20377  1.0000
+  Hf  Hf4       1.0  0.67462  0.32538  0.47102  1.0000
+  Hf  Hf5       1.0  0.32538  0.67462  0.52898  1.0000
+  Hf  Hf6       1.0  0.10021  0.89979  0.79623  1.0000
+  N   N1        1.0  0.00000  0.00000  0.50000  1.0000
+  N   N2        1.0  0.46378  0.53622  0.84255  1.0000
+  N   N3        1.0  0.53622  0.46378  0.15745  1.0000
+  Se  Se1       1.0  0.78895  0.21105  0.74863  1.0000
+  Se  Se2       1.0  0.21105  0.78895  0.25137  1.0000
+  Se  Se3       1.0  0.73136  0.26864  0.07637  1.0000
+  Se  Se4       1.0  0.87432  0.12568  0.59610  1.0000
+  Se  Se5       1.0  0.12568  0.87432  0.40390  1.0000
+  Se  Se6       1.0  0.26864  0.73136  0.92363  1.0000

@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       Cr3Cu6N3S6
+_chemical_formula_sum              "Cr3 Cu6 N3 S6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Cr  Cr1       1.0  0.00000  0.00000  0.00000  0.5000
+  Cr  Cr2       1.0  0.53111  0.46889  0.32228  0.5000
+  Cr  Cr3       1.0  0.46889  0.53111  0.67772  0.5000
+  Cu  Cu1       1.0  0.86715  0.13285  0.89804  1.0000
+  Cu  Cu2       1.0  0.13285  0.86715  0.10196  1.0000
+  Cu  Cu3       1.0  0.58988  0.41012  0.19712  1.0000
+  Cu  Cu4       1.0  0.51020  0.48980  0.44845  1.0000
+  Cu  Cu5       1.0  0.48980  0.51020  0.55155  1.0000
+  Cu  Cu6       1.0  0.41012  0.58988  0.80288  1.0000
+  N   N1        1.0  0.00000  0.00000  0.50000  1.0000
+  N   N2        1.0  0.91413  0.08587  0.83098  1.0000
+  N   N3        1.0  0.08587  0.91413  0.16902  1.0000
+  S   S1        1.0  0.14798  0.85202  0.70171  1.0000
+  S   S2        1.0  0.85202  0.14798  0.29829  1.0000
+  S   S3        1.0  0.67626  0.32374  0.03928  1.0000
+  S   S4        1.0  0.97641  0.02359  0.61368  1.0000
+  S   S5        1.0  0.02359  0.97641  0.38632  1.0000
+  S   S6        1.0  0.32374  0.67626  0.96072  1.0000

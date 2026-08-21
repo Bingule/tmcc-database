@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       Cu3Pt6N3S6
+_chemical_formula_sum              "Cu3 Pt6 N3 S6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Cu  Cu1       1.0  0.00000  0.00000  0.00000  0.5000
+  Cu  Cu2       1.0  0.66667  0.33333  0.33333  0.5000
+  Cu  Cu3       1.0  0.33333  0.66667  0.66667  0.5000
+  Pt  Pt1       1.0  0.00000  0.00000  0.87868  1.0000
+  Pt  Pt2       1.0  0.00000  0.00000  0.12132  1.0000
+  Pt  Pt3       1.0  0.66667  0.33333  0.21194  1.0000
+  Pt  Pt4       1.0  0.66666  0.33334  0.45469  1.0000
+  Pt  Pt5       1.0  0.33334  0.66666  0.54531  1.0000
+  Pt  Pt6       1.0  0.33333  0.66667  0.78806  1.0000
+  N   N1        1.0  0.00000  0.00000  0.50000  1.0000
+  N   N2        1.0  0.66667  0.33333  0.83355  1.0000
+  N   N3        1.0  0.33333  0.66667  0.16645  1.0000
+  S   S1        1.0  0.00000  0.00000  0.73750  1.0000
+  S   S2        1.0  0.00000  0.00000  0.26250  1.0000
+  S   S3        1.0  0.66667  0.33333  0.07084  1.0000
+  S   S4        1.0  0.66667  0.33333  0.59583  1.0000
+  S   S5        1.0  0.33333  0.66667  0.40417  1.0000
+  S   S6        1.0  0.33333  0.66667  0.92916  1.0000

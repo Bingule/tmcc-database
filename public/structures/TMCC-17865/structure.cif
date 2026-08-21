@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       Cu6Se6Al3
+_chemical_formula_sum              "Cu6 Se6 Al3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Cu  Cu1       1.0  0.02205  0.97795  0.59646  1.0000
+  Cu  Cu2       1.0  0.97795  0.02205  0.40354  1.0000
+  Cu  Cu3       1.0  0.68930  0.31070  0.92960  1.0000
+  Cu  Cu4       1.0  0.65403  0.34597  0.73693  1.0000
+  Cu  Cu5       1.0  0.34597  0.65403  0.26307  1.0000
+  Cu  Cu6       1.0  0.31070  0.68930  0.07040  1.0000
+  Se  Se1       1.0  0.02919  0.97081  0.80855  1.0000
+  Se  Se2       1.0  0.97081  0.02919  0.19145  1.0000
+  Se  Se3       1.0  0.68447  0.31553  0.14197  1.0000
+  Se  Se4       1.0  0.64299  0.35701  0.52480  1.0000
+  Se  Se5       1.0  0.35701  0.64299  0.47520  1.0000
+  Se  Se6       1.0  0.31553  0.68447  0.85803  1.0000
+  Al  Al1       1.0  0.00000  0.00000  0.00000  1.0000
+  Al  Al2       1.0  0.66174  0.33826  0.33334  1.0000
+  Al  Al3       1.0  0.33826  0.66174  0.66666  1.0000

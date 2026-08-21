@@ -1,0 +1,192 @@
+{
+  "material_id": "TMCC-8198",
+  "slug": "mg0-5-mo2s2c-p-3m1",
+  "family": "TMCC",
+  "material_type": "tm_intercalated",
+  "formula": "Mg0.5Mo2S2C",
+  "host": {
+    "formula": "Mo2S2C",
+    "metal": "Mo",
+    "chalcogen": "S",
+    "anion": "C"
+  },
+  "intercalation": {
+    "intercalant": "Mg",
+    "x": 0.5,
+    "mode": "hetero",
+    "site": "interlayer",
+    "ordering": null,
+    "configuration": "generated P-3m1 baseline"
+  },
+  "experimental_status": "computational",
+  "calculation_status": "calculated",
+  "structure": {
+    "space_group_symbol": "P-3m1",
+    "space_group_number": 164,
+    "crystal_system": "trigonal",
+    "lattice_parameters": {
+      "a": {
+        "value": 3.3121,
+        "unit": "angstrom"
+      },
+      "b": {
+        "value": 3.3120999999999996,
+        "unit": "angstrom"
+      },
+      "c": {
+        "value": 9.0113,
+        "unit": "angstrom"
+      }
+    },
+    "angles": {
+      "alpha": {
+        "value": 90,
+        "unit": "degree"
+      },
+      "beta": {
+        "value": 90,
+        "unit": "degree"
+      },
+      "gamma": {
+        "value": 119.99999999999999,
+        "unit": "degree"
+      }
+    },
+    "layer_thickness": {
+      "value": 7.358,
+      "unit": "angstrom"
+    },
+    "vdw_gap": {
+      "value": 1.653,
+      "unit": "angstrom"
+    },
+    "atomic_sites": [
+      {
+        "label": "Mg1",
+        "element": "Mg",
+        "fract_x": 0.66667,
+        "fract_y": 0.33333,
+        "fract_z": 0.59171,
+        "occupancy": 1
+      },
+      {
+        "label": "Mg2",
+        "element": "Mg",
+        "fract_x": 0.33333,
+        "fract_y": 0.66667,
+        "fract_z": 0.40829,
+        "occupancy": 1
+      },
+      {
+        "label": "Mo1",
+        "element": "Mo",
+        "fract_x": 0.66667,
+        "fract_y": 0.33334,
+        "fract_z": 0.90191,
+        "occupancy": 1
+      },
+      {
+        "label": "Mo2",
+        "element": "Mo",
+        "fract_x": 0.33333,
+        "fract_y": 0.66666,
+        "fract_z": 0.09809,
+        "occupancy": 1
+      },
+      {
+        "label": "S1",
+        "element": "S",
+        "fract_x": 0.66666,
+        "fract_y": 0.33333,
+        "fract_z": 0.26571,
+        "occupancy": 1
+      },
+      {
+        "label": "S2",
+        "element": "S",
+        "fract_x": 0.33334,
+        "fract_y": 0.66667,
+        "fract_z": 0.73429,
+        "occupancy": 1
+      },
+      {
+        "label": "C1",
+        "element": "C",
+        "fract_x": 0,
+        "fract_y": 0,
+        "fract_z": 0,
+        "occupancy": 1
+      }
+    ]
+  },
+  "thermodynamics": {
+    "total_energy": {
+      "value": -41.55287158952563,
+      "unit": "eV/cell"
+    },
+    "formation_energy": {
+      "value": null,
+      "unit": "eV/formula"
+    },
+    "energy_above_hull": {
+      "value": null,
+      "unit": "eV/atom"
+    },
+    "relative_structure_energy": {
+      "value": null,
+      "unit": "meV/f.u."
+    },
+    "reference_energies_per_atom": {}
+  },
+  "phonons": {},
+  "mechanical": {},
+  "electronic": {
+    "band_gap": {
+      "value": null,
+      "unit": "eV"
+    },
+    "fermi_level": {
+      "value": 12.57280666139915,
+      "unit": "eV"
+    },
+    "dos_calculated": true,
+    "band_structure_calculated": false
+  },
+  "energy_storage": {},
+  "files": {
+    "cif": "/structures/TMCC-8198/structure.cif",
+    "poscar": "/structures/TMCC-8198/POSCAR",
+    "dos": "/figures/TMCC-8198/dos.csv",
+    "band_structure": null
+  },
+  "provenance": {
+    "software": "GPAW",
+    "software_version": null,
+    "ase_version": null,
+    "exchange_correlation": "PBE",
+    "pseudopotential": null,
+    "plane_wave_cutoff": {
+      "value": 520,
+      "unit": "eV"
+    },
+    "k_points": {
+      "density": 2.5,
+      "gamma": true
+    },
+    "spin_polarization": false,
+    "initial_magnetic_moments": {},
+    "dft_u": null,
+    "setups": null,
+    "soc": false,
+    "convergence_criteria": {
+      "density": 5e-7
+    },
+    "calculation_date": "2026-08-15",
+    "workflow_version": "tmcc-generated-intercalated-p-fast-v0.1",
+    "source": "cluster calculation",
+    "formation_energy_reference_note": null,
+    "doi": null
+  },
+  "subclass": "TMCDC",
+  "structure_type": "M2X2C"
+}

@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       V6Se6In3
+_chemical_formula_sum              "V6 Se6 In3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  V   V1        1.0  1.00000  1.00000  0.57540  1.0000
+  V   V2        1.0  0.00000  0.00000  0.42460  1.0000
+  V   V3        1.0  0.66667  0.33333  0.90873  1.0000
+  V   V4        1.0  0.66667  0.33333  0.75794  1.0000
+  V   V5        1.0  0.33333  0.66667  0.24206  1.0000
+  V   V6        1.0  0.33333  0.66667  0.09127  1.0000
+  Se  Se1       1.0  1.00000  1.00000  0.78371  1.0000
+  Se  Se2       1.0  0.00000  0.00000  0.21629  1.0000
+  Se  Se3       1.0  0.66667  0.33333  0.11704  1.0000
+  Se  Se4       1.0  0.66667  0.33333  0.54962  1.0000
+  Se  Se5       1.0  0.33333  0.66667  0.45038  1.0000
+  Se  Se6       1.0  0.33333  0.66667  0.88296  1.0000
+  In  In1       1.0  0.00000  0.00000  0.00000  1.0000
+  In  In2       1.0  0.66667  0.33333  0.33333  1.0000
+  In  In3       1.0  0.33333  0.66667  0.66667  1.0000

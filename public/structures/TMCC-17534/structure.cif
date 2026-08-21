@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       Ir6Se6Ge3
+_chemical_formula_sum              "Ir6 Se6 Ge3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Ir  Ir1       1.0  1.00000  1.00000  0.61734  1.0000
+  Ir  Ir2       1.0  0.00000  0.00000  0.38266  1.0000
+  Ir  Ir3       1.0  0.66667  0.33333  0.95068  1.0000
+  Ir  Ir4       1.0  0.66667  0.33333  0.71599  1.0000
+  Ir  Ir5       1.0  0.33333  0.66667  0.28401  1.0000
+  Ir  Ir6       1.0  0.33333  0.66667  0.04932  1.0000
+  Se  Se1       1.0  1.00000  1.00000  0.77814  1.0000
+  Se  Se2       1.0  0.00000  0.00000  0.22186  1.0000
+  Se  Se3       1.0  0.66667  0.33333  0.11147  1.0000
+  Se  Se4       1.0  0.66667  0.33333  0.55519  1.0000
+  Se  Se5       1.0  0.33333  0.66667  0.44481  1.0000
+  Se  Se6       1.0  0.33333  0.66667  0.88853  1.0000
+  Ge  Ge1       1.0  0.00000  0.00000  0.00000  1.0000
+  Ge  Ge2       1.0  0.66667  0.33333  0.33333  1.0000
+  Ge  Ge3       1.0  0.33333  0.66667  0.66667  1.0000

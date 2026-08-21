@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       Au6S6Ge3
+_chemical_formula_sum              "Au6 S6 Ge3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Au  Au1       1.0  0.80134  0.19866  0.59683  1.0000
+  Au  Au2       1.0  0.19866  0.80134  0.40317  1.0000
+  Au  Au3       1.0  0.64550  0.35450  0.92858  1.0000
+  Au  Au4       1.0  0.58808  0.41192  0.74648  1.0000
+  Au  Au5       1.0  0.41192  0.58808  0.25352  1.0000
+  Au  Au6       1.0  0.35450  0.64550  0.07142  1.0000
+  S   S1        1.0  0.96833  0.03167  0.82674  1.0000
+  S   S2        1.0  0.03167  0.96833  0.17326  1.0000
+  S   S3        1.0  0.73670  0.26330  0.15959  1.0000
+  S   S4        1.0  0.68722  0.31278  0.50461  1.0000
+  S   S5        1.0  0.31278  0.68722  0.49539  1.0000
+  S   S6        1.0  0.26330  0.73670  0.84041  1.0000
+  Ge  Ge1       1.0  0.00000  0.00000  0.00000  1.0000
+  Ge  Ge2       1.0  0.88313  0.11687  0.32915  1.0000
+  Ge  Ge3       1.0  0.11687  0.88313  0.67085  1.0000

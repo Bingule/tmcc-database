@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       Ti6Se6Ge3
+_chemical_formula_sum              "Ti6 Se6 Ge3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Ti  Ti1       1.0  0.00800  0.99200  0.58017  1.0000
+  Ti  Ti2       1.0  0.99200  0.00800  0.41983  1.0000
+  Ti  Ti3       1.0  0.77775  0.22225  0.91405  1.0000
+  Ti  Ti4       1.0  0.74340  0.25660  0.74996  1.0000
+  Ti  Ti5       1.0  0.25660  0.74340  0.25004  1.0000
+  Ti  Ti6       1.0  0.22225  0.77775  0.08595  1.0000
+  Se  Se1       1.0  0.08014  0.91986  0.77767  1.0000
+  Se  Se2       1.0  0.91986  0.08014  0.22233  1.0000
+  Se  Se3       1.0  0.55942  0.44058  0.11375  1.0000
+  Se  Se4       1.0  0.67370  0.32630  0.55300  1.0000
+  Se  Se5       1.0  0.32630  0.67370  0.44700  1.0000
+  Se  Se6       1.0  0.44058  0.55942  0.88625  1.0000
+  Ge  Ge1       1.0  0.00000  0.00000  0.00000  1.0000
+  Ge  Ge2       1.0  0.78037  0.21963  0.32897  1.0000
+  Ge  Ge3       1.0  0.21963  0.78037  0.67103  1.0000

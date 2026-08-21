@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       Os6Se6Al3
+_chemical_formula_sum              "Os6 Se6 Al3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Os  Os1       1.0  0.88931  0.11069  0.61596  1.0000
+  Os  Os2       1.0  0.11069  0.88931  0.38404  1.0000
+  Os  Os3       1.0  0.67007  0.32993  0.95258  1.0000
+  Os  Os4       1.0  0.62275  0.37725  0.71857  1.0000
+  Os  Os5       1.0  0.37725  0.62275  0.28143  1.0000
+  Os  Os6       1.0  0.32993  0.67007  0.04742  1.0000
+  Se  Se1       1.0  0.92847  0.07153  0.77401  1.0000
+  Se  Se2       1.0  0.07153  0.92847  0.22599  1.0000
+  Se  Se3       1.0  0.81731  0.18269  0.10809  1.0000
+  Se  Se4       1.0  0.58515  0.41485  0.56025  1.0000
+  Se  Se5       1.0  0.41485  0.58515  0.43975  1.0000
+  Se  Se6       1.0  0.18269  0.81731  0.89191  1.0000
+  Al  Al1       1.0  1.00000  1.00000  0.00000  1.0000
+  Al  Al2       1.0  0.74437  0.25563  0.33301  1.0000
+  Al  Al3       1.0  0.25563  0.74437  0.66699  1.0000

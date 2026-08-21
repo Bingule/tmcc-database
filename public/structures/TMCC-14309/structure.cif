@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       Mn3Re6N3S6
+_chemical_formula_sum              "Mn3 Re6 N3 S6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Mn  Mn1       1.0  0.00000  0.00000  0.00000  0.5000
+  Mn  Mn2       1.0  0.71995  0.28005  0.37500  0.5000
+  Mn  Mn3       1.0  0.28005  0.71995  0.62500  0.5000
+  Re  Re1       1.0  0.05492  0.94508  0.90848  1.0000
+  Re  Re2       1.0  0.94508  0.05492  0.09152  1.0000
+  Re  Re3       1.0  0.79045  0.20955  0.19762  1.0000
+  Re  Re4       1.0  0.73708  0.26292  0.46224  1.0000
+  Re  Re5       1.0  0.26292  0.73708  0.53776  1.0000
+  Re  Re6       1.0  0.20955  0.79045  0.80238  1.0000
+  N   N1        1.0  0.00000  0.00000  0.50000  1.0000
+  N   N2        1.0  0.65471  0.34529  0.88259  1.0000
+  N   N3        1.0  0.34529  0.65471  0.11741  1.0000
+  S   S1        1.0  0.87620  0.12380  0.77091  1.0000
+  S   S2        1.0  0.12380  0.87620  0.22909  1.0000
+  S   S3        1.0  0.64952  0.35048  0.04467  1.0000
+  S   S4        1.0  0.61184  0.38816  0.59523  1.0000
+  S   S5        1.0  0.38816  0.61184  0.40477  1.0000
+  S   S6        1.0  0.35048  0.64952  0.95533  1.0000

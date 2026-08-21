@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       Ag6Te6Ge3
+_chemical_formula_sum              "Ag6 Te6 Ge3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Ag  Ag1       1.0  1.00000  1.00000  0.60969  1.0000
+  Ag  Ag2       1.0  0.00000  0.00000  0.39031  1.0000
+  Ag  Ag3       1.0  0.66667  0.33333  0.94302  1.0000
+  Ag  Ag4       1.0  0.66667  0.33333  0.72365  1.0000
+  Ag  Ag5       1.0  0.33333  0.66667  0.27635  1.0000
+  Ag  Ag6       1.0  0.33333  0.66667  0.05698  1.0000
+  Te  Te1       1.0  1.00000  1.00000  0.79167  1.0000
+  Te  Te2       1.0  0.00000  0.00000  0.20833  1.0000
+  Te  Te3       1.0  0.66667  0.33333  0.12500  1.0000
+  Te  Te4       1.0  0.66667  0.33333  0.54167  1.0000
+  Te  Te5       1.0  0.33333  0.66667  0.45833  1.0000
+  Te  Te6       1.0  0.33333  0.66667  0.87500  1.0000
+  Ge  Ge1       1.0  0.00000  0.00000  0.00000  1.0000
+  Ge  Ge2       1.0  0.66667  0.33333  0.33333  1.0000
+  Ge  Ge3       1.0  0.33333  0.66667  0.66667  1.0000

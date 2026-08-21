@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       Pd6S6Bi3
+_chemical_formula_sum              "Pd6 S6 Bi3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Pd  Pd1       1.0  0.84237  0.15763  0.60059  1.0000
+  Pd  Pd2       1.0  0.15763  0.84237  0.39941  1.0000
+  Pd  Pd3       1.0  0.65858  0.34142  0.92819  1.0000
+  Pd  Pd4       1.0  0.52214  0.47786  0.74553  1.0000
+  Pd  Pd5       1.0  0.47786  0.52214  0.25447  1.0000
+  Pd  Pd6       1.0  0.34142  0.65858  0.07181  1.0000
+  S   S1        1.0  0.89722  0.10278  0.81944  1.0000
+  S   S2        1.0  0.10278  0.89722  0.18056  1.0000
+  S   S3        1.0  0.79906  0.20094  0.15401  1.0000
+  S   S4        1.0  0.68362  0.31638  0.51150  1.0000
+  S   S5        1.0  0.31638  0.68362  0.48850  1.0000
+  S   S6        1.0  0.20094  0.79906  0.84599  1.0000
+  Bi  Bi1       1.0  0.00000  0.00000  0.00000  1.0000
+  Bi  Bi2       1.0  0.82057  0.17943  0.32842  1.0000
+  Bi  Bi3       1.0  0.17943  0.82057  0.67158  1.0000

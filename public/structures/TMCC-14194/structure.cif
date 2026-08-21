@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       Zn3Hf6N3S6
+_chemical_formula_sum              "Zn3 Hf6 N3 S6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Zn  Zn1       1.0  0.00000  0.00000  0.00000  0.5000
+  Zn  Zn2       1.0  0.71687  0.28313  0.33475  0.5000
+  Zn  Zn3       1.0  0.28313  0.71687  0.66525  0.5000
+  Hf  Hf1       1.0  0.01181  0.98819  0.86073  1.0000
+  Hf  Hf2       1.0  0.98819  0.01181  0.13927  1.0000
+  Hf  Hf3       1.0  0.69001  0.30999  0.20693  1.0000
+  Hf  Hf4       1.0  0.71972  0.28028  0.46156  1.0000
+  Hf  Hf5       1.0  0.28028  0.71972  0.53844  1.0000
+  Hf  Hf6       1.0  0.30999  0.69001  0.79307  1.0000
+  N   N1        1.0  0.00000  0.00000  0.50000  1.0000
+  N   N2        1.0  0.69510  0.30490  0.84461  1.0000
+  N   N3        1.0  0.30490  0.69510  0.15539  1.0000
+  S   S1        1.0  0.99253  0.00747  0.76025  1.0000
+  S   S2        1.0  0.00747  0.99253  0.23975  1.0000
+  S   S3        1.0  0.51731  0.48269  0.08491  1.0000
+  S   S4        1.0  0.65545  0.34455  0.57685  1.0000
+  S   S5        1.0  0.34455  0.65545  0.42315  1.0000
+  S   S6        1.0  0.48269  0.51731  0.91509  1.0000

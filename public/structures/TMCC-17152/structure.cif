@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       Hf6S6As3
+_chemical_formula_sum              "Hf6 S6 As3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Hf  Hf1       1.0  0.99814  0.00186  0.58086  1.0000
+  Hf  Hf2       1.0  0.00186  0.99814  0.41914  1.0000
+  Hf  Hf3       1.0  0.77887  0.22113  0.91640  1.0000
+  Hf  Hf4       1.0  0.72303  0.27697  0.74643  1.0000
+  Hf  Hf5       1.0  0.27697  0.72303  0.25357  1.0000
+  Hf  Hf6       1.0  0.22113  0.77887  0.08360  1.0000
+  S   S1        1.0  0.05355  0.94645  0.77552  1.0000
+  S   S2        1.0  0.94645  0.05355  0.22448  1.0000
+  S   S3        1.0  0.56491  0.43509  0.11467  1.0000
+  S   S4        1.0  0.65791  0.34209  0.55074  1.0000
+  S   S5        1.0  0.34209  0.65791  0.44926  1.0000
+  S   S6        1.0  0.43509  0.56491  0.88533  1.0000
+  As  As1       1.0  0.00000  0.00000  0.00000  1.0000
+  As  As2       1.0  0.76694  0.23306  0.32820  1.0000
+  As  As3       1.0  0.23306  0.76694  0.67180  1.0000

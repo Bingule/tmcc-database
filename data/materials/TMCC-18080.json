@@ -1,0 +1,249 @@
+{
+  "material_id": "TMCC-18080",
+  "slug": "hf2te2in-r-3m",
+  "family": "TMCC",
+  "material_type": "pristine",
+  "formula": "Hf2Te2In",
+  "host": {
+    "formula": "Hf2Te2In",
+    "metal": "Hf",
+    "chalcogen": "Te",
+    "anion": "In"
+  },
+  "intercalation": null,
+  "experimental_status": "computational",
+  "calculation_status": "calculated",
+  "structure": {
+    "space_group_symbol": "R-3m",
+    "space_group_number": 166,
+    "crystal_system": "trigonal",
+    "lattice_parameters": {
+      "a": {
+        "value": 3.271,
+        "unit": "angstrom"
+      },
+      "b": {
+        "value": 3.271,
+        "unit": "angstrom"
+      },
+      "c": {
+        "value": 25.478,
+        "unit": "angstrom"
+      }
+    },
+    "angles": {
+      "alpha": {
+        "value": 90,
+        "unit": "degree"
+      },
+      "beta": {
+        "value": 90,
+        "unit": "degree"
+      },
+      "gamma": {
+        "value": 119.99999999999999,
+        "unit": "degree"
+      }
+    },
+    "layer_thickness": {
+      "value": 5.951,
+      "unit": "angstrom"
+    },
+    "vdw_gap": {
+      "value": 2.541,
+      "unit": "angstrom"
+    },
+    "atomic_sites": [
+      {
+        "label": "Hf1",
+        "element": "Hf",
+        "fract_x": 1,
+        "fract_y": 1,
+        "fract_z": 0.60317,
+        "occupancy": 1
+      },
+      {
+        "label": "Hf2",
+        "element": "Hf",
+        "fract_x": 0,
+        "fract_y": 0,
+        "fract_z": 0.39683,
+        "occupancy": 1
+      },
+      {
+        "label": "Hf3",
+        "element": "Hf",
+        "fract_x": 0.66667,
+        "fract_y": 0.33333,
+        "fract_z": 0.93651,
+        "occupancy": 1
+      },
+      {
+        "label": "Hf4",
+        "element": "Hf",
+        "fract_x": 0.66667,
+        "fract_y": 0.33333,
+        "fract_z": 0.73016,
+        "occupancy": 1
+      },
+      {
+        "label": "Hf5",
+        "element": "Hf",
+        "fract_x": 0.33333,
+        "fract_y": 0.66667,
+        "fract_z": 0.26984,
+        "occupancy": 1
+      },
+      {
+        "label": "Hf6",
+        "element": "Hf",
+        "fract_x": 0.33333,
+        "fract_y": 0.66667,
+        "fract_z": 0.06349,
+        "occupancy": 1
+      },
+      {
+        "label": "Te1",
+        "element": "Te",
+        "fract_x": 1,
+        "fract_y": 1,
+        "fract_z": 0.78346,
+        "occupancy": 1
+      },
+      {
+        "label": "Te2",
+        "element": "Te",
+        "fract_x": 0,
+        "fract_y": 0,
+        "fract_z": 0.21654,
+        "occupancy": 1
+      },
+      {
+        "label": "Te3",
+        "element": "Te",
+        "fract_x": 0.66667,
+        "fract_y": 0.33333,
+        "fract_z": 0.1168,
+        "occupancy": 1
+      },
+      {
+        "label": "Te4",
+        "element": "Te",
+        "fract_x": 0.66667,
+        "fract_y": 0.33333,
+        "fract_z": 0.54987,
+        "occupancy": 1
+      },
+      {
+        "label": "Te5",
+        "element": "Te",
+        "fract_x": 0.33333,
+        "fract_y": 0.66667,
+        "fract_z": 0.45013,
+        "occupancy": 1
+      },
+      {
+        "label": "Te6",
+        "element": "Te",
+        "fract_x": 0.33333,
+        "fract_y": 0.66667,
+        "fract_z": 0.8832,
+        "occupancy": 1
+      },
+      {
+        "label": "In1",
+        "element": "In",
+        "fract_x": 0,
+        "fract_y": 0,
+        "fract_z": 0,
+        "occupancy": 1
+      },
+      {
+        "label": "In2",
+        "element": "In",
+        "fract_x": 0.66666,
+        "fract_y": 0.33334,
+        "fract_z": 0.33333,
+        "occupancy": 1
+      },
+      {
+        "label": "In3",
+        "element": "In",
+        "fract_x": 0.33334,
+        "fract_y": 0.66666,
+        "fract_z": 0.66667,
+        "occupancy": 1
+      }
+    ]
+  },
+  "thermodynamics": {
+    "total_energy": {
+      "value": -31.51217541645622,
+      "unit": "eV/cell"
+    },
+    "formation_energy": {
+      "value": null,
+      "unit": "eV/formula"
+    },
+    "energy_above_hull": {
+      "value": null,
+      "unit": "eV/atom"
+    },
+    "relative_structure_energy": {
+      "value": null,
+      "unit": "meV/f.u."
+    },
+    "reference_energies_per_atom": {}
+  },
+  "phonons": {},
+  "mechanical": {},
+  "electronic": {
+    "band_gap": {
+      "value": null,
+      "unit": "eV"
+    },
+    "fermi_level": {
+      "value": 15.428857846363895,
+      "unit": "eV"
+    },
+    "dos_calculated": true,
+    "band_structure_calculated": false
+  },
+  "energy_storage": {},
+  "files": {
+    "cif": "/structures/TMCC-18080/structure.cif",
+    "poscar": "/structures/TMCC-18080/POSCAR",
+    "dos": "/figures/TMCC-18080/dos.csv",
+    "band_structure": null
+  },
+  "provenance": {
+    "software": "GPAW",
+    "software_version": null,
+    "ase_version": null,
+    "exchange_correlation": "PBE",
+    "pseudopotential": null,
+    "plane_wave_cutoff": {
+      "value": 520,
+      "unit": "eV"
+    },
+    "k_points": {
+      "density": 2.5,
+      "gamma": true
+    },
+    "spin_polarization": false,
+    "initial_magnetic_moments": {},
+    "dft_u": null,
+    "setups": null,
+    "soc": false,
+    "convergence_criteria": {
+      "density": 5e-7
+    },
+    "calculation_date": "2026-08-19",
+    "workflow_version": "tmcc-pblock12-gamma-relax-v1",
+    "source": "cluster calculation",
+    "formation_energy_reference_note": null,
+    "doi": null
+  },
+  "subclass": "TMCDC",
+  "structure_type": "M2X2A"
+}

@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       Ag3Re6N3S6
+_chemical_formula_sum              "Ag3 Re6 N3 S6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Ag  Ag1       1.0  0.00000  0.00000  0.00000  0.5000
+  Ag  Ag2       1.0  0.38744  0.61256  0.32601  0.5000
+  Ag  Ag3       1.0  0.61256  0.38744  0.67399  0.5000
+  Re  Re1       1.0  0.23217  0.76783  0.86958  1.0000
+  Re  Re2       1.0  0.76783  0.23217  0.13042  1.0000
+  Re  Re3       1.0  0.59238  0.40762  0.21551  1.0000
+  Re  Re4       1.0  0.72436  0.27564  0.46065  1.0000
+  Re  Re5       1.0  0.27564  0.72436  0.53935  1.0000
+  Re  Re6       1.0  0.40762  0.59238  0.78449  1.0000
+  N   N1        1.0  0.00000  0.00000  0.50000  1.0000
+  N   N2        1.0  0.72225  0.27775  0.82964  1.0000
+  N   N3        1.0  0.27775  0.72225  0.17036  1.0000
+  S   S1        1.0  0.08150  0.91850  0.74989  1.0000
+  S   S2        1.0  0.91850  0.08150  0.25011  1.0000
+  S   S3        1.0  0.48128  0.51872  0.08127  1.0000
+  S   S4        1.0  0.63632  0.36368  0.58065  1.0000
+  S   S5        1.0  0.36368  0.63632  0.41935  1.0000
+  S   S6        1.0  0.51872  0.48128  0.91873  1.0000

@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       Ta6S6As3
+_chemical_formula_sum              "Ta6 S6 As3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Ta  Ta1       1.0  0.00504  0.99496  0.58120  1.0000
+  Ta  Ta2       1.0  0.99496  0.00504  0.41880  1.0000
+  Ta  Ta3       1.0  0.78082  0.21918  0.91894  1.0000
+  Ta  Ta4       1.0  0.68040  0.31960  0.74646  1.0000
+  Ta  Ta5       1.0  0.31960  0.68040  0.25354  1.0000
+  Ta  Ta6       1.0  0.21918  0.78082  0.08106  1.0000
+  S   S1        1.0  0.01415  0.98585  0.77851  1.0000
+  S   S2        1.0  0.98585  0.01415  0.22149  1.0000
+  S   S3        1.0  0.56363  0.43637  0.11142  1.0000
+  S   S4        1.0  0.67112  0.32888  0.55224  1.0000
+  S   S5        1.0  0.32888  0.67112  0.44776  1.0000
+  S   S6        1.0  0.43637  0.56363  0.88858  1.0000
+  As  As1       1.0  0.00000  0.00000  0.00000  1.0000
+  As  As2       1.0  0.98800  0.01200  0.32296  1.0000
+  As  As3       1.0  0.01200  0.98800  0.67704  1.0000

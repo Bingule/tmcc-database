@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       Cr3Pt6N3S6
+_chemical_formula_sum              "Cr3 Pt6 N3 S6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Cr  Cr1       1.0  0.00000  0.00000  0.00000  0.5000
+  Cr  Cr2       1.0  0.85814  0.14186  0.28859  0.5000
+  Cr  Cr3       1.0  0.14186  0.85814  0.71141  0.5000
+  Pt  Pt1       1.0  0.02228  0.97772  0.90324  1.0000
+  Pt  Pt2       1.0  0.97772  0.02228  0.09676  1.0000
+  Pt  Pt3       1.0  0.76396  0.23604  0.19766  1.0000
+  Pt  Pt4       1.0  0.69143  0.30857  0.45219  1.0000
+  Pt  Pt5       1.0  0.30857  0.69143  0.54781  1.0000
+  Pt  Pt6       1.0  0.23604  0.76396  0.80234  1.0000
+  N   N1        1.0  0.00000  0.00000  0.50000  1.0000
+  N   N2        1.0  0.73442  0.26558  0.85745  1.0000
+  N   N3        1.0  0.26558  0.73442  0.14255  1.0000
+  S   S1        1.0  0.81448  0.18552  0.73849  1.0000
+  S   S2        1.0  0.18552  0.81448  0.26151  1.0000
+  S   S3        1.0  0.66407  0.33593  0.04370  1.0000
+  S   S4        1.0  0.62474  0.37526  0.59862  1.0000
+  S   S5        1.0  0.37526  0.62474  0.40138  1.0000
+  S   S6        1.0  0.33593  0.66407  0.95630  1.0000

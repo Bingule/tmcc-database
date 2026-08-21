@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       Hg6S6Sb3
+_chemical_formula_sum              "Hg6 S6 Sb3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Hg  Hg1       1.0  0.98530  0.01470  0.57481  1.0000
+  Hg  Hg2       1.0  0.01470  0.98530  0.42519  1.0000
+  Hg  Hg3       1.0  0.66091  0.33909  0.90691  1.0000
+  Hg  Hg4       1.0  0.66755  0.33245  0.75935  1.0000
+  Hg  Hg5       1.0  0.33245  0.66755  0.24065  1.0000
+  Hg  Hg6       1.0  0.33909  0.66091  0.09309  1.0000
+  S   S1        1.0  0.98679  0.01321  0.83102  1.0000
+  S   S2        1.0  0.01321  0.98679  0.16898  1.0000
+  S   S3        1.0  0.65663  0.34337  0.16579  1.0000
+  S   S4        1.0  0.65377  0.34623  0.50301  1.0000
+  S   S5        1.0  0.34623  0.65377  0.49699  1.0000
+  S   S6        1.0  0.34337  0.65663  0.83421  1.0000
+  Sb  Sb1       1.0  0.00000  0.00000  0.00000  1.0000
+  Sb  Sb2       1.0  0.72717  0.27283  0.33255  1.0000
+  Sb  Sb3       1.0  0.27283  0.72717  0.66745  1.0000

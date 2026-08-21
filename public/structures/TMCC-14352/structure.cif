@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       V3Pt6N3S6
+_chemical_formula_sum              "V3 Pt6 N3 S6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  V   V1        1.0  0.00000  0.00000  0.00000  0.5000
+  V   V2        1.0  0.89196  0.10804  0.31817  0.5000
+  V   V3        1.0  0.10804  0.89196  0.68183  0.5000
+  Pt  Pt1       1.0  0.00243  0.99757  0.90411  1.0000
+  Pt  Pt2       1.0  0.99757  0.00243  0.09589  1.0000
+  Pt  Pt3       1.0  0.78377  0.21623  0.22808  1.0000
+  Pt  Pt4       1.0  0.70934  0.29066  0.45079  1.0000
+  Pt  Pt5       1.0  0.29066  0.70934  0.54921  1.0000
+  Pt  Pt6       1.0  0.21623  0.78377  0.77192  1.0000
+  N   N1        1.0  0.00000  0.00000  0.50000  1.0000
+  N   N2        1.0  0.67423  0.32577  0.86520  1.0000
+  N   N3        1.0  0.32577  0.67423  0.13480  1.0000
+  S   S1        1.0  0.78954  0.21046  0.71299  1.0000
+  S   S2        1.0  0.21046  0.78954  0.28701  1.0000
+  S   S3        1.0  0.66647  0.33353  0.04350  1.0000
+  S   S4        1.0  0.58848  0.41152  0.60345  1.0000
+  S   S5        1.0  0.41152  0.58848  0.39655  1.0000
+  S   S6        1.0  0.33353  0.66647  0.95650  1.0000

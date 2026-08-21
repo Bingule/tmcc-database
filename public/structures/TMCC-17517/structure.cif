@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       Cu6Se6Ge3
+_chemical_formula_sum              "Cu6 Se6 Ge3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Cu  Cu1       1.0  0.94209  0.05791  0.59779  1.0000
+  Cu  Cu2       1.0  0.05791  0.94209  0.40221  1.0000
+  Cu  Cu3       1.0  0.63179  0.36821  0.92964  1.0000
+  Cu  Cu4       1.0  0.56048  0.43952  0.74324  1.0000
+  Cu  Cu5       1.0  0.43952  0.56048  0.25676  1.0000
+  Cu  Cu6       1.0  0.36821  0.63179  0.07036  1.0000
+  Se  Se1       1.0  0.95752  0.04248  0.81188  1.0000
+  Se  Se2       1.0  0.04248  0.95752  0.18812  1.0000
+  Se  Se3       1.0  0.76079  0.23921  0.13945  1.0000
+  Se  Se4       1.0  0.69201  0.30799  0.52460  1.0000
+  Se  Se5       1.0  0.30799  0.69201  0.47540  1.0000
+  Se  Se6       1.0  0.23921  0.76079  0.86055  1.0000
+  Ge  Ge1       1.0  0.00000  0.00000  0.00000  1.0000
+  Ge  Ge2       1.0  0.82176  0.17824  0.32731  1.0000
+  Ge  Ge3       1.0  0.17824  0.82176  0.67269  1.0000

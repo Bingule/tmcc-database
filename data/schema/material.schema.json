@@ -29,7 +29,7 @@
     "family": { "const": "TMCC" },
     "material_type": { "enum": ["pristine", "tm_intercalated", "m2xa"] },
     "subclass": { "enum": ["TMCC", "TMCDC"] },
-    "structure_type": { "enum": ["M2XC", "M2XN", "M2X2C", "M2X2N", "M2XA"] },
+    "structure_type": { "enum": ["M2XC", "M2XN", "M2X2C", "M2X2N", "M2X2A", "M2XA"] },
     "formula": { "type": "string" },
     "host": {
       "type": "object",
@@ -39,7 +39,7 @@
         "formula": { "type": "string" },
         "metal": { "type": "string" },
         "chalcogen": { "enum": ["S", "Se", "Te"] },
-        "anion": { "enum": ["C", "N"] }
+        "anion": { "enum": ["C", "N", "P", "As", "Sb", "Bi", "Si", "Ge", "Sn", "Pb", "B", "Al", "Ga", "In"] }
       }
     },
     "intercalation": {

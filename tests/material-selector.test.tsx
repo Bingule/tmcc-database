@@ -41,7 +41,8 @@ describe("MaterialSelector", () => {
 
   it("matches non-vdWs M2XA materials from the third selector mode", () => {
     expect(getSelectorMatches(materials, "single_chalcogen", "Nb", "S", "C").map((item) => item.material_id)).toEqual([
-      "TMCC-0011"
+      "TMCC-0011",
+      "TMCC-20019"
     ]);
   });
 });

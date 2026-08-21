@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       Cu6Se6Si3
+_chemical_formula_sum              "Cu6 Se6 Si3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Cu  Cu1       1.0  0.92927  0.07073  0.60362  1.0000
+  Cu  Cu2       1.0  0.07073  0.92927  0.39638  1.0000
+  Cu  Cu3       1.0  0.63448  0.36552  0.93468  1.0000
+  Cu  Cu4       1.0  0.54223  0.45777  0.74096  1.0000
+  Cu  Cu5       1.0  0.45777  0.54223  0.25904  1.0000
+  Cu  Cu6       1.0  0.36552  0.63448  0.06532  1.0000
+  Se  Se1       1.0  0.95265  0.04735  0.81197  1.0000
+  Se  Se2       1.0  0.04735  0.95265  0.18803  1.0000
+  Se  Se3       1.0  0.77032  0.22968  0.13702  1.0000
+  Se  Se4       1.0  0.69338  0.30662  0.52631  1.0000
+  Se  Se5       1.0  0.30662  0.69338  0.47369  1.0000
+  Se  Se6       1.0  0.22968  0.77032  0.86298  1.0000
+  Si  Si1       1.0  0.00000  0.00000  0.00000  1.0000
+  Si  Si2       1.0  0.84362  0.15638  0.32455  1.0000
+  Si  Si3       1.0  0.15638  0.84362  0.67545  1.0000

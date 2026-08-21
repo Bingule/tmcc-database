@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       Hg6S6Al3
+_chemical_formula_sum              "Hg6 S6 Al3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Hg  Hg1       1.0  0.99954  0.00046  0.58453  1.0000
+  Hg  Hg2       1.0  0.00046  0.99954  0.41547  1.0000
+  Hg  Hg3       1.0  0.65826  0.34174  0.91670  1.0000
+  Hg  Hg4       1.0  0.67453  0.32547  0.75429  1.0000
+  Hg  Hg5       1.0  0.32547  0.67453  0.24571  1.0000
+  Hg  Hg6       1.0  0.34174  0.65826  0.08330  1.0000
+  S   S1        1.0  0.02024  0.97976  0.82691  1.0000
+  S   S2        1.0  0.97976  0.02024  0.17309  1.0000
+  S   S3        1.0  0.68638  0.31362  0.15790  1.0000
+  S   S4        1.0  0.68527  0.31473  0.50028  1.0000
+  S   S5        1.0  0.31473  0.68527  0.49972  1.0000
+  S   S6        1.0  0.31362  0.68638  0.84210  1.0000
+  Al  Al1       1.0  0.00000  0.00000  0.00000  1.0000
+  Al  Al2       1.0  0.67912  0.32088  0.32909  1.0000
+  Al  Al3       1.0  0.32088  0.67912  0.67091  1.0000

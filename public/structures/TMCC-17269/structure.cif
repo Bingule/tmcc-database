@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       Ta6Se6Sb3
+_chemical_formula_sum              "Ta6 Se6 Sb3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Ta  Ta1       1.0  0.89269  0.10731  0.58666  1.0000
+  Ta  Ta2       1.0  0.10731  0.89269  0.41334  1.0000
+  Ta  Ta3       1.0  0.77244  0.22756  0.91705  1.0000
+  Ta  Ta4       1.0  0.83538  0.16462  0.74849  1.0000
+  Ta  Ta5       1.0  0.16462  0.83538  0.25151  1.0000
+  Ta  Ta6       1.0  0.22756  0.77244  0.08295  1.0000
+  Se  Se1       1.0  0.16371  0.83629  0.78168  1.0000
+  Se  Se2       1.0  0.83629  0.16371  0.21832  1.0000
+  Se  Se3       1.0  0.56898  0.43102  0.11649  1.0000
+  Se  Se4       1.0  0.56486  0.43514  0.55349  1.0000
+  Se  Se5       1.0  0.43514  0.56486  0.44651  1.0000
+  Se  Se6       1.0  0.43102  0.56898  0.88351  1.0000
+  Sb  Sb1       1.0  1.00000  1.00000  0.00000  1.0000
+  Sb  Sb2       1.0  0.63636  0.36364  0.33261  1.0000
+  Sb  Sb3       1.0  0.36364  0.63636  0.66739  1.0000

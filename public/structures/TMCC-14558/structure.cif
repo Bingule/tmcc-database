@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       Mg3Zr6N3Se6
+_chemical_formula_sum              "Mg3 Zr6 N3 Se6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Mg  Mg1       1.0  0.00000  0.00000  0.00000  0.5000
+  Mg  Mg2       1.0  0.70127  0.29873  0.34125  0.5000
+  Mg  Mg3       1.0  0.29873  0.70127  0.65875  0.5000
+  Zr  Zr1       1.0  0.90575  0.09425  0.85500  1.0000
+  Zr  Zr2       1.0  0.09425  0.90575  0.14500  1.0000
+  Zr  Zr3       1.0  0.78713  0.21287  0.20616  1.0000
+  Zr  Zr4       1.0  0.66454  0.33546  0.47027  1.0000
+  Zr  Zr5       1.0  0.33546  0.66454  0.52973  1.0000
+  Zr  Zr6       1.0  0.21287  0.78713  0.79384  1.0000
+  N   N1        1.0  0.00000  0.00000  0.50000  1.0000
+  N   N2        1.0  0.58400  0.41600  0.84257  1.0000
+  N   N3        1.0  0.41600  0.58400  0.15743  1.0000
+  Se  Se1       1.0  0.89641  0.10359  0.75344  1.0000
+  Se  Se2       1.0  0.10359  0.89641  0.24656  1.0000
+  Se  Se3       1.0  0.61909  0.38091  0.08565  1.0000
+  Se  Se4       1.0  0.69351  0.30649  0.57954  1.0000
+  Se  Se5       1.0  0.30649  0.69351  0.42046  1.0000
+  Se  Se6       1.0  0.38091  0.61909  0.91435  1.0000

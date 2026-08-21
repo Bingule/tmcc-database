@@ -1,6 +1,6 @@
 export type MaterialType = "pristine" | "tm_intercalated" | "m2xa";
 export type MaterialSubclass = "TMCC" | "TMCDC";
-export type StructureType = "M2XC" | "M2XN" | "M2X2C" | "M2X2N" | "M2XA";
+export type StructureType = "M2XC" | "M2XN" | "M2X2C" | "M2X2N" | "M2X2A" | "M2XA";
 export type CalculationStatus = "not_calculated" | "calculation_in_progress" | "calculated";
 export type ExperimentalStatus = null | "unknown" | "experimental" | "not_reported" | "computational";
 export type IntercalationMode = "self" | "hetero";
@@ -13,7 +13,7 @@ export type HostDescriptor = {
   formula: string;
   metal: string;
   chalcogen: "S" | "Se" | "Te";
-  anion: "C" | "N";
+  anion: "C" | "N" | "P" | "As" | "Sb" | "Bi" | "Si" | "Ge" | "Sn" | "Pb" | "B" | "Al" | "Ga" | "In";
 };
 
 export type IntercalationDescriptor = {

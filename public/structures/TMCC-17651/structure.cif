@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       Pt6Te6Sn3
+_chemical_formula_sum              "Pt6 Te6 Sn3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Pt  Pt1       1.0  0.03076  0.96924  0.59860  1.0000
+  Pt  Pt2       1.0  0.96924  0.03076  0.40140  1.0000
+  Pt  Pt3       1.0  0.65853  0.34147  0.93200  1.0000
+  Pt  Pt4       1.0  0.70390  0.29610  0.73448  1.0000
+  Pt  Pt5       1.0  0.29610  0.70390  0.26552  1.0000
+  Pt  Pt6       1.0  0.34147  0.65853  0.06800  1.0000
+  Te  Te1       1.0  0.03461  0.96539  0.80062  1.0000
+  Te  Te2       1.0  0.96539  0.03461  0.19938  1.0000
+  Te  Te3       1.0  0.67158  0.32842  0.13429  1.0000
+  Te  Te4       1.0  0.69338  0.30662  0.53230  1.0000
+  Te  Te5       1.0  0.30662  0.69338  0.46770  1.0000
+  Te  Te6       1.0  0.32842  0.67158  0.86571  1.0000
+  Sn  Sn1       1.0  0.00000  0.00000  0.00000  1.0000
+  Sn  Sn2       1.0  0.63980  0.36020  0.33349  1.0000
+  Sn  Sn3       1.0  0.36020  0.63980  0.66651  1.0000

@@ -38,7 +38,7 @@ const transitionMetals = new Set([
   "Hg"
 ]);
 const chalcogens = new Set(["S", "Se", "Te"]);
-const anions = new Set(["C", "N"]);
+const anions = new Set(["C", "N", "P", "As", "Sb", "Bi", "Si", "Ge", "Sn", "Pb", "B", "Al", "Ga", "In"]);
 const calculationStatuses = new Set(["not_calculated", "calculation_in_progress", "calculated"]);
 const experimentalStatuses = new Set(["unknown", "experimental", "not_reported", "computational"]);
 

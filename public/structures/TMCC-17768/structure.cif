@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       Au6S6B3
+_chemical_formula_sum              "Au6 S6 B3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Au  Au1       1.0  0.41016  0.58984  0.62856  1.0000
+  Au  Au2       1.0  0.58984  0.41016  0.37144  1.0000
+  Au  Au3       1.0  0.66479  0.33521  0.95045  1.0000
+  Au  Au4       1.0  0.16216  0.83784  0.72848  1.0000
+  Au  Au5       1.0  0.83784  0.16216  0.27152  1.0000
+  Au  Au6       1.0  0.33521  0.66479  0.04955  1.0000
+  S   S1        1.0  0.06651  0.93349  0.83977  1.0000
+  S   S2        1.0  0.93349  0.06651  0.16023  1.0000
+  S   S3        1.0  0.63612  0.36388  0.15829  1.0000
+  S   S4        1.0  0.68566  0.31434  0.49995  1.0000
+  S   S5        1.0  0.31434  0.68566  0.50005  1.0000
+  S   S6        1.0  0.36388  0.63612  0.84171  1.0000
+  B   B1        1.0  1.00000  1.00000  0.00000  1.0000
+  B   B2        1.0  0.28274  0.71726  0.32808  1.0000
+  B   B3        1.0  0.71726  0.28274  0.67192  1.0000

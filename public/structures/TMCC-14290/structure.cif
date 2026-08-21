@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       Sc3W6N3S6
+_chemical_formula_sum              "Sc3 W6 N3 S6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Sc  Sc1       1.0  0.00000  0.00000  0.00000  0.5000
+  Sc  Sc2       1.0  0.00151  0.99849  0.31710  0.5000
+  Sc  Sc3       1.0  0.99849  0.00151  0.68290  0.5000
+  W   W1        1.0  0.99998  0.00002  0.89352  1.0000
+  W   W2        1.0  0.00002  0.99998  0.10648  1.0000
+  W   W3        1.0  0.66667  0.33333  0.16870  1.0000
+  W   W4        1.0  0.66673  0.33327  0.47101  1.0000
+  W   W5        1.0  0.33327  0.66673  0.52899  1.0000
+  W   W6        1.0  0.33333  0.66667  0.83130  1.0000
+  N   N1        1.0  0.00000  0.00000  0.50000  1.0000
+  N   N2        1.0  0.66665  0.33335  0.87716  1.0000
+  N   N3        1.0  0.33335  0.66665  0.12284  1.0000
+  S   S1        1.0  0.99997  0.00003  0.78665  1.0000
+  S   S2        1.0  0.00003  0.99997  0.21335  1.0000
+  S   S3        1.0  0.66668  0.33332  0.05052  1.0000
+  S   S4        1.0  0.66678  0.33322  0.57820  1.0000
+  S   S5        1.0  0.33322  0.66678  0.42180  1.0000
+  S   S6        1.0  0.33332  0.66668  0.94948  1.0000

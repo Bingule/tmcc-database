@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       V3Mo6N3S6
+_chemical_formula_sum              "V3 Mo6 N3 S6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  V   V1        1.0  0.00000  0.00000  0.00000  0.5000
+  V   V2        1.0  0.66670  0.33330  0.38489  0.5000
+  V   V3        1.0  0.33330  0.66670  0.61511  0.5000
+  Mo  Mo1       1.0  0.97806  0.02194  0.90808  1.0000
+  Mo  Mo2       1.0  0.02194  0.97806  0.09192  1.0000
+  Mo  Mo3       1.0  0.66660  0.33340  0.19902  1.0000
+  Mo  Mo4       1.0  0.66667  0.33333  0.46866  1.0000
+  Mo  Mo5       1.0  0.33333  0.66667  0.53134  1.0000
+  Mo  Mo6       1.0  0.33340  0.66660  0.80098  1.0000
+  N   N1        1.0  0.00000  0.00000  0.50000  1.0000
+  N   N2        1.0  0.66778  0.33222  0.88964  1.0000
+  N   N3        1.0  0.33222  0.66778  0.11036  1.0000
+  S   S1        1.0  0.99865  0.00135  0.77182  1.0000
+  S   S2        1.0  0.00135  0.99865  0.22818  1.0000
+  S   S3        1.0  0.66402  0.33598  0.04525  1.0000
+  S   S4        1.0  0.66664  0.33336  0.58860  1.0000
+  S   S5        1.0  0.33336  0.66664  0.41140  1.0000
+  S   S6        1.0  0.33598  0.66402  0.95475  1.0000

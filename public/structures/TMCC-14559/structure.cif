@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       Ca3Zr6N3Se6
+_chemical_formula_sum              "Ca3 Zr6 N3 Se6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Ca  Ca1       1.0  0.00000  0.00000  0.00000  0.5000
+  Ca  Ca2       1.0  0.63401  0.36599  0.31774  0.5000
+  Ca  Ca3       1.0  0.36599  0.63401  0.68226  0.5000
+  Zr  Zr1       1.0  0.99509  0.00491  0.86869  1.0000
+  Zr  Zr2       1.0  0.00491  0.99509  0.13131  1.0000
+  Zr  Zr3       1.0  0.65261  0.34739  0.19375  1.0000
+  Zr  Zr4       1.0  0.66653  0.33347  0.47025  1.0000
+  Zr  Zr5       1.0  0.33347  0.66653  0.52975  1.0000
+  Zr  Zr6       1.0  0.34739  0.65261  0.80625  1.0000
+  N   N1        1.0  0.00000  0.00000  0.50000  1.0000
+  N   N2        1.0  0.68550  0.31450  0.82066  1.0000
+  N   N3        1.0  0.31450  0.68550  0.17934  1.0000
+  Se  Se1       1.0  0.03289  0.96711  0.71298  1.0000
+  Se  Se2       1.0  0.96711  0.03289  0.28702  1.0000
+  Se  Se3       1.0  0.65473  0.34527  0.09108  1.0000
+  Se  Se4       1.0  0.66995  0.33005  0.59012  1.0000
+  Se  Se5       1.0  0.33005  0.66995  0.40988  1.0000
+  Se  Se6       1.0  0.34527  0.65473  0.90892  1.0000

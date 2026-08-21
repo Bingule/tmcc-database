@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       Ca3Zr6N3S6
+_chemical_formula_sum              "Ca3 Zr6 N3 S6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Ca  Ca1       1.0  0.00000  0.00000  0.00000  0.5000
+  Ca  Ca2       1.0  0.66552  0.33448  0.32844  0.5000
+  Ca  Ca3       1.0  0.33448  0.66552  0.67156  0.5000
+  Zr  Zr1       1.0  0.99627  0.00373  0.86016  1.0000
+  Zr  Zr2       1.0  0.00373  0.99627  0.13984  1.0000
+  Zr  Zr3       1.0  0.64636  0.35364  0.20476  1.0000
+  Zr  Zr4       1.0  0.66675  0.33325  0.46721  1.0000
+  Zr  Zr5       1.0  0.33325  0.66675  0.53279  1.0000
+  Zr  Zr6       1.0  0.35364  0.64636  0.79524  1.0000
+  N   N1        1.0  0.00000  0.00000  0.50000  1.0000
+  N   N2        1.0  0.69053  0.30947  0.80944  1.0000
+  N   N3        1.0  0.30947  0.69053  0.19056  1.0000
+  S   S1        1.0  0.00104  0.99896  0.69788  1.0000
+  S   S2        1.0  0.99896  0.00104  0.30212  1.0000
+  S   S3        1.0  0.65462  0.34538  0.10651  1.0000
+  S   S4        1.0  0.66660  0.33340  0.57834  1.0000
+  S   S5        1.0  0.33340  0.66660  0.42166  1.0000
+  S   S6        1.0  0.34538  0.65462  0.89349  1.0000

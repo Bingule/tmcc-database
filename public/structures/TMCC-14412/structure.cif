@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       V3Ti6N3Se6
+_chemical_formula_sum              "V3 Ti6 N3 Se6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  V   V1        1.0  0.00000  0.00000  0.00000  0.5000
+  V   V2        1.0  0.74973  0.25027  0.30697  0.5000
+  V   V3        1.0  0.25027  0.74973  0.69303  0.5000
+  Ti  Ti1       1.0  0.99386  0.00614  0.90709  1.0000
+  Ti  Ti2       1.0  0.00614  0.99386  0.09291  1.0000
+  Ti  Ti3       1.0  0.66414  0.33586  0.14708  1.0000
+  Ti  Ti4       1.0  0.66666  0.33334  0.47542  1.0000
+  Ti  Ti5       1.0  0.33334  0.66666  0.52458  1.0000
+  Ti  Ti6       1.0  0.33586  0.66414  0.85292  1.0000
+  N   N1        1.0  0.00000  0.00000  0.50000  1.0000
+  N   N2        1.0  0.66933  0.33067  0.84942  1.0000
+  N   N3        1.0  0.33067  0.66933  0.15058  1.0000
+  Se  Se1       1.0  0.93084  0.06916  0.72242  1.0000
+  Se  Se2       1.0  0.06916  0.93084  0.27758  1.0000
+  Se  Se3       1.0  0.66622  0.33378  0.05229  1.0000
+  Se  Se4       1.0  0.75187  0.24813  0.62688  1.0000
+  Se  Se5       1.0  0.24813  0.75187  0.37312  1.0000
+  Se  Se6       1.0  0.33378  0.66622  0.94771  1.0000

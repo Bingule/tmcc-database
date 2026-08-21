@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       Sc6Te6As3
+_chemical_formula_sum              "Sc6 Te6 As3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Sc  Sc1       1.0  0.95213  0.04787  0.63720  1.0000
+  Sc  Sc2       1.0  0.04787  0.95213  0.36280  1.0000
+  Sc  Sc3       1.0  0.66530  0.33470  0.97047  1.0000
+  Sc  Sc4       1.0  0.61522  0.38478  0.69675  1.0000
+  Sc  Sc5       1.0  0.38478  0.61522  0.30325  1.0000
+  Sc  Sc6       1.0  0.33470  0.66530  0.02953  1.0000
+  Te  Te1       1.0  0.05688  0.94312  0.77360  1.0000
+  Te  Te2       1.0  0.94312  0.05688  0.22640  1.0000
+  Te  Te3       1.0  0.56639  0.43361  0.11252  1.0000
+  Te  Te4       1.0  0.70977  0.29023  0.55803  1.0000
+  Te  Te5       1.0  0.29023  0.70977  0.44197  1.0000
+  Te  Te6       1.0  0.43361  0.56639  0.88748  1.0000
+  As  As1       1.0  0.00000  0.00000  0.00000  1.0000
+  As  As2       1.0  0.71123  0.28877  0.33233  1.0000
+  As  As3       1.0  0.28877  0.71123  0.66767  1.0000

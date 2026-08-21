@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       Cu6Te6In3
+_chemical_formula_sum              "Cu6 Te6 In3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Cu  Cu1       1.0  0.04052  0.95948  0.61232  1.0000
+  Cu  Cu2       1.0  0.95948  0.04052  0.38768  1.0000
+  Cu  Cu3       1.0  0.67200  0.32800  0.93398  1.0000
+  Cu  Cu4       1.0  0.68394  0.31606  0.74594  1.0000
+  Cu  Cu5       1.0  0.31606  0.68394  0.25406  1.0000
+  Cu  Cu6       1.0  0.32800  0.67200  0.06602  1.0000
+  Te  Te1       1.0  0.03061  0.96939  0.80801  1.0000
+  Te  Te2       1.0  0.96939  0.03061  0.19199  1.0000
+  Te  Te3       1.0  0.68189  0.31811  0.12809  1.0000
+  Te  Te4       1.0  0.74165  0.25835  0.54382  1.0000
+  Te  Te5       1.0  0.25835  0.74165  0.45618  1.0000
+  Te  Te6       1.0  0.31811  0.68189  0.87191  1.0000
+  In  In1       1.0  0.00000  0.00000  0.00000  1.0000
+  In  In2       1.0  0.64054  0.35946  0.32110  1.0000
+  In  In3       1.0  0.35946  0.64054  0.67890  1.0000

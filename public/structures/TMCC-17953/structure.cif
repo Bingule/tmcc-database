@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       Zn6Se6Ga3
+_chemical_formula_sum              "Zn6 Se6 Ga3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Zn  Zn1       1.0  0.97830  0.02170  0.58528  1.0000
+  Zn  Zn2       1.0  0.02170  0.97830  0.41472  1.0000
+  Zn  Zn3       1.0  0.68975  0.31025  0.91836  1.0000
+  Zn  Zn4       1.0  0.58093  0.41907  0.74907  1.0000
+  Zn  Zn5       1.0  0.41907  0.58093  0.25093  1.0000
+  Zn  Zn6       1.0  0.31025  0.68975  0.08164  1.0000
+  Se  Se1       1.0  0.99036  0.00964  0.81601  1.0000
+  Se  Se2       1.0  0.00964  0.99036  0.18399  1.0000
+  Se  Se3       1.0  0.71694  0.28306  0.14824  1.0000
+  Se  Se4       1.0  0.68743  0.31257  0.51635  1.0000
+  Se  Se5       1.0  0.31257  0.68743  0.48365  1.0000
+  Se  Se6       1.0  0.28306  0.71694  0.85176  1.0000
+  Ga  Ga1       1.0  0.00000  0.00000  0.00000  1.0000
+  Ga  Ga2       1.0  0.72809  0.27191  0.33259  1.0000
+  Ga  Ga3       1.0  0.27191  0.72809  0.66741  1.0000

@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       Na3Ru6N3Se6
+_chemical_formula_sum              "Na3 Ru6 N3 Se6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Na  Na1       1.0  0.00000  0.00000  0.00000  0.5000
+  Na  Na2       1.0  0.66667  0.33333  0.33333  0.5000
+  Na  Na3       1.0  0.33333  0.66667  0.66667  0.5000
+  Ru  Ru1       1.0  0.00001  0.99999  0.87500  1.0000
+  Ru  Ru2       1.0  0.99999  0.00001  0.12500  1.0000
+  Ru  Ru3       1.0  0.66668  0.33332  0.20833  1.0000
+  Ru  Ru4       1.0  0.66666  0.33334  0.45834  1.0000
+  Ru  Ru5       1.0  0.33334  0.66666  0.54166  1.0000
+  Ru  Ru6       1.0  0.33332  0.66668  0.79167  1.0000
+  N   N1        1.0  0.00000  0.00000  0.50000  1.0000
+  N   N2        1.0  0.66667  0.33333  0.83340  1.0000
+  N   N3        1.0  0.33333  0.66667  0.16660  1.0000
+  Se  Se1       1.0  0.99999  0.00001  0.74965  1.0000
+  Se  Se2       1.0  0.00001  0.99999  0.25035  1.0000
+  Se  Se3       1.0  0.66666  0.33334  0.08296  1.0000
+  Se  Se4       1.0  0.66667  0.33333  0.58369  1.0000
+  Se  Se5       1.0  0.33333  0.66667  0.41631  1.0000
+  Se  Se6       1.0  0.33334  0.66666  0.91704  1.0000

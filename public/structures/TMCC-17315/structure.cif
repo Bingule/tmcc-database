@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       Zn6S6Bi3
+_chemical_formula_sum              "Zn6 S6 Bi3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Zn  Zn1       1.0  0.94938  0.05062  0.58278  1.0000
+  Zn  Zn2       1.0  0.05062  0.94938  0.41722  1.0000
+  Zn  Zn3       1.0  0.51616  0.48384  0.90678  1.0000
+  Zn  Zn4       1.0  0.52065  0.47935  0.79102  1.0000
+  Zn  Zn5       1.0  0.47935  0.52065  0.20898  1.0000
+  Zn  Zn6       1.0  0.48384  0.51616  0.09322  1.0000
+  S   S1        1.0  0.84822  0.15178  0.85403  1.0000
+  S   S2        1.0  0.15178  0.84822  0.14597  1.0000
+  S   S3        1.0  0.81406  0.18594  0.14590  1.0000
+  S   S4        1.0  0.64782  0.35218  0.49634  1.0000
+  S   S5        1.0  0.35218  0.64782  0.50366  1.0000
+  S   S6        1.0  0.18594  0.81406  0.85410  1.0000
+  Bi  Bi1       1.0  1.00000  1.00000  0.00000  1.0000
+  Bi  Bi2       1.0  0.76498  0.23502  0.31336  1.0000
+  Bi  Bi3       1.0  0.23502  0.76498  0.68664  1.0000

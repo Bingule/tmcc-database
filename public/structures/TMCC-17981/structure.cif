@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       Cu6Te6Ga3
+_chemical_formula_sum              "Cu6 Te6 Ga3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Cu  Cu1       1.0  0.99517  0.00483  0.60196  1.0000
+  Cu  Cu2       1.0  0.00483  0.99517  0.39804  1.0000
+  Cu  Cu3       1.0  0.67055  0.32945  0.93980  1.0000
+  Cu  Cu4       1.0  0.64245  0.35755  0.72138  1.0000
+  Cu  Cu5       1.0  0.35755  0.64245  0.27862  1.0000
+  Cu  Cu6       1.0  0.32945  0.67055  0.06020  1.0000
+  Te  Te1       1.0  0.02608  0.97392  0.79064  1.0000
+  Te  Te2       1.0  0.97392  0.02608  0.20936  1.0000
+  Te  Te3       1.0  0.68430  0.31570  0.12877  1.0000
+  Te  Te4       1.0  0.69581  0.30419  0.53521  1.0000
+  Te  Te5       1.0  0.30419  0.69581  0.46479  1.0000
+  Te  Te6       1.0  0.31570  0.68430  0.87123  1.0000
+  Ga  Ga1       1.0  0.00000  0.00000  0.00000  1.0000
+  Ga  Ga2       1.0  0.69361  0.30639  0.33709  1.0000
+  Ga  Ga3       1.0  0.30639  0.69361  0.66291  1.0000

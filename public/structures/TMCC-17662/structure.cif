@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       Cu6S6Pb3
+_chemical_formula_sum              "Cu6 S6 Pb3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Cu  Cu1       1.0  0.00024  0.99976  0.56707  1.0000
+  Cu  Cu2       1.0  0.99976  0.00024  0.43293  1.0000
+  Cu  Cu3       1.0  0.65875  0.34125  0.90059  1.0000
+  Cu  Cu4       1.0  0.67110  0.32890  0.76607  1.0000
+  Cu  Cu5       1.0  0.32890  0.67110  0.23393  1.0000
+  Cu  Cu6       1.0  0.34125  0.65875  0.09941  1.0000
+  S   S1        1.0  0.01553  0.98447  0.83308  1.0000
+  S   S2        1.0  0.98447  0.01553  0.16692  1.0000
+  S   S3        1.0  0.68271  0.31729  0.16649  1.0000
+  S   S4        1.0  0.68401  0.31599  0.49989  1.0000
+  S   S5        1.0  0.31599  0.68401  0.50011  1.0000
+  S   S6        1.0  0.31729  0.68271  0.83351  1.0000
+  Pb  Pb1       1.0  0.00000  0.00000  0.00000  1.0000
+  Pb  Pb2       1.0  0.68653  0.31347  0.33344  1.0000
+  Pb  Pb3       1.0  0.31347  0.68653  0.66656  1.0000

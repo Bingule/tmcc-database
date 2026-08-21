@@ -161,7 +161,7 @@ export const periodicTableElements: PeriodicElement[] = [
 ];
 
 export const chalcogens = ["S", "Se", "Te"] as const;
-export const anions = ["C", "N"] as const;
+export const anions = ["C", "N", "P", "As", "Sb", "Bi", "Si", "Ge", "Sn", "Pb", "B", "Al", "Ga", "In"] as const;
 
 export const calculationStatuses = [
   "not_calculated",

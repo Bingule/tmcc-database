@@ -44,7 +44,7 @@ export function validateMaterialRecords(materials: MaterialRecord[]): Validation
       errors.push(`${material.material_id}: invalid subclass`);
     }
 
-    if (!["M2XC", "M2XN", "M2X2C", "M2X2N", "M2XA"].includes(material.structure_type)) {
+    if (!["M2XC", "M2XN", "M2X2C", "M2X2N", "M2X2A", "M2XA"].includes(material.structure_type)) {
       errors.push(`${material.material_id}: invalid structure_type`);
     }
 

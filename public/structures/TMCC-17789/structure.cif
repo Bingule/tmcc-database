@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       Cd6Se6B3
+_chemical_formula_sum              "Cd6 Se6 B3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Cd  Cd1       1.0  0.00130  0.99870  0.60234  1.0000
+  Cd  Cd2       1.0  0.99870  0.00130  0.39766  1.0000
+  Cd  Cd3       1.0  0.66862  0.33138  0.93581  1.0000
+  Cd  Cd4       1.0  0.66544  0.33456  0.73073  1.0000
+  Cd  Cd5       1.0  0.33456  0.66544  0.26927  1.0000
+  Cd  Cd6       1.0  0.33138  0.66862  0.06419  1.0000
+  Se  Se1       1.0  0.02437  0.97563  0.81095  1.0000
+  Se  Se2       1.0  0.97563  0.02437  0.18905  1.0000
+  Se  Se3       1.0  0.68985  0.31015  0.14457  1.0000
+  Se  Se4       1.0  0.64298  0.35702  0.52214  1.0000
+  Se  Se5       1.0  0.35702  0.64298  0.47786  1.0000
+  Se  Se6       1.0  0.31015  0.68985  0.85543  1.0000
+  B   B1        1.0  0.00000  0.00000  0.00000  1.0000
+  B   B2        1.0  0.66678  0.33322  0.33350  1.0000
+  B   B3        1.0  0.33322  0.66678  0.66650  1.0000

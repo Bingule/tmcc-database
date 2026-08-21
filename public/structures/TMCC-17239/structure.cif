@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       Hf6S6Sb3
+_chemical_formula_sum              "Hf6 S6 Sb3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Hf  Hf1       1.0  0.99730  0.00270  0.57544  1.0000
+  Hf  Hf2       1.0  0.00270  0.99730  0.42456  1.0000
+  Hf  Hf3       1.0  0.77451  0.22549  0.91139  1.0000
+  Hf  Hf4       1.0  0.73863  0.26137  0.75111  1.0000
+  Hf  Hf5       1.0  0.26137  0.73863  0.24889  1.0000
+  Hf  Hf6       1.0  0.22549  0.77451  0.08861  1.0000
+  S   S1        1.0  0.07275  0.92725  0.77899  1.0000
+  S   S2        1.0  0.92725  0.07275  0.22101  1.0000
+  S   S3        1.0  0.56778  0.43222  0.11818  1.0000
+  S   S4        1.0  0.65868  0.34132  0.54671  1.0000
+  S   S5        1.0  0.34132  0.65868  0.45329  1.0000
+  S   S6        1.0  0.43222  0.56778  0.88182  1.0000
+  Sb  Sb1       1.0  1.00000  1.00000  0.00000  1.0000
+  Sb  Sb2       1.0  0.75824  0.24176  0.33100  1.0000
+  Sb  Sb3       1.0  0.24176  0.75824  0.66900  1.0000

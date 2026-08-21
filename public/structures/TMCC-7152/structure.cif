@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       Os6Te6N3
+_chemical_formula_sum              "Os6 Te6 N3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Os  Os1       1.0  1.00000  1.00000  0.63013  1.0000
+  Os  Os2       1.0  0.00000  0.00000  0.36987  1.0000
+  Os  Os3       1.0  0.66667  0.33333  0.96347  1.0000
+  Os  Os4       1.0  0.66667  0.33333  0.70318  1.0000
+  Os  Os5       1.0  0.33333  0.66667  0.29682  1.0000
+  Os  Os6       1.0  0.33333  0.66667  0.03653  1.0000
+  Te  Te1       1.0  0.00000  0.00000  0.77849  1.0000
+  Te  Te2       1.0  1.00000  1.00000  0.22151  1.0000
+  Te  Te3       1.0  0.66667  0.33333  0.11183  1.0000
+  Te  Te4       1.0  0.66667  0.33333  0.55484  1.0000
+  Te  Te5       1.0  0.33333  0.66667  0.44516  1.0000
+  Te  Te6       1.0  0.33333  0.66667  0.88817  1.0000
+  N   N1        1.0  0.00000  0.00000  0.00000  1.0000
+  N   N2        1.0  0.66667  0.33333  0.33332  1.0000
+  N   N3        1.0  0.33333  0.66667  0.66668  1.0000

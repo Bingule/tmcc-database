@@ -78,16 +78,18 @@ describe("material validation", () => {
     expect(result.errors.join("\n")).toContain("Invalid host metal");
   });
 
-  it("accepts C and N as the explicit A-site element", () => {
-    const nitride = {
+  it("accepts every supported A-site element", () => {
+    const supportedAnions = ["C", "N", "P", "As", "Sb", "Bi", "Si", "Ge", "Sn", "Pb", "B", "Al", "Ga", "In"] as const;
+    const records = supportedAnions.map((anion, index) => ({
       ...validMaterial,
-      material_id: "TMCC-0002",
-      slug: "nb2s2n-p-3m1",
-      formula: "Nb2S2N",
-      host: { ...validMaterial.host, formula: "Nb2S2N", anion: "N" as const }
-    };
+      material_id: `TMCC-${String(index + 1).padStart(4, "0")}`,
+      slug: `nb2s2${anion.toLowerCase()}-p-3m1`,
+      formula: `Nb2S2${anion}`,
+      structure_type: anion === "C" ? "M2X2C" as const : anion === "N" ? "M2X2N" as const : "M2X2A" as const,
+      host: { ...validMaterial.host, formula: `Nb2S2${anion}`, anion }
+    }));
 
-    expect(validateMaterialRecords([validMaterial, nitride]).valid).toBe(true);
+    expect(validateMaterialRecords(records).valid).toBe(true);
   });
 
   it("accepts TMCDC as the M2X2C subclass under the TMCC family", () => {
@@ -95,7 +97,7 @@ describe("material validation", () => {
     expect(validateMaterialRecords([validMaterial]).errors).not.toContain("TMCC-0001: invalid structure_type");
   });
 
-  it("rejects A-site elements other than C or N", () => {
+  it("rejects unsupported A-site elements", () => {
     const result = validateMaterialRecords([
       {
         ...validMaterial,

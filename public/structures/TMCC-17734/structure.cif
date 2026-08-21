@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       W6Te6Pb3
+_chemical_formula_sum              "W6 Te6 Pb3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  W   W1        1.0  0.99993  0.00007  0.58774  1.0000
+  W   W2        1.0  0.00007  0.99993  0.41226  1.0000
+  W   W3        1.0  0.66660  0.33340  0.92104  1.0000
+  W   W4        1.0  0.66674  0.33326  0.74559  1.0000
+  W   W5        1.0  0.33326  0.66674  0.25441  1.0000
+  W   W6        1.0  0.33340  0.66660  0.07896  1.0000
+  Te  Te1       1.0  0.00007  0.99993  0.78571  1.0000
+  Te  Te2       1.0  0.99993  0.00007  0.21429  1.0000
+  Te  Te3       1.0  0.66672  0.33328  0.11910  1.0000
+  Te  Te4       1.0  0.66660  0.33340  0.54761  1.0000
+  Te  Te5       1.0  0.33340  0.66660  0.45239  1.0000
+  Te  Te6       1.0  0.33328  0.66672  0.88090  1.0000
+  Pb  Pb1       1.0  0.00000  0.00000  0.00000  1.0000
+  Pb  Pb2       1.0  0.66667  0.33333  0.33333  1.0000
+  Pb  Pb3       1.0  0.33333  0.66667  0.66667  1.0000

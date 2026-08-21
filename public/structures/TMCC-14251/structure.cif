@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       Co3Pd6N3S6
+_chemical_formula_sum              "Co3 Pd6 N3 S6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Co  Co1       1.0  0.00000  0.00000  0.00000  0.5000
+  Co  Co2       1.0  0.66667  0.33333  0.33327  0.5000
+  Co  Co3       1.0  0.33333  0.66667  0.66673  0.5000
+  Pd  Pd1       1.0  0.99999  0.00001  0.88394  1.0000
+  Pd  Pd2       1.0  0.00001  0.99999  0.11606  1.0000
+  Pd  Pd3       1.0  0.66666  0.33334  0.21722  1.0000
+  Pd  Pd4       1.0  0.66668  0.33332  0.44943  1.0000
+  Pd  Pd5       1.0  0.33332  0.66668  0.55057  1.0000
+  Pd  Pd6       1.0  0.33334  0.66666  0.78278  1.0000
+  N   N1        1.0  0.00000  0.00000  0.50000  1.0000
+  N   N2        1.0  0.66667  0.33333  0.83369  1.0000
+  N   N3        1.0  0.33333  0.66667  0.16631  1.0000
+  S   S1        1.0  0.00002  0.99998  0.72276  1.0000
+  S   S2        1.0  0.99998  0.00002  0.27724  1.0000
+  S   S3        1.0  0.66669  0.33331  0.05608  1.0000
+  S   S4        1.0  0.66665  0.33335  0.61055  1.0000
+  S   S5        1.0  0.33335  0.66665  0.38945  1.0000
+  S   S6        1.0  0.33331  0.66669  0.94392  1.0000

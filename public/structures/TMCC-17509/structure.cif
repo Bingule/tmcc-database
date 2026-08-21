@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       Sc6Se6Ge3
+_chemical_formula_sum              "Sc6 Se6 Ge3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Sc  Sc1       1.0  0.95703  0.04297  0.58105  1.0000
+  Sc  Sc2       1.0  0.04297  0.95703  0.41895  1.0000
+  Sc  Sc3       1.0  0.47705  0.52295  0.91599  1.0000
+  Sc  Sc4       1.0  0.56102  0.43898  0.75557  1.0000
+  Sc  Sc5       1.0  0.43898  0.56102  0.24443  1.0000
+  Sc  Sc6       1.0  0.52295  0.47705  0.08401  1.0000
+  Se  Se1       1.0  0.89715  0.10285  0.78082  1.0000
+  Se  Se2       1.0  0.10285  0.89715  0.21918  1.0000
+  Se  Se3       1.0  0.85842  0.14158  0.11103  1.0000
+  Se  Se4       1.0  0.62082  0.37918  0.55388  1.0000
+  Se  Se5       1.0  0.37918  0.62082  0.44612  1.0000
+  Se  Se6       1.0  0.14158  0.85842  0.88897  1.0000
+  Ge  Ge1       1.0  0.00000  0.00000  0.00000  1.0000
+  Ge  Ge2       1.0  0.51239  0.48761  0.33846  1.0000
+  Ge  Ge3       1.0  0.48761  0.51239  0.66154  1.0000

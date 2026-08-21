@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       Mn3Zn6N3Se6
+_chemical_formula_sum              "Mn3 Zn6 N3 Se6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Mn  Mn1       1.0  0.00000  0.00000  0.00000  0.5000
+  Mn  Mn2       1.0  0.66667  0.33333  0.33329  0.5000
+  Mn  Mn3       1.0  0.33333  0.66667  0.66671  0.5000
+  Zn  Zn1       1.0  0.00000  0.00000  0.87730  1.0000
+  Zn  Zn2       1.0  0.00000  0.00000  0.12270  1.0000
+  Zn  Zn3       1.0  0.66668  0.33332  0.21060  1.0000
+  Zn  Zn4       1.0  0.66666  0.33334  0.45603  1.0000
+  Zn  Zn5       1.0  0.33334  0.66666  0.54397  1.0000
+  Zn  Zn6       1.0  0.33332  0.66668  0.78940  1.0000
+  N   N1        1.0  0.00000  0.00000  0.50000  1.0000
+  N   N2        1.0  0.66668  0.33332  0.83343  1.0000
+  N   N3        1.0  0.33332  0.66668  0.16657  1.0000
+  Se  Se1       1.0  0.00001  0.99999  0.71054  1.0000
+  Se  Se2       1.0  0.99999  0.00001  0.28946  1.0000
+  Se  Se3       1.0  0.66668  0.33332  0.04390  1.0000
+  Se  Se4       1.0  0.66665  0.33335  0.62274  1.0000
+  Se  Se5       1.0  0.33335  0.66665  0.37726  1.0000
+  Se  Se6       1.0  0.33332  0.66668  0.95610  1.0000

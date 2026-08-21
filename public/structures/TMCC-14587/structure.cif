@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       Na3Mo6N3Se6
+_chemical_formula_sum              "Na3 Mo6 N3 Se6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Na  Na1       1.0  0.00000  0.00000  0.00000  0.5000
+  Na  Na2       1.0  0.66667  0.33333  0.33476  0.5000
+  Na  Na3       1.0  0.33333  0.66667  0.66524  0.5000
+  Mo  Mo1       1.0  0.00000  0.00000  0.86025  1.0000
+  Mo  Mo2       1.0  0.00000  0.00000  0.13975  1.0000
+  Mo  Mo3       1.0  0.66666  0.33334  0.19808  1.0000
+  Mo  Mo4       1.0  0.66667  0.33333  0.47203  1.0000
+  Mo  Mo5       1.0  0.33333  0.66667  0.52797  1.0000
+  Mo  Mo6       1.0  0.33334  0.66666  0.80192  1.0000
+  N   N1        1.0  0.00000  0.00000  0.50000  1.0000
+  N   N2        1.0  0.66667  0.33333  0.84327  1.0000
+  N   N3        1.0  0.33333  0.66667  0.15673  1.0000
+  Se  Se1       1.0  0.00000  0.00000  0.75086  1.0000
+  Se  Se2       1.0  0.00000  0.00000  0.24914  1.0000
+  Se  Se3       1.0  0.66667  0.33333  0.07984  1.0000
+  Se  Se4       1.0  0.66667  0.33333  0.58247  1.0000
+  Se  Se5       1.0  0.33333  0.66667  0.41753  1.0000
+  Se  Se6       1.0  0.33333  0.66667  0.92016  1.0000

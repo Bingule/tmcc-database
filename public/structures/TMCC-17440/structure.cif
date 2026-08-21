@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       Ag6Se6Si3
+_chemical_formula_sum              "Ag6 Se6 Si3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Ag  Ag1       1.0  0.97251  0.02749  0.60086  1.0000
+  Ag  Ag2       1.0  0.02749  0.97251  0.39914  1.0000
+  Ag  Ag3       1.0  0.65070  0.34930  0.93354  1.0000
+  Ag  Ag4       1.0  0.62934  0.37066  0.73580  1.0000
+  Ag  Ag5       1.0  0.37066  0.62934  0.26420  1.0000
+  Ag  Ag6       1.0  0.34930  0.65070  0.06646  1.0000
+  Se  Se1       1.0  0.00569  0.99431  0.81083  1.0000
+  Se  Se2       1.0  0.99431  0.00569  0.18917  1.0000
+  Se  Se3       1.0  0.71030  0.28970  0.14226  1.0000
+  Se  Se4       1.0  0.69015  0.30985  0.52290  1.0000
+  Se  Se5       1.0  0.30985  0.69015  0.47710  1.0000
+  Se  Se6       1.0  0.28970  0.71030  0.85774  1.0000
+  Si  Si1       1.0  1.00000  1.00000  0.00000  1.0000
+  Si  Si2       1.0  0.74280  0.25720  0.33080  1.0000
+  Si  Si3       1.0  0.25720  0.74280  0.66920  1.0000

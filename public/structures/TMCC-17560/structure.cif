@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       W6Te6Ge3
+_chemical_formula_sum              "W6 Te6 Ge3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  W   W1        1.0  0.95390  0.04610  0.62300  1.0000
+  W   W2        1.0  0.04610  0.95390  0.37700  1.0000
+  W   W3        1.0  0.66975  0.33025  0.95639  1.0000
+  W   W4        1.0  0.63000  0.37000  0.71039  1.0000
+  W   W5        1.0  0.37000  0.63000  0.28961  1.0000
+  W   W6        1.0  0.33025  0.66975  0.04361  1.0000
+  Te  Te1       1.0  0.93686  0.06314  0.77443  1.0000
+  Te  Te2       1.0  0.06314  0.93686  0.22557  1.0000
+  Te  Te3       1.0  0.69555  0.30445  0.10755  1.0000
+  Te  Te4       1.0  0.64601  0.35399  0.55926  1.0000
+  Te  Te5       1.0  0.35399  0.64601  0.44074  1.0000
+  Te  Te6       1.0  0.30445  0.69555  0.89245  1.0000
+  Ge  Ge1       1.0  0.00000  0.00000  0.00000  1.0000
+  Ge  Ge2       1.0  0.70810  0.29190  0.33311  1.0000
+  Ge  Ge3       1.0  0.29190  0.70810  0.66689  1.0000

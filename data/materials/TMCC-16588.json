@@ -1,0 +1,171 @@
+{
+  "material_id": "TMCC-16588",
+  "slug": "ni2te2sn-p-3m1",
+  "family": "TMCC",
+  "material_type": "pristine",
+  "formula": "Ni2Te2Sn",
+  "host": {
+    "formula": "Ni2Te2Sn",
+    "metal": "Ni",
+    "chalcogen": "Te",
+    "anion": "Sn"
+  },
+  "intercalation": null,
+  "experimental_status": "computational",
+  "calculation_status": "calculated",
+  "structure": {
+    "space_group_symbol": "P-3m1",
+    "space_group_number": 164,
+    "crystal_system": "trigonal",
+    "lattice_parameters": {
+      "a": {
+        "value": 3.269,
+        "unit": "angstrom"
+      },
+      "b": {
+        "value": 3.269,
+        "unit": "angstrom"
+      },
+      "c": {
+        "value": 8.547,
+        "unit": "angstrom"
+      }
+    },
+    "angles": {
+      "alpha": {
+        "value": 90,
+        "unit": "degree"
+      },
+      "beta": {
+        "value": 90,
+        "unit": "degree"
+      },
+      "gamma": {
+        "value": 119.99999999999999,
+        "unit": "degree"
+      }
+    },
+    "layer_thickness": {
+      "value": 6.258,
+      "unit": "angstrom"
+    },
+    "vdw_gap": {
+      "value": 2.289,
+      "unit": "angstrom"
+    },
+    "atomic_sites": [
+      {
+        "label": "Ni1",
+        "element": "Ni",
+        "fract_x": 0.66639,
+        "fract_y": 0.33319,
+        "fract_z": 0.81588,
+        "occupancy": 1
+      },
+      {
+        "label": "Ni2",
+        "element": "Ni",
+        "fract_x": 0.33361,
+        "fract_y": 0.66681,
+        "fract_z": 0.18412,
+        "occupancy": 1
+      },
+      {
+        "label": "Te1",
+        "element": "Te",
+        "fract_x": 0.66708,
+        "fract_y": 0.33354,
+        "fract_z": 0.36612,
+        "occupancy": 1
+      },
+      {
+        "label": "Te2",
+        "element": "Te",
+        "fract_x": 0.33292,
+        "fract_y": 0.66646,
+        "fract_z": 0.63388,
+        "occupancy": 1
+      },
+      {
+        "label": "Sn1",
+        "element": "Sn",
+        "fract_x": 0,
+        "fract_y": 0,
+        "fract_z": 0,
+        "occupancy": 1
+      }
+    ]
+  },
+  "thermodynamics": {
+    "total_energy": {
+      "value": -22.7158937920096,
+      "unit": "eV/cell"
+    },
+    "formation_energy": {
+      "value": null,
+      "unit": "eV/formula"
+    },
+    "energy_above_hull": {
+      "value": null,
+      "unit": "eV/atom"
+    },
+    "relative_structure_energy": {
+      "value": null,
+      "unit": "meV/f.u."
+    },
+    "reference_energies_per_atom": {}
+  },
+  "phonons": {},
+  "mechanical": {},
+  "electronic": {
+    "band_gap": {
+      "value": 0,
+      "unit": "eV"
+    },
+    "fermi_level": {
+      "value": 11.808076925315202,
+      "unit": "eV"
+    },
+    "dos_calculated": true,
+    "band_structure_calculated": false
+  },
+  "energy_storage": {},
+  "files": {
+    "cif": "/structures/TMCC-16588/structure.cif",
+    "poscar": "/structures/TMCC-16588/POSCAR",
+    "dos": "/figures/TMCC-16588/dos.csv",
+    "band_structure": null
+  },
+  "provenance": {
+    "software": "GPAW",
+    "software_version": null,
+    "ase_version": null,
+    "exchange_correlation": "PBE",
+    "pseudopotential": null,
+    "plane_wave_cutoff": {
+      "value": 520,
+      "unit": "eV"
+    },
+    "k_points": {
+      "density": 2.5,
+      "gamma": true
+    },
+    "spin_polarization": true,
+    "initial_magnetic_moments": {
+      "Ni": 1
+    },
+    "dft_u": null,
+    "setups": null,
+    "soc": false,
+    "convergence_criteria": {
+      "density": 5e-7
+    },
+    "calculation_date": "2026-08-19",
+    "workflow_version": "tmcc-pblock12-gamma-relax-v1",
+    "source": "cluster calculation",
+    "formation_energy_reference_note": null,
+    "doi": null
+  },
+  "subclass": "TMCDC",
+  "structure_type": "M2X2A"
+}

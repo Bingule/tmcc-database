@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       Cd6S6In3
+_chemical_formula_sum              "Cd6 S6 In3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Cd  Cd1       1.0  0.00029  0.99971  0.57362  1.0000
+  Cd  Cd2       1.0  0.99971  0.00029  0.42638  1.0000
+  Cd  Cd3       1.0  0.66622  0.33378  0.90676  1.0000
+  Cd  Cd4       1.0  0.66706  0.33294  0.76002  1.0000
+  Cd  Cd5       1.0  0.33294  0.66706  0.23998  1.0000
+  Cd  Cd6       1.0  0.33378  0.66622  0.09324  1.0000
+  S   S1        1.0  0.00925  0.99075  0.83332  1.0000
+  S   S2        1.0  0.99075  0.00925  0.16668  1.0000
+  S   S3        1.0  0.67592  0.32408  0.16659  1.0000
+  S   S4        1.0  0.65725  0.34275  0.50006  1.0000
+  S   S5        1.0  0.34275  0.65725  0.49994  1.0000
+  S   S6        1.0  0.32408  0.67592  0.83341  1.0000
+  In  In1       1.0  0.00000  0.00000  0.00000  1.0000
+  In  In2       1.0  0.66690  0.33310  0.33313  1.0000
+  In  In3       1.0  0.33310  0.66690  0.66687  1.0000

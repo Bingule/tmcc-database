@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       Ru6S6Si3
+_chemical_formula_sum              "Ru6 S6 Si3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Ru  Ru1       1.0  0.89447  0.10553  0.63890  1.0000
+  Ru  Ru2       1.0  0.10553  0.89447  0.36110  1.0000
+  Ru  Ru3       1.0  0.69983  0.30017  0.95286  1.0000
+  Ru  Ru4       1.0  0.83798  0.16202  0.78134  1.0000
+  Ru  Ru5       1.0  0.16202  0.83798  0.21866  1.0000
+  Ru  Ru6       1.0  0.30017  0.69983  0.04714  1.0000
+  S   S1        1.0  0.17378  0.82622  0.81944  1.0000
+  S   S2        1.0  0.82622  0.17378  0.18056  1.0000
+  S   S3        1.0  0.81104  0.18896  0.10000  1.0000
+  S   S4        1.0  0.75997  0.24003  0.56263  1.0000
+  S   S5        1.0  0.24003  0.75997  0.43737  1.0000
+  S   S6        1.0  0.18896  0.81104  0.90000  1.0000
+  Si  Si1       1.0  1.00000  1.00000  0.00000  1.0000
+  Si  Si2       1.0  0.77037  0.22963  0.32412  1.0000
+  Si  Si3       1.0  0.22963  0.77037  0.67588  1.0000

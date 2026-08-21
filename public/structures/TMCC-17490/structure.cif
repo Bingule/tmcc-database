@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       Y6S6Ge3
+_chemical_formula_sum              "Y6 S6 Ge3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Y   Y1        1.0  0.99756  0.00244  0.57600  1.0000
+  Y   Y2        1.0  0.00244  0.99756  0.42400  1.0000
+  Y   Y3        1.0  0.74557  0.25443  0.90887  1.0000
+  Y   Y4        1.0  0.75425  0.24575  0.75749  1.0000
+  Y   Y5        1.0  0.24575  0.75425  0.24251  1.0000
+  Y   Y6        1.0  0.25443  0.74557  0.09113  1.0000
+  S   S1        1.0  0.09298  0.90702  0.78388  1.0000
+  S   S2        1.0  0.90702  0.09298  0.21612  1.0000
+  S   S3        1.0  0.58652  0.41348  0.11825  1.0000
+  S   S4        1.0  0.66046  0.33954  0.54868  1.0000
+  S   S5        1.0  0.33954  0.66046  0.45132  1.0000
+  S   S6        1.0  0.41348  0.58652  0.88175  1.0000
+  Ge  Ge1       1.0  0.00000  0.00000  0.00000  1.0000
+  Ge  Ge2       1.0  0.81046  0.18954  0.32661  1.0000
+  Ge  Ge3       1.0  0.18954  0.81046  0.67339  1.0000

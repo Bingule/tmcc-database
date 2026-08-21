@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       Ni3Ru6N3Se6
+_chemical_formula_sum              "Ni3 Ru6 N3 Se6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Ni  Ni1       1.0  0.00000  0.00000  0.00000  0.5000
+  Ni  Ni2       1.0  0.66666  0.33334  0.33335  0.5000
+  Ni  Ni3       1.0  0.33334  0.66666  0.66665  0.5000
+  Ru  Ru1       1.0  0.00006  0.99994  0.87710  1.0000
+  Ru  Ru2       1.0  0.99994  0.00006  0.12290  1.0000
+  Ru  Ru3       1.0  0.66673  0.33327  0.21045  1.0000
+  Ru  Ru4       1.0  0.66667  0.33333  0.45623  1.0000
+  Ru  Ru5       1.0  0.33333  0.66667  0.54377  1.0000
+  Ru  Ru6       1.0  0.33327  0.66673  0.78955  1.0000
+  N   N1        1.0  0.00000  0.00000  0.50000  1.0000
+  N   N2        1.0  0.66667  0.33333  0.83347  1.0000
+  N   N3        1.0  0.33333  0.66667  0.16653  1.0000
+  Se  Se1       1.0  0.99997  0.00003  0.74479  1.0000
+  Se  Se2       1.0  0.00003  0.99997  0.25521  1.0000
+  Se  Se3       1.0  0.66663  0.33337  0.07807  1.0000
+  Se  Se4       1.0  0.66666  0.33334  0.58857  1.0000
+  Se  Se5       1.0  0.33334  0.66666  0.41143  1.0000
+  Se  Se6       1.0  0.33337  0.66663  0.92193  1.0000

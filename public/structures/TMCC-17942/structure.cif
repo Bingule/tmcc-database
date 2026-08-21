@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       Au6S6Ga3
+_chemical_formula_sum              "Au6 S6 Ga3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Au  Au1       1.0  0.00462  0.99538  0.58027  1.0000
+  Au  Au2       1.0  0.99538  0.00462  0.41973  1.0000
+  Au  Au3       1.0  0.66101  0.33899  0.91490  1.0000
+  Au  Au4       1.0  0.66638  0.33362  0.75222  1.0000
+  Au  Au5       1.0  0.33362  0.66638  0.24778  1.0000
+  Au  Au6       1.0  0.33899  0.66101  0.08510  1.0000
+  S   S1        1.0  0.01147  0.98853  0.82253  1.0000
+  S   S2        1.0  0.98853  0.01147  0.17747  1.0000
+  S   S3        1.0  0.68187  0.31813  0.15543  1.0000
+  S   S4        1.0  0.67951  0.32049  0.51094  1.0000
+  S   S5        1.0  0.32049  0.67951  0.48906  1.0000
+  S   S6        1.0  0.31813  0.68187  0.84457  1.0000
+  Ga  Ga1       1.0  0.00000  0.00000  0.00000  1.0000
+  Ga  Ga2       1.0  0.68574  0.31426  0.33303  1.0000
+  Ga  Ga3       1.0  0.31426  0.68574  0.66697  1.0000

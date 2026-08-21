@@ -1,0 +1,40 @@
+data_image0
+_chemical_formula_structural       Rh6S6In3
+_chemical_formula_sum              "Rh6 S6 In3"
+_cell_length_a       3.271
+_cell_length_b       3.271
+_cell_length_c       25.478
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Rh  Rh1       1.0  0.99980  0.00020  0.55953  1.0000
+  Rh  Rh2       1.0  0.00020  0.99980  0.44047  1.0000
+  Rh  Rh3       1.0  0.66672  0.33328  0.89287  1.0000
+  Rh  Rh4       1.0  0.66661  0.33339  0.77380  1.0000
+  Rh  Rh5       1.0  0.33339  0.66661  0.22620  1.0000
+  Rh  Rh6       1.0  0.33328  0.66672  0.10713  1.0000
+  S   S1        1.0  0.00000  0.00000  0.82904  1.0000
+  S   S2        1.0  1.00000  1.00000  0.17096  1.0000
+  S   S3        1.0  0.66667  0.33333  0.16237  1.0000
+  S   S4        1.0  0.66666  0.33334  0.50430  1.0000
+  S   S5        1.0  0.33334  0.66666  0.49570  1.0000
+  S   S6        1.0  0.33333  0.66667  0.83763  1.0000
+  In  In1       1.0  0.00000  0.00000  0.00000  1.0000
+  In  In2       1.0  0.66666  0.33334  0.33333  1.0000
+  In  In3       1.0  0.33334  0.66666  0.66667  1.0000
