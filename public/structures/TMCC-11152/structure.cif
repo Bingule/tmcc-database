@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       Ni3Au6C3Te6
+_chemical_formula_sum              "Ni3 Au6 C3 Te6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Ni  Ni1       1.0  0.00000  0.00000  0.00000  0.5000
+  Ni  Ni2       1.0  0.66667  0.33333  0.33333  0.5000
+  Ni  Ni3       1.0  0.33333  0.66667  0.66667  0.5000
+  Au  Au1       1.0  0.00000  0.00000  0.87756  1.0000
+  Au  Au2       1.0  0.00000  0.00000  0.12244  1.0000
+  Au  Au3       1.0  0.66667  0.33333  0.21090  1.0000
+  Au  Au4       1.0  0.66667  0.33333  0.45577  1.0000
+  Au  Au5       1.0  0.33333  0.66667  0.54423  1.0000
+  Au  Au6       1.0  0.33333  0.66667  0.78910  1.0000
+  C   C1        1.0  0.00000  0.00000  0.50000  1.0000
+  C   C2        1.0  0.66667  0.33333  0.83333  1.0000
+  C   C3        1.0  0.33333  0.66667  0.16667  1.0000
+  Te  Te1       1.0  0.00000  0.00000  0.72382  1.0000
+  Te  Te2       1.0  0.00000  0.00000  0.27618  1.0000
+  Te  Te3       1.0  0.66667  0.33333  0.05715  1.0000
+  Te  Te4       1.0  0.66667  0.33333  0.60952  1.0000
+  Te  Te5       1.0  0.33333  0.66667  0.39048  1.0000
+  Te  Te6       1.0  0.33333  0.66667  0.94285  1.0000

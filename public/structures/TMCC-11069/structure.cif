@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       Ca3W6C3Te6
+_chemical_formula_sum              "Ca3 W6 C3 Te6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Ca  Ca1       1.0  0.00000  0.00000  0.00000  0.5000
+  Ca  Ca2       1.0  0.81667  0.18333  0.32195  0.5000
+  Ca  Ca3       1.0  0.18333  0.81667  0.67805  0.5000
+  W   W1        1.0  0.00295  0.99705  0.85608  1.0000
+  W   W2        1.0  0.99705  0.00295  0.14392  1.0000
+  W   W3        1.0  0.66799  0.33201  0.20635  1.0000
+  W   W4        1.0  0.66684  0.33316  0.47212  1.0000
+  W   W5        1.0  0.33316  0.66684  0.52788  1.0000
+  W   W6        1.0  0.33201  0.66799  0.79365  1.0000
+  C   C1        1.0  0.00000  0.00000  0.50000  1.0000
+  C   C2        1.0  0.66483  0.33517  0.80312  1.0000
+  C   C3        1.0  0.33517  0.66483  0.19688  1.0000
+  Te  Te1       1.0  0.84780  0.15220  0.71958  1.0000
+  Te  Te2       1.0  0.15220  0.84780  0.28042  1.0000
+  Te  Te3       1.0  0.66060  0.33940  0.08660  1.0000
+  Te  Te4       1.0  0.65352  0.34648  0.59475  1.0000
+  Te  Te5       1.0  0.34648  0.65352  0.40525  1.0000
+  Te  Te6       1.0  0.33940  0.66060  0.91340  1.0000

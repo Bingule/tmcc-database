@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       Ag3Mo6C3Se6
+_chemical_formula_sum              "Ag3 Mo6 C3 Se6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Ag  Ag1       1.0  0.00000  0.00000  0.00000  0.5000
+  Ag  Ag2       1.0  0.66667  0.33333  0.33333  0.5000
+  Ag  Ag3       1.0  0.33333  0.66667  0.66667  0.5000
+  Mo  Mo1       1.0  0.00000  0.00000  0.86152  1.0000
+  Mo  Mo2       1.0  0.00000  0.00000  0.13848  1.0000
+  Mo  Mo3       1.0  0.66667  0.33333  0.19478  1.0000
+  Mo  Mo4       1.0  0.66667  0.33333  0.47185  1.0000
+  Mo  Mo5       1.0  0.33333  0.66667  0.52815  1.0000
+  Mo  Mo6       1.0  0.33333  0.66667  0.80522  1.0000
+  C   C1        1.0  0.00000  0.00000  0.50000  1.0000
+  C   C2        1.0  0.66667  0.33333  0.83329  1.0000
+  C   C3        1.0  0.33333  0.66667  0.16671  1.0000
+  Se  Se1       1.0  0.00000  0.00000  0.74444  1.0000
+  Se  Se2       1.0  0.00000  0.00000  0.25556  1.0000
+  Se  Se3       1.0  0.66667  0.33333  0.07779  1.0000
+  Se  Se4       1.0  0.66667  0.33333  0.58889  1.0000
+  Se  Se5       1.0  0.33333  0.66667  0.41111  1.0000
+  Se  Se6       1.0  0.33333  0.66667  0.92221  1.0000

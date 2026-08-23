@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       Co3Rh6C3Se6
+_chemical_formula_sum              "Co3 Rh6 C3 Se6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Co  Co1       1.0  0.00000  0.00000  0.00000  0.5000
+  Co  Co2       1.0  0.54522  0.45478  0.33840  0.5000
+  Co  Co3       1.0  0.45478  0.54522  0.66160  0.5000
+  Rh  Rh1       1.0  0.80666  0.19334  0.88759  1.0000
+  Rh  Rh2       1.0  0.19334  0.80666  0.11241  1.0000
+  Rh  Rh3       1.0  0.69808  0.30192  0.19642  1.0000
+  Rh  Rh4       1.0  0.61378  0.38622  0.45998  1.0000
+  Rh  Rh5       1.0  0.38622  0.61378  0.54002  1.0000
+  Rh  Rh6       1.0  0.30192  0.69808  0.80358  1.0000
+  C   C1        1.0  0.00000  0.00000  0.50000  1.0000
+  C   C2        1.0  0.63349  0.36651  0.82478  1.0000
+  C   C3        1.0  0.36651  0.63349  0.17522  1.0000
+  Se  Se1       1.0  0.13621  0.86379  0.71100  1.0000
+  Se  Se2       1.0  0.86379  0.13621  0.28900  1.0000
+  Se  Se3       1.0  0.70419  0.29581  0.05424  1.0000
+  Se  Se4       1.0  0.76239  0.23761  0.60201  1.0000
+  Se  Se5       1.0  0.23761  0.76239  0.39799  1.0000
+  Se  Se6       1.0  0.29581  0.70419  0.94576  1.0000

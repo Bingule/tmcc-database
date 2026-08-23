@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       Mn3Cu6C3Te6
+_chemical_formula_sum              "Mn3 Cu6 C3 Te6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Mn  Mn1       1.0  0.00000  0.00000  0.00000  0.5000
+  Mn  Mn2       1.0  0.93282  0.06718  0.31627  0.5000
+  Mn  Mn3       1.0  0.06718  0.93282  0.68373  0.5000
+  Cu  Cu1       1.0  0.02142  0.97858  0.87010  1.0000
+  Cu  Cu2       1.0  0.97858  0.02142  0.12990  1.0000
+  Cu  Cu3       1.0  0.70366  0.29634  0.19840  1.0000
+  Cu  Cu4       1.0  0.72254  0.27746  0.45365  1.0000
+  Cu  Cu5       1.0  0.27746  0.72254  0.54635  1.0000
+  Cu  Cu6       1.0  0.29634  0.70366  0.80160  1.0000
+  C   C1        1.0  0.00000  0.00000  0.50000  1.0000
+  C   C2        1.0  0.79525  0.20475  0.81068  1.0000
+  C   C3        1.0  0.20475  0.79525  0.18932  1.0000
+  Te  Te1       1.0  0.76132  0.23868  0.73423  1.0000
+  Te  Te2       1.0  0.23868  0.76132  0.26577  1.0000
+  Te  Te3       1.0  0.67053  0.32947  0.05447  1.0000
+  Te  Te4       1.0  0.56672  0.43328  0.62267  1.0000
+  Te  Te5       1.0  0.43328  0.56672  0.37733  1.0000
+  Te  Te6       1.0  0.32947  0.67053  0.94553  1.0000

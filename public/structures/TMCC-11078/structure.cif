@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       Cu3W6C3Te6
+_chemical_formula_sum              "Cu3 W6 C3 Te6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Cu  Cu1       1.0  0.00000  0.00000  0.00000  0.5000
+  Cu  Cu2       1.0  0.67950  0.32050  0.33619  0.5000
+  Cu  Cu3       1.0  0.32050  0.67950  0.66381  0.5000
+  W   W1        1.0  0.04158  0.95842  0.86815  1.0000
+  W   W2        1.0  0.95842  0.04158  0.13185  1.0000
+  W   W3        1.0  0.63592  0.36408  0.19399  1.0000
+  W   W4        1.0  0.66707  0.33293  0.47193  1.0000
+  W   W5        1.0  0.33293  0.66707  0.52807  1.0000
+  W   W6        1.0  0.36408  0.63592  0.80601  1.0000
+  C   C1        1.0  0.00000  0.00000  0.50000  1.0000
+  C   C2        1.0  0.69607  0.30393  0.81347  1.0000
+  C   C3        1.0  0.30393  0.69607  0.18653  1.0000
+  Te  Te1       1.0  0.86464  0.13536  0.73659  1.0000
+  Te  Te2       1.0  0.13536  0.86464  0.26341  1.0000
+  Te  Te3       1.0  0.62062  0.37938  0.07588  1.0000
+  Te  Te4       1.0  0.66555  0.33445  0.59383  1.0000
+  Te  Te5       1.0  0.33445  0.66555  0.40617  1.0000
+  Te  Te6       1.0  0.37938  0.62062  0.92412  1.0000

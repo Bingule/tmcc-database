@@ -1,0 +1,280 @@
+{
+  "material_id": "TMCC-11090",
+  "slug": "fe0-5-re2te2c-r-3m",
+  "family": "TMCC",
+  "material_type": "tm_intercalated",
+  "formula": "Fe0.5Re2Te2C",
+  "host": {
+    "formula": "Re2Te2C",
+    "metal": "Re",
+    "chalcogen": "Te",
+    "anion": "C"
+  },
+  "intercalation": {
+    "intercalant": "Fe",
+    "x": 0.5,
+    "mode": "hetero",
+    "site": "interlayer",
+    "ordering": null,
+    "configuration": "generated R-3m baseline"
+  },
+  "experimental_status": "computational",
+  "calculation_status": "calculated",
+  "structure": {
+    "space_group_symbol": "R-3m",
+    "space_group_number": 166,
+    "crystal_system": "trigonal",
+    "lattice_parameters": {
+      "a": {
+        "value": 3.303,
+        "unit": "angstrom"
+      },
+      "b": {
+        "value": 3.303,
+        "unit": "angstrom"
+      },
+      "c": {
+        "value": 25.83,
+        "unit": "angstrom"
+      }
+    },
+    "angles": {
+      "alpha": {
+        "value": 90,
+        "unit": "degree"
+      },
+      "beta": {
+        "value": 90,
+        "unit": "degree"
+      },
+      "gamma": {
+        "value": 119.99999999999999,
+        "unit": "degree"
+      }
+    },
+    "layer_thickness": {
+      "value": 6.492,
+      "unit": "angstrom"
+    },
+    "vdw_gap": {
+      "value": 2.118,
+      "unit": "angstrom"
+    },
+    "atomic_sites": [
+      {
+        "label": "Fe1",
+        "element": "Fe",
+        "fract_x": 0,
+        "fract_y": 0,
+        "fract_z": 0,
+        "occupancy": 1
+      },
+      {
+        "label": "Fe2",
+        "element": "Fe",
+        "fract_x": 0.74515,
+        "fract_y": 0.25485,
+        "fract_z": 0.33233,
+        "occupancy": 1
+      },
+      {
+        "label": "Fe3",
+        "element": "Fe",
+        "fract_x": 0.25485,
+        "fract_y": 0.74515,
+        "fract_z": 0.66767,
+        "occupancy": 1
+      },
+      {
+        "label": "Re1",
+        "element": "Re",
+        "fract_x": 0.98656,
+        "fract_y": 0.01344,
+        "fract_z": 0.89588,
+        "occupancy": 1
+      },
+      {
+        "label": "Re2",
+        "element": "Re",
+        "fract_x": 0.01344,
+        "fract_y": 0.98656,
+        "fract_z": 0.10412,
+        "occupancy": 1
+      },
+      {
+        "label": "Re3",
+        "element": "Re",
+        "fract_x": 0.52479,
+        "fract_y": 0.47521,
+        "fract_z": 0.18952,
+        "occupancy": 1
+      },
+      {
+        "label": "Re4",
+        "element": "Re",
+        "fract_x": 0.72829,
+        "fract_y": 0.27171,
+        "fract_z": 0.46691,
+        "occupancy": 1
+      },
+      {
+        "label": "Re5",
+        "element": "Re",
+        "fract_x": 0.27171,
+        "fract_y": 0.72829,
+        "fract_z": 0.53309,
+        "occupancy": 1
+      },
+      {
+        "label": "Re6",
+        "element": "Re",
+        "fract_x": 0.47521,
+        "fract_y": 0.52479,
+        "fract_z": 0.81048,
+        "occupancy": 1
+      },
+      {
+        "label": "C1",
+        "element": "C",
+        "fract_x": 0,
+        "fract_y": 0,
+        "fract_z": 0.5,
+        "occupancy": 1
+      },
+      {
+        "label": "C2",
+        "element": "C",
+        "fract_x": 0.79888,
+        "fract_y": 0.20112,
+        "fract_z": 0.82399,
+        "occupancy": 1
+      },
+      {
+        "label": "C3",
+        "element": "C",
+        "fract_x": 0.20112,
+        "fract_y": 0.79888,
+        "fract_z": 0.17601,
+        "occupancy": 1
+      },
+      {
+        "label": "Te1",
+        "element": "Te",
+        "fract_x": 0.96882,
+        "fract_y": 0.03118,
+        "fract_z": 0.73752,
+        "occupancy": 1
+      },
+      {
+        "label": "Te2",
+        "element": "Te",
+        "fract_x": 0.03118,
+        "fract_y": 0.96882,
+        "fract_z": 0.26248,
+        "occupancy": 1
+      },
+      {
+        "label": "Te3",
+        "element": "Te",
+        "fract_x": 0.67589,
+        "fract_y": 0.32411,
+        "fract_z": 0.05703,
+        "occupancy": 1
+      },
+      {
+        "label": "Te4",
+        "element": "Te",
+        "fract_x": 0.58531,
+        "fract_y": 0.41469,
+        "fract_z": 0.6151,
+        "occupancy": 1
+      },
+      {
+        "label": "Te5",
+        "element": "Te",
+        "fract_x": 0.41469,
+        "fract_y": 0.58531,
+        "fract_z": 0.3849,
+        "occupancy": 1
+      },
+      {
+        "label": "Te6",
+        "element": "Te",
+        "fract_x": 0.32411,
+        "fract_y": 0.67589,
+        "fract_z": 0.94297,
+        "occupancy": 1
+      }
+    ]
+  },
+  "thermodynamics": {
+    "total_energy": {
+      "value": -115.96328639387914,
+      "unit": "eV/cell"
+    },
+    "formation_energy": {
+      "value": null,
+      "unit": "eV/formula"
+    },
+    "energy_above_hull": {
+      "value": null,
+      "unit": "eV/atom"
+    },
+    "relative_structure_energy": {
+      "value": null,
+      "unit": "meV/f.u."
+    },
+    "reference_energies_per_atom": {}
+  },
+  "phonons": {},
+  "mechanical": {},
+  "electronic": {
+    "band_gap": {
+      "value": null,
+      "unit": "eV"
+    },
+    "fermi_level": {
+      "value": 14.484360215186395,
+      "unit": "eV"
+    },
+    "dos_calculated": true,
+    "band_structure_calculated": false
+  },
+  "energy_storage": {},
+  "files": {
+    "cif": "/structures/TMCC-11090/structure.cif",
+    "poscar": "/structures/TMCC-11090/POSCAR",
+    "dos": "/figures/TMCC-11090/dos.csv",
+    "band_structure": null
+  },
+  "provenance": {
+    "software": "GPAW",
+    "software_version": null,
+    "ase_version": null,
+    "exchange_correlation": "PBE",
+    "pseudopotential": null,
+    "plane_wave_cutoff": {
+      "value": 520,
+      "unit": "eV"
+    },
+    "k_points": {
+      "density": 2.5,
+      "gamma": true
+    },
+    "spin_polarization": false,
+    "initial_magnetic_moments": {},
+    "dft_u": null,
+    "setups": null,
+    "soc": false,
+    "convergence_criteria": {
+      "density": 5e-7
+    },
+    "calculation_date": "2026-08-23",
+    "workflow_version": "tmcc-generated-intercalated-r-fast-v0.1",
+    "source": "cluster calculation",
+    "formation_energy_reference_note": null,
+    "doi": null
+  },
+  "subclass": "TMCDC",
+  "structure_type": "M2X2C"
+}

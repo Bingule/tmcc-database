@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       V3Os6C3Te6
+_chemical_formula_sum              "V3 Os6 C3 Te6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  V   V1        1.0  0.00000  0.00000  0.00000  0.5000
+  V   V2        1.0  0.58535  0.41465  0.32566  0.5000
+  V   V3        1.0  0.41465  0.58535  0.67434  0.5000
+  Os  Os1       1.0  0.00354  0.99646  0.90033  1.0000
+  Os  Os2       1.0  0.99646  0.00354  0.09967  1.0000
+  Os  Os3       1.0  0.84053  0.15947  0.18508  1.0000
+  Os  Os4       1.0  0.73867  0.26133  0.46102  1.0000
+  Os  Os5       1.0  0.26133  0.73867  0.53898  1.0000
+  Os  Os6       1.0  0.15947  0.84053  0.81492  1.0000
+  C   C1        1.0  0.00000  0.00000  0.50000  1.0000
+  C   C2        1.0  0.48756  0.51244  0.82499  1.0000
+  C   C3        1.0  0.51244  0.48756  0.17501  1.0000
+  Te  Te1       1.0  0.06560  0.93440  0.71786  1.0000
+  Te  Te2       1.0  0.93440  0.06560  0.28214  1.0000
+  Te  Te3       1.0  0.66483  0.33517  0.05088  1.0000
+  Te  Te4       1.0  0.66800  0.33200  0.60211  1.0000
+  Te  Te5       1.0  0.33200  0.66800  0.39789  1.0000
+  Te  Te6       1.0  0.33517  0.66483  0.94912  1.0000

@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       Zn3Zr6C3Te6
+_chemical_formula_sum              "Zn3 Zr6 C3 Te6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Zn  Zn1       1.0  0.00000  0.00000  0.00000  0.5000
+  Zn  Zn2       1.0  0.81442  0.18558  0.33620  0.5000
+  Zn  Zn3       1.0  0.18558  0.81442  0.66380  0.5000
+  Zr  Zr1       1.0  0.86052  0.13948  0.85003  1.0000
+  Zr  Zr2       1.0  0.13948  0.86052  0.14997  1.0000
+  Zr  Zr3       1.0  0.81212  0.18788  0.20255  1.0000
+  Zr  Zr4       1.0  0.66728  0.33272  0.47350  1.0000
+  Zr  Zr5       1.0  0.33272  0.66728  0.52650  1.0000
+  Zr  Zr6       1.0  0.18788  0.81212  0.79745  1.0000
+  C   C1        1.0  0.00000  0.00000  0.50000  1.0000
+  C   C2        1.0  0.53067  0.46933  0.84967  1.0000
+  C   C3        1.0  0.46933  0.53067  0.15033  1.0000
+  Te  Te1       1.0  0.86914  0.13086  0.74289  1.0000
+  Te  Te2       1.0  0.13086  0.86914  0.25711  1.0000
+  Te  Te3       1.0  0.65512  0.34488  0.08519  1.0000
+  Te  Te4       1.0  0.66469  0.33531  0.58928  1.0000
+  Te  Te5       1.0  0.33531  0.66469  0.41072  1.0000
+  Te  Te6       1.0  0.34488  0.65512  0.91481  1.0000

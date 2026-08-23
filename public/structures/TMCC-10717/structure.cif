@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       Ni3Os6C3Se6
+_chemical_formula_sum              "Ni3 Os6 C3 Se6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Ni  Ni1       1.0  0.00000  0.00000  0.00000  0.5000
+  Ni  Ni2       1.0  0.56894  0.43106  0.32383  0.5000
+  Ni  Ni3       1.0  0.43106  0.56894  0.67617  0.5000
+  Os  Os1       1.0  0.26071  0.73929  0.87261  1.0000
+  Os  Os2       1.0  0.73929  0.26071  0.12739  1.0000
+  Os  Os3       1.0  0.49853  0.50147  0.21172  1.0000
+  Os  Os4       1.0  0.74813  0.25187  0.45825  1.0000
+  Os  Os5       1.0  0.25187  0.74813  0.54175  1.0000
+  Os  Os6       1.0  0.50147  0.49853  0.78828  1.0000
+  C   C1        1.0  0.00000  0.00000  0.50000  1.0000
+  C   C2        1.0  0.76989  0.23011  0.83370  1.0000
+  C   C3        1.0  0.23011  0.76989  0.16630  1.0000
+  Se  Se1       1.0  0.13117  0.86883  0.73524  1.0000
+  Se  Se2       1.0  0.86883  0.13117  0.26476  1.0000
+  Se  Se3       1.0  0.46518  0.53482  0.06407  1.0000
+  Se  Se4       1.0  0.69818  0.30182  0.60128  1.0000
+  Se  Se5       1.0  0.30182  0.69818  0.39872  1.0000
+  Se  Se6       1.0  0.53482  0.46518  0.93593  1.0000

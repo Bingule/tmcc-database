@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       Ti3Sc6C3Te6
+_chemical_formula_sum              "Ti3 Sc6 C3 Te6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Ti  Ti1       1.0  0.00000  0.00000  0.00000  0.5000
+  Ti  Ti2       1.0  0.67621  0.32379  0.36373  0.5000
+  Ti  Ti3       1.0  0.32379  0.67621  0.63627  0.5000
+  Sc  Sc1       1.0  0.12391  0.87609  0.84052  1.0000
+  Sc  Sc2       1.0  0.87609  0.12391  0.15948  1.0000
+  Sc  Sc3       1.0  0.54228  0.45772  0.20963  1.0000
+  Sc  Sc4       1.0  0.66670  0.33330  0.47508  1.0000
+  Sc  Sc5       1.0  0.33330  0.66670  0.52492  1.0000
+  Sc  Sc6       1.0  0.45772  0.54228  0.79037  1.0000
+  C   C1        1.0  0.00000  0.00000  0.50000  1.0000
+  C   C2        1.0  0.78862  0.21138  0.81809  1.0000
+  C   C3        1.0  0.21138  0.78862  0.18191  1.0000
+  Te  Te1       1.0  0.78661  0.21339  0.71948  1.0000
+  Te  Te2       1.0  0.21339  0.78661  0.28052  1.0000
+  Te  Te3       1.0  0.66192  0.33808  0.06590  1.0000
+  Te  Te4       1.0  0.65548  0.34452  0.60139  1.0000
+  Te  Te5       1.0  0.34452  0.65548  0.39861  1.0000
+  Te  Te6       1.0  0.33808  0.66192  0.93410  1.0000

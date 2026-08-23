@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       V3Ag6C3Te6
+_chemical_formula_sum              "V3 Ag6 C3 Te6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  V   V1        1.0  0.00000  0.00000  0.00000  0.5000
+  V   V2        1.0  0.82052  0.17948  0.31903  0.5000
+  V   V3        1.0  0.17948  0.82052  0.68097  0.5000
+  Ag  Ag1       1.0  0.99856  0.00144  0.87701  1.0000
+  Ag  Ag2       1.0  0.00144  0.99856  0.12299  1.0000
+  Ag  Ag3       1.0  0.78253  0.21747  0.21788  1.0000
+  Ag  Ag4       1.0  0.66985  0.33015  0.45428  1.0000
+  Ag  Ag5       1.0  0.33015  0.66985  0.54572  1.0000
+  Ag  Ag6       1.0  0.21747  0.78253  0.78212  1.0000
+  C   C1        1.0  0.00000  0.00000  0.50000  1.0000
+  C   C2        1.0  0.68215  0.31785  0.83311  1.0000
+  C   C3        1.0  0.31785  0.68215  0.16689  1.0000
+  Te  Te1       1.0  0.85756  0.14244  0.71394  1.0000
+  Te  Te2       1.0  0.14244  0.85756  0.28606  1.0000
+  Te  Te3       1.0  0.67068  0.32932  0.05473  1.0000
+  Te  Te4       1.0  0.65869  0.34131  0.61500  1.0000
+  Te  Te5       1.0  0.34131  0.65869  0.38500  1.0000
+  Te  Te6       1.0  0.32932  0.67068  0.94527  1.0000

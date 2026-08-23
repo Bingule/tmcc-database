@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       Sc3Hg6C3Te6
+_chemical_formula_sum              "Sc3 Hg6 C3 Te6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Sc  Sc1       1.0  0.00000  0.00000  0.00000  0.5000
+  Sc  Sc2       1.0  0.77987  0.22013  0.31854  0.5000
+  Sc  Sc3       1.0  0.22013  0.77987  0.68146  0.5000
+  Hg  Hg1       1.0  0.01485  0.98515  0.87337  1.0000
+  Hg  Hg2       1.0  0.98515  0.01485  0.12663  1.0000
+  Hg  Hg3       1.0  0.75796  0.24204  0.21978  1.0000
+  Hg  Hg4       1.0  0.65143  0.34857  0.45315  1.0000
+  Hg  Hg5       1.0  0.34857  0.65143  0.54685  1.0000
+  Hg  Hg6       1.0  0.24204  0.75796  0.78022  1.0000
+  C   C1        1.0  0.00000  0.00000  0.50000  1.0000
+  C   C2        1.0  0.71327  0.28673  0.82645  1.0000
+  C   C3        1.0  0.28673  0.71327  0.17355  1.0000
+  Te  Te1       1.0  0.88880  0.11120  0.70947  1.0000
+  Te  Te2       1.0  0.11120  0.88880  0.29053  1.0000
+  Te  Te3       1.0  0.66989  0.33011  0.05532  1.0000
+  Te  Te4       1.0  0.69161  0.30839  0.61748  1.0000
+  Te  Te5       1.0  0.30839  0.69161  0.38252  1.0000
+  Te  Te6       1.0  0.33011  0.66989  0.94468  1.0000

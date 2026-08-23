@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       Cu3Mo6C3Te6
+_chemical_formula_sum              "Cu3 Mo6 C3 Te6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Cu  Cu1       1.0  0.00000  0.00000  0.00000  0.5000
+  Cu  Cu2       1.0  0.53495  0.46505  0.33682  0.5000
+  Cu  Cu3       1.0  0.46505  0.53495  0.66318  0.5000
+  Mo  Mo1       1.0  0.92644  0.07356  0.86819  1.0000
+  Mo  Mo2       1.0  0.07356  0.92644  0.13181  1.0000
+  Mo  Mo3       1.0  0.74972  0.25028  0.19476  1.0000
+  Mo  Mo4       1.0  0.65057  0.34943  0.47150  1.0000
+  Mo  Mo5       1.0  0.34943  0.65057  0.52850  1.0000
+  Mo  Mo6       1.0  0.25028  0.74972  0.80524  1.0000
+  C   C1        1.0  0.00000  0.00000  0.50000  1.0000
+  C   C2        1.0  0.58367  0.41633  0.81605  1.0000
+  C   C3        1.0  0.41633  0.58367  0.18395  1.0000
+  Te  Te1       1.0  0.98276  0.01724  0.73250  1.0000
+  Te  Te2       1.0  0.01724  0.98276  0.26750  1.0000
+  Te  Te3       1.0  0.74089  0.25911  0.07709  1.0000
+  Te  Te4       1.0  0.77534  0.22466  0.59308  1.0000
+  Te  Te5       1.0  0.22466  0.77534  0.40692  1.0000
+  Te  Te6       1.0  0.25911  0.74089  0.92291  1.0000

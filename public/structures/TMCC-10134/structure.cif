@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       Zn3Cu6C3S6
+_chemical_formula_sum              "Zn3 Cu6 C3 S6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Zn  Zn1       1.0  0.00000  0.00000  0.00000  0.5000
+  Zn  Zn2       1.0  0.66667  0.33333  0.33333  0.5000
+  Zn  Zn3       1.0  0.33333  0.66667  0.66667  0.5000
+  Cu  Cu1       1.0  0.00000  0.00000  0.87157  1.0000
+  Cu  Cu2       1.0  0.00000  0.00000  0.12843  1.0000
+  Cu  Cu3       1.0  0.66667  0.33333  0.20489  1.0000
+  Cu  Cu4       1.0  0.66667  0.33333  0.46177  1.0000
+  Cu  Cu5       1.0  0.33333  0.66667  0.53823  1.0000
+  Cu  Cu6       1.0  0.33333  0.66667  0.79511  1.0000
+  C   C1        1.0  0.00000  0.00000  0.50000  1.0000
+  C   C2        1.0  0.66667  0.33333  0.83334  1.0000
+  C   C3        1.0  0.33333  0.66667  0.16666  1.0000
+  S   S1        1.0  0.00000  0.00000  0.72878  1.0000
+  S   S2        1.0  0.00000  0.00000  0.27122  1.0000
+  S   S3        1.0  0.66667  0.33333  0.06211  1.0000
+  S   S4        1.0  0.66667  0.33333  0.60456  1.0000
+  S   S5        1.0  0.33333  0.66667  0.39544  1.0000
+  S   S6        1.0  0.33333  0.66667  0.93789  1.0000

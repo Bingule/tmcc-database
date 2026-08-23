@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       Na3Co6C3Te6
+_chemical_formula_sum              "Na3 Co6 C3 Te6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Na  Na1       1.0  0.00000  0.00000  0.00000  0.5000
+  Na  Na2       1.0  0.66667  0.33333  0.33333  0.5000
+  Na  Na3       1.0  0.33333  0.66667  0.66667  0.5000
+  Co  Co1       1.0  0.00000  0.00000  0.86195  1.0000
+  Co  Co2       1.0  0.00000  0.00000  0.13805  1.0000
+  Co  Co3       1.0  0.66667  0.33333  0.19528  1.0000
+  Co  Co4       1.0  0.66667  0.33333  0.47138  1.0000
+  Co  Co5       1.0  0.33333  0.66667  0.52862  1.0000
+  Co  Co6       1.0  0.33333  0.66667  0.80472  1.0000
+  C   C1        1.0  0.00000  0.00000  0.50000  1.0000
+  C   C2        1.0  0.66667  0.33333  0.83333  1.0000
+  C   C3        1.0  0.33333  0.66667  0.16667  1.0000
+  Te  Te1       1.0  0.00000  0.00000  0.74336  1.0000
+  Te  Te2       1.0  0.00000  0.00000  0.25664  1.0000
+  Te  Te3       1.0  0.66667  0.33333  0.07669  1.0000
+  Te  Te4       1.0  0.66666  0.33334  0.58998  1.0000
+  Te  Te5       1.0  0.33334  0.66666  0.41002  1.0000
+  Te  Te6       1.0  0.33333  0.66667  0.92331  1.0000

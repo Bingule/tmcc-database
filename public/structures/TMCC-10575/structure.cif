@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       Sc3Hf6C3Se6
+_chemical_formula_sum              "Sc3 Hf6 C3 Se6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Sc  Sc1       1.0  0.00000  0.00000  0.00000  0.5000
+  Sc  Sc2       1.0  0.70768  0.29232  0.31226  0.5000
+  Sc  Sc3       1.0  0.29232  0.70768  0.68774  0.5000
+  Hf  Hf1       1.0  0.94105  0.05895  0.85866  1.0000
+  Hf  Hf2       1.0  0.05895  0.94105  0.14134  1.0000
+  Hf  Hf3       1.0  0.72539  0.27461  0.19789  1.0000
+  Hf  Hf4       1.0  0.66845  0.33155  0.47128  1.0000
+  Hf  Hf5       1.0  0.33155  0.66845  0.52872  1.0000
+  Hf  Hf6       1.0  0.27461  0.72539  0.80211  1.0000
+  C   C1        1.0  0.00000  0.00000  0.50000  1.0000
+  C   C2        1.0  0.60965  0.39035  0.82918  1.0000
+  C   C3        1.0  0.39035  0.60965  0.17082  1.0000
+  Se  Se1       1.0  0.96147  0.03853  0.71634  1.0000
+  Se  Se2       1.0  0.03853  0.96147  0.28366  1.0000
+  Se  Se3       1.0  0.66517  0.33483  0.05426  1.0000
+  Se  Se4       1.0  0.78449  0.21551  0.61135  1.0000
+  Se  Se5       1.0  0.21551  0.78449  0.38865  1.0000
+  Se  Se6       1.0  0.33483  0.66517  0.94574  1.0000

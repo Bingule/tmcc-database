@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       Cr3Zr6C3Te6
+_chemical_formula_sum              "Cr3 Zr6 C3 Te6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Cr  Cr1       1.0  0.00000  0.00000  0.00000  0.5000
+  Cr  Cr2       1.0  0.72931  0.27069  0.32952  0.5000
+  Cr  Cr3       1.0  0.27069  0.72931  0.67048  0.5000
+  Zr  Zr1       1.0  0.08767  0.91233  0.85985  1.0000
+  Zr  Zr2       1.0  0.91233  0.08767  0.14015  1.0000
+  Zr  Zr3       1.0  0.57596  0.42404  0.19306  1.0000
+  Zr  Zr4       1.0  0.66878  0.33122  0.47359  1.0000
+  Zr  Zr5       1.0  0.33122  0.66878  0.52641  1.0000
+  Zr  Zr6       1.0  0.42404  0.57596  0.80694  1.0000
+  C   C1        1.0  0.00000  0.00000  0.50000  1.0000
+  C   C2        1.0  0.74739  0.25261  0.83291  1.0000
+  C   C3        1.0  0.25261  0.74739  0.16709  1.0000
+  Te  Te1       1.0  0.95972  0.04028  0.72193  1.0000
+  Te  Te2       1.0  0.04028  0.95972  0.27807  1.0000
+  Te  Te3       1.0  0.66228  0.33772  0.05513  1.0000
+  Te  Te4       1.0  0.72840  0.27160  0.60933  1.0000
+  Te  Te5       1.0  0.27160  0.72840  0.39067  1.0000
+  Te  Te6       1.0  0.33772  0.66228  0.94487  1.0000

@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       Co3Os6C3Te6
+_chemical_formula_sum              "Co3 Os6 C3 Te6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Co  Co1       1.0  0.00000  0.00000  0.00000  0.5000
+  Co  Co2       1.0  0.61151  0.38849  0.33160  0.5000
+  Co  Co3       1.0  0.38849  0.61151  0.66840  0.5000
+  Os  Os1       1.0  0.34836  0.65164  0.87908  1.0000
+  Os  Os2       1.0  0.65164  0.34836  0.12092  1.0000
+  Os  Os3       1.0  0.43996  0.56004  0.20381  1.0000
+  Os  Os4       1.0  0.74270  0.25730  0.46033  1.0000
+  Os  Os5       1.0  0.25730  0.74270  0.53967  1.0000
+  Os  Os6       1.0  0.56004  0.43996  0.79619  1.0000
+  C   C1        1.0  0.00000  0.00000  0.50000  1.0000
+  C   C2        1.0  0.84731  0.15269  0.82733  1.0000
+  C   C3        1.0  0.15269  0.84731  0.17267  1.0000
+  Te  Te1       1.0  0.07544  0.92456  0.72715  1.0000
+  Te  Te2       1.0  0.92456  0.07544  0.27285  1.0000
+  Te  Te3       1.0  0.33735  0.66265  0.06241  1.0000
+  Te  Te4       1.0  0.69682  0.30318  0.60499  1.0000
+  Te  Te5       1.0  0.30318  0.69682  0.39501  1.0000
+  Te  Te6       1.0  0.66265  0.33735  0.93759  1.0000

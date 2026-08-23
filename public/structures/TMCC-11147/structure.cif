@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       V3Au6C3Te6
+_chemical_formula_sum              "V3 Au6 C3 Te6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  V   V1        1.0  0.00000  0.00000  0.00000  0.5000
+  V   V2        1.0  0.80838  0.19162  0.31921  0.5000
+  V   V3        1.0  0.19162  0.80838  0.68079  0.5000
+  Au  Au1       1.0  0.00398  0.99602  0.87971  1.0000
+  Au  Au2       1.0  0.99602  0.00398  0.12029  1.0000
+  Au  Au3       1.0  0.76210  0.23790  0.21745  1.0000
+  Au  Au4       1.0  0.66460  0.33540  0.45319  1.0000
+  Au  Au5       1.0  0.33540  0.66460  0.54681  1.0000
+  Au  Au6       1.0  0.23790  0.76210  0.78255  1.0000
+  C   C1        1.0  0.00000  0.00000  0.50000  1.0000
+  C   C2        1.0  0.69816  0.30184  0.83450  1.0000
+  C   C3        1.0  0.30184  0.69816  0.16550  1.0000
+  Te  Te1       1.0  0.87000  0.13000  0.71352  1.0000
+  Te  Te2       1.0  0.13000  0.87000  0.28648  1.0000
+  Te  Te3       1.0  0.66839  0.33161  0.05247  1.0000
+  Te  Te4       1.0  0.66786  0.33214  0.61554  1.0000
+  Te  Te5       1.0  0.33214  0.66786  0.38446  1.0000
+  Te  Te6       1.0  0.33161  0.66839  0.94753  1.0000

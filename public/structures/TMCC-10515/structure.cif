@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       Sc3Cu6C3Se6
+_chemical_formula_sum              "Sc3 Cu6 C3 Se6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Sc  Sc1       1.0  0.00000  0.00000  0.00000  0.5000
+  Sc  Sc2       1.0  0.58141  0.41859  0.31674  0.5000
+  Sc  Sc3       1.0  0.41859  0.58141  0.68326  0.5000
+  Cu  Cu1       1.0  0.90062  0.09938  0.88614  1.0000
+  Cu  Cu2       1.0  0.09938  0.90062  0.11386  1.0000
+  Cu  Cu3       1.0  0.67407  0.32593  0.21778  1.0000
+  Cu  Cu4       1.0  0.54879  0.45121  0.45087  1.0000
+  Cu  Cu5       1.0  0.45121  0.54879  0.54913  1.0000
+  Cu  Cu6       1.0  0.32593  0.67407  0.78222  1.0000
+  C   C1        1.0  0.00000  0.00000  0.50000  1.0000
+  C   C2        1.0  0.44263  0.55737  0.84603  1.0000
+  C   C3        1.0  0.55737  0.44263  0.15397  1.0000
+  Se  Se1       1.0  0.08952  0.91048  0.70897  1.0000
+  Se  Se2       1.0  0.91048  0.08952  0.29103  1.0000
+  Se  Se3       1.0  0.66209  0.33791  0.05037  1.0000
+  Se  Se4       1.0  0.90199  0.09801  0.61543  1.0000
+  Se  Se5       1.0  0.09801  0.90199  0.38457  1.0000
+  Se  Se6       1.0  0.33791  0.66209  0.94963  1.0000

@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       Co3Mo6C3Se6
+_chemical_formula_sum              "Co3 Mo6 C3 Se6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Co  Co1       1.0  0.00000  0.00000  0.00000  0.5000
+  Co  Co2       1.0  0.66633  0.33367  0.34211  0.5000
+  Co  Co3       1.0  0.33367  0.66633  0.65789  0.5000
+  Mo  Mo1       1.0  0.99979  0.00021  0.88633  1.0000
+  Mo  Mo2       1.0  0.00021  0.99979  0.11367  1.0000
+  Mo  Mo3       1.0  0.66687  0.33313  0.16887  1.0000
+  Mo  Mo4       1.0  0.66664  0.33336  0.47207  1.0000
+  Mo  Mo5       1.0  0.33336  0.66664  0.52793  1.0000
+  Mo  Mo6       1.0  0.33313  0.66687  0.83113  1.0000
+  C   C1        1.0  0.00000  0.00000  0.50000  1.0000
+  C   C2        1.0  0.66647  0.33353  0.83459  1.0000
+  C   C3        1.0  0.33353  0.66647  0.16541  1.0000
+  Se  Se1       1.0  0.00037  0.99963  0.70504  1.0000
+  Se  Se2       1.0  0.99963  0.00037  0.29496  1.0000
+  Se  Se3       1.0  0.66684  0.33316  0.05825  1.0000
+  Se  Se4       1.0  0.66688  0.33312  0.59107  1.0000
+  Se  Se5       1.0  0.33312  0.66688  0.40893  1.0000
+  Se  Se6       1.0  0.33316  0.66684  0.94175  1.0000

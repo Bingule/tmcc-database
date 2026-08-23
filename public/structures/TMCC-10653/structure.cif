@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       Cr3Ag6C3Se6
+_chemical_formula_sum              "Cr3 Ag6 C3 Se6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Cr  Cr1       1.0  0.00000  0.00000  0.00000  0.5000
+  Cr  Cr2       1.0  0.81077  0.18923  0.31565  0.5000
+  Cr  Cr3       1.0  0.18923  0.81077  0.68435  0.5000
+  Ag  Ag1       1.0  0.02626  0.97374  0.88796  1.0000
+  Ag  Ag2       1.0  0.97374  0.02626  0.11204  1.0000
+  Ag  Ag3       1.0  0.74739  0.25261  0.21848  1.0000
+  Ag  Ag4       1.0  0.66530  0.33470  0.45060  1.0000
+  Ag  Ag5       1.0  0.33470  0.66530  0.54940  1.0000
+  Ag  Ag6       1.0  0.25261  0.74739  0.78152  1.0000
+  C   C1        1.0  0.00000  0.00000  0.50000  1.0000
+  C   C2        1.0  0.73190  0.26810  0.83723  1.0000
+  C   C3        1.0  0.26810  0.73190  0.16277  1.0000
+  Se  Se1       1.0  0.86420  0.13580  0.71079  1.0000
+  Se  Se2       1.0  0.13580  0.86420  0.28921  1.0000
+  Se  Se3       1.0  0.66358  0.33642  0.04424  1.0000
+  Se  Se4       1.0  0.66830  0.33170  0.61703  1.0000
+  Se  Se5       1.0  0.33170  0.66830  0.38297  1.0000
+  Se  Se6       1.0  0.33642  0.66358  0.95576  1.0000

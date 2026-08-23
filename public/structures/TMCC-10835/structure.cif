@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       Fe3Cr6C3Te6
+_chemical_formula_sum              "Fe3 Cr6 C3 Te6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Fe  Fe1       1.0  0.00000  0.00000  0.00000  0.5000
+  Fe  Fe2       1.0  0.66667  0.33333  0.33333  0.5000
+  Fe  Fe3       1.0  0.33333  0.66667  0.66667  0.5000
+  Cr  Cr1       1.0  0.00001  0.99999  0.85767  1.0000
+  Cr  Cr2       1.0  0.99999  0.00001  0.14233  1.0000
+  Cr  Cr3       1.0  0.66667  0.33333  0.19098  1.0000
+  Cr  Cr4       1.0  0.66666  0.33334  0.47567  1.0000
+  Cr  Cr5       1.0  0.33334  0.66666  0.52433  1.0000
+  Cr  Cr6       1.0  0.33333  0.66667  0.80902  1.0000
+  C   C1        1.0  0.00000  0.00000  0.50000  1.0000
+  C   C2        1.0  0.66667  0.33333  0.83333  1.0000
+  C   C3        1.0  0.33333  0.66667  0.16667  1.0000
+  Te  Te1       1.0  0.00002  0.99998  0.72554  1.0000
+  Te  Te2       1.0  0.99998  0.00002  0.27446  1.0000
+  Te  Te3       1.0  0.66669  0.33331  0.05889  1.0000
+  Te  Te4       1.0  0.66665  0.33335  0.60777  1.0000
+  Te  Te5       1.0  0.33335  0.66665  0.39223  1.0000
+  Te  Te6       1.0  0.33331  0.66669  0.94111  1.0000

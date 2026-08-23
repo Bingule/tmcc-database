@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       Mn3Ni6C3S6
+_chemical_formula_sum              "Mn3 Ni6 C3 S6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Mn  Mn1       1.0  0.00000  0.00000  0.00000  0.5000
+  Mn  Mn2       1.0  0.66660  0.33340  0.33349  0.5000
+  Mn  Mn3       1.0  0.33340  0.66660  0.66651  0.5000
+  Ni  Ni1       1.0  0.00009  0.99991  0.86128  1.0000
+  Ni  Ni2       1.0  0.99991  0.00009  0.13872  1.0000
+  Ni  Ni3       1.0  0.66657  0.33343  0.19518  1.0000
+  Ni  Ni4       1.0  0.66668  0.33332  0.47170  1.0000
+  Ni  Ni5       1.0  0.33332  0.66668  0.52830  1.0000
+  Ni  Ni6       1.0  0.33343  0.66657  0.80482  1.0000
+  C   C1        1.0  0.00000  0.00000  0.50000  1.0000
+  C   C2        1.0  0.66672  0.33328  0.83308  1.0000
+  C   C3        1.0  0.33328  0.66672  0.16692  1.0000
+  S   S1        1.0  0.99969  0.00031  0.71861  1.0000
+  S   S2        1.0  0.00031  0.99969  0.28139  1.0000
+  S   S3        1.0  0.66664  0.33336  0.05213  1.0000
+  S   S4        1.0  0.66715  0.33285  0.61429  1.0000
+  S   S5        1.0  0.33285  0.66715  0.38571  1.0000
+  S   S6        1.0  0.33336  0.66664  0.94787  1.0000

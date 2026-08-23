@@ -1,0 +1,43 @@
+data_image0
+_chemical_formula_structural       Li3Hf6C3Te6
+_chemical_formula_sum              "Li3 Hf6 C3 Te6"
+_cell_length_a       3.303
+_cell_length_b       3.303
+_cell_length_c       25.83
+_cell_angle_alpha    90
+_cell_angle_beta     90
+_cell_angle_gamma    120
+
+_space_group_name_H-M_alt    "P 1"
+_space_group_IT_number       1
+
+loop_
+  _space_group_symop_operation_xyz
+  'x, y, z'
+
+loop_
+  _atom_site_type_symbol
+  _atom_site_label
+  _atom_site_symmetry_multiplicity
+  _atom_site_fract_x
+  _atom_site_fract_y
+  _atom_site_fract_z
+  _atom_site_occupancy
+  Li  Li1       1.0  0.00000  0.00000  0.00000  0.5000
+  Li  Li2       1.0  0.46186  0.53814  0.33249  0.5000
+  Li  Li3       1.0  0.53814  0.46186  0.66751  0.5000
+  Hf  Hf1       1.0  0.83903  0.16097  0.86180  1.0000
+  Hf  Hf2       1.0  0.16097  0.83903  0.13820  1.0000
+  Hf  Hf3       1.0  0.83188  0.16812  0.19357  1.0000
+  Hf  Hf4       1.0  0.66610  0.33390  0.47222  1.0000
+  Hf  Hf5       1.0  0.33390  0.66610  0.52778  1.0000
+  Hf  Hf6       1.0  0.16812  0.83188  0.80643  1.0000
+  C   C1        1.0  0.00000  0.00000  0.50000  1.0000
+  C   C2        1.0  0.50702  0.49298  0.83447  1.0000
+  C   C3        1.0  0.49298  0.50702  0.16553  1.0000
+  Te  Te1       1.0  0.89891  0.10109  0.72842  1.0000
+  Te  Te2       1.0  0.10109  0.89891  0.27158  1.0000
+  Te  Te3       1.0  0.49877  0.50123  0.06250  1.0000
+  Te  Te4       1.0  0.01199  0.98801  0.60282  1.0000
+  Te  Te5       1.0  0.98801  0.01199  0.39718  1.0000
+  Te  Te6       1.0  0.50123  0.49877  0.93750  1.0000
