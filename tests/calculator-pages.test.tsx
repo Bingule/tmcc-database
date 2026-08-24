@@ -53,7 +53,7 @@ describe("calculator routes", () => {
     expect(form.noValidate).toBe(true);
     await setInput(formula, "Ca(OH)2");
     await submit(form);
-    expect(view.textContent).toContain("Molecular weight");
+    expect(view.textContent).toContain("Molecular Weight Calculator");
     expect(view.textContent).toContain("74.092");
     expect(view.textContent).toContain("Mass contribution");
     expect(view.querySelector("#molecular-weight-formula-help")?.textContent)
@@ -67,7 +67,7 @@ describe("calculator routes", () => {
       .toContain("ASCII . 会被解释为化学计量数的小数点；不支持使用 · 的水合物表示法。");
 
     await switchLanguage(view, "EN");
-    expect(view.textContent).toContain("Molecular weight");
+    expect(view.textContent).toContain("Molecular Weight Calculator");
     expect(view.textContent).toContain("74.092");
     expect(formula.value).toBe("Ca(OH)2");
   });
@@ -83,7 +83,7 @@ describe("calculator routes", () => {
     await setInput(formula, "Nb2S2C");
     await setInput(electrons, "4");
     await submit(form);
-    expect(view.textContent).toContain("Theoretical capacity");
+    expect(view.textContent).toContain("Theoretical Capacity Calculator");
     expect(view.textContent).toContain("Q = nF/(3.6M)");
     expect(view.textContent).toContain("261.943");
     expect(view.textContent).toContain("409.272");

@@ -37,6 +37,16 @@ async function submit(form: HTMLFormElement) {
   await act(async () => form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
 }
 
+async function switchToChinese(view: HTMLElement) {
+  const buttons = view.querySelectorAll<HTMLButtonElement>(".language-switch button");
+  await act(async () => buttons[1].click());
+}
+
+function breadcrumbParts(view: HTMLElement) {
+  const breadcrumb = view.querySelector<HTMLElement>("nav.breadcrumb-nav");
+  return [...(breadcrumb?.children ?? [])].map((item) => item.textContent?.trim());
+}
+
 function expectLabeledControls(view: HTMLElement) {
   for (const control of view.querySelectorAll<HTMLInputElement | HTMLSelectElement>("input, select")) {
     const id = control.id;
@@ -56,11 +66,61 @@ describe("Tools page markup", () => {
     const view = await renderRoute(path);
 
     expect(view.querySelectorAll("h1")).toHaveLength(1);
-    expect(view.querySelector('nav.breadcrumb-nav[aria-label="Breadcrumb"]')).not.toBeNull();
+    expect(view.querySelector("nav.breadcrumb-nav")).not.toBeNull();
     expectLabeledControls(view);
     for (const control of view.querySelectorAll("a, button")) {
       expect(control.getAttribute("tabindex")).not.toBe("-1");
     }
+  });
+
+  it("uses the approved bilingual Tools landing copy", async () => {
+    const view = await renderRoute("/tools");
+    const readCards = () => [...view.querySelectorAll(".tool-card")].map((card) => ({
+      title: card.querySelector("a")?.textContent,
+      description: card.querySelector("p")?.textContent
+    }));
+
+    expect(view.querySelector("h1")?.textContent).toBe("Materials Research Tools");
+    expect(view.querySelector(".tool-page-header p")?.textContent).toBe("Online tools for electrochemistry and materials research.");
+    expect(readCards()).toEqual([
+      { title: "CV Kinetics Analysis", description: "b-value and Dunn capacitive contribution analysis from multi-scan-rate CV data." },
+      { title: "Theoretical Capacity Calculator", description: "Calculate theoretical specific capacity from chemical formula and electron transfer number." },
+      { title: "Molecular Weight Calculator", description: "Calculate molar mass and elemental mass contributions from chemical formulas." }
+    ]);
+
+    await switchToChinese(view);
+    expect(view.querySelector("h1")?.textContent).toBe("材料研究工具");
+    expect(view.querySelector(".tool-page-header p")?.textContent).toBe("用于电化学与材料研究的在线工具。");
+    expect(readCards()).toEqual([
+      { title: "CV 动力学分析", description: "基于多扫描速率 CV 数据进行 b 值与 Dunn 电容贡献分析。" },
+      { title: "理论容量计算器", description: "根据化学式和电子转移数计算理论比容量。" },
+      { title: "分子量计算器", description: "根据化学式计算摩尔质量和各元素质量贡献。" }
+    ]);
+  });
+
+  it.each([
+    ["/tools", "Materials Research Tools", "材料研究工具"],
+    ["/tools/cv-kinetics", "CV Kinetics Analysis", "CV 动力学分析"],
+    ["/tools/theoretical-capacity", "Theoretical Capacity Calculator", "理论容量计算器"],
+    ["/tools/molecular-weight", "Molecular Weight Calculator", "分子量计算器"]
+  ])("uses full bilingual titles and the correct breadcrumb depth on %s", async (path, englishTitle, chineseTitle) => {
+    const view = await renderRoute(path);
+    const breadcrumb = view.querySelector<HTMLElement>("nav.breadcrumb-nav")!;
+
+    expect(view.querySelector("h1")?.textContent).toBe(englishTitle);
+    expect(breadcrumb.getAttribute("aria-label")).toBe("Breadcrumb");
+    expect(breadcrumbParts(view)).toEqual(path === "/tools"
+      ? ["Home", "/", "Tools"]
+      : ["Home", "/", "Tools", "/", englishTitle]);
+    expect(breadcrumb.querySelector('[aria-current="page"]')?.textContent).toBe(path === "/tools" ? "Tools" : englishTitle);
+
+    await switchToChinese(view);
+    expect(view.querySelector("h1")?.textContent).toBe(chineseTitle);
+    expect(breadcrumb.getAttribute("aria-label")).toBe("面包屑");
+    expect(breadcrumbParts(view)).toEqual(path === "/tools"
+      ? ["首页", "/", "工具"]
+      : ["首页", "/", "工具", "/", chineseTitle]);
+    expect(breadcrumb.querySelector('[aria-current="page"]')?.textContent).toBe(path === "/tools" ? "工具" : chineseTitle);
   });
 
   it("exposes a compact two-button language group with pressed state", async () => {
@@ -74,11 +134,17 @@ describe("Tools page markup", () => {
 
   it.each([
     ["/tools/theoretical-capacity", "#capacity-error"],
-    ["/tools/molecular-weight", "#molecular-weight-error"],
-    ["/tools/cv-kinetics", ".cv-import [aria-live=\"polite\"]"]
+    ["/tools/molecular-weight", "#molecular-weight-error"]
   ])("keeps validation messages in a polite live region on %s", async (path, selector) => {
     const view = await renderRoute(path);
     expect(view.querySelector(selector)?.getAttribute("aria-live")).toBe("polite");
+  });
+
+  it("uses one non-conflicting polite status region for CV errors", async () => {
+    const view = await renderRoute("/tools/cv-kinetics");
+    const region = view.querySelector<HTMLElement>(".cv-import .tool-validation")!;
+    expect(region.getAttribute("role")).toBe("status");
+    expect(region.getAttribute("aria-live")).toBe("polite");
   });
 
   it("uses responsive layout hooks and table-based calculator result regions", async () => {

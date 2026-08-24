@@ -12,7 +12,7 @@ export function ToolsPage() {
 
   return (
     <section className="tools-page">
-      <Breadcrumbs current={t("tools.title")} />
+      <Breadcrumbs />
       <header className="tool-page-header">
         <h1>{t("tools.title")}</h1>
         <p>{t("tools.description")}</p>

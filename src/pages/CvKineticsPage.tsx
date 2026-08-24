@@ -116,7 +116,7 @@ export function CvKineticsPage() {
           <p>{t("cv.import.help")}</p>
           <p>{t("cv.import.accepted")}</p>
           <label>{t("cv.upload")}<input aria-label={t("cv.aria.file")} type="file" accept=".csv,.txt,.xlsx" onChange={(event) => void importFile(event.currentTarget.files?.[0])} /></label>
-          <p className="tool-validation" aria-live="polite" role={errorCode ? "alert" : undefined}>{errorCode ? errorMessage(errorCode, t) : ""}</p>
+          <p className="tool-validation" aria-live="polite" role="status">{errorCode ? errorMessage(errorCode, t) : ""}</p>
         </section>
 
       <section className="tool-section cv-preview">
