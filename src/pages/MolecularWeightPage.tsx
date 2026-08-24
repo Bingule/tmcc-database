@@ -31,8 +31,9 @@ export function MolecularWeightPage() {
           name="formula"
           value={formula}
           onChange={(event) => setFormula(event.target.value)}
-          aria-describedby="molecular-weight-error"
+          aria-describedby="molecular-weight-formula-help molecular-weight-error"
         />
+        <small id="molecular-weight-formula-help">{t("molecularWeight.formulaHelp")}</small>
         <button type="submit">{t("calculator.calculate")}</button>
       </form>
       <div id="molecular-weight-error" aria-live="polite">{error ? getFormulaError(error, t) : ""}</div>

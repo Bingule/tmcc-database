@@ -17,4 +17,8 @@ describe("theoretical capacity calculation", () => {
   ])("rejects non-positive or non-finite inputs (%s, %s)", (molarMass, electrons) => {
     expect(() => calculateTheoreticalCapacity(molarMass, electrons)).toThrow();
   });
+
+  it("rejects finite electron counts whose calculation would overflow", () => {
+    expect(() => calculateTheoreticalCapacity(100, 1e308)).toThrow("invalidCapacity");
+  });
 });

@@ -11,7 +11,7 @@ type CapacityResult = {
 };
 
 type PageError = {
-  code: FormulaError["code"] | "positiveFiniteNumber";
+  code: FormulaError["code"] | "positiveFiniteNumber" | "invalidElectronNumber";
   detail?: string;
 };
 
@@ -40,11 +40,16 @@ export function TheoreticalCapacityPage() {
       return;
     }
 
-    setResult({
-      molarMass,
-      electrons: electronCount,
-      capacity: calculateTheoreticalCapacity(molarMass, electronCount)
-    });
+    let capacity: number;
+    try {
+      capacity = calculateTheoreticalCapacity(molarMass, electronCount);
+    } catch {
+      setResult(null);
+      setError({ code: "invalidElectronNumber" });
+      return;
+    }
+
+    setResult({ molarMass, electrons: electronCount, capacity });
     setError(null);
   }
 
@@ -59,8 +64,9 @@ export function TheoreticalCapacityPage() {
           name="formula"
           value={formula}
           onChange={(event) => setFormula(event.target.value)}
-          aria-describedby="capacity-error"
+          aria-describedby="capacity-formula-help capacity-error"
         />
+        <small id="capacity-formula-help">{t("capacity.formulaHelp")}</small>
         <label htmlFor="capacity-electrons">{t("capacity.electrons")}</label>
         <input
           id="capacity-electrons"
@@ -100,6 +106,7 @@ function getErrorMessage(error: PageError, t: ReturnType<typeof useI18n>["t"]) {
     case "unknownElement": return t("errors.unknownElement", { element: error.detail ?? "" });
     case "invalidFormula": return t("errors.invalidFormula");
     case "positiveFiniteNumber": return t("errors.positiveFiniteNumber");
+    case "invalidElectronNumber": return t("errors.invalidElectronNumber");
   }
 }
 

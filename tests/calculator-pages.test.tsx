@@ -56,11 +56,20 @@ describe("calculator routes", () => {
     expect(view.textContent).toContain("Molecular weight");
     expect(view.textContent).toContain("74.092");
     expect(view.textContent).toContain("Mass contribution");
+    expect(view.querySelector("#molecular-weight-formula-help")?.textContent)
+      .toContain("ASCII . is interpreted as a decimal stoichiometric count; hydrate notation using · is unsupported.");
 
     await switchLanguage(view, "中文");
     expect(view.textContent).toContain("分子量");
     expect(view.textContent).toContain("质量贡献");
     expect(view.textContent).toContain("74.092");
+    expect(view.querySelector("#molecular-weight-formula-help")?.textContent)
+      .toContain("ASCII . 会被解释为化学计量数的小数点；不支持使用 · 的水合物表示法。");
+
+    await switchLanguage(view, "EN");
+    expect(view.textContent).toContain("Molecular weight");
+    expect(view.textContent).toContain("74.092");
+    expect(formula.value).toBe("Ca(OH)2");
   });
 
   it("calculates Nb2S2C theoretical capacity in English and Chinese", async () => {
@@ -79,10 +88,14 @@ describe("calculator routes", () => {
     expect(view.textContent).toContain("261.943");
     expect(view.textContent).toContain("409.272");
     expect(view.textContent).toContain("mAh/g");
+    expect(view.querySelector("#capacity-formula-help")?.textContent)
+      .toContain("ASCII . is interpreted as a decimal stoichiometric count; hydrate notation using · is unsupported.");
 
     await switchLanguage(view, "中文");
     expect(view.textContent).toContain("理论容量");
     expect(view.textContent).toContain("409.272");
+    expect(view.querySelector("#capacity-formula-help")?.textContent)
+      .toContain("ASCII . 会被解释为化学计量数的小数点；不支持使用 · 的水合物表示法。");
   });
 
   it.each([
@@ -104,6 +117,10 @@ describe("calculator routes", () => {
 
     await switchLanguage(view, "中文");
     expect(view.querySelector('[aria-live="polite"]')?.textContent).toContain(expectedChineseError);
+
+    await switchLanguage(view, "EN");
+    expect(view.querySelector('[aria-live="polite"]')?.textContent).toContain(expectedError);
+    expect(formula.value).toBe(value);
   });
 
   it.each(["0", "-1", "Infinity", "NaN", ""])
@@ -121,5 +138,26 @@ describe("calculator routes", () => {
 
     await switchLanguage(view, "中文");
     expect(view.querySelector('[aria-live="polite"]')?.textContent).toContain("请输入正的有限数字。");
+  });
+
+  it("does not render an infinite capacity for a finite overflowing electron count", async () => {
+    const view = await renderRoute("/tools/theoretical-capacity");
+    const form = view.querySelector("form");
+    const formula = view.querySelector<HTMLInputElement>('input[name="formula"]');
+    const electrons = view.querySelector<HTMLInputElement>('input[name="electrons"]');
+    if (!form || !formula || !electrons) throw new Error("Capacity form is missing");
+    await setInput(formula, "Nb2S2C");
+    await setInput(electrons, "1e308");
+    await submit(form);
+
+    expect(view.querySelector('[aria-live="polite"]')?.textContent)
+      .toContain("Enter an electron count that produces a finite capacity.");
+    expect(view.textContent).not.toContain("Infinity");
+    expect(view.textContent).not.toContain("NaN");
+    expect(electrons.value).toBe("1e308");
+
+    await switchLanguage(view, "中文");
+    expect(view.querySelector('[aria-live="polite"]')?.textContent)
+      .toContain("请输入可产生有限理论容量的电子数。");
   });
 });
