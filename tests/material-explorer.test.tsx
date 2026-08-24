@@ -196,9 +196,39 @@ describe("MaterialExplorer", () => {
 
     expect(markup).toContain("<span class=\"column-heading-text\"><span>E_DFT</span><small class=\"column-unit\">eV/f.u.</small></span>");
     expect(markup).toContain("<span class=\"column-heading-text\"><span>E_form</span><small class=\"column-unit\">eV/atom</small></span>");
-    expect(markup).toContain("<span class=\"column-heading-text\"><span>E_hull</span><small class=\"column-unit\">eV/atom</small></span>");
+    expect(markup).toContain("<span>Mech. Stab.</span>");
+    expect(markup).not.toContain("<span>E_hull</span>");
     expect(markup).not.toContain("<span>Phonon</span>");
     expect(markup).toContain("<span class=\"column-heading-text\"><span>Band Gap</span><small class=\"column-unit\">eV</small></span>");
+  });
+
+  it("links calculated mechanical stability and leaves pending results as text", () => {
+    const stableMaterial = {
+      ...baseMaterial,
+      material_id: "TMCC-0001",
+      slug: "nb2s2c-p-3m1",
+      formula: "Nb2S2C",
+      mechanical: { mechanically_stable: true }
+    } as MaterialRecord;
+    const pendingMaterial = {
+      ...baseMaterial,
+      material_id: "TMCC-0002",
+      slug: "nb2s2c-r-3m",
+      formula: "Nb2S2C",
+      mechanical: {}
+    } as MaterialRecord;
+    const markup = renderToStaticMarkup(
+      <MaterialExplorer
+        materials={[stableMaterial, pendingMaterial]}
+        selectedId="TMCC-0001"
+        onSelect={() => undefined}
+        elementSearch={{ elements: [], mode: "only" }}
+      />
+    );
+
+    expect(markup).toContain('href="/?material=nb2s2c-p-3m1#mechanical-properties">Stable</a>');
+    expect(markup).toContain("<td>Pending</td>");
+    expect(markup).not.toContain('href="/?material=nb2s2c-r-3m#mechanical-properties"');
   });
 
   it("shows DFT energy per formula unit and dashes for missing table values", () => {

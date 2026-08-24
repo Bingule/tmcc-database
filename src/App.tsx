@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, Atom, CircleDot, Database, FlaskConical, Layers3, Search, ShieldCheck, Table2, Zap } from "lucide-react";
 import { MaterialDetail } from "./components/MaterialDetail";
 import { MaterialExplorer, type ExplorerCategoryFilter } from "./components/MaterialExplorer";
@@ -18,6 +18,14 @@ export default function App() {
 
   const selectedMaterial =
     materials.find((material) => material.material_id === selectedId) ?? materials[0];
+
+  useEffect(() => {
+    if (window.location.hash !== "#mechanical-properties") return;
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById("mechanical-properties")?.scrollIntoView({ block: "start" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [selectedMaterial.material_id]);
 
   const stats = useMemo(() => getMaterialStats(materials), []);
 

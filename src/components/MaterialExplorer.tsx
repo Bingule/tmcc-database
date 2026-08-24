@@ -7,6 +7,7 @@ import {
   getFormationEnergyPerAtomLabel,
   getIntercalantLabel,
   getLatticeSettingLabel,
+  getMechanicalStabilityLabel,
   getStructureTypeLabel,
   getSitesPerCellLabel,
   getSubclassLabel,
@@ -40,7 +41,7 @@ type SortKey =
   | "sites"
   | "dft_energy"
   | "formation_energy"
-  | "energy_above_hull"
+  | "mechanical_stability"
   | "band_gap";
 type SortDirection = "asc" | "desc";
 
@@ -183,7 +184,7 @@ export function MaterialExplorer({
                   <SortHeader label="Sites/cell" sortKey="sites" activeSort={sort} onSort={handleSort} />
                   <SortHeader label="E_DFT" unit="eV/f.u." sortKey="dft_energy" activeSort={sort} onSort={handleSort} />
                   <SortHeader label="E_form" unit="eV/atom" sortKey="formation_energy" activeSort={sort} onSort={handleSort} />
-                  <SortHeader label="E_hull" unit="eV/atom" sortKey="energy_above_hull" activeSort={sort} onSort={handleSort} />
+                  <SortHeader label="Mech. Stab." sortKey="mechanical_stability" activeSort={sort} onSort={handleSort} />
                   <SortHeader label="Band Gap" unit="eV" sortKey="band_gap" activeSort={sort} onSort={handleSort} />
                 </tr>
               </thead>
@@ -218,7 +219,7 @@ export function MaterialExplorer({
                     <td>{getSitesPerCellLabel(material)}</td>
                     <td>{getDftEnergyPerFormulaUnitLabel(material)}</td>
                     <td>{getFormationEnergyPerAtomLabel(material)}</td>
-                    <td>{formatPropertyValue(material.thermodynamics.energy_above_hull)}</td>
+                    <td><MechanicalStabilityValue material={material} /></td>
                     <td>{formatPropertyValue(material.electronic.band_gap)}</td>
                   </tr>
                 ))}
@@ -330,13 +331,28 @@ function getSortValue(material: MaterialRecord, key: SortKey): string | number {
       return numericOrInfinity(getDftEnergyPerFormulaUnitLabel(material));
     case "formation_energy":
       return numericOrInfinity(getFormationEnergyPerAtomLabel(material));
-    case "energy_above_hull":
-      return numericOrInfinity(formatPropertyValue(material.thermodynamics.energy_above_hull));
+    case "mechanical_stability":
+      return getMechanicalStabilityLabel(material);
     case "band_gap":
       return numericOrInfinity(formatPropertyValue(material.electronic.band_gap));
     default:
       return "";
   }
+}
+
+function MechanicalStabilityValue({ material }: { material: MaterialRecord }) {
+  const label = getMechanicalStabilityLabel(material);
+  if (label === "Pending") return label;
+
+  return (
+    <a
+      className="mechanical-stability-link"
+      href={`/?material=${encodeURIComponent(material.slug)}#mechanical-properties`}
+      onClick={(event) => event.stopPropagation()}
+    >
+      {label}
+    </a>
+  );
 }
 
 function numericOrInfinity(value: unknown) {

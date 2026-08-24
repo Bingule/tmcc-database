@@ -90,7 +90,7 @@ export function MaterialDetail({ material }: { material: MaterialRecord }) {
         <Panel title="Stability And Properties">
           <Data label="Phonon calculated" value={getUnavailableLabel(material.phonons.phonon_calculated)} />
           <Data label="Dynamically stable" value={getUnavailableLabel(material.phonons.dynamically_stable)} />
-          <Data label="Mechanical stability" value={getMechanicalStabilityLabel(material)} />
+          <Data label="Mechanical Stability" value={getMechanicalStabilityLabel(material)} />
           <Data label="Electronic character" value={getUnavailableLabel(material.electronic.electronic_character)} />
           <Data label="Magnetic state" value={getUnavailableLabel(material.electronic.magnetic_ground_state)} />
           <Data label="Li/Na storage data" value="-" />
@@ -131,7 +131,7 @@ function ElasticProperties({ material }: { material: MaterialRecord }) {
     : "-";
 
   return (
-    <Panel title="Mechanical / Elastic Properties">
+    <Panel id="mechanical-properties" title="Mechanical / Elastic Properties">
       <Data label="Crystal class" value={getUnavailableLabel(material.mechanical.crystal_class)} />
       <Data label="Born stability" value={bornLabel} />
       {Object.entries(elastic.independent).map(([name, value]) => (
@@ -145,9 +145,9 @@ function formatElasticValue(value: number) {
   return value.toFixed(2);
 }
 
-function Panel({ title, children }: { title: string; children: React.ReactNode }) {
+function Panel({ id, title, children }: { id?: string; title: string; children: React.ReactNode }) {
   return (
-    <article className="panel">
+    <article id={id} className="panel">
       <h3>{title}</h3>
       {children}
     </article>

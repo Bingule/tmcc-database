@@ -96,7 +96,7 @@ describe("MaterialDetail", () => {
     expect(markup).toContain("-0.25");
     expect(markup).toContain("E_hull (eV/atom)");
     expect(markup).not.toContain("DFT total energy");
-    expect(markup).toContain("Mechanical stability");
+    expect(markup).toContain("Mechanical Stability");
     expect(markup).toContain("Stable");
   });
 
@@ -107,7 +107,7 @@ describe("MaterialDetail", () => {
     };
     const markup = renderToStaticMarkup(<MaterialDetail material={material} />);
 
-    expect(markup).toContain("Mechanical stability");
+    expect(markup).toContain("Mechanical Stability");
     expect(markup).toContain("Pending");
   });
 
@@ -138,7 +138,7 @@ describe("MaterialDetail", () => {
     };
     const markup = renderToStaticMarkup(<MaterialDetail material={material} />);
 
-    expect(markup).toContain("<h3>Mechanical / Elastic Properties</h3>");
+    expect(markup).toContain('<article id="mechanical-properties" class="panel"><h3>Mechanical / Elastic Properties</h3>');
     expect(markup).toContain("trigonal (-3m)");
     expect(markup).toContain("Born criteria for trigonal crystals: Stable");
     expect(markup).toContain("C11");
@@ -151,7 +151,7 @@ describe("MaterialDetail", () => {
   it("does not render an empty elastic-properties panel", () => {
     const markup = renderToStaticMarkup(<MaterialDetail material={materials[1]} />);
 
-    expect(markup).toContain("Mechanical stability");
+    expect(markup).toContain("Mechanical Stability");
     expect(markup).toContain("Pending");
     expect(markup).not.toContain("<h3>Mechanical / Elastic Properties</h3>");
   });
