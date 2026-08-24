@@ -7,7 +7,7 @@ export class FormulaError extends Error {
   detail?: string;
 
   constructor(code: FormulaErrorCode, detail?: string) {
-    super(detail ?? code);
+    super(code);
     this.name = "FormulaError";
     this.code = code;
     this.detail = detail;
@@ -32,8 +32,9 @@ export function parseFormula(formula: string): Map<string, number> {
   if (typeof formula !== "string" || formula.trim().length === 0) {
     throw new FormulaError("emptyFormula");
   }
-  if (containsHydrateSeparator(formula)) {
-    throw new FormulaError("unsupportedHydrate", "Hydrate separators are not supported");
+  const hydrateSeparator = findHydrateSeparator(formula);
+  if (hydrateSeparator) {
+    throw new FormulaError("unsupportedHydrate", hydrateSeparator);
   }
 
   let cursor = 0;
@@ -45,12 +46,12 @@ export function parseFormula(formula: string): Map<string, number> {
     while (isDigit(formula[cursor])) cursor += 1;
     if (formula[cursor] === ".") {
       cursor += 1;
-      if (!isDigit(formula[cursor])) throw invalidFormula("A decimal count requires digits after its decimal point");
+      if (!isDigit(formula[cursor])) throw invalidFormula("decimalCount");
       while (isDigit(formula[cursor])) cursor += 1;
     }
 
     const count = Number(formula.slice(start, cursor));
-    if (!Number.isFinite(count) || count <= 0) throw invalidFormula("Element counts must be positive finite numbers");
+    assertPositiveFinite(count, "count");
     return count;
   };
 
@@ -66,8 +67,14 @@ export function parseFormula(formula: string): Map<string, number> {
   };
 
   const merge = (target: Map<string, number>, source: Map<string, number>, multiplier = 1) => {
+    assertPositiveFinite(multiplier, "multiplier");
     for (const [element, count] of source) {
-      target.set(element, (target.get(element) ?? 0) + count * multiplier);
+      assertPositiveFinite(count, "count");
+      const multipliedCount = count * multiplier;
+      assertPositiveFinite(multipliedCount, "multipliedCount");
+      const nextCount = (target.get(element) ?? 0) + multipliedCount;
+      assertPositiveFinite(nextCount, "aggregatedCount");
+      target.set(element, nextCount);
     }
   };
 
@@ -90,19 +97,19 @@ export function parseFormula(formula: string): Map<string, number> {
         itemCount += 1;
         continue;
       }
-      throw invalidFormula(`Unexpected token '${token}'`);
+      throw invalidFormula(`token:${token}`);
     }
 
-    if (itemCount === 0) throw invalidFormula("Groups cannot be empty");
+    if (itemCount === 0) throw invalidFormula("emptyGroup");
     if (stopToken) {
-      if (cursor >= formula.length) throw invalidFormula("Unmatched opening parenthesis");
+      if (cursor >= formula.length) throw invalidFormula("unmatchedOpenParenthesis");
       cursor += 1;
     }
     return group;
   };
 
   const parsed = parseGroup();
-  if (cursor !== formula.length) throw invalidFormula(`Unexpected trailing token '${formula[cursor]}'`);
+  if (cursor !== formula.length) throw invalidFormula(`trailingToken:${formula[cursor]}`);
   return parsed;
 }
 
@@ -110,30 +117,40 @@ export function calculateMolarMass(formula: string): MolarMassResult {
   const composition = parseFormula(formula);
   const elements = [...composition].map(([element, count]) => {
     const atomicWeight = atomicWeights[element];
-    return { element, count, atomicWeight, mass: count * atomicWeight, massPercent: 0 };
+    assertPositiveFinite(count, "count");
+    assertPositiveFinite(atomicWeight, "atomicWeight");
+    const mass = count * atomicWeight;
+    assertPositiveFinite(mass, "elementMass");
+    return { element, count, atomicWeight, mass, massPercent: 0 };
   });
-  const molarMass = elements.reduce((total, element) => total + element.mass, 0);
+  const molarMass = elements.reduce((total, element) => {
+    const nextTotal = total + element.mass;
+    assertPositiveFinite(nextTotal, "molarMass");
+    return nextTotal;
+  }, 0);
 
   return {
     formula,
     molarMass,
-    elements: elements.map((element) => ({
-      ...element,
-      massPercent: 100 * element.mass / molarMass
-    }))
+    elements: elements.map((element) => {
+      const massFraction = element.mass / molarMass;
+      assertPositiveFinite(massFraction, "massFraction");
+      const massPercent = massFraction * 100;
+      assertPositiveFinite(massPercent, "massPercent");
+      return { ...element, massPercent };
+    })
   };
 }
 
-function containsHydrateSeparator(formula: string) {
-  // A period is also valid inside a fractional count. The conventional ASCII
-  // hydrate spelling is nevertheless unambiguous when it introduces water.
-  if (/\.\d+H2O(?:$|[A-Z(])/.test(formula)) return true;
+function findHydrateSeparator(formula: string) {
   for (let index = 0; index < formula.length; index += 1) {
-    if (formula[index] === "·") return true;
+    if (formula[index] === "·" || formula[index] === "•") return formula[index];
     if (formula[index] !== ".") continue;
-    if (!isDigit(formula[index - 1]) || !isDigit(formula[index + 1])) return true;
+    // A period between digits is a decimal count. It cannot be distinguished
+    // from ASCII hydrate notation, so hydrate input must use a middle dot.
+    if (!isDigit(formula[index - 1]) || !isDigit(formula[index + 1])) return formula[index];
   }
-  return false;
+  return undefined;
 }
 
 function isDigit(value: string | undefined) {
@@ -150,4 +167,8 @@ function isLowercase(value: string | undefined) {
 
 function invalidFormula(detail: string): FormulaError {
   return new FormulaError("invalidFormula", detail);
+}
+
+function assertPositiveFinite(value: number, detail: string): asserts value is number {
+  if (!Number.isFinite(value) || value <= 0) throw invalidFormula(detail);
 }
