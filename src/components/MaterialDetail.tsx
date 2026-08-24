@@ -96,6 +96,8 @@ export function MaterialDetail({ material }: { material: MaterialRecord }) {
           <Data label="Li/Na storage data" value="-" />
         </Panel>
 
+        <ElasticProperties material={material} />
+
         <Panel title="Experimental Data">
           <Data label="Synthesis method" value={getUnavailableLabel(material.structure.synthesis_method, "scientific")} />
           <Data label="Experimental files" value={<ExperimentalFiles material={material} />} />
@@ -117,6 +119,30 @@ export function MaterialDetail({ material }: { material: MaterialRecord }) {
       </div>
     </section>
   );
+}
+
+function ElasticProperties({ material }: { material: MaterialRecord }) {
+  const elastic = material.mechanical.elastic_constants;
+  if (!elastic?.independent || Object.keys(elastic.independent).length === 0) return null;
+
+  const born = material.mechanical.born_stability;
+  const bornLabel = born
+    ? `${born.criterion}: ${born.stable ? "Stable" : "Unstable"}`
+    : "-";
+
+  return (
+    <Panel title="Mechanical / Elastic Properties">
+      <Data label="Crystal class" value={getUnavailableLabel(material.mechanical.crystal_class)} />
+      <Data label="Born stability" value={bornLabel} />
+      {Object.entries(elastic.independent).map(([name, value]) => (
+        <Data key={name} label={name} value={`${formatElasticValue(value)} ${elastic.unit}`} />
+      ))}
+    </Panel>
+  );
+}
+
+function formatElasticValue(value: number) {
+  return value.toFixed(2);
 }
 
 function Panel({ title, children }: { title: string; children: React.ReactNode }) {

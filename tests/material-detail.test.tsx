@@ -111,6 +111,51 @@ describe("MaterialDetail", () => {
     expect(markup).toContain("Pending");
   });
 
+  it("renders trigonal elastic properties when a completed tensor is available", () => {
+    const material = {
+      ...materials[0],
+      mechanical: {
+        mechanically_stable: true,
+        crystal_class: "trigonal (-3m)",
+        elastic_constants: {
+          unit: "GPa",
+          independent: {
+            C11: 261.5633,
+            C12: 76.7384,
+            C13: 19.8292,
+            C14: -6.3576,
+            C33: 81.2562,
+            C44: 14.8256,
+            C66: 92.4124
+          },
+          tensor: []
+        },
+        born_stability: {
+          stable: true,
+          criterion: "Born criteria for trigonal crystals"
+        }
+      }
+    };
+    const markup = renderToStaticMarkup(<MaterialDetail material={material} />);
+
+    expect(markup).toContain("<h3>Mechanical / Elastic Properties</h3>");
+    expect(markup).toContain("trigonal (-3m)");
+    expect(markup).toContain("Born criteria for trigonal crystals: Stable");
+    expect(markup).toContain("C11");
+    expect(markup).toContain("261.56 GPa");
+    expect(markup).toContain("C14");
+    expect(markup).toContain("-6.36 GPa");
+    expect(markup).toContain("C66");
+  });
+
+  it("does not render an empty elastic-properties panel", () => {
+    const markup = renderToStaticMarkup(<MaterialDetail material={materials[1]} />);
+
+    expect(markup).toContain("Mechanical stability");
+    expect(markup).toContain("Pending");
+    expect(markup).not.toContain("<h3>Mechanical / Elastic Properties</h3>");
+  });
+
   it("shows the rhombohedral setting note for R-3m materials", () => {
     const material = materials.find((item) => item.material_id === "TMCC-0002") ?? materials[1];
     const markup = renderToStaticMarkup(<MaterialDetail material={material} />);

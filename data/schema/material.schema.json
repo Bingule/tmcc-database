@@ -81,7 +81,51 @@
       "type": "object",
       "properties": {
         "mechanically_stable": { "type": ["boolean", "null"] },
-        "elastic_constants": { "type": ["object", "null"] }
+        "crystal_class": { "type": ["string", "null"] },
+        "elastic_constants": {
+          "type": ["object", "null"],
+          "properties": {
+            "unit": { "type": "string" },
+            "voigt_order": { "type": "array", "items": { "type": "string" } },
+            "independent": {
+              "type": "object",
+              "additionalProperties": { "type": "number" }
+            },
+            "tensor": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": { "type": "number" }
+              }
+            },
+            "raw_tensor": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": { "type": "number" }
+              }
+            }
+          },
+          "additionalProperties": true
+        },
+        "born_stability": {
+          "type": ["object", "null"],
+          "properties": {
+            "stable": { "type": "boolean" },
+            "criterion": { "type": "string" },
+            "criteria_margins": {
+              "type": "object",
+              "additionalProperties": { "type": "number" }
+            },
+            "tensor_eigenvalues": {
+              "type": "array",
+              "items": { "type": "number" }
+            }
+          },
+          "required": ["stable", "criterion"],
+          "additionalProperties": true
+        },
+        "calculation": { "type": ["object", "null"] }
       },
       "additionalProperties": true
     },

@@ -21,7 +21,21 @@ export type ThermodynamicsProperties = Record<string, unknown> & {
 
 export type MechanicalProperties = Record<string, unknown> & {
   mechanically_stable?: boolean | null;
-  elastic_constants?: Record<string, unknown> | null;
+  crystal_class?: string | null;
+  elastic_constants?: Record<string, unknown> & {
+    unit?: string;
+    voigt_order?: string[];
+    independent?: Record<string, number>;
+    tensor?: number[][];
+    raw_tensor?: number[][];
+  } | null;
+  born_stability?: {
+    stable: boolean;
+    criterion: string;
+    criteria_margins?: Record<string, number>;
+    tensor_eigenvalues?: number[];
+  } | null;
+  calculation?: Record<string, unknown> | null;
 };
 
 export type HostDescriptor = {
