@@ -16,6 +16,7 @@
     "lucide-react": "^0.468.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "read-excel-file": "9.3.10",
     "three": "^0.185.1",
     "typescript": "^5.7.2",
     "vite": "5.4.21"
