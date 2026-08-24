@@ -1,8 +1,9 @@
 import { Download } from "lucide-react";
-import { type PointerEvent, type WheelEvent, useEffect, useMemo, useState } from "react";
+import { type PointerEvent, useEffect, useMemo, useState } from "react";
 import { makeElectronicDownloadFilename } from "../lib/materials";
 import { publicAssetPath } from "../lib/paths";
 import type { MaterialRecord } from "../lib/types";
+import { useNonPassiveWheel } from "../lib/useNonPassiveWheel";
 
 type Mode = "dos" | "band";
 type PlotPoint = { x: number; y: number };
@@ -209,8 +210,9 @@ export function ElectronicPlot({
     return { label: item.label, points, color: colors[index % colors.length] };
   }), [maxX, maxY, minX, minY, plotHeight, plotWidth, plottedSeries]);
 
-  function pointerX(event: PointerEvent<SVGSVGElement> | WheelEvent<SVGSVGElement>) {
-    const rect = event.currentTarget.getBoundingClientRect();
+  function pointerX(event: PointerEvent<SVGSVGElement> | globalThis.WheelEvent) {
+    const target = event.currentTarget as SVGSVGElement;
+    const rect = target.getBoundingClientRect();
     const viewBoxX = (event.clientX - rect.left) / rect.width * width;
     return Math.min(width - padding.right, Math.max(padding.left, viewBoxX));
   }
@@ -249,7 +251,7 @@ export function ElectronicPlot({
     }
   }
 
-  function handleWheel(event: WheelEvent<SVGSVGElement>) {
+  function handleWheel(event: globalThis.WheelEvent) {
     event.preventDefault();
     event.stopPropagation();
     const center = valueAtX(pointerX(event));
@@ -274,8 +276,11 @@ export function ElectronicPlot({
     );
   }
 
+  const plotRef = useNonPassiveWheel<SVGSVGElement>(handleWheel);
+
   return (
     <svg
+      ref={plotRef}
       viewBox={`0 0 ${width} ${height}`}
       role="img"
       aria-label={`${yLabel} plot`}
@@ -284,7 +289,6 @@ export function ElectronicPlot({
       onPointerUp={handlePointerUp}
       onPointerCancel={() => setDragRange(null)}
       onPointerLeave={() => setDragRange(null)}
-      onWheel={handleWheel}
       onDoubleClick={resetZoom}
       onContextMenu={(event) => {
         event.preventDefault();

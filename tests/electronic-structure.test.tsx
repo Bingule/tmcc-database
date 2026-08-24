@@ -1,5 +1,7 @@
+import { act } from "react";
+import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ElectronicPlot, ElectronicStructureViewer, parseDosCsv } from "../src/components/ElectronicStructureViewer";
 import { materials } from "../src/data/materials";
 
@@ -49,5 +51,38 @@ describe("ElectronicStructureViewer", () => {
     expect(markup).toContain("Ef = 5.432 eV");
     expect(markup).toContain(">Ef</text>");
     expect(markup).not.toContain("translate(52, 299)");
+  });
+
+  it("binds wheel zoom as non-passive so it can stop page scrolling", async () => {
+    const testGlobal = globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean };
+    testGlobal.IS_REACT_ACT_ENVIRONMENT = true;
+    const listenerSpy = vi.spyOn(SVGSVGElement.prototype, "addEventListener");
+    const container = document.createElement("div");
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        <ElectronicPlot
+          series={[{ label: "Total", points: [{ x: -6, y: 0 }, { x: 0, y: 2 }, { x: 6, y: 1 }] }]}
+          xLabel="Energy - Ef (eV)"
+          yLabel="DOS"
+          fermiReference="vertical"
+          fermiLevel={5.4321}
+          fixedXRange={[-6, 6]}
+        />
+      );
+    });
+
+    expect(listenerSpy).toHaveBeenCalledWith("wheel", expect.any(Function), { passive: false });
+    const wheelEvent = new WheelEvent("wheel", { cancelable: true, clientX: 100, deltaY: -1 });
+    let wheelAllowed = true;
+    await act(async () => {
+      wheelAllowed = container.querySelector("svg")?.dispatchEvent(wheelEvent) ?? true;
+    });
+    expect(wheelAllowed).toBe(false);
+
+    await act(async () => root.unmount());
+    listenerSpy.mockRestore();
+    delete testGlobal.IS_REACT_ACT_ENVIRONMENT;
   });
 });

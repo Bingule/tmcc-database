@@ -1,10 +1,11 @@
 import { Download } from "lucide-react";
-import { type PointerEvent, type WheelEvent, useEffect, useMemo, useState } from "react";
+import { type PointerEvent, useEffect, useMemo, useState } from "react";
 import { parseCifStructure, type ParsedCrystalStructure } from "../lib/crystal";
 import { exportPairDistributionCsv, exportXrdCsv, radiationPresets, simulatePairDistribution, simulateXrdPattern } from "../lib/xrd";
 import { getSpaceGroupSymbol } from "../lib/materials";
 import { publicAssetPath } from "../lib/paths";
 import type { MaterialRecord } from "../lib/types";
+import { useNonPassiveWheel } from "../lib/useNonPassiveWheel";
 
 const customRadiation = "Custom wavelength";
 const customWavelengthRange = { min: 0.05, max: 2.5 };
@@ -300,8 +301,9 @@ function LineChart<T extends Record<string, number>>({
     return `${x.toFixed(1)},${y.toFixed(1)}`;
   }).join(" ");
 
-  function pointerX(event: PointerEvent<SVGSVGElement> | WheelEvent<SVGSVGElement>) {
-    const rect = event.currentTarget.getBoundingClientRect();
+  function pointerX(event: PointerEvent<SVGSVGElement> | globalThis.WheelEvent) {
+    const target = event.currentTarget as SVGSVGElement;
+    const rect = target.getBoundingClientRect();
     const viewBoxX = (event.clientX - rect.left) / rect.width * width;
     return Math.min(width - padding, Math.max(padding, viewBoxX));
   }
@@ -352,7 +354,7 @@ function LineChart<T extends Record<string, number>>({
     onVisibleXRangeChange(null);
   }
 
-  function handleWheel(event: WheelEvent<SVGSVGElement>) {
+  function handleWheel(event: globalThis.WheelEvent) {
     event.preventDefault();
     event.stopPropagation();
     const center = valueAtX(pointerX(event));
@@ -376,8 +378,11 @@ function LineChart<T extends Record<string, number>>({
     );
   }
 
+  const chartRef = useNonPassiveWheel<SVGSVGElement>(handleWheel);
+
   return (
     <svg
+      ref={chartRef}
       viewBox={`0 0 ${width} ${height}`}
       role="img"
       aria-label={`${yLabel} curve`}
@@ -389,7 +394,6 @@ function LineChart<T extends Record<string, number>>({
         setHovered(null);
         setDragRange(null);
       }}
-      onWheel={handleWheel}
       onDoubleClick={resetZoom}
       onContextMenu={(event) => {
         event.preventDefault();
