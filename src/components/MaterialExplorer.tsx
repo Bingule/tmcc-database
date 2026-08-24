@@ -16,6 +16,7 @@ import {
 } from "../lib/materials";
 import type { MaterialRecord } from "../lib/types";
 import { useI18n } from "../i18n/I18nProvider";
+import { getCrystalSystemTranslationKey } from "../i18n/displayLabels";
 
 type Props = {
   materials: MaterialRecord[];
@@ -211,7 +212,7 @@ export function MaterialExplorer({
                     <td><Formula formula={material.formula} /></td>
                     <td>
                       <span className="cell-stack">
-                        <span>{material.structure.crystal_system === "trigonal" ? t("material.trigonal") : formatPropertyValue(material.structure.crystal_system)}</span>
+                        <span>{formatCrystalSystemLabel(material.structure.crystal_system, t)}</span>
                         {getLatticeSettingLabel(material) && <small>{t("material.rhombohedralSettingCompact")}</small>}
                       </span>
                     </td>
@@ -261,6 +262,11 @@ export function MaterialExplorer({
       )}
     </section>
   );
+}
+
+function formatCrystalSystemLabel(value: unknown, t: ReturnType<typeof useI18n>["t"]) {
+  const translationKey = getCrystalSystemTranslationKey(value);
+  return translationKey ? t(translationKey) : formatPropertyValue(value);
 }
 
 function filterMaterialsByCategory(materials: MaterialRecord[], categoryFilter: ExplorerCategoryFilter) {

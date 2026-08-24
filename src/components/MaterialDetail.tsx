@@ -24,12 +24,14 @@ import { formatParameterGroup } from "../lib/crystal";
 import { publicAssetPath } from "../lib/paths";
 import type { MaterialRecord } from "../lib/types";
 import { useI18n } from "../i18n/I18nProvider";
+import { getCrystalSystemTranslationKey } from "../i18n/displayLabels";
 
 const StructureViewer = lazy(() => import("./StructureViewer"));
 
 export function MaterialDetail({ material }: { material: MaterialRecord }) {
   const { t } = useI18n();
   const mechanicalStability = getMechanicalStabilityLabel(material);
+  const crystalSystemTranslationKey = getCrystalSystemTranslationKey(material.structure.crystal_system);
   return (
     <section id="material-detail" className="detail">
       <div className="section-heading">
@@ -59,7 +61,7 @@ export function MaterialDetail({ material }: { material: MaterialRecord }) {
           <Data label={t("material.family")} value={material.family} />
           <Data label={t("material.subclass")} value={getSubclassLabel(material)} />
           <Data label={t("material.generalFormula")} value={getStructureTypeLabel(material)} />
-          <Data label={t("material.structureType")} value={material.structure.crystal_system === "trigonal" ? t("material.trigonal") : getUnavailableLabel(material.structure.crystal_system)} />
+          <Data label={t("material.structureType")} value={crystalSystemTranslationKey ? t(crystalSystemTranslationKey) : getUnavailableLabel(material.structure.crystal_system)} />
           <Data label={t("material.intercalant")} value={getIntercalantLabel(material)} />
           <Data label={t("material.numberOfSites")} value={getNumberOfSitesLabel(material)} />
           <Data label={t("material.spaceGroupNumber")} value={getUnavailableLabel(material.structure.space_group_number)} />

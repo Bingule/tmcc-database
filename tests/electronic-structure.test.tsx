@@ -53,6 +53,43 @@ describe("ElectronicStructureViewer", () => {
     expect(markup).not.toContain("translate(52, 299)");
   });
 
+  it("translates DOS spin semantics at the Chinese rendering boundary while preserving orbital labels", async () => {
+    const testGlobal = globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean };
+    testGlobal.IS_REACT_ACT_ENVIRONMENT = true;
+    localStorage.setItem("tmcc-language", "zh");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () => [
+        "energy_ev,total_up,total_down,Nb_d_up,S_p_up",
+        "-1,2,-1,0.4,0.2",
+        "0,3,-2,0.6,0.3"
+      ].join("\n")
+    }));
+    const material = {
+      ...materials[0],
+      files: { ...materials[0].files, dos: "/figures/TMCC-0001/dos.csv", band_structure: null }
+    };
+    const container = document.createElement("div");
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(withI18n(<ElectronicStructureViewer material={material} />));
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+
+    const legend = container.querySelector(".electronic-legend")?.textContent ?? "";
+    expect(legend).toContain("总态密度（上自旋）");
+    expect(legend).toContain("总态密度（下自旋）");
+    expect(legend).toContain("Nb d（上自旋）");
+    expect(legend).toContain("S p（上自旋）");
+    expect(parseDosCsv("energy_ev,total_up\n0,1")[0].label).toBe("Total up");
+
+    await act(async () => root.unmount());
+    vi.unstubAllGlobals();
+    localStorage.clear();
+    delete testGlobal.IS_REACT_ACT_ENVIRONMENT;
+  });
+
   it("binds wheel zoom as non-passive so it can stop page scrolling", async () => {
     const testGlobal = globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean };
     testGlobal.IS_REACT_ACT_ENVIRONMENT = true;

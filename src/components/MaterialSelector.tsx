@@ -11,6 +11,7 @@ import {
 import { publicAssetPath } from "../lib/paths";
 import type { MaterialRecord } from "../lib/types";
 import { useI18n } from "../i18n/I18nProvider";
+import { getConfigurationTranslationKey } from "../i18n/displayLabels";
 import { Formula } from "./Formula";
 
 type Props = {
@@ -45,6 +46,8 @@ export function MaterialSelector({ materials, selectedId, onSelect }: Props) {
   );
   const matched = availableStructures.find((material) => material.material_id === selectedId) ?? availableStructures[0];
   const downloadable = matched;
+  const configuration = matched?.intercalation?.configuration;
+  const configurationTranslationKey = getConfigurationTranslationKey(configuration);
 
   function updateSelection(
     nextType: SelectorMode = materialType,
@@ -192,7 +195,7 @@ export function MaterialSelector({ materials, selectedId, onSelect }: Props) {
             </select>
           </label>
           <label><span>{t("selector.hostStructure")}</span><input value={matched ? getSpaceGroupLabel(getSpaceGroupSymbol(matched)) : t("selector.dataInProgress")} readOnly /></label>
-          <label><span>{t("selector.configuration")}</span><input value={matched?.intercalation?.configuration ?? t("selector.dataInProgress")} readOnly /></label>
+          <label><span>{t("selector.configuration")}</span><input value={configurationTranslationKey ? t(configurationTranslationKey) : configuration ?? t("selector.dataInProgress")} readOnly /></label>
         </div>
       )}
 

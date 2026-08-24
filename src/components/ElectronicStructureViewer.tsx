@@ -345,12 +345,22 @@ export function ElectronicPlot({
         {paths.slice(0, 8).map((path, index) => (
           <g key={path.label} transform={`translate(${padding.left + 112 + (index % 4) * 145}, ${22 + Math.floor(index / 4) * 16})`}>
             <line x1="0" y1="-3" x2="14" y2="-3" stroke={path.color} />
-            <text x="18" y="0">{path.label}</text>
+            <text x="18" y="0">{formatSeriesLabel(path.label, t)}</text>
           </g>
         ))}
       </g>
     </svg>
   );
+}
+
+function formatSeriesLabel(label: string, t: ReturnType<typeof useI18n>["t"]) {
+  if (label === "Total up") return t("electronic.totalUp");
+  if (label === "Total down") return t("electronic.totalDown");
+  const orbitalSpin = label.match(/^(.+\s[spdf])\s(up|down)$/);
+  if (!orbitalSpin) return label;
+  return t(orbitalSpin[2] === "up" ? "electronic.orbitalSpinUp" : "electronic.orbitalSpinDown", {
+    label: orbitalSpin[1]
+  });
 }
 
 function readNumericUnitValue(value: unknown) {

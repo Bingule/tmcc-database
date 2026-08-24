@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider, resolveTranslation, useI18n } from "../src/i18n/I18nProvider";
 import { en } from "../src/locales/en";
 import { zh } from "../src/locales/zh";
+import { getCrystalSystemTranslationKey } from "../src/i18n/displayLabels";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -124,5 +125,31 @@ describe("I18nProvider", () => {
 
   it("keeps Angstrom units untranslated in Chinese resources", () => {
     expect(zh["xrd.wavelength"]).toBe("波长（Angstrom）");
+  });
+
+  it("uses the crystallographic class term for the trigonal -3m resource", () => {
+    expect(zh["material.trigonalClass"]).toBe("三方晶类（-3m）");
+  });
+
+  it("maps common crystal-system data values to locale-neutral display keys", () => {
+    expect([
+      "triclinic",
+      "monoclinic",
+      "orthorhombic",
+      "tetragonal",
+      "trigonal",
+      "hexagonal",
+      "cubic",
+      "rhombohedral"
+    ].map(getCrystalSystemTranslationKey)).toEqual([
+      "crystalSystem.triclinic",
+      "crystalSystem.monoclinic",
+      "crystalSystem.orthorhombic",
+      "crystalSystem.tetragonal",
+      "crystalSystem.trigonal",
+      "crystalSystem.hexagonal",
+      "crystalSystem.cubic",
+      "crystalSystem.rhombohedral"
+    ]);
   });
 });

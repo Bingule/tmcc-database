@@ -14,7 +14,7 @@ export function SiteHeader({ children }: { children?: ReactNode }) {
       <div className="hero-topbar">
         <button className="brand-lockup" type="button" onClick={goHome} aria-label={`${t("home.database")} ${t("nav.home")}`}>
           <span className="brand-mark" aria-hidden="true" />
-          <span>TMCC Database <b>v0.1</b></span>
+          <span>{t("home.database")} <b>v0.1</b></span>
         </button>
         <nav className="top-nav" aria-label={t("nav.primary")}>
           <button className="nav-button" type="button" onClick={goHome}>{t("nav.home")}</button>
