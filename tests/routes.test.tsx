@@ -47,6 +47,22 @@ describe("normalizePathname", () => {
 });
 
 describe("App routes", () => {
+  it("keeps homepage anchors local and sends Tools visitors back to the homepage sections", async () => {
+    history.replaceState(null, "", "/");
+    const home = await renderApp();
+
+    for (const href of ["#selector", "#periodic-table", "#explorer", "#methodology"]) {
+      expect(home.querySelector(`nav.top-nav a[href="${href}"]`)).not.toBeNull();
+    }
+
+    history.replaceState(null, "", "/tools");
+    const tools = await renderApp();
+
+    for (const href of ["/#selector", "/#periodic-table", "/#explorer", "/#methodology"]) {
+      expect(tools.querySelector(`nav.top-nav a[href="${href}"]`)).not.toBeNull();
+    }
+  });
+
   it("renders one Tools navigation link and no homepage tool cards", async () => {
     history.replaceState(null, "", "/");
     const view = await renderApp();

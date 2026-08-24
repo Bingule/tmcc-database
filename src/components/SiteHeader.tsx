@@ -3,6 +3,7 @@ import { useI18n } from "../i18n/I18nProvider";
 
 export function SiteHeader({ children }: { children?: ReactNode }) {
   const { language, setLanguage, t } = useI18n();
+  const homepageAnchorPrefix = typeof window === "undefined" || window.location.pathname === "/" ? "" : "/";
 
   function goHome() {
     if (typeof window !== "undefined") window.location.href = "https://tmccdb.org/";
@@ -17,10 +18,10 @@ export function SiteHeader({ children }: { children?: ReactNode }) {
         </button>
         <nav className="top-nav" aria-label="Primary">
           <button className="nav-button" type="button" onClick={goHome}>{t("nav.home")}</button>
-          <a href="#selector">{t("nav.selector")}</a>
-          <a href="#periodic-table">{t("nav.periodic")}</a>
-          <a href="#explorer">{t("nav.explorer")}</a>
-          <a href="#methodology">{t("nav.methodology")}</a>
+          <a href={`${homepageAnchorPrefix}#selector`}>{t("nav.selector")}</a>
+          <a href={`${homepageAnchorPrefix}#periodic-table`}>{t("nav.periodic")}</a>
+          <a href={`${homepageAnchorPrefix}#explorer`}>{t("nav.explorer")}</a>
+          <a href={`${homepageAnchorPrefix}#methodology`}>{t("nav.methodology")}</a>
           <a href="/tools">{t("nav.tools")}</a>
           <button className="login-button" type="button" title="User accounts will be added with the hosted database backend">Login</button>
           <span className="language-switch" aria-label="Language">
