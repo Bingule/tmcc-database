@@ -319,11 +319,20 @@ export const en = {
   "capacity.formula": "Chemical formula",
   "capacity.electrons": "Electrons transferred",
   "capacity.result": "Theoretical capacity",
+  "calculator.calculate": "Calculate",
   "molecularWeight.formula": "Chemical formula",
   "molecularWeight.result": "Molecular weight",
+  "molecularWeight.element": "Element",
+  "molecularWeight.count": "Count",
+  "molecularWeight.atomicWeight": "Atomic weight",
+  "molecularWeight.massContribution": "Mass contribution",
+  "molecularWeight.massPercent": "Mass %",
   "errors.required": "This field is required.",
   "errors.invalidFormula": "Enter a valid chemical formula.",
   "errors.invalidNumber": "Enter a valid number.",
+  "errors.positiveFiniteNumber": "Enter a positive finite number.",
+  "errors.unsupportedHydrate": "Enter a formula without hydrate notation.",
+  "errors.unknownElement": "Unknown element: {{element}}.",
   "errors.upload": "The file could not be read."
 } as const;
 

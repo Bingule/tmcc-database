@@ -47,6 +47,13 @@ describe("normalizePathname", () => {
 });
 
 describe("App routes", () => {
+  it("keeps the CV tool route available while calculator routes use their dedicated pages", async () => {
+    history.replaceState(null, "", "/tools/cv-kinetics");
+    const view = await renderApp();
+
+    expect(view.querySelector("h1")?.textContent).toBe("Cyclic voltammetry analyzer");
+  });
+
   it("keeps homepage anchors local and sends Tools visitors back to the homepage sections", async () => {
     history.replaceState(null, "", "/");
     const home = await renderApp();
