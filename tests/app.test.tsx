@@ -2,6 +2,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { describe, expect, it } from "vitest";
 import App from "../src/App";
+import { I18nProvider } from "../src/i18n/I18nProvider";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -12,7 +13,7 @@ describe("App", () => {
     const root = createRoot(container);
 
     await act(async () => {
-      root.render(<App />);
+      root.render(<I18nProvider><App /></I18nProvider>);
     });
 
     expect(container.textContent).toContain("Material page template");

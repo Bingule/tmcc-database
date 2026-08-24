@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "dev:tmcc": "vite --host 127.0.0.1 --port 80",
-    "build": "tsc && vite build",
+    "build": "tsc && vite build && node scripts/create-route-entries.mjs",
     "preview": "vite preview --host 127.0.0.1",
     "test": "vitest run",
     "validate:data": "node scripts/validate-data.js"
