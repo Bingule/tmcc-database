@@ -151,13 +151,29 @@ describe("calculator routes", () => {
     await submit(form);
 
     expect(view.querySelector('[aria-live="polite"]')?.textContent)
-      .toContain("Enter an electron count that produces a finite capacity.");
+      .toContain("Calculated theoretical capacity must be a finite positive number.");
     expect(view.textContent).not.toContain("Infinity");
     expect(view.textContent).not.toContain("NaN");
     expect(electrons.value).toBe("1e308");
 
     await switchLanguage(view, "中文");
     expect(view.querySelector('[aria-live="polite"]')?.textContent)
-      .toContain("请输入可产生有限理论容量的电子数。");
+      .toContain("计算得到的理论容量必须是正的有限数值。");
+  });
+
+  it("keeps a valid extreme molar mass from being reported as an electron-input error", async () => {
+    const view = await renderRoute("/tools/theoretical-capacity");
+    const form = view.querySelector("form");
+    const formula = view.querySelector<HTMLInputElement>('input[name="formula"]');
+    const electrons = view.querySelector<HTMLInputElement>('input[name="electrons"]');
+    if (!form || !formula || !electrons) throw new Error("Capacity form is missing");
+    await setInput(formula, `H1${"0".repeat(308)}`);
+    await setInput(electrons, "1");
+    await submit(form);
+
+    expect(view.querySelector('[aria-live="polite"]')?.textContent).toBe("");
+    expect(view.textContent).toContain("mAh/g");
+    expect(view.textContent).not.toContain("Infinity");
+    expect(view.textContent).not.toContain("NaN");
   });
 });

@@ -21,4 +21,10 @@ describe("theoretical capacity calculation", () => {
   it("rejects finite electron counts whose calculation would overflow", () => {
     expect(() => calculateTheoreticalCapacity(100, 1e308)).toThrow("invalidCapacity");
   });
+
+  it("keeps a finite positive capacity when 3.6M would overflow as an intermediate", () => {
+    const capacity = calculateTheoreticalCapacity(1.008e308, 1);
+    expect(Number.isFinite(capacity)).toBe(true);
+    expect(capacity).toBeGreaterThan(0);
+  });
 });

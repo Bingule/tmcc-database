@@ -8,7 +8,7 @@ export function calculateTheoreticalCapacity(molarMass: number, electrons: numbe
     throw new Error("invalidElectrons");
   }
 
-  const capacity = (electrons * FARADAY_CONSTANT) / (3.6 * molarMass);
+  const capacity = (electrons / molarMass) * (FARADAY_CONSTANT / 3.6);
   if (!Number.isFinite(capacity) || capacity <= 0) {
     throw new Error("invalidCapacity");
   }

@@ -11,7 +11,7 @@ type CapacityResult = {
 };
 
 type PageError = {
-  code: FormulaError["code"] | "positiveFiniteNumber" | "invalidElectronNumber";
+  code: FormulaError["code"] | "positiveFiniteNumber" | "invalidCapacity";
   detail?: string;
 };
 
@@ -45,7 +45,7 @@ export function TheoreticalCapacityPage() {
       capacity = calculateTheoreticalCapacity(molarMass, electronCount);
     } catch {
       setResult(null);
-      setError({ code: "invalidElectronNumber" });
+      setError({ code: "invalidCapacity" });
       return;
     }
 
@@ -106,10 +106,11 @@ function getErrorMessage(error: PageError, t: ReturnType<typeof useI18n>["t"]) {
     case "unknownElement": return t("errors.unknownElement", { element: error.detail ?? "" });
     case "invalidFormula": return t("errors.invalidFormula");
     case "positiveFiniteNumber": return t("errors.positiveFiniteNumber");
-    case "invalidElectronNumber": return t("errors.invalidElectronNumber");
+    case "invalidCapacity": return t("errors.invalidCapacity");
   }
 }
 
 function formatNumber(value: number) {
+  if (value !== 0 && Math.abs(value) < 0.001) return value.toExponential(3);
   return value.toFixed(3).replace(/\.000$/, "");
 }

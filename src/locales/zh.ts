@@ -335,7 +335,7 @@ export const zh = {
   "errors.invalidFormula": "请输入有效的化学式。",
   "errors.invalidNumber": "请输入有效的数字。",
   "errors.positiveFiniteNumber": "请输入正的有限数字。",
-  "errors.invalidElectronNumber": "请输入可产生有限理论容量的电子数。",
+  "errors.invalidCapacity": "计算得到的理论容量必须是正的有限数值。",
   "errors.unsupportedHydrate": "请输入不含水合物符号的化学式。",
   "errors.unknownElement": "未知元素：{{element}}。",
   "errors.upload": "无法读取该文件。"

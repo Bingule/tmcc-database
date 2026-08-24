@@ -333,7 +333,7 @@ export const en = {
   "errors.invalidFormula": "Enter a valid chemical formula.",
   "errors.invalidNumber": "Enter a valid number.",
   "errors.positiveFiniteNumber": "Enter a positive finite number.",
-  "errors.invalidElectronNumber": "Enter an electron count that produces a finite capacity.",
+  "errors.invalidCapacity": "Calculated theoretical capacity must be a finite positive number.",
   "errors.unsupportedHydrate": "Enter a formula without hydrate notation.",
   "errors.unknownElement": "Unknown element: {{element}}.",
   "errors.upload": "The file could not be read."
