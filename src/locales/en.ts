@@ -365,6 +365,8 @@ export const en = {
   "cv.export.png": "Export PNG",
   "cv.chart.empty": "Run a valid analysis to display this chart.",
   "cv.chart.legend": "Chart legend",
+  "cv.chart.samplingNotice": "Figures and SVG/PNG exports use deterministic display sampling (up to {{count}} points per series); scientific analysis and CSV exports retain the full dataset.",
+  "cv.chart.tooManyGaps": "Too many unavailable gaps to draw a continuous b-value line; a sampled point view is shown instead.",
   "cv.table.potential": "Potential",
   "cv.table.current": "Current",
   "cv.table.scanRate": "Scan rate",

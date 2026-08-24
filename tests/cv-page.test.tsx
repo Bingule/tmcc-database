@@ -18,11 +18,15 @@ afterEach(async () => {
 });
 
 async function renderPage() {
+  await import("../src/pages/CvKineticsPage");
   history.replaceState(null, "", "/tools/cv-kinetics");
   const view = document.createElement("div");
   document.body.appendChild(view);
   root = createRoot(view);
-  await act(async () => root!.render(<I18nProvider><App /></I18nProvider>));
+  await act(async () => {
+    root!.render(<I18nProvider><App /></I18nProvider>);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
   return view;
 }
 
@@ -60,6 +64,7 @@ describe("CV kinetics page", () => {
     const view = await renderPage();
     expect(view.textContent).toContain("CV Kinetics Analysis");
     expect(view.textContent).toContain("Import Data");
+    expect(view.textContent).toContain("Figures and SVG/PNG exports use deterministic display sampling");
     await upload(view, csv);
     expect(view.textContent).toContain("Data Preview");
     const rateInputs = view.querySelectorAll<HTMLInputElement>('input[name="scanRate"]');
@@ -251,5 +256,26 @@ describe("CV kinetics page", () => {
     await click(view, "cv-interpolated-data.csv");
     const exported = await new Promise<string>((resolve) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.readAsText(blobs[0]); });
     expect(exported.split("\r\n")).toHaveLength(rowCount + 1);
+  }, 30_000);
+
+  it("preserves every unavailable-gap run when downsampling a long b-value curve", async () => {
+    const view = await renderPage();
+    const gaps = new Set([2, 5_000, 9_998]);
+    const contents = ["Potential,Current 1 mV/s,Current 4 mV/s", ...Array.from({ length: 10_000 }, (_, index) => gaps.has(index) ? `${index},0,0` : `${index},${index + 1},${4 * (index + 1)}`)].join("\n");
+    await upload(view, contents);
+    await click(view, "Run analysis");
+    const path = view.querySelector('path[data-series-id="b-values"]')!;
+    expect(path.getAttribute("d")?.match(/\bM\b/g)).toHaveLength(4);
+    expect(path.getAttribute("data-gap-run-count")).toBe("3");
+  }, 30_000);
+
+  it("falls back to an explicitly disclosed point view for pathological alternating gaps", async () => {
+    const view = await renderPage();
+    const contents = ["Potential,Current 1 mV/s,Current 4 mV/s", ...Array.from({ length: 1_202 }, (_, index) => index % 2 === 0 ? `${index},0,0` : `${index},${index + 1},${4 * (index + 1)}`)].join("\n");
+    await upload(view, contents);
+    await click(view, "Run analysis");
+    expect(view.querySelector('path[data-series-id="b-values"]')).toBeNull();
+    expect(view.querySelectorAll('[data-point-series-id="b-values"]').length).toBeLessThanOrEqual(2_000);
+    expect(view.textContent).toContain("Too many unavailable gaps to draw a continuous b-value line");
   }, 30_000);
 });

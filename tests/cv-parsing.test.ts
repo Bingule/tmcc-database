@@ -6,6 +6,10 @@ import {
   MAX_FILE_BYTES,
   MAX_ROWS,
   MAX_SHEETS,
+  MAX_XLSX_COMPRESSION_RATIO,
+  MAX_XLSX_ENTRY_UNCOMPRESSED_BYTES,
+  MAX_XLSX_TOTAL_UNCOMPRESSED_BYTES,
+  MAX_XLSX_WORKSHEETS,
   confirmCvSeries,
   parseCvFile,
   parseDelimitedCv,
@@ -222,7 +226,30 @@ describe("parseCvFile", () => {
     await expectAsyncParseError(() => parseCvFile(oversized), "resourceLimitExceeded", { resource: "fileBytes", limit: MAX_FILE_BYTES });
 
     const sheets = Array.from({ length: MAX_SHEETS + 1 }, (_, index) => ({ name: `S${index}`, rows: [["Potential", "1", "2"], [0, 1, 2], [1, 2, 3]] }));
-    await expectAsyncParseError(() => parseCvFile(makeWorkbookFile(sheets, "many-sheets.xlsx")), "resourceLimitExceeded", { resource: "sheets", limit: MAX_SHEETS });
+    await expectAsyncParseError(() => parseCvFile(makeWorkbookFile(sheets, "many-sheets.xlsx")), "resourceLimitExceeded", { resource: "zipWorksheets", limit: MAX_SHEETS });
+  });
+
+  it("rejects XLSX compression bombs and excessive worksheet declarations in central-directory preflight", async () => {
+    const ratioBomb = makeDeclaredZip([{ name: "xl/worksheets/sheet1.xml", compressed: 1, uncompressed: MAX_XLSX_COMPRESSION_RATIO + 1 }]);
+    await expectAsyncParseError(() => parseCvFile(new File([ratioBomb], "ratio.xlsx")), "resourceLimitExceeded", { resource: "zipCompressionRatio", limit: MAX_XLSX_COMPRESSION_RATIO });
+
+    const singleBomb = makeDeclaredZip([{ name: "xl/sharedStrings.xml", compressed: 1_000_000, uncompressed: MAX_XLSX_ENTRY_UNCOMPRESSED_BYTES + 1 }]);
+    await expectAsyncParseError(() => parseCvFile(new File([singleBomb], "single.xlsx")), "resourceLimitExceeded", { resource: "zipEntryBytes", limit: MAX_XLSX_ENTRY_UNCOMPRESSED_BYTES });
+
+    const totalBomb = makeDeclaredZip(Array.from({ length: 3 }, (_, index) => ({ name: `xl/media/item${index}.bin`, compressed: 1_000_000, uncompressed: Math.floor(MAX_XLSX_TOTAL_UNCOMPRESSED_BYTES / 3) + 1 })));
+    await expectAsyncParseError(() => parseCvFile(new File([totalBomb], "total.xlsx")), "resourceLimitExceeded", { resource: "zipTotalBytes", limit: MAX_XLSX_TOTAL_UNCOMPRESSED_BYTES });
+
+    const worksheetBomb = makeDeclaredZip(Array.from({ length: MAX_XLSX_WORKSHEETS + 1 }, (_, index) => ({ name: `xl/worksheets/sheet${index}.xml`, compressed: 0, uncompressed: 0 })));
+    await expectAsyncParseError(() => parseCvFile(new File([worksheetBomb], "worksheets.xlsx")), "resourceLimitExceeded", { resource: "zipWorksheets", limit: MAX_XLSX_WORKSHEETS });
+  });
+
+  it("rejects ZIP64 sentinels and malformed central-directory signatures before XLSX decompression", async () => {
+    const zip64 = makeDeclaredZip([{ name: "xl/workbook.xml", compressed: 1, uncompressed: 1 }], { zip64: true });
+    await expectAsyncParseError(() => parseCvFile(new File([zip64], "zip64.xlsx")), "resourceLimitExceeded", { resource: "zip64" });
+
+    const malformed = new Uint8Array(makeDeclaredZip([{ name: "xl/workbook.xml", compressed: 1, uncompressed: 1 }]));
+    new DataView(malformed.buffer).setUint32(30, 0x12345678, true);
+    await expectAsyncParseError(() => parseCvFile(new File([malformed], "bad-central.xlsx")), "malformedFile", { reason: "invalidXlsx" });
   });
   it("parses CSV and TXT File objects through the shared delimited parser", async () => {
     const csv = new File(["Potential,1,2\n0,10,20\n1,11,21"], "example.csv", { type: "text/csv" });
@@ -437,6 +464,31 @@ function makeStoredZip(entries: Array<[string, string]>) {
     position += part.length;
   }
   return archive.buffer;
+}
+
+function makeDeclaredZip(entries: Array<{ name: string; compressed: number; uncompressed: number }>, options: { zip64?: boolean } = {}) {
+  const encoder = new TextEncoder();
+  const centralSize = entries.reduce((total, entry) => total + 46 + encoder.encode(entry.name).length, 0);
+  const bytes = new Uint8Array(30 + centralSize + 22);
+  const view = new DataView(bytes.buffer);
+  view.setUint32(0, 0x04034b50, true);
+  let offset = 30;
+  for (const entry of entries) {
+    const name = encoder.encode(entry.name);
+    view.setUint32(offset, 0x02014b50, true);
+    view.setUint32(offset + 20, entry.compressed, true);
+    view.setUint32(offset + 24, entry.uncompressed, true);
+    view.setUint16(offset + 28, name.length, true);
+    view.setUint32(offset + 42, 0, true);
+    bytes.set(name, offset + 46);
+    offset += 46 + name.length;
+  }
+  view.setUint32(offset, 0x06054b50, true);
+  view.setUint16(offset + 8, options.zip64 ? 0xffff : entries.length, true);
+  view.setUint16(offset + 10, options.zip64 ? 0xffff : entries.length, true);
+  view.setUint32(offset + 12, options.zip64 ? 0xffffffff : centralSize, true);
+  view.setUint32(offset + 16, options.zip64 ? 0xffffffff : 30, true);
+  return bytes.buffer;
 }
 
 function writeZipHeader(view: DataView, signature: number, checksum: number, size: number, nameLength: number) {

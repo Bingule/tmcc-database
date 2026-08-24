@@ -138,6 +138,7 @@ export function ScientificLineChart({
                 <path
                   data-series-id={item.id}
                   data-render-point-count={item.points.filter((point) => point.y !== null).length}
+                  data-gap-run-count={countNullRuns(item.points)}
                   d={linePath(item.points, projectX, projectY)}
                   fill="none"
                   stroke={item.color}
@@ -244,6 +245,16 @@ function linePath(
     move = false;
   }
   return commands.join(" ");
+}
+
+function countNullRuns(points: Array<{ y: number | null }>) {
+  let count = 0;
+  let inside = false;
+  for (const point of points) {
+    if (point.y === null && !inside) { count += 1; inside = true; }
+    else if (point.y !== null) inside = false;
+  }
+  return count;
 }
 
 function formatTick(value: number): string {

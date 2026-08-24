@@ -17,6 +17,11 @@ export const MAX_SHEETS = 50;
 export const MAX_ROWS = 200_000;
 export const MAX_COLUMNS = 256;
 export const MAX_CELLS = 2_000_000;
+export const MAX_ZIP_ENTRIES = 10_000;
+export const MAX_XLSX_WORKSHEETS = 50;
+export const MAX_XLSX_TOTAL_UNCOMPRESSED_BYTES = 100 * 1024 * 1024;
+export const MAX_XLSX_ENTRY_UNCOMPRESSED_BYTES = 50 * 1024 * 1024;
+export const MAX_XLSX_COMPRESSION_RATIO = 100;
 
 export interface ParsedCvTable {
   headers: string[];
@@ -90,7 +95,9 @@ export async function parseCvFile(file: File): Promise<ParsedCvTable> {
   }
 
   try {
-    const sheets = await readXlsxFile(await readFileArrayBuffer(file));
+    const workbookBuffer = await readFileArrayBuffer(file);
+    preflightXlsxArchive(workbookBuffer);
+    const sheets = await readXlsxFile(workbookBuffer);
     if (sheets.length > MAX_SHEETS) throwResourceLimit("sheets", MAX_SHEETS, sheets.length);
     let workbookCells = 0;
     for (const sheet of sheets) {
@@ -121,6 +128,73 @@ export async function parseCvFile(file: File): Promise<ParsedCvTable> {
   }
 }
 
+function preflightXlsxArchive(buffer: ArrayBuffer) {
+  const bytes = new Uint8Array(buffer);
+  const view = new DataView(buffer);
+  const minimumEocdSize = 22;
+  if (bytes.length < minimumEocdSize) throw new Error("zipEocdMissing");
+  const searchStart = Math.max(0, bytes.length - 65_557);
+  let eocd = -1;
+  for (let offset = bytes.length - minimumEocdSize; offset >= searchStart; offset -= 1) {
+    if (view.getUint32(offset, true) === 0x06054b50) { eocd = offset; break; }
+  }
+  if (eocd < 0) throw new Error("zipEocdMissing");
+
+  const disk = view.getUint16(eocd + 4, true);
+  const centralDisk = view.getUint16(eocd + 6, true);
+  const entriesOnDisk = view.getUint16(eocd + 8, true);
+  const entryCount = view.getUint16(eocd + 10, true);
+  const centralSize = view.getUint32(eocd + 12, true);
+  const centralOffset = view.getUint32(eocd + 16, true);
+  const commentLength = view.getUint16(eocd + 20, true);
+  if (entriesOnDisk === 0xffff || entryCount === 0xffff || centralSize === 0xffffffff || centralOffset === 0xffffffff) {
+    throwResourceLimit("zip64", 0, 1);
+  }
+  if (disk !== 0 || centralDisk !== 0 || entriesOnDisk !== entryCount) throw new Error("zipMultiDiskUnsupported");
+  if (entryCount > MAX_ZIP_ENTRIES) throwResourceLimit("zipEntries", MAX_ZIP_ENTRIES, entryCount);
+  if (eocd + minimumEocdSize + commentLength !== bytes.length) throw new Error("zipEocdBounds");
+  if (centralOffset + centralSize !== eocd || centralOffset > bytes.length) throw new Error("zipCentralBounds");
+
+  let cursor = centralOffset;
+  let totalUncompressed = 0;
+  let worksheets = 0;
+  const localChecks: Array<{ offset: number; compressed: number }> = [];
+  const decoder = new TextDecoder();
+  for (let index = 0; index < entryCount; index += 1) {
+    if (cursor + 46 > eocd || view.getUint32(cursor, true) !== 0x02014b50) throw new Error("zipCentralSignature");
+    const compressed = view.getUint32(cursor + 20, true);
+    const uncompressed = view.getUint32(cursor + 24, true);
+    const nameLength = view.getUint16(cursor + 28, true);
+    const extraLength = view.getUint16(cursor + 30, true);
+    const entryCommentLength = view.getUint16(cursor + 32, true);
+    const localOffset = view.getUint32(cursor + 42, true);
+    if (compressed === 0xffffffff || uncompressed === 0xffffffff || localOffset === 0xffffffff) throwResourceLimit("zip64", 0, 1);
+    const next = cursor + 46 + nameLength + extraLength + entryCommentLength;
+    if (next > eocd) throw new Error("zipCentralEntryBounds");
+    const name = decoder.decode(bytes.subarray(cursor + 46, cursor + 46 + nameLength)).replace(/\\/g, "/");
+
+    if (uncompressed > MAX_XLSX_ENTRY_UNCOMPRESSED_BYTES) throwResourceLimit("zipEntryBytes", MAX_XLSX_ENTRY_UNCOMPRESSED_BYTES, uncompressed);
+    totalUncompressed += uncompressed;
+    if (totalUncompressed > MAX_XLSX_TOTAL_UNCOMPRESSED_BYTES) throwResourceLimit("zipTotalBytes", MAX_XLSX_TOTAL_UNCOMPRESSED_BYTES, totalUncompressed);
+    const ratio = uncompressed === 0 ? 0 : compressed === 0 ? Number.POSITIVE_INFINITY : uncompressed / compressed;
+    if (ratio > MAX_XLSX_COMPRESSION_RATIO) throwResourceLimit("zipCompressionRatio", MAX_XLSX_COMPRESSION_RATIO, ratio);
+    if (/^xl\/worksheets\/[^/]+\.xml$/i.test(name)) {
+      worksheets += 1;
+      if (worksheets > MAX_XLSX_WORKSHEETS) throwResourceLimit("zipWorksheets", MAX_XLSX_WORKSHEETS, worksheets);
+    }
+
+    localChecks.push({ offset: localOffset, compressed });
+    cursor = next;
+  }
+  if (cursor !== eocd) throw new Error("zipCentralSizeMismatch");
+  for (const local of localChecks) {
+    if (local.offset + 30 > centralOffset || view.getUint32(local.offset, true) !== 0x04034b50) throw new Error("zipLocalHeader");
+    const localNameLength = view.getUint16(local.offset + 26, true);
+    const localExtraLength = view.getUint16(local.offset + 28, true);
+    if (local.offset + 30 + localNameLength + localExtraLength + local.compressed > centralOffset) throw new Error("zipLocalBounds");
+  }
+}
+
 function checkTableLimits(rows: ReadonlyArray<ReadonlyArray<unknown>>) {
   if (rows.length > MAX_ROWS) throwResourceLimit("rows", MAX_ROWS, rows.length);
   let cells = 0;
@@ -133,7 +207,7 @@ function checkTableLimits(rows: ReadonlyArray<ReadonlyArray<unknown>>) {
   if (cells > MAX_CELLS) throwResourceLimit("cells", MAX_CELLS, cells);
 }
 
-function throwResourceLimit(resource: "fileBytes" | "sheets" | "rows" | "columns" | "cells", limit: number, actual: number): never {
+function throwResourceLimit(resource: "fileBytes" | "sheets" | "rows" | "columns" | "cells" | "zip64" | "zipEntries" | "zipEntryBytes" | "zipTotalBytes" | "zipCompressionRatio" | "zipWorksheets", limit: number, actual: number): never {
   throw new CvParseError("resourceLimitExceeded", { resource, limit, actual });
 }
 

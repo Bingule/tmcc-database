@@ -23,6 +23,8 @@ const csvFiles = [
   "cv-contribution-summary.csv"
 ] as const;
 const MAX_CHART_POINTS = 2_000;
+const MAX_CHART_GAP_RUNS = 500;
+const MAX_CHART_OUTPUT_POINTS = 4_000;
 const MAX_TABLE_ROWS = 500;
 const MAX_POTENTIAL_OPTIONS = 500;
 
@@ -110,6 +112,7 @@ export function CvKineticsPage() {
   const dunnChart = sampleChartSeries(makeDunnChart(analysis, selectedOriginalSeries, selectedContribution, selectedSeriesIndex, t));
   const contributionChart = sampleChartSeries(makeContributionChart(sortedContributions, t));
   const sampledBChart = sampleChartSeries(bChart);
+  const bGapRunCount = countNullRuns(bChart[0]?.points ?? []);
   const missingBFitCount = analysis ? analysis.grid.potentials.length - analysis.bValues.length : 0;
 
   return (
@@ -118,6 +121,7 @@ export function CvKineticsPage() {
       <header className="tool-page-header">
         <h1>{t("cv.title")}</h1>
         <p>{t("cv.subtitle")}</p>
+        <p>{t("cv.chart.samplingNotice", { count: MAX_CHART_POINTS })}</p>
       </header>
 
       <div className="tool-layout">
@@ -158,6 +162,7 @@ export function CvKineticsPage() {
           {potentialOptions.map((potential) => <option key={potential} value={potential}>{potential}</option>)}
         </select></label>
         {analysis && missingBFitCount > 0 && <p role="status">{t("cv.b.missingFits", { count: missingBFitCount, total: analysis.grid.potentials.length })}</p>}
+        {bGapRunCount > MAX_CHART_GAP_RUNS && <p role="status">{t("cv.chart.tooManyGaps")}</p>}
         <ScientificLineChart title={t("cv.b.chart")} xLabel={`${t("cv.table.potential")} (V)`} yLabel={t("cv.b.value")}
           emptyLabel={t("cv.chart.empty")} legendLabel={t("cv.chart.legend")} series={sampledBChart} selectedX={selectedPotential} onSelectX={setSelectedPotential} exportId="cv-b-chart" />
         <DataTable headers={[`${t("cv.table.potential")} (V)`, t("cv.b.value"), t("cv.b.intercept"), t("cv.results.rSquared"), t("cv.table.pointCount")]}
@@ -247,7 +252,7 @@ function makeContributionChart(contributions: DunnAnalysisResult["contributions"
 
 function makeDunnChart(analysis: AnalysisState | null, original: CvSeries | undefined, contribution: DunnAnalysisResult["contributions"][number] | undefined, seriesIndex: number, t: ReturnType<typeof useI18n>["t"]): ChartSeries[] {
   if (!analysis || !original || !contribution || seriesIndex < 0) return [];
-  const points = (values: Array<number | null>) => analysis.grid.potentials.flatMap((x, index) => values[index] === null ? [] : [{ x, y: values[index] as number }]);
+  const points = (values: Array<number | null>) => analysis.grid.potentials.map((x, index) => ({ x, y: values[index] }));
   const reconstructedTotal = contribution.capacitiveCurrent.map((value, index) => value === null || contribution.diffusionCurrent[index] === null ? null : value + contribution.diffusionCurrent[index]!);
   return [
     { id: "original", label: t("cv.dunn.originalCurve"), color: "#16697a", points: original.points.map((point) => ({ x: point.potential, y: point.current })) },
@@ -267,22 +272,57 @@ function dunnRows(analysis: AnalysisState | null, contribution: DunnAnalysisResu
 }
 
 function sampleChartSeries(series: ChartSeries[]): ChartSeries[] {
-  return series.map((item) => ({ ...item, points: downsamplePoints(item.points, MAX_CHART_POINTS) }));
+  return series.map((item) => {
+    const gaps = countNullRuns(item.points);
+    if (item.mode !== "points" && gaps > MAX_CHART_GAP_RUNS) {
+      return { ...item, mode: "points" as const, points: downsampleValidPoints(item.points, MAX_CHART_POINTS) };
+    }
+    return { ...item, points: downsamplePoints(item.points, MAX_CHART_POINTS) };
+  });
 }
 
 function downsamplePoints<T extends { x: number; y: number | null }>(points: T[], limit: number): T[] {
   if (points.length <= limit) return points;
+  const totalValid = points.reduce((total, point) => total + (point.y === null ? 0 : 1), 0);
   const sampled: T[] = [];
-  for (let bucket = 0; bucket < limit; bucket += 1) {
-    const start = Math.floor(bucket * points.length / limit);
-    const end = Math.max(start + 1, Math.floor((bucket + 1) * points.length / limit));
-    if (bucket === 0) { sampled.push(points[0]); continue; }
-    if (bucket === limit - 1) { sampled.push(points[points.length - 1]); continue; }
-    const group = points.slice(start, end);
-    const gap = group.find((point) => point.y === null);
-    sampled.push(gap ?? group.reduce((extreme, point) => Math.abs(point.y ?? 0) > Math.abs(extreme.y ?? 0) ? point : extreme));
+  let index = 0;
+  while (index < points.length) {
+    const isGap = points[index].y === null;
+    const start = index;
+    while (index < points.length && (points[index].y === null) === isGap) index += 1;
+    const run = points.slice(start, index);
+    if (isGap) sampled.push(run[Math.floor(run.length / 2)]);
+    else {
+      const allocation = Math.min(run.length, Math.max(Math.min(2, run.length), Math.floor(limit * run.length / Math.max(1, totalValid))));
+      sampled.push(...downsampleValidPoints(run, allocation));
+    }
   }
+  return sampled.length <= MAX_CHART_OUTPUT_POINTS ? sampled : downsampleValidPoints(points, limit);
+}
+
+function downsampleValidPoints<T extends { x: number; y: number | null }>(points: T[], limit: number): T[] {
+  const valid = points.filter((point) => point.y !== null);
+  if (valid.length <= limit) return valid;
+  if (limit <= 1) return [valid[0]];
+  const sampled: T[] = [valid[0]];
+  for (let bucket = 1; bucket < limit - 1; bucket += 1) {
+    const start = Math.floor(bucket * valid.length / limit);
+    const end = Math.max(start + 1, Math.floor((bucket + 1) * valid.length / limit));
+    const group = valid.slice(start, end);
+    sampled.push(group.reduce((extreme, point) => Math.abs(point.y ?? 0) > Math.abs(extreme.y ?? 0) ? point : extreme));
+  }
+  sampled.push(valid[valid.length - 1]);
   return sampled;
+}
+
+function countNullRuns(points: Array<{ y: number | null }>) {
+  let count = 0;
+  let inside = false;
+  for (const point of points) {
+    if (point.y === null && !inside) { count += 1; inside = true; }
+    else if (point.y !== null) inside = false;
+  }
+  return count;
 }
 
 function downsampleValues(values: number[], limit: number): number[] {
