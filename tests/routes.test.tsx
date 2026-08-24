@@ -51,7 +51,7 @@ describe("App routes", () => {
     history.replaceState(null, "", "/tools/cv-kinetics");
     const view = await renderApp();
 
-    expect(view.querySelector("h1")?.textContent).toBe("Cyclic voltammetry analyzer");
+    expect(view.querySelector("h1")?.textContent).toBe("CV Kinetics Analysis");
   });
 
   it("keeps homepage anchors local and sends Tools visitors back to the homepage sections", async () => {
