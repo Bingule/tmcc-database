@@ -59,7 +59,7 @@ export function MaterialExplorer({
   const [anion, setAnion] = useState("all");
   const [subclass, setSubclass] = useState("all");
   const [structureType, setStructureType] = useState("all");
-  const [pageSize, setPageSize] = useState(5);
+  const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState<{ key: SortKey; direction: SortDirection }>({
     key: "material_id",
@@ -228,7 +228,7 @@ export function MaterialExplorer({
           <div className="pagination-bar" aria-label="Materials table pagination">
             <div className="page-size-controls">
               <span>Rows per page</span>
-              {[5, 10, 20, 50].map((size) => (
+              {[10, 20, 50].map((size) => (
                 <button
                   key={size}
                   type="button"

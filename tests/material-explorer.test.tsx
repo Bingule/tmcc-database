@@ -53,13 +53,13 @@ describe("MaterialExplorer", () => {
       />
     );
 
-    expect(countRows(markup)).toBe(5);
-    expect(markup).toContain("TMCC-0005");
-    expect(markup).not.toContain("TMCC-0006");
+    expect(countRows(markup)).toBe(10);
+    expect(markup).toContain("TMCC-0010");
+    expect(markup).not.toContain("TMCC-0011");
     expect(markup).not.toContain(".....");
     expect(markup).toContain("Rows per page");
-    expect(markup).toContain("<button type=\"button\" class=\"active\">5</button>");
-    expect(markup).toContain("<button type=\"button\" class=\"\">10</button>");
+    expect(markup).not.toContain(">5</button>");
+    expect(markup).toContain("<button type=\"button\" class=\"active\">10</button>");
     expect(markup).toContain("<button type=\"button\" class=\"\">20</button>");
     expect(markup).toContain("<button type=\"button\" class=\"\">50</button>");
   });
@@ -80,17 +80,17 @@ describe("MaterialExplorer", () => {
       );
     });
 
-    expect(container.textContent).toContain("TMCC-0005");
-    expect(container.textContent).not.toContain("TMCC-0006");
+    expect(container.textContent).toContain("TMCC-0010");
+    expect(container.textContent).not.toContain("TMCC-0011");
 
     const nextButton = [...container.querySelectorAll("button")].find((button) => button.textContent === "Next");
     await act(async () => {
       nextButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
-    expect(container.textContent).toContain("TMCC-0006");
-    expect(container.textContent).toContain("TMCC-0010");
-    expect(container.textContent).not.toContain("TMCC-0005");
+    expect(container.textContent).toContain("TMCC-0011");
+    expect(container.textContent).toContain("TMCC-0012");
+    expect(container.textContent).not.toContain("TMCC-0010");
 
     await act(async () => {
       root.unmount();
@@ -164,7 +164,7 @@ describe("MaterialExplorer", () => {
       />
     );
 
-    expect(countRows(markup)).toBe(5);
+    expect(countRows(markup)).toBe(10);
     expect(markup).not.toContain("TMCC-0012");
   });
 
