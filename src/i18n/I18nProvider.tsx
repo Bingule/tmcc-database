@@ -5,6 +5,7 @@ import { zh } from "../locales/zh";
 export type Language = "en" | "zh";
 
 type InterpolationParams = Record<string, string | number>;
+type TranslationResources = Partial<Record<TranslationKey, string>>;
 
 type I18nContextValue = {
   language: Language;
@@ -25,16 +26,12 @@ export function I18nProvider({ children }: { children: ReactNode }): React.React
 
   const setLanguage = useCallback((nextLanguage: Language) => {
     setCurrentLanguage(nextLanguage);
-    window.localStorage.setItem(STORAGE_KEY, nextLanguage);
+    writeSavedLanguage(nextLanguage);
   }, []);
 
   const t = useCallback((key: TranslationKey, params?: InterpolationParams) => {
     const translations = language === "zh" ? zh : en;
-    const value = translations[key] ?? en[key];
-    return value.replace(/{{(\w+)}}/g, (token, name: string) => {
-      const parameter = params?.[name];
-      return parameter === undefined ? token : String(parameter);
-    });
+    return resolveTranslation(key, params, translations);
   }, [language]);
 
   const value = useMemo(() => ({ language, setLanguage, t }), [language, setLanguage, t]);
@@ -48,7 +45,32 @@ export function useI18n(): I18nContextValue {
   return context;
 }
 
+export function resolveTranslation(
+  key: TranslationKey,
+  params: InterpolationParams | undefined,
+  translations: TranslationResources
+): string {
+  const value = translations[key] ?? en[key];
+  return value.replace(/{{(\w+)}}/g, (token, name: string) => {
+    const parameter = params?.[name];
+    return parameter === undefined ? token : String(parameter);
+  });
+}
+
 function readSavedLanguage(): Language {
   if (typeof window === "undefined") return "en";
-  return window.localStorage.getItem(STORAGE_KEY) === "zh" ? "zh" : "en";
+  try {
+    return window.localStorage.getItem(STORAGE_KEY) === "zh" ? "zh" : "en";
+  } catch {
+    return "en";
+  }
+}
+
+function writeSavedLanguage(language: Language) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(STORAGE_KEY, language);
+  } catch {
+    // Storage can be disabled by browser privacy settings; the in-memory state remains authoritative.
+  }
 }

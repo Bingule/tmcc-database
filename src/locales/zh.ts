@@ -92,7 +92,7 @@ export const zh = {
   "xrd.title": "XRD／PDF",
   "xrd.simulated": "模拟 XRD",
   "xrd.radiation": "辐射源",
-  "xrd.wavelength": "波长（埃）",
+  "xrd.wavelength": "波长（Angstrom）",
   "xrd.twoThetaMin": "2θ 最小值",
   "xrd.twoThetaMax": "2θ 最大值",
   "xrd.exportCsv": "导出 CSV",
