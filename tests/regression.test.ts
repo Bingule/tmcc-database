@@ -50,6 +50,18 @@ describe("linearRegression", () => {
     expect(Object.values(result ?? {}).every(Number.isFinite)).toBe(true);
   });
 
+  it("falls back to scaled arithmetic when finite subnormal covariance and sums of squares underflow", () => {
+    expect(linearRegression([
+      { x: 0, y: Number.MIN_VALUE },
+      { x: 1, y: 2 * Number.MIN_VALUE }
+    ])).toEqual({
+      slope: Number.MIN_VALUE,
+      intercept: Number.MIN_VALUE,
+      rSquared: 1,
+      pointCount: 2
+    });
+  });
+
   it("returns null instead of non-finite coefficients when the fitted slope overflows", () => {
     expect(linearRegression([
       { x: 0, y: 0 },

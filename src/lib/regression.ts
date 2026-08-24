@@ -31,11 +31,19 @@ function fitWithScales(finitePoints: Point[], safeXScale: number, safeYScale: nu
 
   let covariance = 0;
   let xVariance = 0;
+  let covarianceTermUnderflowed = false;
+  let xVarianceTermUnderflowed = false;
   for (const point of scaledPoints) {
     const centeredX = point.x - meanX;
-    covariance += centeredX * (point.y - meanY);
-    xVariance += centeredX * centeredX;
+    const centeredY = point.y - meanY;
+    const covarianceTerm = centeredX * centeredY;
+    const xVarianceTerm = centeredX * centeredX;
+    if (covarianceTerm === 0 && centeredX !== 0 && centeredY !== 0) covarianceTermUnderflowed = true;
+    if (xVarianceTerm === 0 && centeredX !== 0) xVarianceTermUnderflowed = true;
+    covariance += covarianceTerm;
+    xVariance += xVarianceTerm;
   }
+  if ((covariance === 0 && covarianceTermUnderflowed) || (xVariance === 0 && xVarianceTermUnderflowed)) return null;
   if (xVariance === 0 || !Number.isFinite(xVariance) || !Number.isFinite(covariance)) return null;
 
   const scaledSlope = covariance / xVariance;
@@ -46,12 +54,20 @@ function fitWithScales(finitePoints: Point[], safeXScale: number, safeYScale: nu
 
   let residualSumSquares = 0;
   let totalSumSquares = 0;
+  let residualTermUnderflowed = false;
+  let totalTermUnderflowed = false;
   for (const point of scaledPoints) {
     const residual = point.y - (scaledIntercept + scaledSlope * point.x);
     const centeredY = point.y - meanY;
-    residualSumSquares += residual * residual;
-    totalSumSquares += centeredY * centeredY;
+    const residualTerm = residual * residual;
+    const totalTerm = centeredY * centeredY;
+    if (residualTerm === 0 && residual !== 0) residualTermUnderflowed = true;
+    if (totalTerm === 0 && centeredY !== 0) totalTermUnderflowed = true;
+    residualSumSquares += residualTerm;
+    totalSumSquares += totalTerm;
   }
+  if ((residualSumSquares === 0 && residualTermUnderflowed)
+    || (totalSumSquares === 0 && totalTermUnderflowed)) return null;
 
   let rSquared: number;
   if (totalSumSquares === 0) {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { analyzeBValue, analyzeDunn, interpolateCommonGrid } from "../src/lib/cvAnalysis";
-import { CvAnalysisError, type InterpolatedCvData } from "../src/lib/cvTypes";
+import { CvAnalysisError, type CvSeries, type InterpolatedCvData } from "../src/lib/cvTypes";
 
 function makeBValueData(options: {
   a: number;
@@ -44,26 +44,29 @@ function expectCvError(action: () => unknown, code: CvAnalysisError["code"]) {
 
 describe("interpolateCommonGrid", () => {
   it("uses the measured-potential union inside the shared range and linearly fills internal gaps", () => {
-    const result = interpolateCommonGrid([
+    const input: CvSeries[] = [
       {
         label: "slow",
         scanRate: 1,
         points: [
-          { potential: 0, current: 0 },
+          { potential: 4, current: 8 },
           { potential: 2, current: 4 },
-          { potential: 4, current: 8 }
+          { potential: 0, current: 0 }
         ]
       },
       {
         label: "fast",
         scanRate: 5,
         points: [
-          { potential: 1, current: 10 },
           { potential: 3, current: 30 },
-          { potential: 5, current: 50 }
+          { potential: 5, current: 50 },
+          { potential: 1, current: 10 }
         ]
       }
-    ]);
+    ];
+    const snapshot = structuredClone(input);
+
+    const result = interpolateCommonGrid(input);
 
     expect(result).toEqual({
       potentials: [1, 2, 3, 4],
@@ -73,6 +76,7 @@ describe("interpolateCommonGrid", () => {
         [10, 20, 30, 40]
       ]
     });
+    expect(input).toEqual(snapshot);
   });
 
   it("never adds potentials outside the intersection or extrapolates", () => {
