@@ -4,7 +4,7 @@ export function Breadcrumbs({ current }: { current: string }) {
   const { t } = useI18n();
 
   return (
-    <nav className="breadcrumbs" aria-label="Breadcrumb">
+    <nav className="breadcrumbs breadcrumb-nav" aria-label="Breadcrumb">
       <a href="/">{t("nav.home")}</a>
       <span aria-hidden="true">/</span>
       <a href="/tools">{t("nav.tools")}</a>

@@ -24,7 +24,7 @@ export function SiteHeader({ children }: { children?: ReactNode }) {
           <a href={`${homepageAnchorPrefix}#methodology`}>{t("nav.methodology")}</a>
           <a href="/tools">{t("nav.tools")}</a>
           <button className="login-button" type="button" title={t("nav.loginUnavailable")}>{t("nav.login")}</button>
-          <span className="language-switch" aria-label={t("nav.language")}>
+          <span className="language-switch" role="group" aria-label={t("nav.language")}>
             <button type="button" aria-pressed={language === "en"} onClick={() => setLanguage("en")}>{t("language.english")}</button>
             <button type="button" aria-pressed={language === "zh"} onClick={() => setLanguage("zh")}>{t("language.chinese")}</button>
           </span>

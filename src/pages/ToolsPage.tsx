@@ -13,11 +13,13 @@ export function ToolsPage() {
   return (
     <section className="tools-page">
       <Breadcrumbs current={t("tools.title")} />
-      <h1>{t("tools.title")}</h1>
-      <p>{t("tools.description")}</p>
-      <ul>
+      <header className="tool-page-header">
+        <h1>{t("tools.title")}</h1>
+        <p>{t("tools.description")}</p>
+      </header>
+      <ul className="tools-grid">
         {tools.map((tool) => (
-          <li key={tool.href}>
+          <li className="tool-card" key={tool.href}>
             <a href={tool.href}>{t(tool.title)}</a>
             <p>{t(tool.description)}</p>
           </li>

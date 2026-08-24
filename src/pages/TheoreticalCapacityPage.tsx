@@ -56,45 +56,52 @@ export function TheoreticalCapacityPage() {
   return (
     <section className="tools-page calculator-page">
       <Breadcrumbs current={t("tools.capacity.title")} />
-      <h1>{t("tools.capacity.title")}</h1>
-      <form noValidate onSubmit={handleSubmit}>
-        <label htmlFor="capacity-formula">{t("capacity.formula")}</label>
-        <input
-          id="capacity-formula"
-          name="formula"
-          value={formula}
-          onChange={(event) => setFormula(event.target.value)}
-          aria-describedby="capacity-formula-help capacity-error"
-        />
-        <small id="capacity-formula-help">{t("capacity.formulaHelp")}</small>
-        <label htmlFor="capacity-electrons">{t("capacity.electrons")}</label>
-        <input
-          id="capacity-electrons"
-          name="electrons"
-          inputMode="decimal"
-          value={electrons}
-          onChange={(event) => setElectrons(event.target.value)}
-          aria-describedby="capacity-error"
-        />
-        <button type="submit">{t("calculator.calculate")}</button>
-      </form>
-      <div id="capacity-error" aria-live="polite">{error ? getErrorMessage(error, t) : ""}</div>
+      <header className="tool-page-header">
+        <h1>{t("tools.capacity.title")}</h1>
+      </header>
+      <div className="tool-layout">
+        <div className="tool-panel">
+          <form className="tool-form" noValidate onSubmit={handleSubmit}>
+            <label htmlFor="capacity-formula">{t("capacity.formula")}</label>
+            <input
+              id="capacity-formula"
+              name="formula"
+              value={formula}
+              onChange={(event) => setFormula(event.target.value)}
+              aria-describedby="capacity-formula-help capacity-error"
+            />
+            <small id="capacity-formula-help">{t("capacity.formulaHelp")}</small>
+            <label htmlFor="capacity-electrons">{t("capacity.electrons")}</label>
+            <input
+              id="capacity-electrons"
+              name="electrons"
+              inputMode="decimal"
+              value={electrons}
+              onChange={(event) => setElectrons(event.target.value)}
+              aria-describedby="capacity-error"
+            />
+            <button type="submit">{t("calculator.calculate")}</button>
+          </form>
+          <div className="tool-validation" id="capacity-error" aria-live="polite">{error ? getErrorMessage(error, t) : ""}</div>
+        </div>
 
-      {result && (
-        <section aria-labelledby="capacity-result">
-          <h2 id="capacity-result">{t("capacity.result")}</h2>
-          <p>Q = nF/(3.6M)</p>
-          <dl>
-            <dt>M</dt>
-            <dd>{formatNumber(result.molarMass)} g/mol</dd>
-            <dt>n</dt>
-            <dd>{formatNumber(result.electrons)}</dd>
-            <dt>Q</dt>
-            <dd>{formatNumber(result.capacity)} mAh/g</dd>
-          </dl>
-          <p>Q = ({formatNumber(result.electrons)} × {FARADAY_CONSTANT}) / (3.6 × {formatNumber(result.molarMass)}) = {formatNumber(result.capacity)} mAh/g</p>
-        </section>
-      )}
+        {result && (
+          <section className="tool-panel" aria-labelledby="capacity-result">
+            <h2 id="capacity-result">{t("capacity.result")}</h2>
+            <p>Q = nF/(3.6M)</p>
+            <div className="tool-result-table">
+              <table>
+                <tbody>
+                  <tr><th scope="row">M</th><td>{formatNumber(result.molarMass)} g/mol</td></tr>
+                  <tr><th scope="row">n</th><td>{formatNumber(result.electrons)}</td></tr>
+                  <tr><th scope="row">Q</th><td>{formatNumber(result.capacity)} mAh/g</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>Q = ({formatNumber(result.electrons)} × {FARADAY_CONSTANT}) / (3.6 × {formatNumber(result.molarMass)}) = {formatNumber(result.capacity)} mAh/g</p>
+          </section>
+        )}
+      </div>
     </section>
   );
 }

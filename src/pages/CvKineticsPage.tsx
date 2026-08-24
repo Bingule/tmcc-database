@@ -105,16 +105,19 @@ export function CvKineticsPage() {
   return (
     <section className="tools-page cv-page">
       <Breadcrumbs current={t("cv.title")} />
-      <h1>{t("cv.title")}</h1>
-      <p>{t("cv.subtitle")}</p>
+      <header className="tool-page-header">
+        <h1>{t("cv.title")}</h1>
+        <p>{t("cv.subtitle")}</p>
+      </header>
 
-      <section className="tool-section cv-import">
-        <h2>{t("cv.import.title")}</h2>
-        <p>{t("cv.import.help")}</p>
-        <p>{t("cv.import.accepted")}</p>
-        <label>{t("cv.upload")}<input aria-label={t("cv.aria.file")} type="file" accept=".csv,.txt,.xlsx" onChange={(event) => void importFile(event.currentTarget.files?.[0])} /></label>
-        <p aria-live="polite" role={errorCode ? "alert" : undefined}>{errorCode ? errorMessage(errorCode, t) : ""}</p>
-      </section>
+      <div className="tool-layout">
+        <section className="tool-section cv-import">
+          <h2>{t("cv.import.title")}</h2>
+          <p>{t("cv.import.help")}</p>
+          <p>{t("cv.import.accepted")}</p>
+          <label>{t("cv.upload")}<input aria-label={t("cv.aria.file")} type="file" accept=".csv,.txt,.xlsx" onChange={(event) => void importFile(event.currentTarget.files?.[0])} /></label>
+          <p className="tool-validation" aria-live="polite" role={errorCode ? "alert" : undefined}>{errorCode ? errorMessage(errorCode, t) : ""}</p>
+        </section>
 
       <section className="tool-section cv-preview">
         <h2>{t("cv.preview.title")}</h2>
@@ -166,7 +169,7 @@ export function CvKineticsPage() {
           rows={dunnRows(analysis, selectedContribution, selectedSeriesIndex)} />
       </section>
 
-      <section className="tool-section cv-results">
+      <section className="tool-section tool-section-wide cv-results">
         <h2>{t("cv.results.title")}</h2>
         <ScientificLineChart title={t("cv.dunn.contributionChart")} xLabel={`${t("cv.table.scanRate")} (mV/s)`} yLabel="%"
           emptyLabel={t("cv.chart.empty")} legendLabel={t("cv.chart.legend")} series={contributionChart} exportId="cv-contribution-chart" />
@@ -176,7 +179,7 @@ export function CvKineticsPage() {
           rows={(analysis?.dunn.points ?? []).map((point) => [point.potential, point.k1, point.k2, point.rSquared, point.pointCount])} />
       </section>
 
-      <section className="tool-section cv-export">
+      <section className="tool-section tool-section-wide cv-export">
         <h2>{t("cv.export.title")}</h2><h3>{t("cv.export.csv")}</h3>
         {csvFiles.map((filename) => <button key={filename} type="button" disabled={!valid} onClick={() => handleCsvExport(filename)}>{filename}</button>)}
         <h3>{t("cv.export.figures")}</h3>
@@ -185,6 +188,7 @@ export function CvKineticsPage() {
           <button key={`${id}-png`} type="button" disabled={!valid} onClick={() => void handleFigureExport(id, "png")}>{t("cv.export.png")} — {id}.png</button>
         ])}
       </section>
+      </div>
     </section>
   );
 }
@@ -203,7 +207,7 @@ function errorMessage(code: CvParseErrorCode | "noOverlap" | "noBFit" | "analysi
 
 function DataTable({ headers, rows, tableId }: { headers: string[]; rows: Array<Array<string | number | null>>; tableId?: string }) {
   if (rows.length === 0) return null;
-  return <div className="tool-table-wrap"><table data-table-id={tableId}><thead><tr>{headers.map((header) => <th key={header}>{header}</th>)}</tr></thead>
+  return <div className="tool-table-wrap"><table data-table-id={tableId}><thead><tr>{headers.map((header) => <th scope="col" key={header}>{header}</th>)}</tr></thead>
     <tbody>{rows.map((row, index) => <tr key={index}>{row.map((cell, cellIndex) => <td key={cellIndex}>{format(cell)}</td>)}</tr>)}</tbody></table></div>;
 }
 

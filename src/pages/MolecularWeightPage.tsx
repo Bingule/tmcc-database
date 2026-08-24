@@ -23,51 +23,57 @@ export function MolecularWeightPage() {
   return (
     <section className="tools-page calculator-page">
       <Breadcrumbs current={t("tools.molecularWeight.title")} />
-      <h1>{t("tools.molecularWeight.title")}</h1>
-      <form noValidate onSubmit={handleSubmit}>
-        <label htmlFor="molecular-weight-formula">{t("molecularWeight.formula")}</label>
-        <input
-          id="molecular-weight-formula"
-          name="formula"
-          value={formula}
-          onChange={(event) => setFormula(event.target.value)}
-          aria-describedby="molecular-weight-formula-help molecular-weight-error"
-        />
-        <small id="molecular-weight-formula-help">{t("molecularWeight.formulaHelp")}</small>
-        <button type="submit">{t("calculator.calculate")}</button>
-      </form>
-      <div id="molecular-weight-error" aria-live="polite">{error ? getFormulaError(error, t) : ""}</div>
+      <header className="tool-page-header">
+        <h1>{t("tools.molecularWeight.title")}</h1>
+      </header>
+      <div className="tool-layout">
+        <div className="tool-panel">
+          <form className="tool-form" noValidate onSubmit={handleSubmit}>
+            <label htmlFor="molecular-weight-formula">{t("molecularWeight.formula")}</label>
+            <input
+              id="molecular-weight-formula"
+              name="formula"
+              value={formula}
+              onChange={(event) => setFormula(event.target.value)}
+              aria-describedby="molecular-weight-formula-help molecular-weight-error"
+            />
+            <small id="molecular-weight-formula-help">{t("molecularWeight.formulaHelp")}</small>
+            <button type="submit">{t("calculator.calculate")}</button>
+          </form>
+          <div className="tool-validation" id="molecular-weight-error" aria-live="polite">{error ? getFormulaError(error, t) : ""}</div>
+        </div>
 
-      {result && (
-        <section aria-labelledby="molecular-weight-result">
-          <h2 id="molecular-weight-result">{t("molecularWeight.result")}</h2>
-          <p><strong>{formatNumber(result.molarMass)} g/mol</strong></p>
-          <div className="calculator-table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th scope="col">{t("molecularWeight.element")}</th>
-                  <th scope="col">{t("molecularWeight.count")}</th>
-                  <th scope="col">{t("molecularWeight.atomicWeight")}</th>
-                  <th scope="col">{t("molecularWeight.massContribution")}</th>
-                  <th scope="col">{t("molecularWeight.massPercent")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {result.elements.map((element) => (
-                  <tr key={element.element}>
-                    <th scope="row">{element.element}</th>
-                    <td>{formatNumber(element.count)}</td>
-                    <td>{formatNumber(element.atomicWeight)} g/mol</td>
-                    <td>{formatNumber(element.mass)} g/mol</td>
-                    <td>{formatNumber(element.massPercent)} %</td>
+        {result && (
+          <section className="tool-panel" aria-labelledby="molecular-weight-result">
+            <h2 id="molecular-weight-result">{t("molecularWeight.result")}</h2>
+            <p><strong>{formatNumber(result.molarMass)} g/mol</strong></p>
+            <div className="tool-result-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th scope="col">{t("molecularWeight.element")}</th>
+                    <th scope="col">{t("molecularWeight.count")}</th>
+                    <th scope="col">{t("molecularWeight.atomicWeight")}</th>
+                    <th scope="col">{t("molecularWeight.massContribution")}</th>
+                    <th scope="col">{t("molecularWeight.massPercent")}</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
+                </thead>
+                <tbody>
+                  {result.elements.map((element) => (
+                    <tr key={element.element}>
+                      <th scope="row">{element.element}</th>
+                      <td>{formatNumber(element.count)}</td>
+                      <td>{formatNumber(element.atomicWeight)} g/mol</td>
+                      <td>{formatNumber(element.mass)} g/mol</td>
+                      <td>{formatNumber(element.massPercent)} %</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+      </div>
     </section>
   );
 }
