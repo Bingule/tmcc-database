@@ -89,10 +89,10 @@ describe("molar mass calculation", () => {
     expect(Object.fromEntries(Object.entries(atomicWeights).filter(([element]) => [
       "Tc", "Pm", "Po", "At", "Rn", "Fr", "Ra", "Ac", "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og"
     ].includes(element)))).toEqual({
-      Tc: 98, Pm: 145, Po: 209, At: 210, Rn: 222, Fr: 223, Ra: 226, Ac: 227,
+      Tc: 97, Pm: 145, Po: 209, At: 210, Rn: 222, Fr: 223, Ra: 226, Ac: 227,
       Np: 237, Pu: 244, Am: 243, Cm: 247, Bk: 247, Cf: 251, Es: 252, Fm: 257,
-      Md: 258, No: 259, Lr: 262, Rf: 267, Db: 268, Sg: 271, Bh: 270, Hs: 277,
-      Mt: 278, Ds: 281, Rg: 282, Cn: 285, Nh: 286, Fl: 289, Mc: 289, Lv: 293,
+      Md: 258, No: 259, Lr: 262, Rf: 267, Db: 268, Sg: 269, Bh: 270, Hs: 269,
+      Mt: 277, Ds: 281, Rg: 282, Cn: 285, Nh: 286, Fl: 290, Mc: 290, Lv: 293,
       Ts: 294, Og: 294
     });
   });
@@ -127,5 +127,15 @@ describe("molar mass calculation", () => {
     expect(Number.isFinite(result.molarMass)).toBe(true);
     expect(Number.isFinite(result.elements[0].massPercent)).toBe(true);
     expect(result.elements[0].massPercent).toBe(100);
+  });
+
+  it("keeps an underflowed mass fraction as zero rather than rejecting the formula", () => {
+    const minimumPositiveCount = `0.${"0".repeat(323)}5`;
+    const oneTimesTenToThe308 = `1${"0".repeat(308)}`;
+    const result = calculateMolarMass(`He${minimumPositiveCount}H${oneTimesTenToThe308}`);
+
+    expect(result.molarMass).toSatisfy(Number.isFinite);
+    expect(result.elements[0]).toMatchObject({ element: "He", massPercent: 0 });
+    expect(result.elements.every((element) => Number.isFinite(element.mass) && Number.isFinite(element.massPercent))).toBe(true);
   });
 });

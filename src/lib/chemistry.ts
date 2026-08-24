@@ -134,9 +134,9 @@ export function calculateMolarMass(formula: string): MolarMassResult {
     molarMass,
     elements: elements.map((element) => {
       const massFraction = element.mass / molarMass;
-      assertPositiveFinite(massFraction, "massFraction");
+      assertNonnegativeFinite(massFraction, "massFraction");
       const massPercent = massFraction * 100;
-      assertPositiveFinite(massPercent, "massPercent");
+      assertNonnegativeFinite(massPercent, "massPercent");
       return { ...element, massPercent };
     })
   };
@@ -171,4 +171,8 @@ function invalidFormula(detail: string): FormulaError {
 
 function assertPositiveFinite(value: number, detail: string): asserts value is number {
   if (!Number.isFinite(value) || value <= 0) throw invalidFormula(detail);
+}
+
+function assertNonnegativeFinite(value: number, detail: string): asserts value is number {
+  if (!Number.isFinite(value) || value < 0) throw invalidFormula(detail);
 }
