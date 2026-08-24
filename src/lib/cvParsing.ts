@@ -1,4 +1,4 @@
-import { readSheet } from "read-excel-file/browser";
+import readXlsxFile from "read-excel-file/browser";
 import type { CvSeries } from "./cvTypes";
 
 export type CvParseErrorCode =
@@ -79,8 +79,20 @@ export async function parseCvFile(file: File): Promise<ParsedCvTable> {
   }
 
   try {
-    const sheet = await readSheet(await readFileArrayBuffer(file));
-    return makeParsedTable(sheet.map((row) => row.map(normalizeWorkbookCell)));
+    const sheets = await readXlsxFile(await readFileArrayBuffer(file));
+    for (const sheet of sheets) {
+      try {
+        const table = makeParsedTable(sheet.data.map((row) => row.map(normalizeWorkbookCell)));
+        if (isUsefulCvTable(table)) return table;
+      } catch (error) {
+        if (!(error instanceof CvParseError)) throw error;
+      }
+    }
+    throw new CvParseError("malformedFile", {
+      reason: "usefulSheetMissing",
+      fileName: file.name,
+      sheetCount: sheets.length
+    });
   } catch (error) {
     if (error instanceof CvParseError) throw error;
     throw new CvParseError("malformedFile", {
@@ -88,6 +100,16 @@ export async function parseCvFile(file: File): Promise<ParsedCvTable> {
       fileName: file.name,
       errorName: error instanceof Error ? error.name : "unknown"
     });
+  }
+}
+
+function isUsefulCvTable(table: ParsedCvTable) {
+  try {
+    confirmCvSeries(table, table.currentColumns.map((_, index) => index + 1));
+    return true;
+  } catch (error) {
+    if (error instanceof CvParseError) return false;
+    throw error;
   }
 }
 
@@ -173,52 +195,102 @@ export function confirmCvSeries(table: ParsedCvTable, scanRates: number[]): CvSe
 
 function detectDelimiter(text: string) {
   const candidates = [",", "\t", ";"] as const;
-  let selected: string | null = null;
-  let highestCount = 0;
-  for (const candidate of candidates) {
-    const { count, lineCount } = countOutsideQuotes(text, candidate);
-    const hasStructure = lineCount >= 2
-      || hasConsistentDelimitedStructure(text, candidate)
-      || (count > 0 && text.includes('"'));
-    if (hasStructure && count > highestCount) {
-      highestCount = count;
-      selected = candidate;
-    }
-  }
-  return selected;
+  const evaluations = candidates.map((delimiter) => evaluateDelimiter(text, delimiter));
+  const valid = evaluations
+    .filter((evaluation) => evaluation.valid)
+    .sort(compareDelimiterEvaluations);
+  if (valid.length > 0) return valid[0].delimiter;
+  if (hasValidWhitespaceCvStructure(text)) return null;
+
+  const malformed = evaluations
+    .filter((evaluation) => evaluation.headerCurrentCount > 0 || evaluation.quotedCvPrefix)
+    .sort(compareDelimiterEvaluations);
+  return malformed[0]?.delimiter ?? null;
 }
 
-function countOutsideQuotes(text: string, delimiter: string) {
-  let count = 0;
-  let lineCount = 0;
-  let lineHasDelimiter = false;
-  let quoted = false;
-  for (let index = 0; index < text.length; index += 1) {
-    if (text[index] === '"') {
-      if (quoted && text[index + 1] === '"') index += 1;
-      else quoted = !quoted;
-    } else if (!quoted && text[index] === delimiter) {
-      count += 1;
-      lineHasDelimiter = true;
-    } else if (!quoted && text[index] === "\n") {
-      if (lineHasDelimiter) lineCount += 1;
-      lineHasDelimiter = false;
-    }
-  }
-  if (lineHasDelimiter) lineCount += 1;
-  return { count, lineCount };
-}
-
-function hasConsistentDelimitedStructure(text: string, delimiter: string) {
+function hasValidWhitespaceCvStructure(text: string) {
+  const rows = parseWhitespaceRows(text);
+  if (rows.length < 2 || rows[0].length < 2
+    || rows.some((row) => row.length !== rows[0].length)) return false;
   try {
-    const rows = parseDelimitedRows(text, delimiter)
-      .filter((row) => row.some((cell) => cell.trim().length > 0));
-    return rows.length >= 2
-      && rows[0].length > 1
-      && rows.every((row) => row.length === rows[0].length);
+    const table = makeParsedTable(rows.map((row) => row.map(parseTextCell)));
+    return table.rows.some((row) => finiteNumber(row[table.potentialColumn]) !== null
+      && table.currentColumns.some((currentColumn) => finiteNumber(row[currentColumn.column]) !== null));
   } catch {
     return false;
   }
+}
+
+interface DelimiterEvaluation {
+  delimiter: string;
+  valid: boolean;
+  validDataRows: number;
+  headerCurrentCount: number;
+  columnCount: number;
+  consistentRows: number;
+  quotedCvPrefix: boolean;
+}
+
+function evaluateDelimiter(text: string, delimiter: string): DelimiterEvaluation {
+  const empty = {
+    delimiter,
+    valid: false,
+    validDataRows: 0,
+    headerCurrentCount: 0,
+    columnCount: 0,
+    consistentRows: 0,
+    quotedCvPrefix: looksLikeQuotedCvDelimiter(text, delimiter)
+  };
+  let rows: string[][];
+  try {
+    rows = parseDelimitedRows(text, delimiter)
+      .filter((row) => row.some((cell) => cell.trim().length > 0));
+  } catch {
+    return empty;
+  }
+  if (rows.length === 0) return empty;
+
+  const columnCount = rows[0].length;
+  const headers = rows[0].map((cell) => headerText(parseTextCell(cell)));
+  const potentialColumn = headers.findIndex(isPotentialHeader);
+  const headerCurrentCount = headers.filter((header, column) => column !== potentialColumn
+    && (inferScanRate(header) !== null || isCurrentHeader(header))).length;
+  const consistentRows = rows.filter((row) => row.length === columnCount).length;
+  if (rows.length < 2 || columnCount < 2 || consistentRows !== rows.length
+    || potentialColumn === -1 || headerCurrentCount === 0) {
+    return { ...empty, columnCount, consistentRows, headerCurrentCount };
+  }
+
+  let table: ParsedCvTable;
+  try {
+    table = makeParsedTable(rows.map((row) => row.map(parseTextCell)));
+  } catch {
+    return { ...empty, columnCount, consistentRows, headerCurrentCount };
+  }
+  const validDataRows = table.rows.filter((row) => finiteNumber(row[table.potentialColumn]) !== null
+    && table.currentColumns.some((currentColumn) => finiteNumber(row[currentColumn.column]) !== null)).length;
+  return {
+    ...empty,
+    valid: validDataRows > 0,
+    validDataRows,
+    headerCurrentCount: table.currentColumns.length,
+    columnCount,
+    consistentRows
+  };
+}
+
+function compareDelimiterEvaluations(left: DelimiterEvaluation, right: DelimiterEvaluation) {
+  return right.validDataRows - left.validDataRows
+    || right.headerCurrentCount - left.headerCurrentCount
+    || right.columnCount - left.columnCount
+    || right.consistentRows - left.consistentRows;
+}
+
+function looksLikeQuotedCvDelimiter(text: string, delimiter: string) {
+  const delimiterIndex = text.indexOf(delimiter);
+  return delimiterIndex > 0
+    && text.includes(`${delimiter}"`)
+    && isPotentialHeader(text.slice(0, delimiterIndex).trim());
 }
 
 function parseDelimitedRows(text: string, delimiter: string) {
@@ -368,7 +440,7 @@ function inferScanRate(header: string) {
     .trim();
   if (isNumericToken(normalized)) return positiveFiniteOrNull(Number(normalized));
   const match = normalized.match(
-    /([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?)\s*m\s*v\s*(?:\/\s*s|(?:[·*]\s*)?s\s*(?:\^\s*)?-\s*1)/i
+    /^[^\d.,+-]*([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?)\s*m\s*v\s*(?:\/\s*s|(?:[·*]\s*)?s\s*(?:\^\s*)?-\s*1)$/i
   );
   return match ? positiveFiniteOrNull(Number(match[1])) : null;
 }

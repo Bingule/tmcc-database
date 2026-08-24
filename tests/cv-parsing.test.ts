@@ -18,13 +18,18 @@ function expectParseError(action: () => unknown, code: CvParseErrorCode, detail?
   }
 }
 
-async function expectAsyncParseError(action: () => Promise<unknown>, code: CvParseErrorCode) {
+async function expectAsyncParseError(
+  action: () => Promise<unknown>,
+  code: CvParseErrorCode,
+  detail?: Record<string, unknown>
+) {
   try {
     await action();
     throw new Error("expectedCvParseError");
   } catch (error) {
     expect(error).toBeInstanceOf(CvParseError);
     expect((error as CvParseError).code).toBe(code);
+    if (detail) expect((error as CvParseError).detail).toMatchObject(detail);
   }
 }
 
@@ -73,6 +78,44 @@ describe("parseDelimitedCv", () => {
     expect(table.currentColumns).toHaveLength(2);
   });
 
+  it("prefers a semantically valid whitespace table over malformed delimiter punctuation", () => {
+    const table = parseDelimitedCv("Potential;foo Current 2\n0 10 20\n1 11 21");
+
+    expect(table.headers).toEqual(["Potential;foo", "Current", "2"]);
+    expect(table.currentColumns.map((column) => column.header)).toEqual(["Current", "2"]);
+  });
+
+  it.each([
+    [
+      "comma",
+      [
+        "Potential,1,2,Notes",
+        "0,10,20,a;b;c;d;e;f;g",
+        "1,11,21,h;i;j;k;l;m;n"
+      ].join("\n"),
+      ["Potential", "1", "2", "Notes"]
+    ],
+    [
+      "semicolon",
+      [
+        "Potential;1;2;Notes",
+        "0;10;20;a,b,c,d,e,f,g",
+        "1;11;21;h,i,j,k,l,m,n"
+      ].join("\n"),
+      ["Potential", "1", "2", "Notes"]
+    ]
+  ])("chooses the %s delimiter from row structure and CV semantics instead of punctuation counts", (
+    _name,
+    text,
+    headers
+  ) => {
+    const table = parseDelimitedCv(text);
+
+    expect(table.headers).toEqual(headers);
+    expect(table.rows[0]).toHaveLength(4);
+    expect(table.currentColumns.map((column) => column.header)).toEqual(["1", "2"]);
+  });
+
   it("only accepts exact electrochemical E headings rather than matching e inside arbitrary words", () => {
     expect(parseDelimitedCv("E (V),1,2\n0,10,20\n1,11,21").potentialColumn).toBe(0);
     expect(parseDelimitedCv("电位,1,2\n0,10,20\n1,11,21").potentialColumn).toBe(0);
@@ -80,6 +123,19 @@ describe("parseDelimitedCv", () => {
       () => parseDelimitedCv("Temperature,Current 1 mV/s\n0,10\n1,11"),
       "potentialColumnMissing"
     );
+  });
+
+  it("infers scan rates only from complete dot-decimal numeric tokens", () => {
+    const table = parseDelimitedCv([
+      'Potential,"1,5 mV/s","1..5 mV/s","1.5.2 mV/s","1.5 mV/s",2',
+      "0,10,20,30,40,50",
+      "1,11,21,31,41,51"
+    ].join("\n"));
+
+    expect(table.currentColumns).toEqual([
+      { column: 4, header: "1.5 mV/s", inferredScanRate: 1.5 },
+      { column: 5, header: "2", inferredScanRate: 2 }
+    ]);
   });
 
   it("rejects empty input, unclosed quotes, malformed row widths, and tables without current columns", () => {
@@ -167,6 +223,38 @@ describe("parseCvFile", () => {
     });
   });
 
+  it("skips a description sheet and selects the first useful CV sheet in workbook order", async () => {
+    const file = makeWorkbookFile([
+      { name: "Read me", rows: [["TMCC CV workbook"], ["Data is on the next sheet"]] },
+      {
+        name: "CV data",
+        rows: [
+          ["Potential", "1 mV/s", "2 mV/s"],
+          [0, 10, 20],
+          [1, 11, 21]
+        ]
+      }
+    ], "multi-sheet.xlsx");
+
+    const table = await parseCvFile(file);
+
+    expect(table.headers).toEqual(["Potential", "1 mV/s", "2 mV/s"]);
+    expect(table.rows).toEqual([[0, 10, 20], [1, 11, 21]]);
+  });
+
+  it("reports a stable error when no workbook sheet contains a useful CV table", async () => {
+    const file = makeWorkbookFile([
+      { name: "Read me", rows: [["TMCC CV workbook"]] },
+      { name: "Empty", rows: [] }
+    ], "no-useful-sheet.xlsx");
+
+    await expectAsyncParseError(() => parseCvFile(file), "malformedFile", {
+      reason: "usefulSheetMissing",
+      fileName: "no-useful-sheet.xlsx",
+      sheetCount: 2
+    });
+  });
+
   it("explicitly rejects legacy .xls files and wraps malformed XLSX files", async () => {
     await expectAsyncParseError(
       () => parseCvFile(new File(["legacy"], "legacy.xls", { type: "application/vnd.ms-excel" })),
@@ -174,7 +262,8 @@ describe("parseCvFile", () => {
     );
     await expectAsyncParseError(
       () => parseCvFile(new File(["not a zip"], "broken.xlsx")),
-      "malformedFile"
+      "malformedFile",
+      { reason: "invalidXlsx", fileName: "broken.xlsx" }
     );
   });
 
@@ -200,13 +289,36 @@ describe("parseCvFile", () => {
 });
 
 function makeMinimalXlsxFile() {
+  return makeWorkbookFile([{
+    name: "CV",
+    rows: [
+      ["Potential", "1 mV/s", "Current 5 mV s-1"],
+      [0, 10, 50],
+      [1, 11, 51]
+    ]
+  }], "cv-wide.xlsx");
+}
+
+function makeWorkbookFile(
+  sheets: Array<{ name: string; rows: Array<Array<string | number | null>> }>,
+  fileName: string
+) {
+  const sheetOverrides = sheets.map((_, index) =>
+    `<Override PartName="/xl/worksheets/sheet${index + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`
+  ).join("");
+  const workbookSheets = sheets.map((sheet, index) =>
+    `<sheet name="${escapeXml(sheet.name)}" sheetId="${index + 1}" r:id="rId${index + 1}"/>`
+  ).join("");
+  const workbookRelationships = sheets.map((_, index) =>
+    `<Relationship Id="rId${index + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${index + 1}.xml"/>`
+  ).join("");
   const entries: Record<string, string> = {
     "[Content_Types].xml": `<?xml version="1.0" encoding="UTF-8"?>
       <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
         <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
         <Default Extension="xml" ContentType="application/xml"/>
         <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
-        <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+        ${sheetOverrides}
       </Types>`,
     "_rels/.rels": `<?xml version="1.0" encoding="UTF-8"?>
       <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
@@ -214,23 +326,44 @@ function makeMinimalXlsxFile() {
       </Relationships>`,
     "xl/workbook.xml": `<?xml version="1.0" encoding="UTF-8"?>
       <workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-        <sheets><sheet name="CV" sheetId="1" r:id="rId1"/></sheets>
+        <sheets>${workbookSheets}</sheets>
       </workbook>`,
     "xl/_rels/workbook.xml.rels": `<?xml version="1.0" encoding="UTF-8"?>
       <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-        <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
-      </Relationships>`,
-    "xl/worksheets/sheet1.xml": `<?xml version="1.0" encoding="UTF-8"?>
-      <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>
-        <row r="1"><c r="A1" t="inlineStr"><is><t>Potential</t></is></c><c r="B1" t="inlineStr"><is><t>1 mV/s</t></is></c><c r="C1" t="inlineStr"><is><t>Current 5 mV s-1</t></is></c></row>
-        <row r="2"><c r="A2"><v>0</v></c><c r="B2"><v>10</v></c><c r="C2"><v>50</v></c></row>
-        <row r="3"><c r="A3"><v>1</v></c><c r="B3"><v>11</v></c><c r="C3"><v>51</v></c></row>
-      </sheetData></worksheet>`
+        ${workbookRelationships}
+      </Relationships>`
   };
+  sheets.forEach((sheet, index) => {
+    entries[`xl/worksheets/sheet${index + 1}.xml`] = makeSheetXml(sheet.rows);
+  });
   const archive = makeStoredZip(Object.entries(entries));
-  return new File([archive], "cv-wide.xlsx", {
+  return new File([archive], fileName, {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
   });
+}
+
+function makeSheetXml(rows: Array<Array<string | number | null>>) {
+  const sheetRows = rows.map((row, rowIndex) => {
+    const cells = row.map((value, columnIndex) => {
+      if (value === null) return "";
+      const reference = `${String.fromCharCode(65 + columnIndex)}${rowIndex + 1}`;
+      return typeof value === "number"
+        ? `<c r="${reference}"><v>${value}</v></c>`
+        : `<c r="${reference}" t="inlineStr"><is><t>${escapeXml(value)}</t></is></c>`;
+    }).join("");
+    return `<row r="${rowIndex + 1}">${cells}</row>`;
+  }).join("");
+  return `<?xml version="1.0" encoding="UTF-8"?>
+    <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${sheetRows}</sheetData></worksheet>`;
+}
+
+function escapeXml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
 }
 
 function makeStoredZip(entries: Array<[string, string]>) {
