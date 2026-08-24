@@ -12,6 +12,8 @@ interface ScientificLineChartProps {
   title: string;
   xLabel: string;
   yLabel: string;
+  emptyLabel: string;
+  legendLabel: string;
   series: ChartSeries[];
   selectedX?: number;
   onSelectX?: (x: number) => void;
@@ -25,6 +27,8 @@ export function ScientificLineChart({
   title,
   xLabel,
   yLabel,
+  emptyLabel,
+  legendLabel,
   series,
   selectedX,
   onSelectX,
@@ -38,15 +42,18 @@ export function ScientificLineChart({
   const allPoints = finiteSeries.flatMap((item) => item.points);
 
   if (allPoints.length === 0) {
-    return <div className="scientific-chart-empty" role="status">No data available</div>;
+    return <div className="scientific-chart-empty" role="status">{emptyLabel}</div>;
   }
 
-  const xDomain = expandedDomain(allPoints.map((point) => point.x));
-  const yDomain = expandedDomain(allPoints.map((point) => point.y));
-  const plotWidth = dimensions.width - margin.left - margin.right;
-  const plotHeight = dimensions.height - margin.top - margin.bottom;
-  const projectX = (value: number) => margin.left + (value - xDomain[0]) / (xDomain[1] - xDomain[0]) * plotWidth;
-  const projectY = (value: number) => dimensions.height - margin.bottom - (value - yDomain[0]) / (yDomain[1] - yDomain[0]) * plotHeight;
+  const xDomain = expandedDomain(allPoints, "x");
+  const yDomain = expandedDomain(allPoints, "y");
+  const legendColumns = 4;
+  const legendRows = Math.ceil(finiteSeries.length / legendColumns);
+  const chartMargin = { ...margin, top: Math.max(margin.top, 18 + legendRows * 22) };
+  const plotWidth = dimensions.width - chartMargin.left - chartMargin.right;
+  const plotHeight = dimensions.height - chartMargin.top - chartMargin.bottom;
+  const projectX = (value: number) => chartMargin.left + normalized(value, xDomain) * plotWidth;
+  const projectY = (value: number) => dimensions.height - chartMargin.bottom - normalized(value, yDomain) * plotHeight;
   const xTicks = ticks(xDomain);
   const yTicks = ticks(yDomain);
   const selectedPoint = Number.isFinite(selectedX)
@@ -65,33 +72,70 @@ export function ScientificLineChart({
         className="scientific-chart-svg"
       >
         <title id={titleId}>{title}</title>
+        <g
+          className="scientific-chart-legend"
+          data-chart-legend="true"
+          role="group"
+          aria-label={legendLabel}
+        >
+          {finiteSeries.map((item, index) => {
+            const column = index % legendColumns;
+            const row = Math.floor(index / legendColumns);
+            const x = chartMargin.left + column * (plotWidth / legendColumns);
+            const y = 17 + row * 22;
+            return (
+              <g key={item.id} className="scientific-chart-legend-item" transform={`translate(${x} ${y})`}>
+                <line
+                  x1={0}
+                  y1={0}
+                  x2={26}
+                  y2={0}
+                  stroke={item.color}
+                  strokeWidth={2.25}
+                  strokeDasharray={item.dash}
+                />
+                <text x={32} y={4} fill="#263238" fontSize={11}>{item.label}</text>
+              </g>
+            );
+          })}
+        </g>
         <g className="scientific-chart-grid" aria-hidden="true">
           {yTicks.map((tick) => (
-            <line key={`y-grid-${tick}`} x1={margin.left} y1={projectY(tick)} x2={dimensions.width - margin.right} y2={projectY(tick)} />
+            <line
+              key={`y-grid-${tick}`}
+              x1={chartMargin.left}
+              y1={projectY(tick)}
+              x2={dimensions.width - chartMargin.right}
+              y2={projectY(tick)}
+              stroke="#d7dfdc"
+              strokeWidth={1}
+            />
           ))}
         </g>
         <g className="scientific-chart-axes" aria-hidden="true">
-          <line x1={margin.left} y1={margin.top} x2={margin.left} y2={dimensions.height - margin.bottom} />
-          <line x1={margin.left} y1={dimensions.height - margin.bottom} x2={dimensions.width - margin.right} y2={dimensions.height - margin.bottom} />
+          <line x1={chartMargin.left} y1={chartMargin.top} x2={chartMargin.left} y2={dimensions.height - chartMargin.bottom} stroke="#607d8b" strokeWidth={1.25} />
+          <line x1={chartMargin.left} y1={dimensions.height - chartMargin.bottom} x2={dimensions.width - chartMargin.right} y2={dimensions.height - chartMargin.bottom} stroke="#607d8b" strokeWidth={1.25} />
           {xTicks.map((tick) => (
             <g key={`x-${tick}`}>
-              <line x1={projectX(tick)} y1={dimensions.height - margin.bottom} x2={projectX(tick)} y2={dimensions.height - margin.bottom + 6} />
-              <text x={projectX(tick)} y={dimensions.height - margin.bottom + 22} textAnchor="middle">{formatTick(tick)}</text>
+              <line x1={projectX(tick)} y1={dimensions.height - chartMargin.bottom} x2={projectX(tick)} y2={dimensions.height - chartMargin.bottom + 6} stroke="#607d8b" strokeWidth={1.25} />
+              <text x={projectX(tick)} y={dimensions.height - chartMargin.bottom + 22} textAnchor="middle" fill="#455a64" fontSize={11}>{formatTick(tick)}</text>
             </g>
           ))}
           {yTicks.map((tick) => (
             <g key={`y-${tick}`}>
-              <line x1={margin.left - 6} y1={projectY(tick)} x2={margin.left} y2={projectY(tick)} />
-              <text x={margin.left - 10} y={projectY(tick) + 4} textAnchor="end">{formatTick(tick)}</text>
+              <line x1={chartMargin.left - 6} y1={projectY(tick)} x2={chartMargin.left} y2={projectY(tick)} stroke="#607d8b" strokeWidth={1.25} />
+              <text x={chartMargin.left - 10} y={projectY(tick) + 4} textAnchor="end" fill="#455a64" fontSize={11}>{formatTick(tick)}</text>
             </g>
           ))}
-          <text className="scientific-chart-x-label" x={margin.left + plotWidth / 2} y={dimensions.height - 12} textAnchor="middle">{xLabel}</text>
+          <text className="scientific-chart-x-label" x={chartMargin.left + plotWidth / 2} y={dimensions.height - 12} textAnchor="middle" fill="#263238" fontSize={12}>{xLabel}</text>
           <text
             className="scientific-chart-y-label"
             x={18}
-            y={margin.top + plotHeight / 2}
+            y={chartMargin.top + plotHeight / 2}
             textAnchor="middle"
-            transform={`rotate(-90 18 ${margin.top + plotHeight / 2})`}
+            transform={`rotate(-90 18 ${chartMargin.top + plotHeight / 2})`}
+            fill="#263238"
+            fontSize={12}
           >{yLabel}</text>
         </g>
         <g className="scientific-chart-series">
@@ -135,9 +179,9 @@ export function ScientificLineChart({
           <g className="scientific-chart-selection" aria-hidden="true">
             <line
               x1={projectX(selectedPoint.x)}
-              y1={margin.top}
+              y1={chartMargin.top}
               x2={projectX(selectedPoint.x)}
-              y2={dimensions.height - margin.bottom}
+              y2={dimensions.height - chartMargin.bottom}
               stroke="#263238"
               strokeDasharray="3 3"
             />
@@ -153,31 +197,41 @@ export function ScientificLineChart({
           </g>
         )}
       </svg>
-      <div className="scientific-chart-legend" aria-label={`${title} legend`}>
-        {finiteSeries.map((item) => (
-          <span key={item.id} className="scientific-chart-legend-item">
-            <svg width="28" height="10" aria-hidden="true">
-              <line x1="1" y1="5" x2="27" y2="5" stroke={item.color} strokeWidth="2.25" strokeDasharray={item.dash} />
-            </svg>
-            {item.label}
-          </span>
-        ))}
-      </div>
     </div>
   );
 }
 
-function expandedDomain(values: number[]): [number, number] {
-  const min = Math.min(...values);
-  const max = Math.max(...values);
+function expandedDomain(points: Array<{ x: number; y: number }>, axis: "x" | "y"): [number, number] {
+  let min = Number.POSITIVE_INFINITY;
+  let max = Number.NEGATIVE_INFINITY;
+  for (const point of points) {
+    const value = point[axis];
+    if (value < min) min = value;
+    if (value > max) max = value;
+  }
   if (min !== max) return [min, max];
-  const padding = Math.abs(min) * 0.05 || 1;
-  return [min - padding, max + padding];
+  if (min === 0) return [-1, 1];
+
+  const padding = Math.abs(min) * 0.05 || Number.MIN_VALUE;
+  const lower = min - padding;
+  const upper = max + padding;
+  if (Number.isFinite(lower) && lower < min && Number.isFinite(upper) && upper > max) return [lower, upper];
+  if (Number.isFinite(lower) && lower < min) return [lower, max];
+  if (Number.isFinite(upper) && upper > max) return [min, upper];
+  return min > 0 ? [min / 2, min] : [min, min / 2];
 }
 
 function ticks([min, max]: [number, number], count = 5): number[] {
-  const step = (max - min) / (count - 1);
-  return Array.from({ length: count }, (_, index) => min + step * index);
+  return Array.from({ length: count }, (_, index) => {
+    const ratio = index / (count - 1);
+    return min * (1 - ratio) + max * ratio;
+  });
+}
+
+function normalized(value: number, [min, max]: [number, number]): number {
+  const scale = Math.max(Math.abs(min), Math.abs(max), Number.MIN_VALUE);
+  const scaledMin = min / scale;
+  return (value / scale - scaledMin) / (max / scale - scaledMin);
 }
 
 function linePath(

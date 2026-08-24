@@ -25,6 +25,8 @@ const baseProps = {
   title: "CV kinetics",
   xLabel: "Potential (V)",
   yLabel: "Current (A)",
+  emptyLabel: "No chart data",
+  legendLabel: "Series legend",
   series: [
     { id: "measured", label: "Measured", color: "#1155cc", points: [{ x: 0, y: 1 }, { x: 1, y: 3 }] },
     { id: "fit", label: "Fit", color: "#cc3311", dash: "6 4", points: [{ x: 0, y: 1.5 }, { x: 1, y: 2.5 }] }
@@ -46,6 +48,13 @@ describe("ScientificLineChart", () => {
     expect(view.textContent).toContain("Measured");
     expect(view.textContent).toContain("Fit");
     expect(svg?.querySelector('path[data-series-id="fit"]')?.getAttribute("stroke-dasharray")).toBe("6 4");
+    expect(svg?.querySelector('[data-chart-legend="true"]')?.getAttribute("aria-label")).toBe("Series legend");
+    expect(svg?.querySelector('[data-chart-legend="true"]')?.textContent).toContain("Measured");
+    expect(svg?.querySelector('[data-chart-legend="true"]')?.textContent).toContain("Fit");
+    expect(svg?.querySelector('.scientific-chart-axes > line')?.getAttribute("stroke")).toBeTruthy();
+    expect(svg?.querySelector('.scientific-chart-grid > line')?.getAttribute("stroke")).toBeTruthy();
+    expect(svg?.querySelector('.scientific-chart-axes text')?.getAttribute("fill")).toBeTruthy();
+    expect(view.querySelector('.scientific-chart-legend:not([data-chart-legend="true"])')).toBeNull();
   });
 
   it("shows a stable empty state when no finite points exist", async () => {
@@ -54,8 +63,33 @@ describe("ScientificLineChart", () => {
       series: [{ id: "empty", label: "Empty", color: "#000", points: [{ x: Number.NaN, y: 1 }] }]
     });
 
-    expect(view.querySelector('[role="status"]')?.textContent).toBe("No data available");
+    expect(view.querySelector('[role="status"]')?.textContent).toBe("No chart data");
     expect(view.querySelector("svg")).toBeNull();
+  });
+
+  it("keeps paths and ticks finite for ordinary, maximum, and mixed non-finite values", async () => {
+    for (const points of [
+      [{ x: 4, y: 9 }, { x: 4, y: 9 }],
+      [{ x: Number.MAX_VALUE, y: Number.MAX_VALUE }],
+      [{ x: Number.NEGATIVE_INFINITY, y: 1 }, { x: 0, y: 0 }, { x: Number.NaN, y: 2 }]
+    ]) {
+      const view = await renderChart({
+        ...baseProps,
+        series: [{ id: "extreme", label: "Extreme", color: "#000", points }]
+      });
+      const svgMarkup = view.querySelector("svg")?.outerHTML ?? "";
+      expect(svgMarkup).not.toMatch(/(?:NaN|Infinity)/);
+    }
+  });
+
+  it("computes a domain for more than 150,000 finite points without argument spreading", async () => {
+    const points = Array.from({ length: 150_001 }, (_, index) => ({ x: index, y: index % 17 }));
+    const view = await renderChart({
+      ...baseProps,
+      series: [{ id: "large", label: "Large", color: "#000", points }]
+    });
+
+    expect(view.querySelector('path[data-series-id="large"]')?.getAttribute("d")).not.toMatch(/(?:NaN|Infinity)/);
   });
 
   it("selects a data point with the mouse and marks the selected x value", async () => {

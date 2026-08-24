@@ -1,7 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { downloadCsv, downloadPng, downloadSvg, rowsToCsv } from "../src/lib/toolExport";
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+  document.body.replaceChildren();
+});
 
 function readBlob(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -104,5 +108,49 @@ describe("browser downloads", () => {
 
     await expect(downloadPng(svg, "plot.png")).rejects.toThrow("Unable to load SVG image");
     expect(mocks.revoked).toEqual(["blob:test-1"]);
+  });
+
+  it("rejects a missing canvas context and revokes the SVG object URL", async () => {
+    const mocks = installUrlMocks();
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 100 50");
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
+    class LoadingImage {
+      onload: null | (() => void) = null;
+      onerror: null | (() => void) = null;
+      set src(_value: string) { queueMicrotask(() => this.onload?.()); }
+    }
+    vi.stubGlobal("Image", LoadingImage);
+
+    await expect(downloadPng(svg, "plot.png")).rejects.toThrow("Canvas rendering is unavailable");
+    expect(mocks.revoked).toEqual(["blob:test-1"]);
+    expect(document.querySelector("a")).toBeNull();
+  });
+
+  it("rejects an empty PNG blob and revokes the SVG object URL", async () => {
+    const mocks = installUrlMocks();
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 100 50");
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({ drawImage: vi.fn() } as unknown as CanvasRenderingContext2D);
+    vi.spyOn(HTMLCanvasElement.prototype, "toBlob").mockImplementation((callback) => callback(null));
+    class LoadingImage {
+      onload: null | (() => void) = null;
+      onerror: null | (() => void) = null;
+      set src(_value: string) { queueMicrotask(() => this.onload?.()); }
+    }
+    vi.stubGlobal("Image", LoadingImage);
+
+    await expect(downloadPng(svg, "plot.png")).rejects.toThrow("Unable to create PNG image");
+    expect(mocks.revoked).toEqual(["blob:test-1"]);
+    expect(document.querySelector("a")).toBeNull();
+  });
+
+  it("removes the anchor and revokes the URL when a download click throws", () => {
+    const mocks = installUrlMocks();
+    mocks.click.mockImplementation(() => { throw new Error("blocked"); });
+
+    expect(() => downloadCsv("results.csv", "a\r\n1")).toThrow("blocked");
+    expect(mocks.revoked).toEqual(["blob:test-1"]);
+    expect(document.querySelector("a")).toBeNull();
   });
 });
