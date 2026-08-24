@@ -4,28 +4,30 @@ import { makeElectronicDownloadFilename } from "../lib/materials";
 import { publicAssetPath } from "../lib/paths";
 import type { MaterialRecord } from "../lib/types";
 import { useNonPassiveWheel } from "../lib/useNonPassiveWheel";
+import { useI18n } from "../i18n/I18nProvider";
 
 type Mode = "dos" | "band";
 type PlotPoint = { x: number; y: number };
 type PlotSeries = { label: string; points: PlotPoint[] };
+type ElectronicStatus = "empty" | "loading" | "error" | null;
 
 export function ElectronicStructureViewer({ material }: { material: MaterialRecord }) {
+  const { t } = useI18n();
   const [mode, setMode] = useState<Mode>("dos");
   const [series, setSeries] = useState<PlotSeries[]>([]);
-  const [status, setStatus] = useState("");
+  const [status, setStatus] = useState<ElectronicStatus>("empty");
   const file = publicAssetPath(mode === "dos" ? material.files.dos : material.files.band_structure);
-  const label = mode === "dos" ? "Density of states" : "Band structure";
 
   useEffect(() => {
     let cancelled = false;
     setSeries([]);
 
     if (!file) {
-      setStatus("-");
+      setStatus("empty");
       return;
     }
 
-    setStatus(`Loading ${label.toLowerCase()} data...`);
+    setStatus("loading");
     fetch(file)
       .then((response) => {
         if (!response.ok) throw new Error("Unable to load electronic data");
@@ -35,32 +37,32 @@ export function ElectronicStructureViewer({ material }: { material: MaterialReco
         if (cancelled) return;
         const parsed = mode === "dos" ? parseDosCsv(text) : parseBandCsv(text);
         setSeries(parsed);
-        setStatus(parsed.length > 0 ? "" : "-");
+        setStatus(parsed.length > 0 ? null : "empty");
       })
       .catch(() => {
         if (cancelled) return;
-        setStatus("Unable to load electronic data");
+        setStatus("error");
       });
 
     return () => {
       cancelled = true;
     };
-  }, [file, label, mode]);
+  }, [file, mode]);
 
   return (
-    <div className="electronic-panel" aria-label="DOS and band structure viewer">
-      <div className="electronic-switch" role="tablist" aria-label="Electronic structure view">
+    <div className="electronic-panel" aria-label={t("electronic.viewer")}>
+      <div className="electronic-switch" role="tablist" aria-label={t("electronic.view")}>
         <button type="button" className={mode === "dos" ? "active" : ""} onClick={() => setMode("dos")}>
-          Density of states
+          {t("electronic.densityOfStates")}
         </button>
         <button type="button" className={mode === "band" ? "active" : ""} onClick={() => setMode("band")}>
-          Band structure
+          {t("electronic.bandStructure")}
         </button>
       </div>
       {file ? (
         <a className="secondary-button electronic-download" href={file} download={makeElectronicDownloadFilename(material, mode)}>
           <Download size={15} />
-          {mode === "dos" ? "Download DOS CSV" : "Download Band CSV"}
+          {mode === "dos" ? t("electronic.downloadDos") : t("electronic.downloadBand")}
         </a>
       ) : null}
 
@@ -68,19 +70,19 @@ export function ElectronicStructureViewer({ material }: { material: MaterialReco
         {series.length > 0 ? (
           <ElectronicPlot
             series={series}
-            xLabel={mode === "dos" ? "Energy - Ef (eV)" : "k-path"}
-            yLabel={mode === "dos" ? "DOS" : "Energy (eV)"}
+            xLabel={mode === "dos" ? t("electronic.energyRelative") : t("electronic.kPath")}
+            yLabel={mode === "dos" ? "DOS" : t("electronic.energy")}
             fermiReference={mode === "dos" ? "vertical" : "horizontal"}
             fermiLevel={readNumericUnitValue(material.electronic?.fermi_level)}
             fixedXRange={mode === "dos" ? [-6, 6] : null}
           />
         ) : (
           <div className="electronic-placeholder">
-            <strong>{status || "-"}</strong>
+            <strong>{status === "loading" ? (mode === "dos" ? t("electronic.loadingDos") : t("electronic.loadingBand")) : status === "error" ? t("electronic.loadError") : "-"}</strong>
             <span>
               {mode === "dos"
-                ? "Add a DOS CSV path to material.files.dos after the GPAW DOS calculation is exported."
-                : "Add a band-structure CSV path to material.files.band_structure after the GPAW band calculation is exported."}
+                ? t("electronic.dosHelp")
+                : t("electronic.bandHelp")}
             </span>
           </div>
         )}
@@ -175,6 +177,7 @@ export function ElectronicPlot({
   fermiLevel: number | null;
   fixedXRange: [number, number] | null;
 }) {
+  const { t } = useI18n();
   const width = 780;
   const height = 320;
   const padding = { top: 78, right: 34, bottom: 48, left: 52 };
@@ -283,7 +286,7 @@ export function ElectronicPlot({
       ref={plotRef}
       viewBox={`0 0 ${width} ${height}`}
       role="img"
-      aria-label={`${yLabel} plot`}
+      aria-label={t("electronic.plotAria", { label: yLabel })}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
@@ -298,7 +301,7 @@ export function ElectronicPlot({
       {zoomRange && (
         <g className="plot-reset" role="button" tabIndex={0} onClick={resetZoom}>
           <rect x={width - padding.right - 96} y="18" width="88" height="24" rx="5" />
-          <text x={width - padding.right - 52} y="34">Reset zoom</text>
+          <text x={width - padding.right - 52} y="34">{t("electronic.resetZoom")}</text>
         </g>
       )}
       <line x1={padding.left} y1={height - padding.bottom} x2={width - padding.right} y2={height - padding.bottom} />

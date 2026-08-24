@@ -1,5 +1,5 @@
-import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { renderWithI18n } from "./i18n-test-utils";
 import {
   getSelectorMatches,
   intercalantOptions,
@@ -10,7 +10,7 @@ import { materials } from "../src/data/materials";
 
 describe("MaterialSelector", () => {
   it("does not render the formula preview card", () => {
-    const markup = renderToStaticMarkup(
+    const markup = renderWithI18n(
       <MaterialSelector materials={materials} selectedId="TMCC-0001" onSelect={() => undefined} />
     );
 
@@ -19,7 +19,7 @@ describe("MaterialSelector", () => {
   });
 
   it("renders available structures as compact inline options", () => {
-    const markup = renderToStaticMarkup(
+    const markup = renderWithI18n(
       <MaterialSelector materials={materials} selectedId="TMCC-0001" onSelect={() => undefined} />
     );
 

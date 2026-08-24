@@ -1,9 +1,9 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { ElectronicPlot, ElectronicStructureViewer, parseDosCsv } from "../src/components/ElectronicStructureViewer";
 import { materials } from "../src/data/materials";
+import { renderWithI18n, withI18n } from "./i18n-test-utils";
 
 describe("ElectronicStructureViewer", () => {
   it("parses total and projected DOS columns as separate curves", () => {
@@ -25,7 +25,7 @@ describe("ElectronicStructureViewer", () => {
       files: { ...materials[0].files, dos: "/figures/TMCC-0001/dos.csv", band_structure: null }
     };
 
-    const markup = renderToStaticMarkup(<ElectronicStructureViewer material={material} />);
+    const markup = renderWithI18n(<ElectronicStructureViewer material={material} />);
 
     expect(markup).toContain('href="/figures/TMCC-0001/dos.csv"');
     expect(markup).toContain('download="Nb2S2C-P-3m1-DOS.csv"');
@@ -33,7 +33,7 @@ describe("ElectronicStructureViewer", () => {
   });
 
   it("places the curve legend above the plot and shows the real Fermi level separately", () => {
-    const markup = renderToStaticMarkup(
+    const markup = renderWithI18n(
       <ElectronicPlot
         series={[
           { label: "Total up", points: [{ x: -6, y: 0 }, { x: 0, y: 2 }, { x: 6, y: 1 }] },
@@ -61,7 +61,7 @@ describe("ElectronicStructureViewer", () => {
     const root = createRoot(container);
 
     await act(async () => {
-      root.render(
+      root.render(withI18n(
         <ElectronicPlot
           series={[{ label: "Total", points: [{ x: -6, y: 0 }, { x: 0, y: 2 }, { x: 6, y: 1 }] }]}
           xLabel="Energy - Ef (eV)"
@@ -70,7 +70,7 @@ describe("ElectronicStructureViewer", () => {
           fermiLevel={5.4321}
           fixedXRange={[-6, 6]}
         />
-      );
+      ));
     });
 
     expect(listenerSpy).toHaveBeenCalledWith("wheel", expect.any(Function), { passive: false });

@@ -6,9 +6,11 @@ import { getSpaceGroupSymbol } from "../lib/materials";
 import { publicAssetPath } from "../lib/paths";
 import type { MaterialRecord } from "../lib/types";
 import { useNonPassiveWheel } from "../lib/useNonPassiveWheel";
+import { useI18n } from "../i18n/I18nProvider";
 
 const customRadiation = "Custom wavelength";
 const customWavelengthRange = { min: 0.05, max: 2.5 };
+type XrdStatus = "loading" | "required" | "error" | null;
 
 export const chartDimensions = {
   standard: { width: 780, height: 270 },
@@ -22,9 +24,10 @@ export function makeAxisTicks(min: number, max: number, count = 8) {
 }
 
 export function XrdViewer({ material }: { material: MaterialRecord }) {
+  const { t } = useI18n();
   const cifPath = publicAssetPath(material.files.cif);
   const [structure, setStructure] = useState<ParsedCrystalStructure | null>(null);
-  const [status, setStatus] = useState("Loading CIF for simulated XRD...");
+  const [status, setStatus] = useState<XrdStatus>("loading");
   const [minTwoTheta, setMinTwoTheta] = useState(5);
   const [maxTwoTheta, setMaxTwoTheta] = useState(90);
   const [minR, setMinR] = useState(0);
@@ -38,11 +41,11 @@ export function XrdViewer({ material }: { material: MaterialRecord }) {
     let cancelled = false;
     setStructure(null);
     if (!cifPath) {
-      setStatus("CIF file required for simulated XRD.");
+      setStatus("required");
       return;
     }
 
-    setStatus("Loading CIF for simulated XRD...");
+    setStatus("loading");
     fetch(cifPath)
       .then((response) => {
         if (!response.ok) throw new Error("Unable to load CIF");
@@ -51,11 +54,11 @@ export function XrdViewer({ material }: { material: MaterialRecord }) {
       .then((text) => {
         if (cancelled) return;
         setStructure(parseCifStructure(text));
-        setStatus("");
+        setStatus(null);
       })
       .catch(() => {
         if (cancelled) return;
-        setStatus("Unable to simulate XRD from this CIF.");
+        setStatus("error");
       });
 
     return () => {
@@ -120,24 +123,24 @@ export function XrdViewer({ material }: { material: MaterialRecord }) {
   }
 
   return (
-    <div className="xrd-panel" aria-label="Simulated XRD view">
+    <div className="xrd-panel" aria-label={t("xrd.view")}>
       <div className="xrd-header">
         <div>
-          <h4>Simulated XRD</h4>
-          <p>Powder pattern estimated from the current CIF structure.</p>
+          <h4>{t("xrd.simulated")}</h4>
+          <p>{t("xrd.description")}</p>
         </div>
         <div className="chart-actions">
-          {xrdZoom && <button className="secondary-button" type="button" onClick={() => setXrdZoom(null)}>Reset zoom</button>}
+          {xrdZoom && <button className="secondary-button" type="button" onClick={() => setXrdZoom(null)}>{t("xrd.resetZoom")}</button>}
           <button className="secondary-button" type="button" onClick={exportCsv} disabled={!pattern}>
             <Download size={15} />
-            Export CSV
+            {t("xrd.exportCsv")}
           </button>
         </div>
       </div>
 
       <div className="xrd-controls">
         <label>
-          <span>2theta min</span>
+          <span>{t("xrd.twoThetaMin")}</span>
           <input
             type="number"
             min={1}
@@ -147,7 +150,7 @@ export function XrdViewer({ material }: { material: MaterialRecord }) {
           />
         </label>
         <label>
-          <span>2theta max</span>
+          <span>{t("xrd.twoThetaMax")}</span>
           <input
             type="number"
             min={Math.min(178, minTwoTheta + 1)}
@@ -157,14 +160,14 @@ export function XrdViewer({ material }: { material: MaterialRecord }) {
           />
         </label>
         <label>
-          <span>Radiation</span>
+          <span>{t("xrd.radiation")}</span>
           <select value={radiation} onChange={(event) => updateRadiation(event.target.value)}>
             {radiationPresets.map((item) => <option key={item.label}>{item.label}</option>)}
-            <option>{customRadiation}</option>
+            <option value={customRadiation}>{t("xrd.customWavelength")}</option>
           </select>
         </label>
         <label>
-          <span>Wavelength (Angstrom)</span>
+          <span>{t("xrd.wavelength")}</span>
           <input
             type="number"
             min={customWavelengthRange.min}
@@ -174,7 +177,7 @@ export function XrdViewer({ material }: { material: MaterialRecord }) {
             onChange={(event) => updateCustomWavelength(Number(event.target.value))}
           />
           {radiation === customRadiation && (
-            <small className="wavelength-hint">Custom range: 0.05-2.5 A</small>
+            <small className="wavelength-hint">{t("xrd.customRange")}</small>
           )}
         </label>
       </div>
@@ -186,32 +189,32 @@ export function XrdViewer({ material }: { material: MaterialRecord }) {
             xKey="twoTheta"
             yKey="intensity"
             xUnit="deg"
-            yLabel="Intensity"
+            yLabel={t("xrd.intensity")}
             dimensions={chartDimensions.standard}
             visibleXRange={xrdZoom ?? [minTwoTheta, maxTwoTheta]}
             fullXRange={[minTwoTheta, maxTwoTheta]}
             onVisibleXRangeChange={setXrdZoom}
           />
-        ) : <span>{status}</span>}
+        ) : <span>{status ? t(xrdStatusKeys[status]) : null}</span>}
       </div>
 
       <div className="pdf-section">
         <div className="xrd-header compact">
           <div>
-            <h4>Pair Distribution Function</h4>
-            <p>r-space distribution estimated from the same wavelength and 2theta window.</p>
+            <h4>{t("xrd.pairDistribution")}</h4>
+            <p>{t("xrd.pdfDescription")}</p>
           </div>
           <div className="chart-actions">
-            {pdfZoom && <button className="secondary-button" type="button" onClick={() => setPdfZoom(null)}>Reset zoom</button>}
+            {pdfZoom && <button className="secondary-button" type="button" onClick={() => setPdfZoom(null)}>{t("xrd.resetZoom")}</button>}
             <button className="secondary-button" type="button" onClick={exportPdfCsv} disabled={!pairDistribution}>
               <Download size={15} />
-              Export PDF CSV
+              {t("xrd.exportPdfCsv")}
             </button>
           </div>
         </div>
         <div className="xrd-controls pdf-controls">
           <label>
-            <span>r min</span>
+            <span>{t("xrd.rMin")}</span>
             <input
               type="number"
               min={0}
@@ -222,7 +225,7 @@ export function XrdViewer({ material }: { material: MaterialRecord }) {
             />
           </label>
           <label>
-            <span>r max</span>
+            <span>{t("xrd.rMax")}</span>
             <input
               type="number"
               min={Math.min(49.9, minR + 0.1)}
@@ -247,7 +250,7 @@ export function XrdViewer({ material }: { material: MaterialRecord }) {
               onVisibleXRangeChange={setPdfZoom}
             />
           ) : (
-            <span>{status}</span>
+            <span>{status ? t(xrdStatusKeys[status]) : null}</span>
           )}
         </div>
       </div>
@@ -281,6 +284,7 @@ function LineChart<T extends Record<string, number>>({
   fullXRange: [number, number];
   onVisibleXRangeChange: (range: [number, number] | null) => void;
 }) {
+  const { t } = useI18n();
   const [hovered, setHovered] = useState<{ x: number; y: number; point: T } | null>(null);
   const [dragRange, setDragRange] = useState<{ startX: number; currentX: number } | null>(null);
   const { width, height } = dimensions;
@@ -385,7 +389,7 @@ function LineChart<T extends Record<string, number>>({
       ref={chartRef}
       viewBox={`0 0 ${width} ${height}`}
       role="img"
-      aria-label={`${yLabel} curve`}
+      aria-label={t("xrd.curveAria", { label: yLabel })}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
@@ -438,6 +442,12 @@ function LineChart<T extends Record<string, number>>({
     </svg>
   );
 }
+
+const xrdStatusKeys = {
+  loading: "xrd.loadingCif",
+  required: "xrd.cifRequired",
+  error: "xrd.simulationError"
+} as const;
 
 function makeXrdFilename(material: MaterialRecord) {
   const spaceGroup = getSpaceGroupSymbol(material) ?? "unknown";

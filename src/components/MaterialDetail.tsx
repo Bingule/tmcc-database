@@ -23,20 +23,23 @@ import {
 import { formatParameterGroup } from "../lib/crystal";
 import { publicAssetPath } from "../lib/paths";
 import type { MaterialRecord } from "../lib/types";
+import { useI18n } from "../i18n/I18nProvider";
 
 const StructureViewer = lazy(() => import("./StructureViewer"));
 
 export function MaterialDetail({ material }: { material: MaterialRecord }) {
+  const { t } = useI18n();
+  const mechanicalStability = getMechanicalStabilityLabel(material);
   return (
     <section id="material-detail" className="detail">
       <div className="section-heading">
-        <p className="eyebrow">Material page template</p>
+        <p className="eyebrow">{t("material.template")}</p>
         <h2><Formula formula={material.formula} /> - {getSpaceGroupLabel(getSpaceGroupSymbol(material))}</h2>
       </div>
 
       <div className="detail-grid">
-        <Panel title="Crystal Structure">
-          <Suspense fallback={<div className="structure-viewer"><span>Loading 3D structure viewer...</span></div>}>
+        <Panel title={t("material.crystalStructure")}>
+          <Suspense fallback={<div className="structure-viewer"><span>{t("material.loadingStructure")}</span></div>}>
             <StructureViewer material={material} />
           </Suspense>
           <div className="button-row compact structure-downloads">
@@ -51,70 +54,75 @@ export function MaterialDetail({ material }: { material: MaterialRecord }) {
               filename={makeStructureDownloadFilename(material, "poscar")}
             />
           </div>
-          <Data label="Space group" value={getSpaceGroupLabel(getSpaceGroupSymbol(material))} />
-          <Data label="Formula" value={<Formula formula={material.formula} />} />
-          <Data label="Family" value={material.family} />
-          <Data label="Subclass" value={getSubclassLabel(material)} />
-          <Data label="General formula" value={getStructureTypeLabel(material)} />
-          <Data label="Structure type" value={getUnavailableLabel(material.structure.crystal_system)} />
-          <Data label="Intercalant" value={getIntercalantLabel(material)} />
-          <Data label="Number of sites" value={getNumberOfSitesLabel(material)} />
-          <Data label="Space group number" value={getUnavailableLabel(material.structure.space_group_number)} />
+          <Data label={t("material.spaceGroup")} value={getSpaceGroupLabel(getSpaceGroupSymbol(material))} />
+          <Data label={t("material.formula")} value={<Formula formula={material.formula} />} />
+          <Data label={t("material.family")} value={material.family} />
+          <Data label={t("material.subclass")} value={getSubclassLabel(material)} />
+          <Data label={t("material.generalFormula")} value={getStructureTypeLabel(material)} />
+          <Data label={t("material.structureType")} value={material.structure.crystal_system === "trigonal" ? t("material.trigonal") : getUnavailableLabel(material.structure.crystal_system)} />
+          <Data label={t("material.intercalant")} value={getIntercalantLabel(material)} />
+          <Data label={t("material.numberOfSites")} value={getNumberOfSitesLabel(material)} />
+          <Data label={t("material.spaceGroupNumber")} value={getUnavailableLabel(material.structure.space_group_number)} />
           {getLatticeSettingLabel(material) && (
-            <Data label="Lattice setting" value={getLatticeSettingLabel(material)} />
+            <Data label={t("material.latticeSetting")} value={t("material.rhombohedralSetting")} />
           )}
-          <Data label="Lattice a, b, c" value={formatParameterGroup(material.structure.lattice_parameters)} />
-          <Data label="Angles alpha, beta, gamma" value={formatParameterGroup(material.structure.angles)} />
-          <Data label="Cell volume (Å³)" value={getCellVolumeLabel(material)} />
-          <Data label="Density (g/cm³)" value={getDensityLabel(material)} />
-          <Data label="Layer thickness" value={formatUnitValue(material.structure.layer_thickness)} />
-          <Data label="van der Waals gap" value={formatUnitValue(material.structure.vdw_gap)} />
+          <Data label={t("material.latticeParameters")} value={formatParameterGroup(material.structure.lattice_parameters)} />
+          <Data label={t("material.angles")} value={formatParameterGroup(material.structure.angles)} />
+          <Data label={t("material.cellVolume")} value={getCellVolumeLabel(material)} />
+          <Data label={t("material.density")} value={getDensityLabel(material)} />
+          <Data label={t("material.layerThickness")} value={formatUnitValue(material.structure.layer_thickness)} />
+          <Data label={t("material.vdwGap")} value={formatUnitValue(material.structure.vdw_gap)} />
           <AtomicSitesTable sites={material.structure.atomic_sites} />
         </Panel>
 
-        <Panel title="XRD / PDF">
+        <Panel title={t("xrd.title")}>
           <XrdViewer material={material} />
           <div className="embedded-electronic">
-            <h4>DOS / Band Structure</h4>
+            <h4>{t("material.dosBandStructure")}</h4>
             <ElectronicStructureViewer material={material} />
           </div>
         </Panel>
 
-        <Panel title="Thermodynamics">
+        <Panel title={t("material.thermodynamics")}>
           <Data label="E_DFT / f.u." value={getDftEnergyPerFormulaUnitLabel(material)} />
           <Data label="E_form (eV/atom)" value={getFormationEnergyPerAtomLabel(material)} />
           <Data label="E_hull (eV/atom)" value={formatPropertyValue(material.thermodynamics.energy_above_hull)} />
-          <Data label="Relative energy between configurations" value={formatPropertyValue(material.thermodynamics.relative_structure_energy)} />
+          <Data label={t("material.relativeEnergy")} value={formatPropertyValue(material.thermodynamics.relative_structure_energy)} />
         </Panel>
 
-        <Panel title="Stability And Properties">
-          <Data label="Phonon calculated" value={getUnavailableLabel(material.phonons.phonon_calculated)} />
-          <Data label="Dynamically stable" value={getUnavailableLabel(material.phonons.dynamically_stable)} />
-          <Data label="Mechanical Stability" value={getMechanicalStabilityLabel(material)} />
-          <Data label="Electronic character" value={getUnavailableLabel(material.electronic.electronic_character)} />
-          <Data label="Magnetic state" value={getUnavailableLabel(material.electronic.magnetic_ground_state)} />
-          <Data label="Li/Na storage data" value="-" />
+        <Panel title={t("material.stabilityProperties")}>
+          <Data label={t("material.phononCalculated")} value={formatOptionalBoolean(material.phonons.phonon_calculated, t("common.yes"), t("common.no"))} />
+          <Data label={t("material.dynamicallyStable")} value={formatOptionalBoolean(material.phonons.dynamically_stable, t("common.yes"), t("common.no"))} />
+          <Data label={t("material.mechanicalStability")} value={mechanicalStability === "Stable" ? t("material.stable") : mechanicalStability === "Unstable" ? t("material.unstable") : t("material.pending")} />
+          <Data label={t("material.electronicCharacter")} value={formatElectronicCharacter(
+            material.electronic.electronic_character,
+            t("material.metallic"),
+            t("material.metallicDosDerived"),
+            t("material.semiconductingDosEstimate")
+          )} />
+          <Data label={t("material.magneticState")} value={getUnavailableLabel(material.electronic.magnetic_ground_state)} />
+          <Data label={t("material.storageData")} value="-" />
         </Panel>
 
         <ElasticProperties material={material} />
 
-        <Panel title="Experimental Data">
-          <Data label="Synthesis method" value={getUnavailableLabel(material.structure.synthesis_method, "scientific")} />
-          <Data label="Experimental files" value={<ExperimentalFiles material={material} />} />
-          <Data label="Reference" value={<ReferenceValue material={material} />} />
+        <Panel title={t("material.experimentalData")}>
+          <Data label={t("material.synthesisMethod")} value={getUnavailableLabel(material.structure.synthesis_method, "scientific")} />
+          <Data label={t("material.experimentalFiles")} value={<ExperimentalFiles material={material} />} />
+          <Data label={t("material.reference")} value={<ReferenceValue material={material} />} />
         </Panel>
 
-        <Panel title="Calculation Details">
-          <Data label="Software" value={getUnavailableLabel(material.provenance.software)} />
-          <Data label="Functional" value={getUnavailableLabel(material.provenance.exchange_correlation)} />
-          <Data label="Plane-wave cutoff" value={formatUnitValue(material.provenance.plane_wave_cutoff)} />
-          <Data label="K-points" value={formatKPoints(material.provenance.k_points)} />
-          <Data label="Spin polarization" value={formatBooleanSetting(material.provenance.spin_polarization)} />
-          <Data label="Initial magnetic moments" value={formatMagneticMoments(material.provenance.initial_magnetic_moments)} />
-          <Data label="DFT+U" value={formatDftU(material.provenance.dft_u)} />
-          <Data label="Calculation date" value={getUnavailableLabel(material.provenance.calculation_date)} />
-          <Data label="Pseudopotential/setup" value={getUnavailableLabel(material.provenance.pseudopotential)} />
-          <Data label="Workflow version" value={getUnavailableLabel(material.provenance.workflow_version)} />
+        <Panel title={t("material.calculationDetails")}>
+          <Data label={t("material.software")} value={getUnavailableLabel(material.provenance.software)} />
+          <Data label={t("material.functional")} value={getUnavailableLabel(material.provenance.exchange_correlation)} />
+          <Data label={t("material.planeWaveCutoff")} value={formatUnitValue(material.provenance.plane_wave_cutoff)} />
+          <Data label={t("material.kPoints")} value={formatKPoints(material.provenance.k_points, t("material.densitySetting"), t("material.gamma"))} />
+          <Data label={t("material.spinPolarization")} value={formatBooleanSetting(material.provenance.spin_polarization, t("common.yes"), t("common.no"))} />
+          <Data label={t("material.initialMagneticMoments")} value={formatMagneticMoments(material.provenance.initial_magnetic_moments)} />
+          <Data label="DFT+U" value={formatDftU(material.provenance.dft_u, t("material.notUsed"))} />
+          <Data label={t("material.calculationDate")} value={getUnavailableLabel(material.provenance.calculation_date)} />
+          <Data label={t("material.pseudopotential")} value={getUnavailableLabel(material.provenance.pseudopotential)} />
+          <Data label={t("material.workflowVersion")} value={getUnavailableLabel(material.provenance.workflow_version)} />
         </Panel>
       </div>
     </section>
@@ -122,18 +130,19 @@ export function MaterialDetail({ material }: { material: MaterialRecord }) {
 }
 
 function ElasticProperties({ material }: { material: MaterialRecord }) {
+  const { t } = useI18n();
   const elastic = material.mechanical.elastic_constants;
   if (!elastic?.independent || Object.keys(elastic.independent).length === 0) return null;
 
   const born = material.mechanical.born_stability;
   const bornLabel = born
-    ? `${born.criterion}: ${born.stable ? "Stable" : "Unstable"}`
+    ? `${born.criterion === "Born criteria for trigonal crystals" ? t("material.bornCriteriaTrigonal") : born.criterion}: ${born.stable ? t("material.stable") : t("material.unstable")}`
     : "-";
 
   return (
-    <Panel id="mechanical-properties" title="Mechanical / Elastic Properties">
-      <Data label="Crystal class" value={getUnavailableLabel(material.mechanical.crystal_class)} />
-      <Data label="Born stability" value={bornLabel} />
+    <Panel id="mechanical-properties" title={t("material.mechanicalProperties")}>
+      <Data label={t("material.crystalClass")} value={material.mechanical.crystal_class === "trigonal (-3m)" ? t("material.trigonalClass") : getUnavailableLabel(material.mechanical.crystal_class)} />
+      <Data label={t("material.bornStability")} value={bornLabel} />
       {Object.entries(elastic.independent).map(([name, value]) => (
         <Data key={name} label={name} value={`${formatElasticValue(value)} ${elastic.unit}`} />
       ))}
@@ -196,13 +205,14 @@ function ExperimentalFileButton({ label, href }: { label: string; href: string |
 }
 
 function ReferenceValue({ material }: { material: MaterialRecord }) {
+  const { t } = useI18n();
   const reference =
     readString(material.provenance.reference) ??
     readString(material.provenance.doi) ??
     readString(material.provenance.source) ??
     readString(material.files.reference);
 
-  if (!reference) return "Not available";
+  if (!reference) return t("common.notAvailable");
 
   const href = getReferenceHref(reference);
   if (!href) return reference;
@@ -228,20 +238,21 @@ function getReferenceHref(reference: string) {
 }
 
 function AtomicSitesTable({ sites }: { sites: unknown }) {
+  const { t } = useI18n();
   if (!Array.isArray(sites) || sites.length === 0) return null;
 
   return (
     <div className="atomic-sites">
-      <h4>Atomic sites</h4>
+      <h4>{t("material.atomicSites")}</h4>
       <table>
         <thead>
           <tr>
-            <th>Site</th>
-            <th>Element</th>
+            <th>{t("material.site")}</th>
+            <th>{t("material.element")}</th>
             <th>x</th>
             <th>y</th>
             <th>z</th>
-            <th>Occ.</th>
+            <th>{t("material.occupancy")}</th>
           </tr>
         </thead>
         <tbody>
@@ -269,23 +280,23 @@ function formatSiteNumber(value: unknown) {
   return Number.isInteger(value) ? String(value) : value.toFixed(5).replace(/0+$/, "").replace(/\.$/, "");
 }
 
-function formatKPoints(value: unknown) {
+function formatKPoints(value: unknown, densityLabel: string, gammaLabel: string) {
   if (!value || typeof value !== "object") return "-";
   const kpoints = value as { size?: unknown; density?: unknown; gamma?: unknown };
   if (Array.isArray(kpoints.size)) {
     const size = kpoints.size.join(" x ");
-    return kpoints.gamma ? `${size}, gamma` : size;
+    return kpoints.gamma ? `${size}, ${gammaLabel}` : size;
   }
   if (typeof kpoints.density === "number") {
-    const density = `density ${kpoints.density}`;
-    return kpoints.gamma ? `${density}, gamma` : density;
+    const density = `${densityLabel} ${kpoints.density}`;
+    return kpoints.gamma ? `${density}, ${gammaLabel}` : density;
   }
   return "-";
 }
 
-function formatBooleanSetting(value: unknown) {
-  if (value === true) return "yes";
-  if (value === false) return "no";
+function formatBooleanSetting(value: unknown, yesLabel: string, noLabel: string) {
+  if (value === true) return yesLabel;
+  if (value === false) return noLabel;
   return "-";
 }
 
@@ -298,16 +309,34 @@ function formatMagneticMoments(value: unknown) {
   return entries.length > 0 ? entries.join(", ") : "-";
 }
 
-function formatDftU(value: unknown) {
-  if (!value || typeof value !== "object") return "not used";
+function formatDftU(value: unknown, notUsedLabel: string) {
+  if (!value || typeof value !== "object") return notUsedLabel;
   const dftU = value as { enabled?: unknown; element?: unknown; orbital?: unknown; u_eff_ev?: unknown };
-  if (dftU.enabled === false) return "not used";
+  if (dftU.enabled === false) return notUsedLabel;
   if (dftU.enabled === true && typeof dftU.element === "string" && typeof dftU.u_eff_ev === "number") {
     const orbital = typeof dftU.orbital === "string" ? dftU.orbital : "d";
     return `${dftU.element}-${orbital}, Ueff=${dftU.u_eff_ev} eV`;
   }
 
-  return "not used";
+  return notUsedLabel;
+}
+
+function formatOptionalBoolean(value: unknown, yesLabel: string, noLabel: string) {
+  if (value === true) return yesLabel;
+  if (value === false) return noLabel;
+  return "-";
+}
+
+function formatElectronicCharacter(
+  value: unknown,
+  metallicLabel: string,
+  metallicDosLabel: string,
+  semiconductingDosLabel: string
+) {
+  if (value === "metallic") return metallicLabel;
+  if (value === "metallic (DOS-derived)") return metallicDosLabel;
+  if (value === "semiconducting (DOS-derived estimate)") return semiconductingDosLabel;
+  return getUnavailableLabel(value);
 }
 
 function formatUnitValue(value: unknown) {

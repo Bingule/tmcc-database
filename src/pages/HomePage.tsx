@@ -8,8 +8,10 @@ import { SiteFooter } from "../components/SiteFooter";
 import { SiteHeader } from "../components/SiteHeader";
 import { materials } from "../data/materials";
 import { filterMaterialsByElementSet, getMaterialStats } from "../lib/materials";
+import { useI18n } from "../i18n/I18nProvider";
 
 export function HomePage() {
+  const { t } = useI18n();
   const [selectedId, setSelectedId] = useState(() => getInitialSelectedId());
   const [elementSearch, setElementSearch] = useState<{ elements: string[]; mode: "only" | "at_least" }>({ elements: [], mode: "only" });
   const [explorerCategoryFilter, setExplorerCategoryFilter] = useState<ExplorerCategoryFilter>(null);
@@ -40,31 +42,31 @@ export function HomePage() {
   return (
     <>
       <SiteHeader>
-        <section className="hero-shell home-click-target" role="button" tabIndex={0} title="Back to main page" onClick={goHome} onKeyDown={(event) => {
+        <section className="hero-shell home-click-target" role="button" tabIndex={0} title={t("home.backToMain")} onClick={goHome} onKeyDown={(event) => {
           if (event.key === "Enter" || event.key === " ") { event.preventDefault(); goHome(); }
         }}>
           <div className="hero-copy">
-            <p className="eyebrow">Transition Metal Carbochalcogenide</p>
-            <h1><span>TMCC</span><span>Materials Database</span></h1>
-            <p className="subtitle">A materials database for layered transition-metal chalcogenide carbides, nitrides, and related intercalated structures.</p>
-            <p className="hero-note">The TMCC Database is a materials database for transition metal carbochalcogenides (TMCCs), covering TMCC, TMCDC, and intercalated layered materials. TMCC is the broad family for M2XA, M2X2A, and metal-intercalated records where M is a transition metal, X is S/Se/Te, and A is C, N, or a supported p-block element. TMCDC is the M2X2A subclass with X-M-A-M-X layered units.</p>
-            <p className="hero-seo-line">The term transition metal carbo-chalcogenide is used here as a searchable synonym for TMCC materials.</p>
-            <div className="update-strip" aria-label="Database update status"><span className="status-dot" aria-hidden="true" /><span>Continuously updated</span><span>DFT results, DOS, structural files, and experimental records are added as calculations and measurements finish.</span></div>
+            <p className="eyebrow">{t("home.transitionMetalCarbochalcogenide")}</p>
+            <h1><span>TMCC</span><span>{t("home.materialsDatabase")}</span></h1>
+            <p className="subtitle">{t("home.subtitle")}</p>
+            <p className="hero-note">{t("home.heroNote")}</p>
+            <p className="hero-seo-line">{t("home.seoLine")}</p>
+            <div className="update-strip" aria-label={t("home.updateStatus")}><span className="status-dot" aria-hidden="true" /><span>{t("home.continuouslyUpdated")}</span><span>{t("home.updateDetails")}</span></div>
           </div>
           <WhatIsTmccSchematic />
-          <div className="hero-affiliation" aria-label="Project affiliation"><strong>Dr. Wu / Dr. Sofer</strong><span>Department of Inorganic Chemistry</span><span>University of Chemistry and Technology Prague</span><span>wui@vscht.cz / soferz@vscht.cz</span></div>
+          <div className="hero-affiliation" aria-label={t("home.projectAffiliation")}><strong>{t("home.researchers")}</strong><span>{t("home.department")}</span><span>{t("home.university")}</span><span>wui@vscht.cz / soferz@vscht.cz</span></div>
         </section>
       </SiteHeader>
-      <section className="database-glance" aria-label="Database at a glance">
-        <div className="glance-main"><div className="glance-heading"><h2>Database at a glance</h2><p>Click a category to filter the materials explorer.</p></div><div className="stats-grid" aria-label="Database statistics">
-          <Stat icon={<Database size={18} />} label="Compositions" value={stats.totalCompositions} />
-          <Stat icon={<Table2 size={18} />} label="Structures" value={stats.totalStructures} active={explorerCategoryFilter === null} onClick={() => setExplorerCategoryFilter(null)} />
-          <Stat icon={<FlaskConical size={18} />} label="TMCDCs (M2X2C)" value={stats.tmcdc} active={explorerCategoryFilter === "tmcdc"} onClick={() => setExplorerCategoryFilter((current) => current === "tmcdc" ? null : "tmcdc")} />
-          <Stat icon={<Atom size={18} />} label="Intercalated TMCC/TMCDC" value={stats.intercalatedTmcc} active={explorerCategoryFilter === "intercalated"} onClick={() => setExplorerCategoryFilter((current) => current === "intercalated" ? null : "intercalated")} />
-          <Stat icon={<Layers3 size={18} />} label="TMCCs (M2XC / M2XA)" value={stats.nonVdwsM2xa} active={explorerCategoryFilter === "tmcc"} onClick={() => setExplorerCategoryFilter((current) => current === "tmcc" ? null : "tmcc")} />
+      <section className="database-glance" aria-label={t("home.databaseAtAGlance")}>
+        <div className="glance-main"><div className="glance-heading"><h2>{t("home.databaseAtAGlance")}</h2><p>{t("home.clickCategory")}</p></div><div className="stats-grid" aria-label={t("home.databaseStatistics")}>
+          <Stat icon={<Database size={18} />} label={t("home.compositions")} value={stats.totalCompositions} />
+          <Stat icon={<Table2 size={18} />} label={t("home.structures")} value={stats.totalStructures} active={explorerCategoryFilter === null} onClick={() => setExplorerCategoryFilter(null)} />
+          <Stat icon={<FlaskConical size={18} />} label={t("home.tmcdcs")} value={stats.tmcdc} active={explorerCategoryFilter === "tmcdc"} onClick={() => setExplorerCategoryFilter((current) => current === "tmcdc" ? null : "tmcdc")} />
+          <Stat icon={<Atom size={18} />} label={t("home.intercalated")} value={stats.intercalatedTmcc} active={explorerCategoryFilter === "intercalated"} onClick={() => setExplorerCategoryFilter((current) => current === "intercalated" ? null : "intercalated")} />
+          <Stat icon={<Layers3 size={18} />} label={t("home.tmccs")} value={stats.nonVdwsM2xa} active={explorerCategoryFilter === "tmcc"} onClick={() => setExplorerCategoryFilter((current) => current === "tmcc" ? null : "tmcc")} />
         </div></div>
-        <aside className="glance-actions" aria-label="Explore the database"><h2>Explore the database</h2><a className="glance-action search-action" href="#selector"><Search size={18} /><span>Search & Selector</span><ArrowRight size={18} /></a><a className="glance-action table-action" href="#periodic-table"><Table2 size={18} /><span>Periodic Table</span><ArrowRight size={18} /></a><a className="glance-action explorer-action" href="#explorer"><FlaskConical size={18} /><span>Data Explorer</span><ArrowRight size={18} /></a></aside>
-        <a className="latest-update-row" href="#explorer"><span className="latest-icon"><Database size={17} /></span><strong>Latest update</strong><span>DFT calculations and experimental records are continuously added.</span><ArrowRight size={18} /></a>
+        <aside className="glance-actions" aria-label={t("home.exploreDatabase")}><h2>{t("home.exploreDatabase")}</h2><a className="glance-action search-action" href="#selector"><Search size={18} /><span>{t("home.searchSelector")}</span><ArrowRight size={18} /></a><a className="glance-action table-action" href="#periodic-table"><Table2 size={18} /><span>{t("home.periodicTable")}</span><ArrowRight size={18} /></a><a className="glance-action explorer-action" href="#explorer"><FlaskConical size={18} /><span>{t("home.dataExplorer")}</span><ArrowRight size={18} /></a></aside>
+        <a className="latest-update-row" href="#explorer"><span className="latest-icon"><Database size={17} /></span><strong>{t("home.latestUpdate")}</strong><span>{t("home.latestUpdateDetails")}</span><ArrowRight size={18} /></a>
       </section>
       <section id="selector" className="section-grid single"><MaterialSelector materials={materials} selectedId={selectedId} onSelect={selectMaterial} /></section>
       <PeriodicTable materials={materials} onMetalSelect={(metal) => { const match = materials.find((material) => material.host.metal === metal); if (match) selectMaterial(match.material_id); }} onElementSearch={(elements, mode) => {
@@ -75,19 +77,20 @@ export function HomePage() {
       }} />
       <MaterialExplorer materials={materials} selectedId={selectedId} onSelect={selectMaterial} elementSearch={elementSearch} categoryFilter={explorerCategoryFilter} onCategoryFilterChange={setExplorerCategoryFilter} onResultCountChange={setExplorerResultCount} />
       {explorerResultCount > 0 && <MaterialDetail material={selectedMaterial} />}
-      <section id="methodology" className="methodology"><h2>References / Methodology</h2><p>No publications, DOIs, experimental datasets, or stability thresholds have been entered in this prototype. TMCC is used as the general material-family name; TMCDC is reserved for vdW M2X2A carbodichalcogenide/carbonitride structures and their intercalated derivatives. Each future record should include calculation settings, structural files, experimental source files where available, workflow version, date, and source.</p><p className="disclaimer">Computationally predicted materials have not necessarily been experimentally synthesized. Stability classifications depend on the computational methodology and should not be interpreted as guarantees of experimental synthesizability.</p><div className="methodology-contact" aria-label="Contact"><span className="contact-label">Contact</span><div className="contact-details"><div className="contact-links"><a href="mailto:wui@vscht.cz">Dr. Wu: wui@vscht.cz</a><a href="mailto:soferz@vscht.cz">Dr. Sofer: soferz@vscht.cz</a></div><p>Department of Inorganic Chemistry, University of Chemistry and Technology Prague, Technická 5, 166 28 Prague, Czech Republic.</p></div></div></section>
+      <section id="methodology" className="methodology"><h2>{t("footer.references")}</h2><p>{t("home.methodologyBody")}</p><p className="disclaimer">{t("home.disclaimer")}</p><div className="methodology-contact" aria-label={t("footer.contact")}><span className="contact-label">{t("footer.contact")}</span><div className="contact-details"><div className="contact-links"><a href="mailto:wui@vscht.cz">{t("home.contactWu", { email: "wui@vscht.cz" })}</a><a href="mailto:soferz@vscht.cz">{t("home.contactSofer", { email: "soferz@vscht.cz" })}</a></div><p>{t("home.contactAddress")}</p></div></div></section>
       <SiteFooter />
     </>
   );
 }
 
 function WhatIsTmccSchematic() {
+  const { t } = useI18n();
   return (
-    <aside className="tmcc-schematic" aria-label="What is a TMCC schematic">
-      <div className="schematic-heading"><h2>What is a TMCC?</h2><p>TMD-like and MXene-like motifs combine into a layered TMCC monolayer.</p></div>
-      <div className="schematic-flow" aria-hidden="true"><LayerDiagram type="tmd" title="TMD-like layer" formula="X-M-X" /><span className="flow-symbol">+</span><LayerDiagram type="mxene" title="MXene-like layer" formula="M-C-M" /><span className="flow-symbol arrow">→</span><LayerDiagram type="tmcc" title="TMCC monolayer" formula="X-M-C-M-X" /></div>
-      <div className="schematic-legend" aria-hidden="true"><span><i className="legend-m" /> M = transition metal</span><span><i className="legend-x" /> X = S, Se, Te</span><span><i className="legend-c" /> C = carbon / nitrogen</span></div>
-      <div className="feature-strip" aria-label="TMCC features"><Feature icon={<Zap size={18} />} title="Metallic conductivity" text="Conductive M-C backbone for electron transport." /><Feature icon={<CircleDot size={18} />} title="Active chalcogen surfaces" text="Outer S/Se/Te layers expose reactive sites." /><Feature icon={<ShieldCheck size={18} />} title="Robust M2C backbone" text="Covalent M-C bonding stabilizes the central slab." /><Feature icon={<Layers3 size={18} />} title="vdW interlayer space" text="Layer gaps support intercalation and ion access." /></div>
+    <aside className="tmcc-schematic" aria-label={t("home.tmccSchematic")}>
+      <div className="schematic-heading"><h2>{t("home.whatIsTmcc")}</h2><p>{t("home.tmccMotif")}</p></div>
+      <div className="schematic-flow" aria-hidden="true"><LayerDiagram type="tmd" title={t("home.tmdLayer")} formula="X-M-X" /><span className="flow-symbol">+</span><LayerDiagram type="mxene" title={t("home.mxeneLayer")} formula="M-C-M" /><span className="flow-symbol arrow">→</span><LayerDiagram type="tmcc" title={t("home.tmccMonolayer")} formula="X-M-C-M-X" /></div>
+      <div className="schematic-legend" aria-hidden="true"><span><i className="legend-m" /> {t("home.transitionMetalLegend")}</span><span><i className="legend-x" /> {t("home.chalcogenLegend")}</span><span><i className="legend-c" /> {t("home.centerLegend")}</span></div>
+      <div className="feature-strip" aria-label={t("home.features")}><Feature icon={<Zap size={18} />} title={t("home.metallicConductivity")} text={t("home.metallicConductivityText")} /><Feature icon={<CircleDot size={18} />} title={t("home.activeChalcogenSurfaces")} text={t("home.activeChalcogenSurfacesText")} /><Feature icon={<ShieldCheck size={18} />} title={t("home.robustBackbone")} text={t("home.robustBackboneText")} /><Feature icon={<Layers3 size={18} />} title={t("home.vdwInterlayerSpace")} text={t("home.vdwInterlayerSpaceText")} /></div>
     </aside>
   );
 }
