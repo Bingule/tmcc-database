@@ -4,10 +4,11 @@ import { ScientificLineChart, type ChartSeries } from "../components/ScientificL
 import { useI18n } from "../i18n/I18nProvider";
 import { analyzeBValue, analyzeDunn, interpolateCommonGrid } from "../lib/cvAnalysis";
 import { confirmCvSeries, CvParseError, parseCvFile, type CvParseErrorCode, type ParsedCvTable } from "../lib/cvParsing";
-import type { BValuePoint, DunnAnalysisResult, InterpolatedCvData } from "../lib/cvTypes";
+import type { BValuePoint, CvSeries, DunnAnalysisResult, InterpolatedCvData } from "../lib/cvTypes";
 import { downloadCsv, downloadPng, downloadSvg, rowsToCsv } from "../lib/toolExport";
 
 interface AnalysisState {
+  series: CvSeries[];
   grid: InterpolatedCvData;
   bValues: BValuePoint[];
   dunn: DunnAnalysisResult;
@@ -21,6 +22,9 @@ const csvFiles = [
   "cv-diffusion-current.csv",
   "cv-contribution-summary.csv"
 ] as const;
+const MAX_CHART_POINTS = 2_000;
+const MAX_TABLE_ROWS = 500;
+const MAX_POTENTIAL_OPTIONS = 500;
 
 export function CvKineticsPage() {
   const { t } = useI18n();
@@ -79,9 +83,9 @@ export function CvKineticsPage() {
       const dunn = analyzeDunn(grid);
       if (bValues.length === 0) throw new PageAnalysisError("noBFit");
       if (dunn.points.length === 0 || dunn.contributions.length === 0) throw new PageAnalysisError("analysis");
-      setAnalysis({ grid, bValues, dunn });
+      setAnalysis({ series, grid, bValues, dunn });
       setSelectedPotential(bValues[0].potential);
-      setSelectedRate(dunn.contributions[0].scanRate);
+      setSelectedRate([...dunn.contributions].sort((left, right) => left.scanRate - right.scanRate)[0].scanRate);
     } catch (error) {
       if (error instanceof CvParseError) setErrorCode(error.code);
       else if (error instanceof PageAnalysisError) setErrorCode(error.code);
@@ -93,13 +97,19 @@ export function CvKineticsPage() {
   const selectedB = analysis?.bValues.find((point) => point.potential === selectedPotential);
   const selectedContribution = analysis?.dunn.contributions.find((item) => item.scanRate === selectedRate);
   const selectedSeriesIndex = analysis?.grid.scanRates.findIndex((rate) => rate === selectedRate) ?? -1;
+  const selectedOriginalSeries = analysis?.series.find((item) => item.scanRate === selectedRate);
+  const sortedContributions = [...(analysis?.dunn.contributions ?? [])].sort((left, right) => left.scanRate - right.scanRate);
+  const potentialOptions = downsampleValues((analysis?.bValues ?? []).map((point) => point.potential), MAX_POTENTIAL_OPTIONS);
+  if (selectedPotential !== undefined && !potentialOptions.includes(selectedPotential)) potentialOptions.unshift(selectedPotential);
+  const bByPotential = new Map((analysis?.bValues ?? []).map((point) => [point.potential, point]));
   const bChart: ChartSeries[] = analysis ? [{
     id: "b-values", label: t("cv.b.value"), color: "#16697a",
-    points: analysis.bValues.map((point) => ({ x: point.potential, y: point.b }))
+    points: analysis.grid.potentials.map((potential) => ({ x: potential, y: bByPotential.get(potential)?.b ?? null }))
   }] : [];
-  const fitChart = makeFitChart(selectedB, t("cv.b.fitData"));
-  const dunnChart = makeDunnChart(analysis, selectedContribution, selectedSeriesIndex, t);
-  const contributionChart = makeContributionChart(analysis, t);
+  const fitChart = sampleChartSeries(makeFitChart(selectedB, t("cv.b.fitData")));
+  const dunnChart = sampleChartSeries(makeDunnChart(analysis, selectedOriginalSeries, selectedContribution, selectedSeriesIndex, t));
+  const contributionChart = sampleChartSeries(makeContributionChart(sortedContributions, t));
+  const sampledBChart = sampleChartSeries(bChart);
   const missingBFitCount = analysis ? analysis.grid.potentials.length - analysis.bValues.length : 0;
 
   return (
@@ -145,11 +155,11 @@ export function CvKineticsPage() {
       <section className="tool-section cv-b-analysis">
         <h2>{t("cv.b.title")}</h2><p>{t("cv.b.help")}</p>
         <label>{t("cv.results.potential")} (V)<select name="selectedPotential" value={selectedPotential ?? ""} onChange={(event) => setSelectedPotential(Number(event.target.value))}>
-          {(analysis?.bValues ?? []).map((point) => <option key={point.potential} value={point.potential}>{point.potential}</option>)}
+          {potentialOptions.map((potential) => <option key={potential} value={potential}>{potential}</option>)}
         </select></label>
         {analysis && missingBFitCount > 0 && <p role="status">{t("cv.b.missingFits", { count: missingBFitCount, total: analysis.grid.potentials.length })}</p>}
         <ScientificLineChart title={t("cv.b.chart")} xLabel={`${t("cv.table.potential")} (V)`} yLabel={t("cv.b.value")}
-          emptyLabel={t("cv.chart.empty")} legendLabel={t("cv.chart.legend")} series={bChart} selectedX={selectedPotential} onSelectX={setSelectedPotential} exportId="cv-b-chart" />
+          emptyLabel={t("cv.chart.empty")} legendLabel={t("cv.chart.legend")} series={sampledBChart} selectedX={selectedPotential} onSelectX={setSelectedPotential} exportId="cv-b-chart" />
         <DataTable headers={[`${t("cv.table.potential")} (V)`, t("cv.b.value"), t("cv.b.intercept"), t("cv.results.rSquared"), t("cv.table.pointCount")]}
           rows={(analysis?.bValues ?? []).map((point) => [point.potential, point.b, point.intercept, point.rSquared, point.pointCount])} />
         <ScientificLineChart title={t("cv.b.fitChart")} xLabel={t("cv.b.logRate")} yLabel={t("cv.b.logCurrent")}
@@ -161,11 +171,13 @@ export function CvKineticsPage() {
       <section className="tool-section cv-dunn-analysis">
         <h2>{t("cv.dunn.title")}</h2><p>{t("cv.dunn.help")}</p>
         <label>{t("cv.results.rate")} (mV/s)<select name="selectedRate" value={selectedRate ?? ""} onChange={(event) => setSelectedRate(Number(event.target.value))}>
-          {(analysis?.dunn.contributions ?? []).map((item) => <option key={item.scanRate} value={item.scanRate}>{item.scanRate}</option>)}
+          {sortedContributions.map((item) => <option key={item.scanRate} value={item.scanRate}>{item.scanRate}</option>)}
         </select></label>
-        <ScientificLineChart title={t("cv.dunn.chart")} xLabel={`${t("cv.table.potential")} (V)`} yLabel={t("cv.table.current")}
+        <ScientificLineChart title={t("cv.dunn.chart")} xLabel={`${t("cv.table.potential")} (V)`} yLabel={t("cv.table.currentArbitrary")}
           emptyLabel={t("cv.chart.empty")} legendLabel={t("cv.chart.legend")} series={dunnChart} selectedX={selectedPotential} exportId="cv-dunn-chart" />
-        <DataTable tableId="cv-dunn-current-table" headers={[`${t("cv.table.potential")} (V)`, t("cv.dunn.measured"), t("cv.dunn.capacitive"), t("cv.dunn.diffusion")]}
+        <DataTable tableId="cv-original-current-table" headers={[`${t("cv.table.potential")} (V)`, t("cv.dunn.originalMeasured")]}
+          rows={(selectedOriginalSeries?.points ?? []).map((point) => [point.potential, point.current])} />
+        <DataTable tableId="cv-dunn-current-table" headers={[`${t("cv.table.potential")} (V)`, t("cv.dunn.interpolatedInput"), t("cv.dunn.reconstructedTotalUnits"), t("cv.dunn.capacitive") + " (arb. units)", t("cv.dunn.diffusion") + " (arb. units)"]}
           rows={dunnRows(analysis, selectedContribution, selectedSeriesIndex)} />
       </section>
 
@@ -174,7 +186,7 @@ export function CvKineticsPage() {
         <ScientificLineChart title={t("cv.dunn.contributionChart")} xLabel={`${t("cv.table.scanRate")} (mV/s)`} yLabel="%"
           emptyLabel={t("cv.chart.empty")} legendLabel={t("cv.chart.legend")} series={contributionChart} exportId="cv-contribution-chart" />
         <DataTable tableId="cv-contribution-table" headers={[`${t("cv.table.scanRate")} (mV/s)`, t("cv.dunn.capacitive") + " (%)", t("cv.dunn.diffusion") + " (%)"]}
-          rows={(analysis?.dunn.contributions ?? []).map((item) => [item.scanRate, item.capacitivePercent, item.diffusionPercent])} />
+          rows={sortedContributions.map((item) => [item.scanRate, item.capacitivePercent, item.diffusionPercent])} />
         <DataTable headers={[`${t("cv.table.potential")} (V)`, t("cv.dunn.k1"), t("cv.dunn.k2"), t("cv.results.rSquared"), t("cv.table.pointCount")]}
           rows={(analysis?.dunn.points ?? []).map((point) => [point.potential, point.k1, point.k2, point.rSquared, point.pointCount])} />
       </section>
@@ -199,42 +211,47 @@ function errorMessage(code: CvParseErrorCode | "noOverlap" | "noBFit" | "analysi
   const keys = {
     emptyFile: "cv.error.emptyFile", malformedFile: "cv.error.malformedFile", potentialColumnMissing: "cv.error.potentialColumnMissing",
     currentColumnsMissing: "cv.error.currentColumnsMissing", missingScanRate: "cv.error.missingScanRate", duplicateScanRate: "cv.error.duplicateScanRate",
-    invalidScanRate: "cv.error.invalidScanRate", insufficientSeries: "cv.error.insufficientSeries", noOverlap: "cv.error.noOverlap",
+    invalidScanRate: "cv.error.invalidScanRate", insufficientSeries: "cv.error.insufficientSeries", resourceLimitExceeded: "cv.error.resourceLimitExceeded", noOverlap: "cv.error.noOverlap",
     noBFit: "cv.error.noBFit", analysis: "cv.error.analysis", export: "cv.error.export"
   } as const;
   return t(keys[code]);
 }
 
 function DataTable({ headers, rows, tableId }: { headers: string[]; rows: Array<Array<string | number | null>>; tableId?: string }) {
+  const { t } = useI18n();
   if (rows.length === 0) return null;
+  const displayedRows = rows.slice(0, MAX_TABLE_ROWS);
   return <div className="tool-table-wrap"><table data-table-id={tableId}><thead><tr>{headers.map((header) => <th scope="col" key={header}>{header}</th>)}</tr></thead>
-    <tbody>{rows.map((row, index) => <tr key={index}>{row.map((cell, cellIndex) => <td key={cellIndex}>{format(cell)}</td>)}</tr>)}</tbody></table></div>;
+    <tbody>{displayedRows.map((row, index) => <tr key={index}>{row.map((cell, cellIndex) => <td key={cellIndex}>{format(cell)}</td>)}</tr>)}</tbody></table>
+    {rows.length > displayedRows.length && <p role="status">{t("cv.table.showingRows", { shown: displayedRows.length, total: rows.length })}</p>}</div>;
 }
 
 function format(value: string | number | null) { return typeof value === "number" ? Number(value.toPrecision(7)).toString() : value ?? "—"; }
 
 function makeFitChart(point: BValuePoint | undefined, measuredLabel: string): ChartSeries[] {
   if (!point) return [];
-  const xs = point.fitPoints.map((item) => item.logScanRate);
+  const fitPoints = [...point.fitPoints].sort((left, right) => left.logScanRate - right.logScanRate);
+  const xs = fitPoints.map((item) => item.logScanRate);
   return [
-    { id: "fit-points", label: measuredLabel, color: "#16697a", points: point.fitPoints.map((item) => ({ x: item.logScanRate, y: item.logCurrentMagnitude })) },
+    { id: "fit-points", label: measuredLabel, color: "#16697a", mode: "points", points: fitPoints.map((item) => ({ x: item.logScanRate, y: item.logCurrentMagnitude })) },
     { id: "fit-line", label: "log(|i|) = log(a) + b log(v)", color: "#d1495b", dash: "7 4", points: [Math.min(...xs), Math.max(...xs)].map((x) => ({ x, y: point.intercept + point.b * x })) }
   ];
 }
 
-function makeContributionChart(analysis: AnalysisState | null, t: ReturnType<typeof useI18n>["t"]): ChartSeries[] {
-  if (!analysis) return [];
+function makeContributionChart(contributions: DunnAnalysisResult["contributions"], t: ReturnType<typeof useI18n>["t"]): ChartSeries[] {
   return [
-    { id: "capacitive-percent", label: t("cv.dunn.capacitive"), color: "#e07a5f", points: analysis.dunn.contributions.map((item) => ({ x: item.scanRate, y: item.capacitivePercent })) },
-    { id: "diffusion-percent", label: t("cv.dunn.diffusion"), color: "#3d405b", dash: "5 3", points: analysis.dunn.contributions.map((item) => ({ x: item.scanRate, y: item.diffusionPercent })) }
+    { id: "capacitive-percent", label: t("cv.dunn.capacitive"), color: "#e07a5f", points: contributions.map((item) => ({ x: item.scanRate, y: item.capacitivePercent })) },
+    { id: "diffusion-percent", label: t("cv.dunn.diffusion"), color: "#3d405b", dash: "5 3", points: contributions.map((item) => ({ x: item.scanRate, y: item.diffusionPercent })) }
   ];
 }
 
-function makeDunnChart(analysis: AnalysisState | null, contribution: DunnAnalysisResult["contributions"][number] | undefined, seriesIndex: number, t: ReturnType<typeof useI18n>["t"]): ChartSeries[] {
-  if (!analysis || !contribution || seriesIndex < 0) return [];
+function makeDunnChart(analysis: AnalysisState | null, original: CvSeries | undefined, contribution: DunnAnalysisResult["contributions"][number] | undefined, seriesIndex: number, t: ReturnType<typeof useI18n>["t"]): ChartSeries[] {
+  if (!analysis || !original || !contribution || seriesIndex < 0) return [];
   const points = (values: Array<number | null>) => analysis.grid.potentials.flatMap((x, index) => values[index] === null ? [] : [{ x, y: values[index] as number }]);
+  const reconstructedTotal = contribution.capacitiveCurrent.map((value, index) => value === null || contribution.diffusionCurrent[index] === null ? null : value + contribution.diffusionCurrent[index]!);
   return [
-    { id: "measured", label: t("cv.dunn.measured"), color: "#16697a", points: analysis.grid.potentials.map((x, index) => ({ x, y: analysis.grid.currents[seriesIndex][index] })) },
+    { id: "original", label: t("cv.dunn.originalCurve"), color: "#16697a", points: original.points.map((point) => ({ x: point.potential, y: point.current })) },
+    { id: "reconstructed-total", label: t("cv.dunn.reconstructedTotal"), color: "#2a9d8f", points: points(reconstructedTotal) },
     { id: "capacitive", label: t("cv.dunn.capacitive"), color: "#e07a5f", dash: "8 4", points: points(contribution.capacitiveCurrent) },
     { id: "diffusion", label: t("cv.dunn.diffusion"), color: "#3d405b", dash: "3 3", points: points(contribution.diffusionCurrent) }
   ];
@@ -242,11 +259,40 @@ function makeDunnChart(analysis: AnalysisState | null, contribution: DunnAnalysi
 
 function dunnRows(analysis: AnalysisState | null, contribution: DunnAnalysisResult["contributions"][number] | undefined, seriesIndex: number) {
   if (!analysis || !contribution || seriesIndex < 0) return [];
-  return analysis.grid.potentials.map((potential, index) => [potential, analysis.grid.currents[seriesIndex][index], contribution.capacitiveCurrent[index], contribution.diffusionCurrent[index]]);
+  return analysis.grid.potentials.map((potential, index) => {
+    const capacitive = contribution.capacitiveCurrent[index];
+    const diffusion = contribution.diffusionCurrent[index];
+    return [potential, analysis.grid.currents[seriesIndex][index], capacitive === null || diffusion === null ? null : capacitive + diffusion, capacitive, diffusion];
+  });
+}
+
+function sampleChartSeries(series: ChartSeries[]): ChartSeries[] {
+  return series.map((item) => ({ ...item, points: downsamplePoints(item.points, MAX_CHART_POINTS) }));
+}
+
+function downsamplePoints<T extends { x: number; y: number | null }>(points: T[], limit: number): T[] {
+  if (points.length <= limit) return points;
+  const sampled: T[] = [];
+  for (let bucket = 0; bucket < limit; bucket += 1) {
+    const start = Math.floor(bucket * points.length / limit);
+    const end = Math.max(start + 1, Math.floor((bucket + 1) * points.length / limit));
+    if (bucket === 0) { sampled.push(points[0]); continue; }
+    if (bucket === limit - 1) { sampled.push(points[points.length - 1]); continue; }
+    const group = points.slice(start, end);
+    const gap = group.find((point) => point.y === null);
+    sampled.push(gap ?? group.reduce((extreme, point) => Math.abs(point.y ?? 0) > Math.abs(extreme.y ?? 0) ? point : extreme));
+  }
+  return sampled;
+}
+
+function downsampleValues(values: number[], limit: number): number[] {
+  if (values.length <= limit) return values;
+  return Array.from({ length: limit }, (_, index) => values[Math.round(index * (values.length - 1) / (limit - 1))]);
 }
 
 function exportCsv(filename: typeof csvFiles[number], analysis: AnalysisState, t: ReturnType<typeof useI18n>["t"]) {
   const { grid, bValues, dunn } = analysis;
+  const sortedContributions = [...dunn.contributions].sort((left, right) => left.scanRate - right.scanRate);
   let csv: string;
   const potentialHeader = `${t("cv.table.potential")} (V)`;
   const scanRateHeader = `${t("cv.table.scanRate")} (mV/s)`;
@@ -259,11 +305,11 @@ function exportCsv(filename: typeof csvFiles[number], analysis: AnalysisState, t
     }));
   }
   else if (filename === csvFiles[2]) csv = rowsToCsv([potentialHeader, t("cv.dunn.k1"), t("cv.dunn.k2"), t("cv.results.rSquared"), t("cv.table.pointCount")], dunn.points.map((point) => [point.potential, point.k1, point.k2, point.rSquared, point.pointCount]));
-  else if (filename === csvFiles[5]) csv = rowsToCsv([scanRateHeader, `${t("cv.dunn.capacitive")} (%)`, `${t("cv.dunn.diffusion")} (%)`], dunn.contributions.map((item) => [item.scanRate, item.capacitivePercent, item.diffusionPercent]));
+  else if (filename === csvFiles[5]) csv = rowsToCsv([scanRateHeader, `${t("cv.dunn.capacitive")} (%)`, `${t("cv.dunn.diffusion")} (%)`], sortedContributions.map((item) => [item.scanRate, item.capacitivePercent, item.diffusionPercent]));
   else {
     const capacitive = filename === csvFiles[3];
     const headerKey = capacitive ? "cv.export.capacitiveCurrentAt" : "cv.export.diffusionCurrentAt";
-    csv = rowsToCsv([potentialHeader, ...dunn.contributions.map((item) => t(headerKey, { rate: item.scanRate }))], grid.potentials.map((potential, index) => [potential, ...dunn.contributions.map((item) => (capacitive ? item.capacitiveCurrent : item.diffusionCurrent)[index])]));
+    csv = rowsToCsv([potentialHeader, ...sortedContributions.map((item) => t(headerKey, { rate: item.scanRate }))], grid.potentials.map((potential, index) => [potential, ...sortedContributions.map((item) => (capacitive ? item.capacitiveCurrent : item.diffusionCurrent)[index])]));
   }
   downloadCsv(filename, csv);
 }

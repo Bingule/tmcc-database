@@ -102,4 +102,23 @@ describe("ScientificLineChart", () => {
     expect(onSelectX).toHaveBeenCalledWith(0);
     expect(view.querySelector('circle[data-selected-x="1"]')).not.toBeNull();
   });
+
+  it("renders observed point series without a misleading connecting line", async () => {
+    const view = await renderChart({
+      ...baseProps,
+      series: [{ id: "observed", label: "Observed", color: "#123456", mode: "points", points: [{ x: 2, y: 3 }, { x: 1, y: 2 }] }]
+    });
+
+    expect(view.querySelector('path[data-series-id="observed"]')).toBeNull();
+    expect(view.querySelectorAll('[data-point-series-id="observed"]')).toHaveLength(2);
+  });
+
+  it("breaks a line path at null values instead of connecting across unavailable data", async () => {
+    const view = await renderChart({
+      ...baseProps,
+      series: [{ id: "gapped", label: "Gapped", color: "#123456", points: [{ x: 0, y: 1 }, { x: 1, y: null }, { x: 2, y: 3 }] }]
+    });
+    const path = view.querySelector('path[data-series-id="gapped"]')?.getAttribute("d") ?? "";
+    expect(path.match(/\bM\b/g)).toHaveLength(2);
+  });
 });

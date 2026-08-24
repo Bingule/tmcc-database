@@ -3,9 +3,10 @@ import { useId } from "react";
 export interface ChartSeries {
   id: string;
   label: string;
-  points: Array<{ x: number; y: number }>;
+  points: Array<{ x: number; y: number | null }>;
   color: string;
   dash?: string;
+  mode?: "line" | "points";
 }
 
 interface ScientificLineChartProps {
@@ -37,9 +38,9 @@ export function ScientificLineChart({
   const titleId = useId();
   const finiteSeries = series.map((item) => ({
     ...item,
-    points: item.points.filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y))
+    points: item.points.filter((point) => Number.isFinite(point.x) && (point.y === null || Number.isFinite(point.y)))
   }));
-  const allPoints = finiteSeries.flatMap((item) => item.points);
+  const allPoints = finiteSeries.flatMap((item) => item.points.flatMap((point) => point.y === null ? [] : [{ x: point.x, y: point.y }]));
 
   if (allPoints.length === 0) {
     return <div className="scientific-chart-empty" role="status">{emptyLabel}</div>;
@@ -85,24 +86,16 @@ export function ScientificLineChart({
             const y = 17 + row * 22;
             return (
               <g key={item.id} className="scientific-chart-legend-item" transform={`translate(${x} ${y})`}>
-                <line
-                  x1={0}
-                  y1={0}
-                  x2={26}
-                  y2={0}
-                  stroke={item.color}
-                  strokeWidth={2.25}
-                  strokeDasharray={item.dash}
-                />
+                {item.mode === "points" ? <circle cx={13} cy={0} r={3.5} fill={item.color} /> : <line x1={0} y1={0} x2={26} y2={0} stroke={item.color} strokeWidth={2.25} strokeDasharray={item.dash} />}
                 <text x={32} y={4} fill="#263238" fontSize={11}>{item.label}</text>
               </g>
             );
           })}
         </g>
         <g className="scientific-chart-grid" aria-hidden="true">
-          {yTicks.map((tick) => (
+          {yTicks.map((tick, index) => (
             <line
-              key={`y-grid-${tick}`}
+              key={`y-grid-${index}`}
               x1={chartMargin.left}
               y1={projectY(tick)}
               x2={dimensions.width - chartMargin.right}
@@ -115,14 +108,14 @@ export function ScientificLineChart({
         <g className="scientific-chart-axes" aria-hidden="true">
           <line x1={chartMargin.left} y1={chartMargin.top} x2={chartMargin.left} y2={dimensions.height - chartMargin.bottom} stroke="#607d8b" strokeWidth={1.25} />
           <line x1={chartMargin.left} y1={dimensions.height - chartMargin.bottom} x2={dimensions.width - chartMargin.right} y2={dimensions.height - chartMargin.bottom} stroke="#607d8b" strokeWidth={1.25} />
-          {xTicks.map((tick) => (
-            <g key={`x-${tick}`}>
+          {xTicks.map((tick, index) => (
+            <g key={`x-${index}`}>
               <line x1={projectX(tick)} y1={dimensions.height - chartMargin.bottom} x2={projectX(tick)} y2={dimensions.height - chartMargin.bottom + 6} stroke="#607d8b" strokeWidth={1.25} />
               <text x={projectX(tick)} y={dimensions.height - chartMargin.bottom + 22} textAnchor="middle" fill="#455a64" fontSize={11}>{formatTick(tick)}</text>
             </g>
           ))}
-          {yTicks.map((tick) => (
-            <g key={`y-${tick}`}>
+          {yTicks.map((tick, index) => (
+            <g key={`y-${index}`}>
               <line x1={chartMargin.left - 6} y1={projectY(tick)} x2={chartMargin.left} y2={projectY(tick)} stroke="#607d8b" strokeWidth={1.25} />
               <text x={chartMargin.left - 10} y={projectY(tick) + 4} textAnchor="end" fill="#455a64" fontSize={11}>{formatTick(tick)}</text>
             </g>
@@ -141,9 +134,10 @@ export function ScientificLineChart({
         <g className="scientific-chart-series">
           {finiteSeries.map((item) => (
             <g key={item.id}>
-              {item.points.length > 0 && (
+              {item.mode !== "points" && item.points.some((point) => point.y !== null) && (
                 <path
                   data-series-id={item.id}
+                  data-render-point-count={item.points.filter((point) => point.y !== null).length}
                   d={linePath(item.points, projectX, projectY)}
                   fill="none"
                   stroke={item.color}
@@ -151,7 +145,10 @@ export function ScientificLineChart({
                   strokeDasharray={item.dash}
                 />
               )}
-              {onSelectX && item.points.map((point, index) => (
+              {item.mode === "points" && item.points.flatMap((point, index) => point.y === null ? [] : [(
+                <circle key={`${item.id}-visible-${point.x}-${index}`} data-point-series-id={item.id} data-point-x={String(point.x)} cx={projectX(point.x)} cy={projectY(point.y)} r={3.5} fill={item.color} />
+              )])}
+              {onSelectX && item.points.flatMap((point, index) => point.y === null ? [] : [(
                 <circle
                   key={`${item.id}-${point.x}-${index}`}
                   data-point-x={String(point.x)}
@@ -171,7 +168,7 @@ export function ScientificLineChart({
                     }
                   }}
                 />
-              ))}
+              )])}
             </g>
           ))}
         </g>
@@ -235,11 +232,18 @@ function normalized(value: number, [min, max]: [number, number]): number {
 }
 
 function linePath(
-  points: Array<{ x: number; y: number }>,
+  points: Array<{ x: number; y: number | null }>,
   projectX: (value: number) => number,
   projectY: (value: number) => number
 ): string {
-  return points.map((point, index) => `${index === 0 ? "M" : "L"} ${projectX(point.x)} ${projectY(point.y)}`).join(" ");
+  let move = true;
+  const commands: string[] = [];
+  for (const point of points) {
+    if (point.y === null) { move = true; continue; }
+    commands.push(`${move ? "M" : "L"} ${projectX(point.x)} ${projectY(point.y)}`);
+    move = false;
+  }
+  return commands.join(" ");
 }
 
 function formatTick(value: number): string {

@@ -9,7 +9,14 @@ export type CvParseErrorCode =
   | "missingScanRate"
   | "duplicateScanRate"
   | "invalidScanRate"
-  | "insufficientSeries";
+  | "insufficientSeries"
+  | "resourceLimitExceeded";
+
+export const MAX_FILE_BYTES = 20 * 1024 * 1024;
+export const MAX_SHEETS = 50;
+export const MAX_ROWS = 200_000;
+export const MAX_COLUMNS = 256;
+export const MAX_CELLS = 2_000_000;
 
 export interface ParsedCvTable {
   headers: string[];
@@ -36,10 +43,13 @@ export class CvParseError extends Error {
 
 export function parseDelimitedCv(text: string): ParsedCvTable {
   if (text.trim().length === 0) throw new CvParseError("emptyFile");
+  const byteLength = text.length > MAX_FILE_BYTES ? text.length : new TextEncoder().encode(text).byteLength;
+  if (byteLength > MAX_FILE_BYTES) throwResourceLimit("fileBytes", MAX_FILE_BYTES, byteLength);
   const delimiter = detectDelimiter(text);
   const rawRows = delimiter === null ? parseWhitespaceRows(text) : parseDelimitedRows(text, delimiter);
   const rows = rawRows.filter((row) => row.some((cell) => cell.trim().length > 0));
   if (rows.length === 0) throw new CvParseError("emptyFile");
+  checkTableLimits(rows);
 
   const width = rows[0].length;
   if (width === 0) throw new CvParseError("emptyFile");
@@ -58,6 +68,7 @@ export function parseDelimitedCv(text: string): ParsedCvTable {
 }
 
 export async function parseCvFile(file: File): Promise<ParsedCvTable> {
+  if (file.size > MAX_FILE_BYTES) throwResourceLimit("fileBytes", MAX_FILE_BYTES, file.size);
   const extension = file.name.trim().toLocaleLowerCase("en-US").match(/\.[^.]+$/)?.[0] ?? "";
   if (extension === ".xls") {
     throw new CvParseError("malformedFile", { reason: "unsupportedXls", fileName: file.name });
@@ -80,6 +91,13 @@ export async function parseCvFile(file: File): Promise<ParsedCvTable> {
 
   try {
     const sheets = await readXlsxFile(await readFileArrayBuffer(file));
+    if (sheets.length > MAX_SHEETS) throwResourceLimit("sheets", MAX_SHEETS, sheets.length);
+    let workbookCells = 0;
+    for (const sheet of sheets) {
+      checkTableLimits(sheet.data);
+      workbookCells += sheet.data.reduce((total, row) => total + row.length, 0);
+      if (workbookCells > MAX_CELLS) throwResourceLimit("cells", MAX_CELLS, workbookCells);
+    }
     for (const sheet of sheets) {
       try {
         const table = makeParsedTable(sheet.data.map((row) => row.map(normalizeWorkbookCell)));
@@ -101,6 +119,22 @@ export async function parseCvFile(file: File): Promise<ParsedCvTable> {
       errorName: error instanceof Error ? error.name : "unknown"
     });
   }
+}
+
+function checkTableLimits(rows: ReadonlyArray<ReadonlyArray<unknown>>) {
+  if (rows.length > MAX_ROWS) throwResourceLimit("rows", MAX_ROWS, rows.length);
+  let cells = 0;
+  let columns = 0;
+  for (const row of rows) {
+    columns = Math.max(columns, row.length);
+    cells += row.length;
+  }
+  if (columns > MAX_COLUMNS) throwResourceLimit("columns", MAX_COLUMNS, columns);
+  if (cells > MAX_CELLS) throwResourceLimit("cells", MAX_CELLS, cells);
+}
+
+function throwResourceLimit(resource: "fileBytes" | "sheets" | "rows" | "columns" | "cells", limit: number, actual: number): never {
+  throw new CvParseError("resourceLimitExceeded", { resource, limit, actual });
 }
 
 function isUsefulCvTable(table: ParsedCvTable) {

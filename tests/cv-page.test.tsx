@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "../src/App";
 import { I18nProvider } from "../src/i18n/I18nProvider";
+import { MAX_FILE_BYTES } from "../src/lib/cvParsing";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 let root: ReturnType<typeof createRoot> | undefined;
@@ -116,6 +117,16 @@ describe("CV kinetics page", () => {
     expect(view.querySelector('[aria-live="polite"]')?.textContent).toContain("malformed");
   });
 
+  it("localizes safe resource-limit errors", async () => {
+    const view = await renderPage();
+    const file = new File(["Potential,1,2\n0,1,2"], "oversized.csv");
+    Object.defineProperty(file, "size", { value: MAX_FILE_BYTES + 1 });
+    await uploadFile(view, file);
+    expect(view.querySelector('[aria-live="polite"]')?.textContent).toContain("safe browser processing limit");
+    await click(view, "中文");
+    expect(view.querySelector('[aria-live="polite"]')?.textContent).toContain("浏览器安全处理上限");
+  });
+
   it("uses an exact accessible potential selection and discloses missing b fits", async () => {
     const view = await renderPage();
     await upload(view, "Potential,Current 1 mV/s,Current 4 mV/s\n0,0,0\n0.5,2,8\n1,3,6");
@@ -145,8 +156,8 @@ describe("CV kinetics page", () => {
     expect(view.querySelector('[data-export-id="cv-dunn-chart"] [data-selected-x="1"]')).not.toBeNull();
     const rows = [...view.querySelectorAll<HTMLTableRowElement>('[data-table-id="cv-dunn-current-table"] tbody tr')];
     const selected = rows.find((row) => row.cells[0].textContent === "1")!;
-    expect([...selected.cells].map((cell) => cell.textContent)).toEqual(["1", "-3", "-9", "6"]);
-    expect(view.querySelectorAll('[data-export-id="cv-dunn-chart"] [data-series-id]')).toHaveLength(3);
+    expect([...selected.cells].map((cell) => cell.textContent)).toEqual(["1", "-3", "-3", "-9", "6"]);
+    expect(view.querySelectorAll('[data-export-id="cv-dunn-chart"] [data-series-id]')).toHaveLength(4);
   });
 
   it("clears stale validation on edit and ignores an older import finishing last", async () => {
@@ -197,4 +208,48 @@ describe("CV kinetics page", () => {
     await act(async () => { png.click(); await new Promise((resolve) => setTimeout(resolve, 0)); });
     expect(view.querySelector('[aria-live="polite"]')?.textContent).toContain("导出失败");
   });
+
+  it("sorts scan-rate displays, uses point-only b observations, and breaks b curves across unavailable potentials", async () => {
+    const view = await renderPage();
+    await upload(view, "Potential,Current 9 mV/s,Current 1 mV/s,Current 4 mV/s\n0,9,1,4\n1,0,0,0\n2,27,3,12");
+    await click(view, "Run analysis");
+    const rate = view.querySelector<HTMLSelectElement>('select[name="selectedRate"]')!;
+    expect([...rate.options].map((option) => option.value)).toEqual(["1", "4", "9"]);
+    const observed = [...view.querySelectorAll<SVGCircleElement>('[data-point-series-id="fit-points"]')].map((point) => Number(point.dataset.pointX));
+    expect(observed).toEqual([...observed].sort((left, right) => left - right));
+    expect(view.querySelector('path[data-series-id="fit-points"]')).toBeNull();
+    const bPath = view.querySelector('path[data-series-id="b-values"]')?.getAttribute("d") ?? "";
+    expect(bPath.match(/\bM\b/g)).toHaveLength(2);
+  });
+
+  it("keeps original CV points distinct from interpolated and reconstructed grid values", async () => {
+    const view = await renderPage();
+    await upload(view, "Potential,Current 1 mV/s,Current 4 mV/s\n0,1,4\n1,,8\n2,3,12");
+    await click(view, "Run analysis");
+    expect(view.textContent).toContain("Original CV curve");
+    expect(view.textContent).toContain("Reconstructed total current");
+    expect(view.querySelector('[data-series-id="original"]')?.getAttribute("data-render-point-count")).toBe("2");
+    expect(view.querySelector('[data-series-id="reconstructed-total"]')?.getAttribute("data-render-point-count")).toBe("3");
+    expect(view.querySelectorAll('[data-table-id="cv-original-current-table"] tbody tr')).toHaveLength(2);
+    expect(view.querySelectorAll('[data-table-id="cv-dunn-current-table"] tbody tr')).toHaveLength(3);
+    expect(view.querySelector('[data-table-id="cv-dunn-current-table"]')?.textContent).toContain("Interpolated input current");
+  });
+
+  it("caps chart and table rendering while CSV export retains the full analysis", async () => {
+    const view = await renderPage();
+    const rowCount = 2_501;
+    const contents = ["Potential,Current 1 mV/s,Current 4 mV/s", ...Array.from({ length: rowCount }, (_, index) => `${index},${index + 1},${4 * (index + 1)}`)].join("\n");
+    await upload(view, contents);
+    await click(view, "Run analysis");
+    expect(Number(view.querySelector('[data-series-id="b-values"]')?.getAttribute("data-render-point-count"))).toBeLessThanOrEqual(2_000);
+    expect(view.querySelectorAll('[data-table-id="cv-dunn-current-table"] tbody tr').length).toBeLessThanOrEqual(500);
+    expect(view.textContent).toContain("Showing 500 of 2501 rows");
+
+    const blobs: Blob[] = [];
+    vi.stubGlobal("URL", { createObjectURL: vi.fn((blob: Blob) => { blobs.push(blob); return "blob:full"; }), revokeObjectURL: vi.fn() });
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    await click(view, "cv-interpolated-data.csv");
+    const exported = await new Promise<string>((resolve) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.readAsText(blobs[0]); });
+    expect(exported.split("\r\n")).toHaveLength(rowCount + 1);
+  }, 30_000);
 });

@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   CvParseError,
+  MAX_CELLS,
+  MAX_COLUMNS,
+  MAX_FILE_BYTES,
+  MAX_ROWS,
+  MAX_SHEETS,
   confirmCvSeries,
   parseCvFile,
   parseDelimitedCv,
@@ -34,6 +39,16 @@ async function expectAsyncParseError(
 }
 
 describe("parseDelimitedCv", () => {
+  it("rejects delimited tables that exceed row, column, or cell resource limits", () => {
+    expectParseError(() => parseDelimitedCv(Array.from({ length: MAX_ROWS + 1 }, (_, index) => index === 0 ? "Potential,1" : `${index},1`).join("\n")), "resourceLimitExceeded", { resource: "rows", limit: MAX_ROWS });
+    const wideHeader = ["Potential", ...Array.from({ length: MAX_COLUMNS }, (_, index) => String(index + 1))].join(",");
+    expectParseError(() => parseDelimitedCv(`${wideHeader}\n${Array.from({ length: MAX_COLUMNS + 1 }, () => "1").join(",")}`), "resourceLimitExceeded", { resource: "columns", limit: MAX_COLUMNS });
+    const width = 201;
+    const rows = Math.floor(MAX_CELLS / width) + 2;
+    const header = ["Potential", ...Array.from({ length: width - 1 }, (_, index) => String(index + 1))].join(",");
+    const data = Array.from({ length: width }, () => "1").join(",");
+    expectParseError(() => parseDelimitedCv([header, ...Array.from({ length: rows - 1 }, () => data)].join("\n")), "resourceLimitExceeded", { resource: "cells", limit: MAX_CELLS });
+  }, 30_000);
   it("parses quote-aware comma CSV and recognizes potential, current columns, and common rate headings", () => {
     const table = parseDelimitedCv([
       'Potential,"1","2 mV/s","Current 5 mV s-1","Current, unassigned"',
@@ -201,6 +216,14 @@ describe("confirmCvSeries", () => {
 });
 
 describe("parseCvFile", () => {
+  it("rejects oversized files and workbooks with too many sheets before table processing", async () => {
+    const oversized = new File(["Potential,1,2\n0,1,2"], "large.csv");
+    Object.defineProperty(oversized, "size", { value: MAX_FILE_BYTES + 1 });
+    await expectAsyncParseError(() => parseCvFile(oversized), "resourceLimitExceeded", { resource: "fileBytes", limit: MAX_FILE_BYTES });
+
+    const sheets = Array.from({ length: MAX_SHEETS + 1 }, (_, index) => ({ name: `S${index}`, rows: [["Potential", "1", "2"], [0, 1, 2], [1, 2, 3]] }));
+    await expectAsyncParseError(() => parseCvFile(makeWorkbookFile(sheets, "many-sheets.xlsx")), "resourceLimitExceeded", { resource: "sheets", limit: MAX_SHEETS });
+  });
   it("parses CSV and TXT File objects through the shared delimited parser", async () => {
     const csv = new File(["Potential,1,2\n0,10,20\n1,11,21"], "example.csv", { type: "text/csv" });
     const txt = new File(["Potential\t1\t2\n0\t10\t20\n1\t11\t21"], "example.txt", { type: "text/plain" });
