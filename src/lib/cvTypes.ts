@@ -31,6 +31,9 @@ export interface DunnContribution {
   scanRate: number;
   capacitivePercent: number;
   diffusionPercent: number;
+  validPointCount: number;
+  sampledPointCount: number;
+  coveragePercent: number;
   /** Reconstructed signed currents; null marks a potential without a valid Dunn fit. */
   capacitiveCurrent: Array<number | null>;
   diffusionCurrent: Array<number | null>;
@@ -42,6 +45,46 @@ export interface DunnAnalysisResult {
   contributions: DunnContribution[];
 }
 
+export type CvFitStatus =
+  | "valid"
+  | "belowRSquaredThreshold"
+  | "insufficientData"
+  | "zeroCurrentLogUnavailable"
+  | "regressionFailed";
+
+export interface CvAnalysisSettings {
+  pointInterval: number;
+  rSquaredThreshold: number;
+}
+
+export interface CvFitRecord<T> {
+  potential: number;
+  fit: T | null;
+  status: CvFitStatus;
+}
+
+export interface CvQualitySummary {
+  commonPointCount: number;
+  retainedPointCount: number;
+  validBCount: number;
+  excludedBCount: number;
+  unavailableBCount: number;
+  validDunnCount: number;
+  excludedDunnCount: number;
+  unavailableDunnCount: number;
+}
+
+export interface CvWorkflowResult {
+  series: CvSeries[];
+  fullGrid: InterpolatedCvData;
+  analysisGrid: InterpolatedCvData;
+  bRecords: Array<CvFitRecord<BValuePoint>>;
+  dunnRecords: Array<CvFitRecord<DunnPoint>>;
+  contributions: DunnContribution[];
+  summary: CvQualitySummary;
+  settings: CvAnalysisSettings;
+}
+
 export type CvAnalysisErrorCode =
   | "noSeries"
   | "noPoints"
@@ -50,7 +93,9 @@ export type CvAnalysisErrorCode =
   | "invalidCurrent"
   | "duplicatePotential"
   | "noCommonPotentialRange"
-  | "invalidDataShape";
+  | "invalidDataShape"
+  | "invalidPointInterval"
+  | "invalidRSquaredThreshold";
 
 export class CvAnalysisError extends Error {
   readonly code: CvAnalysisErrorCode;

@@ -2,6 +2,7 @@ import { linearRegression } from "./regression";
 import {
   CvAnalysisError,
   type BValuePoint,
+  type CvFitRecord,
   type CvSeries,
   type DunnAnalysisResult,
   type DunnContribution,
@@ -32,46 +33,78 @@ export function interpolateCommonGrid(series: CvSeries[]): InterpolatedCvData {
 }
 
 export function analyzeBValue(data: InterpolatedCvData): BValuePoint[] {
-  validateDataShape(data);
-  const results: BValuePoint[] = [];
+  return attemptBValueFits(data).flatMap((record) => record.fit ? [record.fit] : []);
+}
+
+export function attemptBValueFits(data: InterpolatedCvData): Array<CvFitRecord<BValuePoint>> {
+  validateInterpolatedCvData(data);
+  const records: Array<CvFitRecord<BValuePoint>> = [];
 
   for (let potentialIndex = 0; potentialIndex < data.potentials.length; potentialIndex += 1) {
     const fitPoints: BValuePoint["fitPoints"] = [];
     const distinctScanRates = new Set<number>();
+    let zeroCurrentUnavailable = false;
     for (let seriesIndex = 0; seriesIndex < data.scanRates.length; seriesIndex += 1) {
       const scanRate = data.scanRates[seriesIndex];
       const current = data.currents[seriesIndex][potentialIndex];
-      if (!Number.isFinite(scanRate) || scanRate <= 0 || !Number.isFinite(current) || current === 0) continue;
+      if (!Number.isFinite(scanRate) || scanRate <= 0 || !Number.isFinite(current)) continue;
+      if (current === 0) {
+        zeroCurrentUnavailable = true;
+        continue;
+      }
       const logScanRate = Math.log(scanRate);
       const logCurrentMagnitude = Math.log(Math.abs(current));
       if (!Number.isFinite(logScanRate) || !Number.isFinite(logCurrentMagnitude)) continue;
       distinctScanRates.add(scanRate);
       fitPoints.push({ logScanRate, logCurrentMagnitude });
     }
-    if (distinctScanRates.size < 2) continue;
+    const potential = data.potentials[potentialIndex];
+    if (distinctScanRates.size < 3) {
+      records.push({
+        potential,
+        fit: null,
+        status: zeroCurrentUnavailable ? "zeroCurrentLogUnavailable" : "insufficientData"
+      });
+      continue;
+    }
 
     const regression = linearRegression(fitPoints.map((point) => ({
       x: point.logScanRate,
       y: point.logCurrentMagnitude
     })));
-    if (!regression) continue;
-    results.push({
-      potential: data.potentials[potentialIndex],
-      b: regression.slope,
-      intercept: regression.intercept,
-      rSquared: regression.rSquared,
-      pointCount: regression.pointCount,
-      fitPoints
+    if (!regression) {
+      records.push({ potential, fit: null, status: "regressionFailed" });
+      continue;
+    }
+    records.push({
+      potential,
+      status: "valid",
+      fit: {
+        potential,
+        b: regression.slope,
+        intercept: regression.intercept,
+        rSquared: regression.rSquared,
+        pointCount: regression.pointCount,
+        fitPoints
+      }
     });
   }
 
-  return results;
+  return records;
 }
 
 export function analyzeDunn(data: InterpolatedCvData): DunnAnalysisResult {
-  validateDataShape(data);
-  const points: DunnPoint[] = [];
-  const coefficients: Array<{ k1: number; k2: number } | null> = Array(data.potentials.length).fill(null);
+  const records = attemptDunnFits(data);
+  const points = records.flatMap((record) => record.fit ? [record.fit] : []);
+  const coefficients = records.map((record) => record.fit
+    ? { k1: record.fit.k1, k2: record.fit.k2 }
+    : null);
+  return { points, contributions: integrateDunnContributions(data, coefficients) };
+}
+
+export function attemptDunnFits(data: InterpolatedCvData): Array<CvFitRecord<DunnPoint>> {
+  validateInterpolatedCvData(data);
+  const records: Array<CvFitRecord<DunnPoint>> = [];
 
   for (let potentialIndex = 0; potentialIndex < data.potentials.length; potentialIndex += 1) {
     const fitPoints: Array<{ x: number; y: number }> = [];
@@ -86,27 +119,41 @@ export function analyzeDunn(data: InterpolatedCvData): DunnAnalysisResult {
       distinctScanRates.add(scanRate);
       fitPoints.push({ x: squareRootRate, y: normalizedCurrent });
     }
-    if (distinctScanRates.size < 2) continue;
+    const potential = data.potentials[potentialIndex];
+    if (distinctScanRates.size < 3) {
+      records.push({ potential, fit: null, status: "insufficientData" });
+      continue;
+    }
 
     const regression = linearRegression(fitPoints);
-    if (!regression) continue;
+    if (!regression) {
+      records.push({ potential, fit: null, status: "regressionFailed" });
+      continue;
+    }
     const point = {
-      potential: data.potentials[potentialIndex],
+      potential,
       k1: regression.slope,
       k2: regression.intercept,
       rSquared: regression.rSquared,
       pointCount: regression.pointCount
     };
-    coefficients[potentialIndex] = { k1: point.k1, k2: point.k2 };
-    points.push(point);
+    records.push({ potential, fit: point, status: "valid" });
   }
 
-  const contributions = data.scanRates.flatMap((scanRate) => {
+  return records;
+}
+
+export function integrateDunnContributions(
+  data: InterpolatedCvData,
+  coefficients: Array<{ k1: number; k2: number } | null>
+): DunnContribution[] {
+  validateInterpolatedCvData(data);
+  if (coefficients.length !== data.potentials.length) throw new CvAnalysisError("invalidDataShape");
+  return data.scanRates.flatMap((scanRate) => {
     if (!Number.isFinite(scanRate) || scanRate <= 0) return [];
     const contribution = makeContribution(scanRate, data.potentials, coefficients);
     return contribution ? [contribution] : [];
   });
-  return { points, contributions };
 }
 
 function validateAndSortSeries(series: CvSeries): SortedSeries {
@@ -141,7 +188,7 @@ function interpolateAt(points: SortedSeries["points"], potential: number) {
   return current;
 }
 
-function validateDataShape(data: InterpolatedCvData) {
+export function validateInterpolatedCvData(data: InterpolatedCvData) {
   if (data.currents.length !== data.scanRates.length
     || data.currents.some((row) => row.length !== data.potentials.length)) {
     throw new CvAnalysisError("invalidDataShape");
@@ -160,8 +207,17 @@ function makeContribution(
   coefficients: Array<{ k1: number; k2: number } | null>
 ): DunnContribution | null {
   const squareRootRate = Math.sqrt(scanRate);
-  const capacitiveCurrent = coefficients.map((coefficient) => finiteOrNull(coefficient?.k1, scanRate));
-  const diffusionCurrent = coefficients.map((coefficient) => finiteOrNull(coefficient?.k2, squareRootRate));
+  const reconstructed = coefficients.map((coefficient) => {
+    const capacitive = finiteOrNull(coefficient?.k1, scanRate);
+    const diffusion = finiteOrNull(coefficient?.k2, squareRootRate);
+    return capacitive === null || diffusion === null
+      ? { capacitive: null, diffusion: null }
+      : { capacitive, diffusion };
+  });
+  const capacitiveCurrent = reconstructed.map((current) => current.capacitive);
+  const diffusionCurrent = reconstructed.map((current) => current.diffusion);
+  const validPointCount = reconstructed.filter((current) => current.capacitive !== null).length;
+  const sampledPointCount = potentials.length;
   let capacitiveArea = 0;
   let diffusionArea = 0;
   let intervalCount = 0;
@@ -188,6 +244,9 @@ function makeContribution(
     scanRate,
     capacitivePercent: percentages.capacitive,
     diffusionPercent: percentages.diffusion,
+    validPointCount,
+    sampledPointCount,
+    coveragePercent: sampledPointCount === 0 ? 0 : validPointCount / sampledPointCount * 100,
     capacitiveCurrent,
     diffusionCurrent
   };

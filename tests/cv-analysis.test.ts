@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { analyzeBValue, analyzeDunn, interpolateCommonGrid } from "../src/lib/cvAnalysis";
+import {
+  analyzeBValue,
+  analyzeDunn,
+  integrateDunnContributions,
+  interpolateCommonGrid
+} from "../src/lib/cvAnalysis";
 import { CvAnalysisError, type CvSeries, type InterpolatedCvData } from "../src/lib/cvTypes";
 
 function makeBValueData(options: {
@@ -142,32 +147,34 @@ describe("analyzeBValue", () => {
     expect(result[0].intercept).toBeCloseTo(Math.log(3), 10);
   });
 
-  it("skips zero and non-finite currents", () => {
+  it("skips zero and non-finite currents while requiring three usable rates", () => {
     const data: InterpolatedCvData = {
       potentials: [0],
-      scanRates: [1, 2, 4, 8],
-      currents: [[2], [0], [Number.NaN], [16]]
+      scanRates: [1, 2, 4, 8, 16],
+      currents: [[2], [0], [Number.NaN], [16], [32]]
     };
 
     const result = analyzeBValue(data);
     expect(result[0].b).toBeCloseTo(1, 10);
-    expect(result[0].pointCount).toBe(2);
+    expect(result[0].pointCount).toBe(3);
     expect(result[0].fitPoints).toEqual([
       { logScanRate: 0, logCurrentMagnitude: Math.log(2) },
-      { logScanRate: Math.log(8), logCurrentMagnitude: Math.log(16) }
+      { logScanRate: Math.log(8), logCurrentMagnitude: Math.log(16) },
+      { logScanRate: Math.log(16), logCurrentMagnitude: Math.log(32) }
     ]);
   });
 
-  it("returns no fit with fewer than two distinct positive scan rates", () => {
+  it("returns no fit with fewer than three distinct positive scan rates", () => {
     expect(analyzeBValue({ potentials: [0], scanRates: [1, 1], currents: [[2], [3]] })).toEqual([]);
-    expect(analyzeBValue({ potentials: [0], scanRates: [0, -1, 2], currents: [[1], [2], [0]] })).toEqual([]);
+    expect(analyzeBValue({ potentials: [0], scanRates: [1, 2], currents: [[2], [4]] })).toEqual([]);
+    expect(analyzeBValue({ potentials: [0], scanRates: [0, -1, 2], currents: [[1], [2], [4]] })).toEqual([]);
   });
 
   it("keeps extreme logarithmic fits finite", () => {
     const result = analyzeBValue({
       potentials: [0],
-      scanRates: [Number.MIN_VALUE, 1],
-      currents: [[Number.MAX_VALUE], [Number.MIN_VALUE]]
+      scanRates: [Number.MIN_VALUE, Math.sqrt(Number.MIN_VALUE), 1],
+      currents: [[Number.MAX_VALUE], [1], [Number.MIN_VALUE]]
     });
 
     expect(result).toHaveLength(1);
@@ -199,6 +206,11 @@ describe("analyzeDunn", () => {
     }
     expect(result.contributions[0].capacitivePercent + result.contributions[0].diffusionPercent)
       .toBeCloseTo(100, 10);
+    expect(result.contributions[0]).toMatchObject({
+      validPointCount: 3,
+      sampledPointCount: 3,
+      coveragePercent: 100
+    });
   });
 
   it("integrates component magnitudes without anodic/cathodic cancellation", () => {
@@ -255,6 +267,27 @@ describe("analyzeDunn", () => {
     expect(contribution.diffusionCurrent[1]).toBeNull();
     expect(contribution.capacitiveCurrent[0]).not.toBe(0);
     expect(contribution.diffusionCurrent[0]).not.toBe(0);
+  });
+
+  it("uses one joint null mask when either reconstructed component is non-finite", () => {
+    const data: InterpolatedCvData = {
+      potentials: [0, 1, 2, 3],
+      scanRates: [Number.MAX_VALUE],
+      currents: [[0, 0, 0, 0]]
+    };
+
+    const contribution = integrateDunnContributions(data, [
+      { k1: 1, k2: 1 },
+      { k1: 2, k2: 1 },
+      { k1: 0, k2: 1 },
+      { k1: 0, k2: 1 }
+    ])[0];
+
+    expect(contribution).toBeDefined();
+    expect(contribution.capacitiveCurrent[1]).toBeNull();
+    expect(contribution.diffusionCurrent[1]).toBeNull();
+    expect(contribution.validPointCount).toBe(3);
+    expect(contribution.coveragePercent).toBe(75);
   });
 
   it("returns no contribution percentages when total magnitude is zero", () => {
