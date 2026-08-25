@@ -9,10 +9,13 @@ import { makeXlsxFile } from "./xlsx-test-fixture";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 let root: ReturnType<typeof createRoot> | undefined;
+let restoreClipboard: (() => void) | undefined;
 
 afterEach(async () => {
   await act(async () => root?.unmount());
   root = undefined;
+  restoreClipboard?.();
+  restoreClipboard = undefined;
   document.body.replaceChildren();
   history.replaceState(null, "", "/");
   localStorage.clear();
@@ -750,10 +753,15 @@ describe("CV kinetics page", () => {
 
   it("caps chart and table rendering while CSV export retains the full analysis", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
+    const clipboardDescriptor = Object.getOwnPropertyDescriptor(navigator, "clipboard");
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,
       value: { writeText }
     });
+    restoreClipboard = () => {
+      if (clipboardDescriptor) Object.defineProperty(navigator, "clipboard", clipboardDescriptor);
+      else delete (navigator as Navigator & { clipboard?: Clipboard }).clipboard;
+    };
     const view = await renderPage();
     const sourceRowCount = 2_501;
     const contents = ["Potential,Current 1 mV/s,Current 4 mV/s,Current 9 mV/s", ...Array.from({ length: sourceRowCount }, (_, index) => `${index},${index + 1},${4 * (index + 1)},${9 * (index + 1)}`)].join("\n");
@@ -777,6 +785,9 @@ describe("CV kinetics page", () => {
 
     const dunnTable = view.querySelector('[data-table-id="cv-dunn-current-table"]')!;
     const toolbar = dunnTable.closest('.cv-result-table-block')?.querySelector<HTMLElement>('.cv-table-copy-toolbar')!;
+    const columnGroup = toolbar.querySelector<HTMLElement>('.cv-table-copy-columns');
+    expect(columnGroup?.getAttribute("role")).toBe("group");
+    expect(columnGroup?.getAttribute("aria-labelledby")).toBe(toolbar.querySelector("span")?.id);
     const copyButton = [...toolbar.querySelectorAll('button')]
       .find((item) => item.textContent === "Copy selected columns")!;
     expect(copyButton.disabled).toBe(true);

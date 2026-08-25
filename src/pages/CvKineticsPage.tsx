@@ -415,7 +415,7 @@ function DataTable({ headers, rows, tableId }: { headers: string[]; rows: Array<
   return <div className="cv-result-table-block">
     {supportsColumnCopy && <div className="cv-table-copy-toolbar">
       <span id={`${controlId}-columns`}>{t("cv.table.copy.columns")}</span>
-      <div className="cv-table-copy-columns" aria-labelledby={`${controlId}-columns`}>
+      <div className="cv-table-copy-columns" role="group" aria-labelledby={`${controlId}-columns`}>
         {headers.map((header, index) => {
           const checkboxId = `${controlId}-column-${index}`;
           return <label htmlFor={checkboxId} key={index}>
