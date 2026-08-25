@@ -760,7 +760,7 @@ describe("CV kinetics page", () => {
     });
     restoreClipboard = () => {
       if (clipboardDescriptor) Object.defineProperty(navigator, "clipboard", clipboardDescriptor);
-      else delete (navigator as Navigator & { clipboard?: Clipboard }).clipboard;
+      else Reflect.deleteProperty(navigator, "clipboard");
     };
     const view = await renderPage();
     const sourceRowCount = 2_501;

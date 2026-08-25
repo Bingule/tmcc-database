@@ -1,6 +1,6 @@
 # CV Result Table Usability Design
 
-Date: 2026-08-25  
+Date: 2026-08-25
 Branch: `cv-result-table-usability`
 
 ## Goal
