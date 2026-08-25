@@ -262,4 +262,3 @@ git status --short --branch
 ```
 
 Confirm there are no homepage, route, formula, dependency, or unrelated data changes. Do not merge, push, or deploy automatically.
-
