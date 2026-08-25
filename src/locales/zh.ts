@@ -360,7 +360,7 @@ export const zh = {
   "cv.preview.currentColumn": "电流列",
   "cv.preview.rows": "预览行",
   "cv.analysis.run": "运行分析",
-  "cv.analysis.notice": "各序列仅在共同电位范围内进行线性插值；不外推，也不平滑。",
+  "cv.analysis.notice": "各序列仅在共同电位范围内进行线性插值；不外推，也不平滑。对于完整 CV 循环，分析每列按文件顺序出现的第一个单调扫描分支；不会平均正向与反向扫描电流。",
   "cv.b.title": "b 值分析",
   "cv.b.help": "拟合 log(|i|) = log(a) + b log(v)。使用电流绝对值，并忽略零电流点。",
   "cv.b.chart": "b 值-电位图",

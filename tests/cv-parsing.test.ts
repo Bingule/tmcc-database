@@ -307,6 +307,19 @@ describe("confirmCvSeries", () => {
       { reason: "duplicatePotential", header: "1", potential: 0 }
     );
   });
+
+  it("uses the first monotonic sweep of a complete CV cycle without averaging reverse-scan currents", () => {
+    const table = parseDelimitedCv(
+      "E1,I1,E2,I2,E3,I3\n0,1,0,2,0,3\n1,2,1,4,1,6\n2,3,2,6,2,9\n1,20,1,40,1,60\n0,10,0,20,0,30",
+      { layout: "pairedPotentialCurrent", headerMode: "header" }
+    );
+
+    expect(confirmCvSeries(table, [1, 4, 9])).toEqual([
+      { label: "I1", scanRate: 1, points: [{ potential: 0, current: 1 }, { potential: 1, current: 2 }, { potential: 2, current: 3 }] },
+      { label: "I2", scanRate: 4, points: [{ potential: 0, current: 2 }, { potential: 1, current: 4 }, { potential: 2, current: 6 }] },
+      { label: "I3", scanRate: 9, points: [{ potential: 0, current: 3 }, { potential: 1, current: 6 }, { potential: 2, current: 9 }] }
+    ]);
+  });
 });
 
 describe("parseCvFile", () => {
@@ -372,6 +385,21 @@ describe("parseCvFile", () => {
     ]);
   });
 
+  it("falls back to GB18030 for Chinese CSV files exported by legacy Excel", async () => {
+    const bytes = new Uint8Array([
+      181,231,209,185,86,44,181,231,193,247,105,49,44,181,231,209,185,86,44,
+      181,231,193,247,105,50,44,181,231,209,185,86,44,181,231,193,247,105,51,
+      10,48,44,49,44,48,44,50,44,48,44,51,10,49,44,50,44,49,44,51,44,49,44,52
+    ]);
+    const table = await parseCvFile(new File([bytes], "中文表头.csv"), {
+      layout: "pairedPotentialCurrent",
+      headerMode: "header"
+    });
+
+    expect(table.headers).toEqual(["电压V", "电流i1", "电压V", "电流i2", "电压V", "电流i3"]);
+    expect(table.rows).toEqual([[0, 1, 0, 2, 0, 3], [1, 2, 1, 3, 1, 4]]);
+  });
+
   it("parses a headerless UTF-16 TXT file when numeric first-row mode is selected", async () => {
     const file = new File([encodeUtf16("0\t10\t50\n1\t11\t51", "le")], "headerless.txt");
     const table = await parseCvFile(file, { layout: "sharedPotential", headerMode: "data" });
@@ -392,6 +420,32 @@ describe("parseCvFile", () => {
         { column: 2, header: "Current 5 mV s-1", inferredScanRate: 5 }
       ]
     });
+  });
+
+  it("accepts an Excel workbook containing a complete CV loop", async () => {
+    const file = makeWorkbookFile([{
+      name: "CV",
+      rows: [
+        ["E1", "I1", "E2", "I2", "E3", "I3"],
+        [0, 1, 0, 2, 0, 3],
+        [1, 2, 1, 4, 1, 6],
+        [2, 3, 2, 6, 2, 9],
+        [1, 20, 1, 40, 1, 60],
+        [0, 10, 0, 20, 0, 30]
+      ]
+    }], "complete-cycle.xlsx");
+
+    const table = await parseCvFile(file, {
+      layout: "pairedPotentialCurrent",
+      headerMode: "header"
+    });
+
+    expect(table.pairs).toHaveLength(3);
+    expect(confirmCvSeries(table, [1, 4, 9])[0].points).toEqual([
+      { potential: 0, current: 1 },
+      { potential: 1, current: 2 },
+      { potential: 2, current: 3 }
+    ]);
   });
 
   it("ignores a false EOCD signature inside a legal ZIP comment and finds the real EOCD", async () => {

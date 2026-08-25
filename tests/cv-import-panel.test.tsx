@@ -27,6 +27,7 @@ const initialDraft: CvImportDraft = {
 
 function PanelHarness({ table = null, initial = initialDraft }: { table?: ParsedCvTable | null; initial?: CvImportDraft }) {
   const [draft, setDraft] = useState(initial);
+  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const { setLanguage, t } = useI18n();
   return <>
     <button type="button" onClick={() => setLanguage("en")}>{t("language.english")}</button>
@@ -34,10 +35,11 @@ function PanelHarness({ table = null, initial = initialDraft }: { table?: Parsed
     <CvImportPanel
       draft={draft}
       table={table}
+      selectedFileName={selectedFileName}
       busy={false}
       error={null}
       onDraftChange={setDraft}
-      onFile={() => undefined}
+      onFile={(file) => setSelectedFileName(file.name)}
       onParsePaste={() => undefined}
       onAnalyze={() => undefined}
     />
