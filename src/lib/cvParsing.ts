@@ -1,5 +1,6 @@
 import readXlsxFile from "read-excel-file/browser";
 import type { CvSeries } from "./cvTypes";
+import { CvCycleStructureError, splitAlignedCvCycles } from "./cvCycle";
 import { CvParseError, makeColumnPairs } from "./cvImport";
 import type { CvColumnPair, CvImportOptions, CvParseErrorCode, ParsedCvTable as CvImportParsedCvTable } from "./cvImport";
 
@@ -253,91 +254,71 @@ export function confirmCvSeries(table: ParsedCvTable, scanRates: number[]): CvSe
     seenRates.add(scanRate);
   }
 
-  return table.pairs.map((pair, seriesIndex) => {
-    const points: CvSeries["points"] = [];
-    for (let rowIndex = 0; rowIndex < table.rows.length; rowIndex += 1) {
-      const row = table.rows[rowIndex];
-      const potentialCell = row[pair.potentialColumn] ?? null;
-      const currentCell = row[pair.currentColumn] ?? null;
-      const potentialMissing = isMissingCell(potentialCell);
-      const currentMissing = isMissingCell(currentCell);
-      if (table.layout === "sharedPotential" && currentMissing) continue;
-      if (table.layout === "pairedPotentialCurrent" && potentialMissing && currentMissing) continue;
-      if (table.layout === "pairedPotentialCurrent" && potentialMissing !== currentMissing) {
-        throw new CvParseError("malformedFile", {
-          reason: "incompletePairRow",
-          row: rowIndex + (table.headerMode === "header" ? 2 : 1),
-          potentialColumn: pair.potentialColumn,
-          currentColumn: pair.currentColumn
-        });
-      }
-      const potential = finiteNumber(potentialCell);
-      if (potential === null) {
-        throw new CvParseError("malformedFile", {
-          reason: "invalidPotential",
-          row: rowIndex + (table.headerMode === "header" ? 2 : 1),
-          value: potentialCell
-        });
-      }
-      const current = finiteNumber(currentCell);
-      if (current === null) {
-        throw new CvParseError("malformedFile", {
-          reason: "invalidCurrent",
-          row: rowIndex + (table.headerMode === "header" ? 2 : 1),
-          header: pair.currentHeader,
-          value: currentCell
-        });
-      }
-      points.push({ potential, current });
-    }
-    const firstSweep = selectFirstMonotonicSweep(points, pair.currentHeader);
-    if (firstSweep.length < 2) {
-      throw new CvParseError("insufficientSeries", {
-        reason: "pointCount",
-        header: pair.currentHeader,
-        pointCount: firstSweep.length
+  const series = table.pairs.map((pair, seriesIndex) => ({
+    label: pair.currentHeader,
+    scanRate: confirmedRates[seriesIndex],
+    points: collectPointsInRowOrder(table, pair)
+  }));
+
+  try {
+    splitAlignedCvCycles(series);
+  } catch (error) {
+    if (error instanceof CvCycleStructureError) {
+      throw new CvParseError("invalidCycleStructure", {
+        reason: error.reason,
+        ...error.detail
       });
     }
-    firstSweep.sort((left, right) => left.potential - right.potential);
-    return { label: pair.currentHeader, scanRate: confirmedRates[seriesIndex], points: firstSweep };
-  });
+    throw error;
+  }
+  return series;
 }
 
-/**
- * A complete CV cycle revisits potentials on the reverse scan. The two currents
- * are physically different branches, so never average them. The v1 analysis
- * model accepts one current per potential and therefore uses the first
- * monotonic sweep in file order.
- */
-function selectFirstMonotonicSweep(points: CvSeries["points"], header: string) {
-  let direction = 0;
-  for (let index = 1; index < points.length; index += 1) {
-    const delta = points[index].potential - points[index - 1].potential;
-    const sign = Math.sign(delta);
-    if (sign === 0) {
-      const nextDirection = findNextPotentialDirection(points, index);
-      if (direction !== 0 && nextDirection === -direction) return points.slice(0, index);
+function collectPointsInRowOrder(table: ParsedCvTable, pair: CvColumnPair): CvSeries["points"] {
+  const points: CvSeries["points"] = [];
+  for (let rowIndex = 0; rowIndex < table.rows.length; rowIndex += 1) {
+    const row = table.rows[rowIndex];
+    const potentialCell = row[pair.potentialColumn] ?? null;
+    const currentCell = row[pair.currentColumn] ?? null;
+    const potentialMissing = isMissingCell(potentialCell);
+    const currentMissing = isMissingCell(currentCell);
+    if (table.layout === "sharedPotential" && currentMissing) continue;
+    if (table.layout === "pairedPotentialCurrent" && potentialMissing && currentMissing) continue;
+    if (table.layout === "pairedPotentialCurrent" && potentialMissing !== currentMissing) {
       throw new CvParseError("malformedFile", {
-        reason: "duplicatePotential",
-        header,
-        potential: points[index].potential
+        reason: "incompletePairRow",
+        row: rowIndex + (table.headerMode === "header" ? 2 : 1),
+        potentialColumn: pair.potentialColumn,
+        currentColumn: pair.currentColumn
       });
     }
-    if (direction === 0) {
-      direction = sign;
-      continue;
+    const potential = finiteNumber(potentialCell);
+    if (potential === null) {
+      throw new CvParseError("malformedFile", {
+        reason: "invalidPotential",
+        row: rowIndex + (table.headerMode === "header" ? 2 : 1),
+        value: potentialCell
+      });
     }
-    if (sign !== direction) return points.slice(0, index);
+    const current = finiteNumber(currentCell);
+    if (current === null) {
+      throw new CvParseError("malformedFile", {
+        reason: "invalidCurrent",
+        row: rowIndex + (table.headerMode === "header" ? 2 : 1),
+        header: pair.currentHeader,
+        value: currentCell
+      });
+    }
+    points.push({ potential, current });
   }
-  return [...points];
-}
-
-function findNextPotentialDirection(points: CvSeries["points"], start: number) {
-  for (let index = start + 1; index < points.length; index += 1) {
-    const sign = Math.sign(points[index].potential - points[index - 1].potential);
-    if (sign !== 0) return sign;
+  if (points.length < 2) {
+    throw new CvParseError("insufficientSeries", {
+      reason: "pointCount",
+      header: pair.currentHeader,
+      pointCount: points.length
+    });
   }
-  return 0;
+  return points;
 }
 
 function detectDelimiter(text: string, options: CvImportOptions) {

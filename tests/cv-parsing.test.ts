@@ -286,16 +286,16 @@ describe("confirmCvSeries", () => {
     }
   });
 
-  it("preserves sparse points independently for each current series", () => {
+  it("preserves sparse points independently in source row order for each current series", () => {
     const table = parseShared("Potential,1,2\n2,12,22\n0,10,\n1,,20");
 
     expect(confirmCvSeries(table, [1, 2])).toEqual([
-      { label: "1", scanRate: 1, points: [{ potential: 0, current: 10 }, { potential: 2, current: 12 }] },
-      { label: "2", scanRate: 2, points: [{ potential: 1, current: 20 }, { potential: 2, current: 22 }] }
+      { label: "1", scanRate: 1, points: [{ potential: 2, current: 12 }, { potential: 0, current: 10 }] },
+      { label: "2", scanRate: 2, points: [{ potential: 2, current: 22 }, { potential: 1, current: 20 }] }
     ]);
   });
 
-  it("requires two points per series and reports duplicate potentials with stable detail", () => {
+  it("requires two points per series and reports duplicate potentials as invalid cycle structure", () => {
     expectParseError(
       () => confirmCvSeries(parseShared("Potential,1,2\n0,10,20\n1,,21"), [1, 2]),
       "insufficientSeries",
@@ -303,22 +303,47 @@ describe("confirmCvSeries", () => {
     );
     expectParseError(
       () => confirmCvSeries(parseShared("Potential,1,2\n0,10,20\n0,11,21"), [1, 2]),
-      "malformedFile",
-      { reason: "duplicatePotential", header: "1", potential: 0 }
+      "invalidCycleStructure",
+      { reason: "duplicatePotential", sourceIndex: 1 }
     );
   });
 
-  it("uses the first monotonic sweep of a complete CV cycle without averaging reverse-scan currents", () => {
+  it("preserves every point of a complete CV cycle in file order", () => {
     const table = parseDelimitedCv(
       "E1,I1,E2,I2,E3,I3\n0,1,0,2,0,3\n1,2,1,4,1,6\n2,3,2,6,2,9\n1,20,1,40,1,60\n0,10,0,20,0,30",
       { layout: "pairedPotentialCurrent", headerMode: "header" }
     );
 
     expect(confirmCvSeries(table, [1, 4, 9])).toEqual([
-      { label: "I1", scanRate: 1, points: [{ potential: 0, current: 1 }, { potential: 1, current: 2 }, { potential: 2, current: 3 }] },
-      { label: "I2", scanRate: 4, points: [{ potential: 0, current: 2 }, { potential: 1, current: 4 }, { potential: 2, current: 6 }] },
-      { label: "I3", scanRate: 9, points: [{ potential: 0, current: 3 }, { potential: 1, current: 6 }, { potential: 2, current: 9 }] }
+      { label: "I1", scanRate: 1, points: [{ potential: 0, current: 1 }, { potential: 1, current: 2 }, { potential: 2, current: 3 }, { potential: 1, current: 20 }, { potential: 0, current: 10 }] },
+      { label: "I2", scanRate: 4, points: [{ potential: 0, current: 2 }, { potential: 1, current: 4 }, { potential: 2, current: 6 }, { potential: 1, current: 40 }, { potential: 0, current: 20 }] },
+      { label: "I3", scanRate: 9, points: [{ potential: 0, current: 3 }, { potential: 1, current: 6 }, { potential: 2, current: 9 }, { potential: 1, current: 60 }, { potential: 0, current: 30 }] }
     ]);
+  });
+
+  it("preserves a parsed cycle with two turning points", () => {
+    const table = parseDelimitedCv(
+      "E1,I1,E2,I2\n0,1,0,2\n1,2,1,4\n-1,3,-1,6\n0,4,0,8",
+      { layout: "pairedPotentialCurrent", headerMode: "header" }
+    );
+
+    expect(confirmCvSeries(table, [1, 4])[0].points).toEqual([
+      { potential: 0, current: 1 },
+      { potential: 1, current: 2 },
+      { potential: -1, current: 3 },
+      { potential: 0, current: 4 }
+    ]);
+  });
+
+  it("reports inconsistent parsed cycle branches", () => {
+    const table = parseDelimitedCv(
+      "E1,I1,E2,I2\n0,1,0,2\n1,2,1,4\n0,3,2,6",
+      { layout: "pairedPotentialCurrent", headerMode: "header" }
+    );
+
+    expectParseError(() => confirmCvSeries(table, [1, 4]), "invalidCycleStructure", {
+      reason: "inconsistentBranches"
+    });
   });
 });
 
@@ -444,7 +469,9 @@ describe("parseCvFile", () => {
     expect(confirmCvSeries(table, [1, 4, 9])[0].points).toEqual([
       { potential: 0, current: 1 },
       { potential: 1, current: 2 },
-      { potential: 2, current: 3 }
+      { potential: 2, current: 3 },
+      { potential: 1, current: 20 },
+      { potential: 0, current: 10 }
     ]);
   });
 

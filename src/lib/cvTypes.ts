@@ -4,6 +4,21 @@ export interface CvSeries {
   points: Array<{ potential: number; current: number }>;
 }
 
+export type SweepDirection = 1 | -1;
+
+export interface CvSweepPoint {
+  potential: number;
+  current: number;
+  sourceIndex: number;
+}
+
+export interface CvSweepBranch {
+  branchIndex: number;
+  direction: SweepDirection;
+  points: CvSweepPoint[];
+  sharesStartWithPrevious: boolean;
+}
+
 export interface InterpolatedCvData {
   potentials: number[];
   scanRates: number[];

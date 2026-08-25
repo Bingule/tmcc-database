@@ -37,6 +37,7 @@ export type CvParseErrorCode =
   | "insufficientSeries"
   | "tooManySeries"
   | "scanRateCountMismatch"
+  | "invalidCycleStructure"
   | "resourceLimitExceeded";
 
 export class CvParseError extends Error {
