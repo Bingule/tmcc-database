@@ -93,7 +93,7 @@ export function TheoreticalCapacityPage() {
             <p><strong>{t("capacity.formulaResult", { formula: result.formula })}</strong></p>
             <p>{t("capacity.equationExplanation")}</p>
             <ul>
-              <li>{t("capacity.faradayDefinition", { faraday: Math.round(FARADAY_CONSTANT) })}</li>
+              <li>{t("capacity.faradayDefinition", { faraday: FARADAY_CONSTANT })}</li>
               <li>{t("capacity.molarMassDefinition")}</li>
               <li>{t("capacity.electronNumberDefinition")}</li>
             </ul>

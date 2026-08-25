@@ -97,7 +97,7 @@ describe("calculator routes", () => {
     expect(view.querySelector("#capacity-result")?.textContent).toBe("Theoretical Specific Capacity");
     expect(view.querySelector('[aria-labelledby="capacity-result"]')?.textContent).toContain("Chemical formula: Nb2S2C");
     expect(view.textContent).toContain("Q = nF/(3.6M)");
-    expect(view.textContent).toContain("F = Faraday constant (96485 C mol−1)");
+    expect(view.textContent).toContain("F = Faraday constant (96485.33212 C mol−1)");
     expect(view.textContent).toContain("M = molar mass (g mol−1)");
     expect(view.textContent).toContain("n = electron transfer number");
     expect(view.textContent).toContain("Q = nF/(3.6M) gives the theoretical specific capacity in mAh g−1.");
@@ -110,7 +110,7 @@ describe("calculator routes", () => {
     await switchLanguage(view, "中文");
     expect(view.querySelector("#capacity-result")?.textContent).toBe("理论比容量");
     expect(view.querySelector('[aria-labelledby="capacity-result"]')?.textContent).toContain("化学式：Nb2S2C");
-    expect(view.textContent).toContain("F = 法拉第常数（96485 C mol−1）");
+    expect(view.textContent).toContain("F = 法拉第常数（96485.33212 C mol−1）");
     expect(view.textContent).toContain("M = 摩尔质量（g mol−1）");
     expect(view.textContent).toContain("n = 电子转移数");
     expect(view.textContent).toContain("Q = nF/(3.6M) 得到以 mAh g−1 表示的理论比容量。");
