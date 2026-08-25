@@ -334,24 +334,20 @@ describe("CV kinetics page", () => {
     expect(view.querySelector('[aria-live="polite"]')?.textContent).toBe("");
   });
 
-  it("retains mathematical b-value and Dunn fits when every R-squared value is below 0.95", async () => {
+  it("retains quality counts when every R-squared value is below 0.95", async () => {
     const view = await renderPage();
     await upload(view, "Potential,Current 1 mV/s,Current 4 mV/s,Current 9 mV/s\n0,1,100,2\n0.5,2,200,4\n1,3,300,6");
     await click(view, "Run analysis");
 
     const bRows = view.querySelectorAll('[data-table-id="cv-b-records-table"] tbody tr');
     const dunnRows = view.querySelectorAll('[data-table-id="cv-dunn-records-table"] tbody tr');
-    expect(bRows.length).toBeGreaterThan(0);
-    expect(dunnRows.length).toBeGreaterThan(0);
-    expect(bRows[0]?.textContent).toContain("Below R² threshold");
-    expect(dunnRows[0]?.textContent).toContain("Below R² threshold");
-    expect(bRows[0]?.querySelectorAll("td")[1]?.textContent).not.toBe("—");
-    expect(dunnRows[0]?.querySelectorAll("td")[1]?.textContent).not.toBe("—");
+    expect(bRows).toHaveLength(0);
+    expect(dunnRows).toHaveLength(0);
     expect(view.querySelector('[data-table-id="cv-contribution-table"]')).toBeNull();
     expect(view.querySelector('[aria-live="polite"]')?.textContent).not.toContain("No b-value fit");
 
     await click(view, "中文");
-    expect(view.querySelector('[data-table-id="cv-b-records-table"]')?.textContent).toContain("低于 R² 阈值");
+    expect(view.querySelector('[data-quality-summary="true"]')?.textContent).toContain("3 个排除");
   });
 
   it("shows a genuine analysis failure immediately beside the Run analysis action", async () => {
@@ -493,7 +489,17 @@ describe("CV kinetics page", () => {
     expect(view.querySelector('[aria-live="polite"]')?.textContent).toContain("导出失败");
   });
 
-  it("reports full quality metadata, retains every fit record, and selects excluded potentials exactly", async () => {
+  it("keeps low-quality counts internally but excludes threshold failures from result outputs", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    const clipboardDescriptor = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText }
+    });
+    restoreClipboard = () => {
+      if (clipboardDescriptor) Object.defineProperty(navigator, "clipboard", clipboardDescriptor);
+      else Reflect.deleteProperty(navigator, "clipboard");
+    };
     const view = await renderPage();
     await upload(view, qualityCsv());
     await setSelect(view.querySelector<HTMLSelectElement>('select[name="cv-point-interval"]')!, "5");
@@ -518,24 +524,37 @@ describe("CV kinetics page", () => {
     const dunnTable = view.querySelector('[data-table-id="cv-dunn-records-table"]')!;
     expect(bTable.querySelector("thead")?.textContent).toContain("Fit status");
     expect(dunnTable.querySelector("thead")?.textContent).toContain("Fit status");
-    expect(bTable.querySelectorAll("tbody tr")).toHaveLength(5);
-    expect(dunnTable.querySelectorAll("tbody tr")).toHaveLength(5);
+    expect(bTable.querySelectorAll("tbody tr")).toHaveLength(4);
+    expect(dunnTable.querySelectorAll("tbody tr")).toHaveLength(4);
 
-    const excludedRow = [...bTable.querySelectorAll<HTMLTableRowElement>("tbody tr")].find((row) => row.cells[0].textContent === "5")!;
-    expect(excludedRow.textContent).toContain("Below R² threshold");
-    expect(excludedRow.cells[1].textContent).not.toBe("—");
-    expect(excludedRow.cells[3].textContent).not.toBe("—");
-    expect(excludedRow.cells[4].textContent).toBe("3");
+    expect([...bTable.querySelectorAll<HTMLTableRowElement>("tbody tr")].some((row) => row.cells[0].textContent === "5")).toBe(false);
+    expect([...dunnTable.querySelectorAll<HTMLTableRowElement>("tbody tr")].some((row) => row.cells[0].textContent === "5")).toBe(false);
     const unavailableRow = [...bTable.querySelectorAll<HTMLTableRowElement>("tbody tr")].find((row) => row.cells[0].textContent === "10")!;
     expect([...unavailableRow.cells].slice(1, 5).map((cell) => cell.textContent)).toEqual(["—", "—", "—", "—"]);
     expect(unavailableRow.textContent).toContain("Zero-current logarithm unavailable");
 
     expect(view.querySelector('select[name="selectedPotential"]')).toBeNull();
     await setPotential(view, "5");
-    expect(view.querySelector('[data-selected-fit-status="true"]')?.textContent).toContain("Below R² threshold");
-    expect(view.querySelector('[data-selected-fit-status="true"]')?.textContent).toContain("R²");
+    expect(view.querySelector('[data-selected-fit-status="true"]')).toBeNull();
+    expect(view.textContent).toContain("not an exact retained potential");
+    await setPotential(view, "0");
+    await click(view, "Next potential");
+    expect(view.querySelector<HTMLInputElement>('input[name="selectedPotential"]')?.value).toBe("15");
     expect(view.querySelector('[data-export-id="cv-b-chart"] [data-selected-x="5"]')).toBeNull();
     expect((view.querySelector('path[data-series-id="b-values"]')?.getAttribute("d") ?? "").match(/\bM\b/g)).toHaveLength(2);
+
+    const toolbar = bTable.closest('.cv-result-table-block')?.querySelector<HTMLElement>('.cv-table-copy-toolbar')!;
+    await act(async () => toolbar.querySelector<HTMLInputElement>('input[value="0"]')!.click());
+    await act(async () => toolbar.querySelector<HTMLButtonElement>('button')!.click());
+    expect((writeText.mock.calls[0][0] as string).split("\r\n").some((row) => row === "5")).toBe(false);
+
+    const blobs: Blob[] = [];
+    vi.stubGlobal("URL", { createObjectURL: vi.fn((blob: Blob) => { blobs.push(blob); return `blob:filtered-${blobs.length}`; }), revokeObjectURL: vi.fn() });
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    await click(view, "cv-b-value-results.csv");
+    await click(view, "cv-dunn-k1-k2.csv");
+    expect((await readBlob(blobs[0])).split("\r\n").some((row) => row.startsWith("5,"))).toBe(false);
+    expect((await readBlob(blobs[1])).split("\r\n").some((row) => row.startsWith("5,"))).toBe(false);
 
     const contributionTable = view.querySelector('[data-table-id="cv-contribution-table"]')!;
     expect(contributionTable.querySelector("thead")?.textContent).toContain("Valid / sampled points");
@@ -543,9 +562,12 @@ describe("CV kinetics page", () => {
     expect(contributionTable.textContent).toContain("4 / 5");
     expect(view.textContent).toContain("unavailable when no contiguous valid segment");
 
-    await click(view, "中文");
-    expect(view.querySelector('[data-table-id="cv-b-records-table"]')?.textContent).toContain("低于 R² 阈值");
-    expect(view.querySelector('[data-quality-summary="true"]')?.textContent).toContain("80%");
+    await setValue(view.querySelector<HTMLInputElement>('input[name="cv-r-squared-threshold"]')!, "0");
+    await click(view, "Run analysis");
+    expect(view.querySelectorAll('[data-table-id="cv-b-records-table"] tbody tr')).toHaveLength(5);
+    expect(view.querySelectorAll('[data-table-id="cv-dunn-records-table"] tbody tr')).toHaveLength(5);
+    expect([...view.querySelectorAll<HTMLTableRowElement>('[data-table-id="cv-b-records-table"] tbody tr')]
+      .find((row) => row.cells[0].textContent === "5")?.cells[1].textContent).not.toBe("—");
   });
 
   it("exports exactly six bilingual audit-ready CSVs and embeds current settings in SVG and PNG", async () => {
@@ -565,7 +587,7 @@ describe("CV kinetics page", () => {
     expect(exported[0].split("\r\n")[0]).toContain("Data layout: XYYYYY");
     expect(exported[0].split("\r\n")[0]).toContain("Point interval: 5");
     expect(exported[1]).toContain("Fit status,Data layout,Data source,Point interval,R² threshold");
-    expect(exported[1]).toContain("Below R² threshold,XYYYYY,File upload,5,0.95");
+    expect(exported[1]).not.toMatch(/(?:^|\r\n)5,/);
     expect(exported[1]).toContain("10,,,,,Zero-current logarithm unavailable");
     expect(exported[2]).toContain("Fit status,Data layout,Data source,Point interval,R² threshold");
     expect(exported[3].split("\r\n")[0]).toContain("R² threshold: 0.95");
@@ -577,7 +599,7 @@ describe("CV kinetics page", () => {
     await click(view, "cv-b-value-results.csv");
     const chinese = await readBlob(blobs[6]);
     expect(chinese).toContain("拟合状态,数据格式,数据来源,取点间隔,R² 阈值");
-    expect(chinese).toContain("低于 R² 阈值,XYYYYY,上传文件,5,0.95");
+    expect(chinese).not.toMatch(/(?:^|\r\n)5,/);
 
     await click(view, "EN");
     await click(view, "Export SVG — cv-b-chart.svg");
@@ -605,8 +627,8 @@ describe("CV kinetics page", () => {
     await click(view, "Run analysis");
 
     expect(view.querySelector('[data-quality-summary="true"]')).not.toBeNull();
-    expect(view.querySelectorAll('[data-table-id="cv-b-records-table"] tbody tr')).toHaveLength(3);
-    expect(view.querySelectorAll('[data-table-id="cv-dunn-records-table"] tbody tr')).toHaveLength(3);
+    expect(view.querySelectorAll('[data-table-id="cv-b-records-table"] tbody tr')).toHaveLength(2);
+    expect(view.querySelectorAll('[data-table-id="cv-dunn-records-table"] tbody tr')).toHaveLength(2);
     expect(view.querySelector('[data-table-id="cv-contribution-table"]')).toBeNull();
     expect(view.textContent).toContain("unavailable when no contiguous valid segment");
     const csvButtons = [...view.querySelectorAll<HTMLButtonElement>('.cv-export button')].filter((item) => item.textContent?.endsWith(".csv"));

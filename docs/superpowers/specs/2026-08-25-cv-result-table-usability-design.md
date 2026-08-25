@@ -103,6 +103,12 @@ Automated tests will verify:
 - No spreadsheet-style cell editing
 - No column sorting, filtering, reordering, or resizing
 - No row selection
-- No changes to CSV exports
+- No changes to raw/interpolated CV data exports
 - No changes to scientific formulas or interpolation
 - No homepage or unrelated page redesign
+
+## Addendum: R² Threshold Result Filtering
+
+Low-quality fits already receive the stable `belowRSquaredThreshold` status and are already excluded from charts and Dunn integration. They will now also be omitted from visible fitted-result tables, table clipboard output, potential-result navigation, and the b-value/Dunn fit-record CSV exports.
+
+The workflow retains these classified records internally so the quality summary can continue to report how many fits were excluded and so the scientific mask remains aligned with the common potential grid. Raw uploaded CV points, the interpolated-current export, and unavailable fits without a finite R² are not deleted by this filter. A threshold of `0` continues to disable R² exclusion.

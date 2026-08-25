@@ -349,3 +349,35 @@ Reviewer checks that the 12-row class is conditional, headers stay sticky, copyi
 - [ ] **Step 5: Deploy after authorization**
 
 Merge the reviewed branch into `main`, push `main`, monitor `.github/workflows/deploy-pages.yml` to success, and verify `https://tmccdb.org/tools/cv-kinetics/` references the new hashed CV asset.
+
+---
+
+### Task 4: Exclude fits below the configured R² threshold from result outputs
+
+**Files:**
+- Modify: `src/pages/CvKineticsPage.tsx`
+- Modify: `src/locales/en.ts`
+- Modify: `src/locales/zh.ts`
+- Modify: `tests/cv-page.test.tsx`
+- Modify: `README.md`
+
+**Interfaces:**
+- Consume existing `CvFitRecord.status === "belowRSquaredThreshold"`
+- Preserve full internal workflow records for quality counts and grid-aligned Dunn masking
+- Filter visible fitted-result tables, table clipboard rows, b-potential result navigation, and b/Dunn record CSV rows
+
+- [ ] **Step 1: Add failing page tests**
+
+Verify that a dataset containing a below-threshold fit still reports the excluded count but does not expose that fit in the b-value/Dunn result tables, copied table data, potential-result navigation, or b/Dunn fit-record CSV exports. Verify threshold `0` still retains finite fits.
+
+- [ ] **Step 2: Implement the smallest derived-result filters**
+
+Keep `analysis.bRecords` and `analysis.dunnRecords` intact internally. Derive result-output records by excluding only `belowRSquaredThreshold`, use valid b fits for the initial/interactive potential selection, and apply the same fitted-record filters to the two corresponding CSV exports.
+
+- [ ] **Step 3: Clarify bilingual help and README behavior**
+
+State that fits below the configured R² threshold are excluded from analysis result outputs while raw CV data remain unchanged.
+
+- [ ] **Step 4: Verify and commit**
+
+Run focused CV tests, the full test suite, the production build, and `git diff main...HEAD --check`; then commit the focused change.
