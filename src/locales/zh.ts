@@ -114,6 +114,8 @@ export const zh = {
   "periodic.transitionMetal": "过渡金属",
   "periodic.layer": "X 层",
   "periodic.center": "A 中心",
+  "periodic.centerElements": "14 种 p 区元素",
+  "periodic.centerGroups": "第 13–15 族",
   "periodic.intercalant": "M' 插层金属",
   "periodic.betweenLayers": "层间金属",
   "periodic.vdwTmcdc": "范德华 TMCDC",

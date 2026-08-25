@@ -10,6 +10,15 @@ type Props = {
   onElementSearch: (elements: string[], mode: "only" | "at_least") => void;
 };
 
+export const aCenterElements = ["B", "Al", "Ga", "In", "C", "Si", "Ge", "Sn", "Pb", "N", "P", "As", "Sb", "Bi"];
+
+const aCenterElementSet = new Set(aCenterElements);
+const aCenterElementGroups = [
+  "B · Al · Ga · In",
+  "C · Si · Ge · Sn · Pb",
+  "N · P · As · Sb · Bi"
+];
+
 export function PeriodicTable({ materials, onMetalSelect, onElementSearch }: Props) {
   const { t } = useI18n();
   const activeMetals = new Set(materials.map((material) => material.host.metal));
@@ -77,10 +86,16 @@ export function PeriodicTable({ materials, onMetalSelect, onElementSearch }: Pro
             <strong>{t("periodic.layer")}</strong>
             <small>S / Se / Te</small>
           </div>
-          <div>
+          <div className="guide-center" title={aCenterElementGroups.join("\n")}>
             <span className="guide-marker guide-light" />
             <strong>{t("periodic.center")}</strong>
-            <small>C / N</small>
+            <small className="guide-center-summary">
+              <b>{t("periodic.centerElements")}</b>
+              <span>{t("periodic.centerGroups")}</span>
+            </small>
+            <span className="guide-center-elements" aria-label={aCenterElements.join(", ")}>
+              {aCenterElementGroups.map((group) => <span key={group}>{group}</span>)}
+            </span>
           </div>
           <div>
             <span className="guide-marker guide-intercalant" />
@@ -104,6 +119,7 @@ export function PeriodicTable({ materials, onMetalSelect, onElementSearch }: Pro
         </div>
         {periodicTableElements.map((element) => {
           const isHostEligible = transitionMetals.includes(element.symbol);
+          const isACenter = aCenterElementSet.has(element.symbol);
           const hasRecord = activeMetals.has(element.symbol);
           const isSelected = selectedElements.includes(element.symbol);
           const status = hasRecord ? materialStatuses.not_calculated : materialStatuses.not_calculated;
@@ -115,6 +131,7 @@ export function PeriodicTable({ materials, onMetalSelect, onElementSearch }: Pro
                 "element",
                 `category-${element.category}`,
                 isHostEligible ? "host-eligible" : "context-only",
+                isACenter ? "a-center-element" : "",
                 hasRecord ? "available" : "",
                 isSelected ? "selected" : ""
               ].join(" ")}

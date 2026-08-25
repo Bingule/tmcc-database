@@ -112,6 +112,8 @@ export const en = {
   "periodic.transitionMetal": "transition metal",
   "periodic.layer": "X layer",
   "periodic.center": "A center",
+  "periodic.centerElements": "14 p-block elements",
+  "periodic.centerGroups": "Groups 13–15",
   "periodic.intercalant": "M' intercalant",
   "periodic.betweenLayers": "metal between layers",
   "periodic.vdwTmcdc": "vdW TMCDC",
