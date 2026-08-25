@@ -24,6 +24,7 @@ interface ScientificLineChartProps {
 
 const dimensions = { width: 800, height: 420 };
 const margin = { top: 34, right: 24, bottom: 58, left: 72 };
+const metadataLineLength = 60;
 
 export function ScientificLineChart({
   title,
@@ -38,6 +39,7 @@ export function ScientificLineChart({
   metadata
 }: ScientificLineChartProps): React.ReactElement {
   const titleId = useId();
+  const descriptionId = useId();
   const finiteSeries = series.map((item) => ({
     ...item,
     points: item.points.filter((point) => Number.isFinite(point.x) && (point.y === null || Number.isFinite(point.y)))
@@ -52,7 +54,8 @@ export function ScientificLineChart({
   const yDomain = expandedDomain(allPoints, "y");
   const legendColumns = 4;
   const legendRows = Math.ceil(finiteSeries.length / legendColumns);
-  const metadataLines = typeof metadata === "string" ? [metadata] : metadata ?? [];
+  const metadataSourceLines = typeof metadata === "string" ? [metadata] : metadata ?? [];
+  const metadataLines = metadataSourceLines.flatMap((line) => wrapMetadataLine(line));
   const legendTop = metadataLines.length > 0 ? 17 + metadataLines.length * 18 + 4 : 17;
   const chartMargin = { ...margin, top: Math.max(margin.top, legendTop + legendRows * 22) };
   const plotWidth = dimensions.width - chartMargin.left - chartMargin.right;
@@ -70,6 +73,7 @@ export function ScientificLineChart({
       <svg
         role="img"
         aria-labelledby={titleId}
+        aria-describedby={metadataSourceLines.length > 0 ? descriptionId : undefined}
         viewBox={`0 0 ${dimensions.width} ${dimensions.height}`}
         width="100%"
         height="auto"
@@ -77,6 +81,7 @@ export function ScientificLineChart({
         className="scientific-chart-svg"
       >
         <title id={titleId}>{title}</title>
+        {metadataSourceLines.length > 0 && <desc id={descriptionId}>{metadataSourceLines.join(". ")}</desc>}
         {metadataLines.length > 0 && <g data-chart-metadata="true">
           {metadataLines.map((line, index) => <text
             key={`${index}-${line}`}
@@ -269,6 +274,20 @@ function countNullRuns(points: Array<{ y: number | null }>) {
     else if (point.y !== null) inside = false;
   }
   return count;
+}
+
+function wrapMetadataLine(line: string): string[] {
+  const lines: string[] = [];
+  let remaining = line.trim();
+  while (remaining.length > metadataLineLength) {
+    const candidate = remaining.slice(0, metadataLineLength + 1);
+    const whitespace = candidate.lastIndexOf(" ");
+    const end = whitespace > 0 ? whitespace : metadataLineLength;
+    lines.push(remaining.slice(0, end).trimEnd());
+    remaining = remaining.slice(end).trimStart();
+  }
+  if (remaining !== "") lines.push(remaining);
+  return lines;
 }
 
 function formatTick(value: number): string {

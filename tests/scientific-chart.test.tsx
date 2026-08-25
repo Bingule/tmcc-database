@@ -154,4 +154,33 @@ describe("ScientificLineChart", () => {
     const metadata = view.querySelector('[data-chart-metadata="true"]');
     expect(metadata?.textContent).toBe("XYYYYY · File upload · interval = 5 · R² ≥ 0.95");
   });
+
+  it("wraps a 20-rate metadata line within the viewBox", async () => {
+    const rates = Array.from({ length: 20 }, (_, index) => `0.${String(index + 1).padStart(15, "0")}`);
+    const view = await renderChart({
+      ...baseProps,
+      metadata: `rates = ${rates.join(", ")} mV/s · interval = 30 · R² ≥ 0.987654321`
+    });
+
+    const lines = [...view.querySelectorAll<SVGTextElement>('[data-chart-metadata="true"] text')];
+    expect(lines.length).toBeGreaterThan(1);
+    expect(lines.every((line) => (line.textContent?.length ?? 0) <= 60)).toBe(true);
+    expect(lines.every((line) => Number(line.getAttribute("x")) + 60 * 11 <= 800 - 24)).toBe(true);
+  });
+
+  it("exposes all settings and the current figure selection through an SVG description", async () => {
+    const metadata = [
+      "XYYYYY · File upload · First row contains headers",
+      "rates = 0.123456789, 0.987654321 mV/s · interval = 5 · R² ≥ 0.876543219",
+      "potential = 0.123456789 V"
+    ];
+    const view = await renderChart({ ...baseProps, metadata });
+    const svg = view.querySelector("svg")!;
+    const descriptionId = svg.getAttribute("aria-describedby");
+    const description = svg.querySelector("desc");
+
+    expect(descriptionId).toBeTruthy();
+    expect(description?.id).toBe(descriptionId);
+    expect(description?.textContent).toBe(metadata.join(". "));
+  });
 });

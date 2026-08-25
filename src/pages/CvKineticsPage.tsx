@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Breadcrumbs } from "../components/Breadcrumbs";
 import {
   CvImportPanel,
@@ -191,18 +191,18 @@ export function CvKineticsPage() {
   const selectedOriginalSeries = analysis?.series.find((item) => item.scanRate === selectedRate);
   const sortedContributions = [...contributions].sort((left, right) => left.scanRate - right.scanRate);
   const selectedPotentialIndex = analysis?.bRecords.findIndex((record) => record.potential === selectedPotential) ?? -1;
-  const bChart: ChartSeries[] = analysis ? [{
+  const bChart = useMemo<ChartSeries[]>(() => analysis ? [{
     id: "b-values", label: t("cv.b.value"), color: "#16697a",
     points: analysis.bRecords.map((record) => ({
       x: record.potential,
       y: record.status === "valid" && record.fit ? record.fit.b : null
     }))
-  }] : [];
+  }] : [], [analysis, t]);
   const fitChart = sampleChartSeries(makeFitChart(selectedB, t("cv.b.fitData")));
   const dunnChart = sampleChartSeries(makeDunnChart(analysis, selectedOriginalSeries, selectedContribution, selectedSeriesIndex, t));
   const contributionChart = sampleChartSeries(makeContributionChart(sortedContributions, t));
-  const sampledBChart = sampleChartSeries(bChart);
-  const bGapRunCount = countNullRuns(bChart[0]?.points ?? []);
+  const sampledBChart = useMemo(() => sampleChartSeries(bChart), [bChart]);
+  const bGapRunCount = useMemo(() => countNullRuns(bChart[0]?.points ?? []), [bChart]);
   const missingBFitCount = analysis?.summary.unavailableBCount ?? 0;
   const resultMetadata = analysis ? analysisMetadata : null;
   const chartMetadata = analysis && resultMetadata
@@ -213,17 +213,17 @@ export function CvKineticsPage() {
         header: t(headerModeKey(resultMetadata.headerMode))
       }),
       t("cv.chart.analysisSettings", {
-        rates: resultMetadata.orderedScanRates.map((rate) => format(rate)).join(", "),
+        rates: resultMetadata.orderedScanRates.map(serializeScientificNumber).join(", "),
         interval: analysis.settings.pointInterval,
-        threshold: format(analysis.settings.rSquaredThreshold)
+        threshold: serializeScientificNumber(analysis.settings.rSquaredThreshold)
       })
     ]
     : undefined;
   const fitChartMetadata = chartMetadata && selectedBRecord
-    ? [...chartMetadata, t("cv.chart.selectedPotential", { potential: format(selectedBRecord.potential) })]
+    ? [...chartMetadata, t("cv.chart.selectedPotential", { potential: serializeScientificNumber(selectedBRecord.potential) })]
     : chartMetadata;
   const dunnChartMetadata = chartMetadata && selectedRate !== undefined
-    ? [...chartMetadata, t("cv.chart.selectedRate", { rate: format(selectedRate) })]
+    ? [...chartMetadata, t("cv.chart.selectedRate", { rate: serializeScientificNumber(selectedRate) })]
     : chartMetadata;
   const figureAvailability = {
     "cv-b-chart": hasChartPoints(sampledBChart),
@@ -453,6 +453,8 @@ function headerModeKey(headerMode: CvHeaderMode) {
 
 function format(value: string | number | null) { return typeof value === "number" ? Number(value.toPrecision(7)).toString() : value ?? "—"; }
 
+function serializeScientificNumber(value: number) { return String(value); }
+
 function makeFitChart(point: BValuePoint | undefined, measuredLabel: string): ChartSeries[] {
   if (!point) return [];
   const fitPoints = [...point.fitPoints].sort((left, right) => left.logScanRate - right.logScanRate);
@@ -572,13 +574,13 @@ function exportCsv(
     analysis.settings.pointInterval,
     analysis.settings.rSquaredThreshold,
     t(headerModeKey(metadata.headerMode)),
-    metadata.orderedScanRates.map((rate) => format(rate)).join(" ")
+    metadata.orderedScanRates.map(serializeScientificNumber).join(" ")
   ];
   let csv: string;
   const potentialHeader = `${t("cv.table.potential")} (V)`;
   const scanRateHeader = `${t("cv.table.scanRate")} (mV/s)`;
   if (filename === csvFiles[0]) {
-    const currentHeaders = grid.scanRates.map((rate) => t("cv.export.totalCurrentAt", { rate }));
+    const currentHeaders = grid.scanRates.map((rate) => t("cv.export.totalCurrentAt", { rate: serializeScientificNumber(rate) }));
     csv = rowsToCsv(
       [potentialHeader, ...withWideMetadata(currentHeaders, analysis, metadata, t)],
       grid.potentials.map((potential, index) => [potential, ...grid.currents.map((row) => row[index])])
@@ -616,7 +618,7 @@ function exportCsv(
   else {
     const capacitive = filename === csvFiles[3];
     const headerKey = capacitive ? "cv.export.capacitiveCurrentAt" : "cv.export.diffusionCurrentAt";
-    const currentHeaders = sortedRates.map((rate) => t(headerKey, { rate }));
+    const currentHeaders = sortedRates.map((rate) => t(headerKey, { rate: serializeScientificNumber(rate) }));
     csv = rowsToCsv(
       [potentialHeader, ...withWideMetadata(currentHeaders, analysis, metadata, t)],
       grid.potentials.map((potential, index) => [potential, ...sortedRates.map((rate) => {
@@ -639,9 +641,9 @@ function withWideMetadata(
     `${t("cv.export.dataLayout")}: ${layoutIdentifier(metadata.layout)}`,
     `${t("cv.export.dataSource")}: ${t(sourceKey(metadata.source))}`,
     `${t("cv.export.headerMode")}: ${t(headerModeKey(metadata.headerMode))}`,
-    `${t("cv.export.orderedScanRates")}: ${metadata.orderedScanRates.map((rate) => format(rate)).join(" ")}`,
+    `${t("cv.export.orderedScanRates")}: ${metadata.orderedScanRates.map(serializeScientificNumber).join(" ")}`,
     `${t("cv.export.pointInterval")}: ${analysis.settings.pointInterval}`,
-    `${t("cv.export.rSquaredThreshold")}: ${format(analysis.settings.rSquaredThreshold)}`
+    `${t("cv.export.rSquaredThreshold")}: ${serializeScientificNumber(analysis.settings.rSquaredThreshold)}`
   ].join("; ");
   return headers.map((header, index) => index === headers.length - 1 ? `${header} [${suffix}]` : header);
 }

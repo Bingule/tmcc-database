@@ -554,6 +554,61 @@ describe("CV kinetics page", () => {
     expect(view.querySelector('[data-export-id="cv-dunn-chart"] [data-chart-metadata="true"]')?.textContent).toContain("扫描速率 = 9 mV/s");
   });
 
+  it("round-trips high-precision scientific settings through CSV, SVG, and the PNG source SVG", async () => {
+    const view = await renderPage();
+    const rates = [0.123456789, 0.987654321, 1.234567891];
+    const threshold = "0.876543219";
+    const rows = Array.from({ length: 21 }, (_, index) => {
+      const potential = index === 0 ? 0.123456789 : index;
+      const scale = index + 1;
+      const currents = rates.map((rate) => scale * (2 * rate + 3 * Math.sqrt(rate)));
+      return [potential, ...currents].map(String).join(",");
+    });
+    await upload(view, ["Potential,Current A,Current B,Current C", ...rows].join("\n"));
+    await setValue(view.querySelector<HTMLInputElement>('input[name="cv-scan-rates"]')!, rates.map(String).join(", "));
+    await setValue(view.querySelector<HTMLInputElement>('input[name="cv-r-squared-threshold"]')!, threshold);
+    await click(view, "Run analysis");
+
+    expect(view.querySelector<HTMLInputElement>('input[name="selectedPotential"]')?.value).toBe("0.123456789");
+    expect(view.querySelector<HTMLSelectElement>('select[name="selectedRate"]')?.value).toBe("0.123456789");
+    const fitChart = view.querySelector<SVGSVGElement>('[data-export-id="cv-fit-chart"]')!;
+    const dunnChart = view.querySelector<SVGSVGElement>('[data-export-id="cv-dunn-chart"]')!;
+    expect(fitChart.querySelector("desc")?.id).toBe(fitChart.getAttribute("aria-describedby"));
+    expect(fitChart.querySelector("desc")?.textContent).toContain("potential = 0.123456789 V");
+    expect(dunnChart.querySelector("desc")?.id).toBe(dunnChart.getAttribute("aria-describedby"));
+    expect(dunnChart.querySelector("desc")?.textContent).toContain("scan rate = 0.123456789 mV/s");
+
+    const blobs: Blob[] = [];
+    vi.stubGlobal("URL", { createObjectURL: vi.fn((blob: Blob) => { blobs.push(blob); return `blob:precision-${blobs.length}`; }), revokeObjectURL: vi.fn() });
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    await click(view, "cv-b-value-results.csv");
+    await click(view, "cv-interpolated-data.csv");
+
+    const bCsv = await readBlob(blobs[0]);
+    const wideCsv = await readBlob(blobs[1]);
+    for (const value of ["0.123456789", "0.987654321", "1.234567891", threshold]) {
+      expect(bCsv).toContain(value);
+      expect(wideCsv).toContain(value);
+    }
+
+    await click(view, "Export SVG — cv-fit-chart.svg");
+    const fitSvg = await readBlob(blobs[2]);
+    expect(fitSvg).toContain("potential = 0.123456789 V");
+    expect(fitSvg).toContain(`R² ≥ ${threshold}`);
+    expect(fitSvg).toContain("rates = 0.123456789, 0.987654321, 1.234567891 mV/s");
+
+    const drawImage = vi.fn();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({ drawImage } as unknown as CanvasRenderingContext2D);
+    vi.spyOn(HTMLCanvasElement.prototype, "toBlob").mockImplementation((callback) => callback(new Blob(["png"], { type: "image/png" })));
+    class LoadingImage { onload: null | (() => void) = null; onerror: null | (() => void) = null; set src(_value: string) { queueMicrotask(() => this.onload?.()); } }
+    vi.stubGlobal("Image", LoadingImage);
+    await click(view, "Export PNG — cv-dunn-chart.png");
+    const dunnPngSourceSvg = await readBlob(blobs[3]);
+    expect(dunnPngSourceSvg).toContain("scan rate = 0.123456789 mV/s");
+    expect(dunnPngSourceSvg).toContain(`R² ≥ ${threshold}`);
+    expect(dunnPngSourceSvg).toContain("rates = 0.123456789, 0.987654321, 1.234567891 mV/s");
+  });
+
   it("sorts scan-rate displays, uses point-only b observations, and breaks b curves across unavailable potentials", async () => {
     const view = await renderPage();
     await upload(view, "Potential,Current 9 mV/s,Current 1 mV/s,Current 4 mV/s\n0,9,1,4\n1,0,0,0\n2,27,3,12");
