@@ -267,7 +267,7 @@ export function CvKineticsPage() {
         })}</p>
       </header>
 
-      <div className="tool-layout">
+      <div className="tool-layout cv-tool-layout">
         <CvImportPanel
           draft={draft}
           table={table}
