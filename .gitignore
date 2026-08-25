@@ -4,3 +4,4 @@ dist/
 *.log
 .tmcc-hosts-result.txt
 cluster_calculations/
+.superpowers/

@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { materialStatuses, periodicTableElements, transitionMetals } from "../lib/statuses";
 import type { MaterialRecord } from "../lib/types";
+import { useI18n } from "../i18n/I18nProvider";
+import type { TranslationKey } from "../locales/en";
 
 type Props = {
   materials: MaterialRecord[];
@@ -9,6 +11,7 @@ type Props = {
 };
 
 export function PeriodicTable({ materials, onMetalSelect, onElementSearch }: Props) {
+  const { t } = useI18n();
   const activeMetals = new Set(materials.map((material) => material.host.metal));
   const [elementQuery, setElementQuery] = useState("");
   const [mode, setMode] = useState<"only" | "at_least">("only");
@@ -30,69 +33,68 @@ export function PeriodicTable({ materials, onMetalSelect, onElementSearch }: Pro
   return (
     <section id="periodic-table" className="periodic-section">
       <div className="section-heading">
-        <p className="eyebrow">Interactive periodic table</p>
-        <h2>Element periodic table</h2>
+        <p className="eyebrow">{t("periodic.interactive")}</p>
+        <h2>{t("periodic.elementPeriodicTable")}</h2>
       </div>
       <p className="periodic-note">
-        Select elements such as Nb, S, and C, then search matching TMCC/TMCDC records. Transition metals remain
-        eligible host M candidates, while C/N and S/Se/Te are used as composition elements.
+        {t("periodic.note")}
       </p>
-      <div className="element-search-bar" aria-label="Element search">
+      <div className="element-search-bar" aria-label={t("periodic.elementSearch")}>
         <label className="element-query">
-          <span>Materials</span>
+          <span>{t("periodic.materials")}</span>
           <input
             value={elementQuery}
             onChange={(event) => setElementQuery(event.target.value)}
-            placeholder="Select elements or type Nb-S-C"
-            aria-label="Selected elements"
+            placeholder={t("periodic.placeholder")}
+            aria-label={t("periodic.selectedElements")}
           />
-          {formulaQuery && <small>Parsed: {formulaQuery}</small>}
+          {formulaQuery && <small>{t("periodic.parsed", { elements: formulaQuery })}</small>}
         </label>
-        <div className="segmented compact" aria-label="Element search mode">
+        <div className="segmented compact" aria-label={t("periodic.searchMode")}>
           <button className={mode === "only" ? "active" : ""} onClick={() => setMode("only")}>
-            Only Elements
+            {t("periodic.onlyElements")}
           </button>
           <button className={mode === "at_least" ? "active" : ""} onClick={() => setMode("at_least")}>
-            At Least Elements
+            {t("periodic.atLeastElements")}
           </button>
         </div>
         <button className="primary-button" type="button" onClick={() => onElementSearch(selectedElements, mode)}>
-          Search
+          {t("periodic.search")}
         </button>
         <button className="secondary-button" type="button" onClick={clearSelection} disabled={selectedElements.length === 0}>
-          Clear
+          {t("periodic.clearShort")}
         </button>
       </div>
       <div className="periodic-table" role="list">
-        <div className="periodic-composition-guide" aria-label="TMCC composition guide">
+        <div className="periodic-composition-guide" aria-label={t("periodic.compositionGuide")}>
           <div>
             <span className="guide-marker guide-host" />
-            <strong>M host</strong>
-            <small>transition metal</small>
+            <strong>{t("periodic.host")}</strong>
+            <small>{t("periodic.transitionMetal")}</small>
           </div>
           <div>
             <span className="guide-marker guide-chalcogen" />
-            <strong>X layer</strong>
+            <strong>{t("periodic.layer")}</strong>
             <small>S / Se / Te</small>
           </div>
           <div>
             <span className="guide-marker guide-light" />
-            <strong>A center</strong>
+            <strong>{t("periodic.center")}</strong>
             <small>C / N</small>
           </div>
           <div>
             <span className="guide-marker guide-intercalant" />
-            <strong>M' intercalant</strong>
-            <small>metal between layers</small>
+            <strong>{t("periodic.intercalant")}</strong>
+            <small>{t("periodic.betweenLayers")}</small>
           </div>
           <ul>
             <li>
-              <strong>vdW TMCDC</strong>
+              <strong>{t("periodic.vdwTmcdc")}</strong>
               <span>M2X2A - P-3m1 / R-3m</span>
             </li>
             <li>
-              <strong>Intercalated TMCC/TMCDC</strong>
-              <span>M'xM2X2A - metal inserted between vdW TMCDC layers</span>
+              <strong>{t("home.intercalated")}</strong>
+              <span>{t("periodic.intercalatedDescription")}</span>
             </li>
             <li>
               <strong>TMCC</strong>
@@ -129,8 +131,8 @@ export function PeriodicTable({ materials, onMetalSelect, onElementSearch }: Pro
                 if (hasRecord) onMetalSelect(element.symbol);
               }}
               aria-pressed={isSelected}
-              aria-label={`${element.name} (${element.symbol}): ${hasRecord ? "record available" : isHostEligible ? "host candidate, not calculated" : "composition search element"}`}
-              title={`${element.name} (${element.symbol}) - ${hasRecord ? "record available" : isHostEligible ? "host candidate" : element.category.replaceAll("_", " ")}`}
+              aria-label={`${element.name} (${element.symbol}): ${hasRecord ? t("periodic.recordAvailable") : isHostEligible ? t("periodic.hostCandidateShort") + ", " + t("status.notCalculated") : t("periodic.compositionSearch")}`}
+              title={`${element.name} (${element.symbol}) - ${hasRecord ? t("periodic.recordAvailable") : isHostEligible ? t("periodic.hostCandidateShort") : t("periodic.compositionSearch")}`}
             >
               <small>{element.atomicNumber}</small>
               <strong>{element.symbol}</strong>
@@ -143,13 +145,22 @@ export function PeriodicTable({ materials, onMetalSelect, onElementSearch }: Pro
         {Object.entries(materialStatuses).map(([key, status]) => (
           <span key={key}>
             <i style={{ background: status.background, borderColor: status.color }} />
-            {status.label}
+            {t(statusTranslationKeys[key as keyof typeof materialStatuses])}
           </span>
         ))}
       </div>
     </section>
   );
 }
+
+const statusTranslationKeys: Record<keyof typeof materialStatuses, TranslationKey> = {
+  experimental: "status.experimentallySynthesized",
+  predicted_stable: "status.computationallyPredicted",
+  metastable: "status.metastable",
+  unstable: "status.unstable",
+  calculation_in_progress: "status.inProgress",
+  not_calculated: "status.notCalculated"
+};
 
 export function parseElementQuery(query: string) {
   const symbols = new Set(periodicTableElements.map((element) => element.symbol));

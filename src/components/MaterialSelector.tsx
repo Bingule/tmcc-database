@@ -10,6 +10,8 @@ import {
 } from "../lib/materials";
 import { publicAssetPath } from "../lib/paths";
 import type { MaterialRecord } from "../lib/types";
+import { useI18n } from "../i18n/I18nProvider";
+import { getConfigurationTranslationKey } from "../i18n/displayLabels";
 import { Formula } from "./Formula";
 
 type Props = {
@@ -24,6 +26,7 @@ export const intercalantOptions = ["All", ...transitionMetals];
 export const intercalantConcentrationOptions = ["All", "0.125", "0.25", "1/3", "0.5", "1"];
 
 export function MaterialSelector({ materials, selectedId, onSelect }: Props) {
+  const { t } = useI18n();
   const current = materials.find((material) => material.material_id === selectedId) ?? materials[0];
   const metals = useMemo(() => [...new Set(materials.map((material) => material.host.metal))], [materials]);
   const [materialType, setMaterialType] = useState<SelectorMode>("pristine");
@@ -43,6 +46,8 @@ export function MaterialSelector({ materials, selectedId, onSelect }: Props) {
   );
   const matched = availableStructures.find((material) => material.material_id === selectedId) ?? availableStructures[0];
   const downloadable = matched;
+  const configuration = matched?.intercalation?.configuration;
+  const configurationTranslationKey = getConfigurationTranslationKey(configuration);
 
   function updateSelection(
     nextType: SelectorMode = materialType,
@@ -72,19 +77,19 @@ export function MaterialSelector({ materials, selectedId, onSelect }: Props) {
   return (
     <section className="selector-card" aria-labelledby="selector-title">
       <div className="section-heading">
-        <p className="eyebrow">Material selector</p>
-        <h2 id="selector-title">Build a TMCC query</h2>
+        <p className="eyebrow">{t("selector.eyebrow")}</p>
+        <h2 id="selector-title">{t("selector.title")}</h2>
       </div>
 
-      <div className="segmented three" aria-label="Material type">
+      <div className="segmented three" aria-label={t("selector.materialType")}>
         <button className={materialType === "pristine" ? "active" : ""} onClick={() => chooseMode("pristine")}>
-          TMCDC (M2X2C)
+          {t("home.tmcdcs")}
         </button>
         <button className={materialType === "intercalated" ? "active" : ""} onClick={() => chooseMode("intercalated")}>
-          Intercalated TMCC/TMCDC
+          {t("home.intercalated")}
         </button>
         <button className={materialType === "single_chalcogen" ? "active" : ""} onClick={() => chooseMode("single_chalcogen")}>
-          TMCC (M2XC / M2XA)
+          {t("home.tmccs")}
         </button>
       </div>
 
@@ -130,7 +135,7 @@ export function MaterialSelector({ materials, selectedId, onSelect }: Props) {
       ) : (
         <div className="intercalated-placeholder">
           <label>
-            <span>Intercalant</span>
+            <span>{t("selector.intercalant")}</span>
             <select
               value={intercalant}
               onChange={(event) => {
@@ -138,7 +143,7 @@ export function MaterialSelector({ materials, selectedId, onSelect }: Props) {
                 updateSelection(materialType, metal, chalcogen, anion, event.target.value, intercalantConcentration);
               }}
             >
-              {intercalantOptions.map((item) => <option key={item}>{item}</option>)}
+              {intercalantOptions.map((item) => <option key={item}>{item === "All" ? t("common.all") : item}</option>)}
             </select>
           </label>
           <label>
@@ -150,11 +155,11 @@ export function MaterialSelector({ materials, selectedId, onSelect }: Props) {
                 updateSelection(materialType, metal, chalcogen, anion, intercalant, event.target.value);
               }}
             >
-              {intercalantConcentrationOptions.map((item) => <option key={item}>{item}</option>)}
+              {intercalantConcentrationOptions.map((item) => <option key={item}>{item === "All" ? t("common.all") : item}</option>)}
             </select>
           </label>
           <label>
-            <span>Host M</span>
+            <span>{t("selector.hostMetal")} M</span>
             <select
               value={metal}
               onChange={(event) => {
@@ -189,13 +194,13 @@ export function MaterialSelector({ materials, selectedId, onSelect }: Props) {
               {anions.map((item) => <option key={item}>{item}</option>)}
             </select>
           </label>
-          <label><span>Host structure</span><input value={matched ? getSpaceGroupLabel(getSpaceGroupSymbol(matched)) : "Data in progress"} readOnly /></label>
-          <label><span>Configuration</span><input value={matched?.intercalation?.configuration ?? "Data in progress"} readOnly /></label>
+          <label><span>{t("selector.hostStructure")}</span><input value={matched ? getSpaceGroupLabel(getSpaceGroupSymbol(matched)) : t("selector.dataInProgress")} readOnly /></label>
+          <label><span>{t("selector.configuration")}</span><input value={configurationTranslationKey ? t(configurationTranslationKey) : configuration ?? t("selector.dataInProgress")} readOnly /></label>
         </div>
       )}
 
       {availableStructures.length > 0 && (
-        <div className="structure-options compact-inline" aria-label="Available crystal structures">
+        <div className="structure-options compact-inline" aria-label={t("selector.availableStructures")}>
           {availableStructures.map((material) => (
             <button
               key={material.material_id}
@@ -215,15 +220,15 @@ export function MaterialSelector({ materials, selectedId, onSelect }: Props) {
       <div className="button-row">
         <a className="primary-button" href="#material-detail">
           <ExternalLink size={16} />
-          View Material
+          {t("selector.viewMaterial")}
         </a>
         <DownloadButton
-          label="Download CIF"
+          label={t("selector.downloadCif")}
           href={publicAssetPath(downloadable?.files.cif)}
           filename={downloadable ? makeStructureDownloadFilename(downloadable, "cif") : null}
         />
         <DownloadButton
-          label="Download POSCAR"
+          label={t("selector.downloadPoscar")}
           href={publicAssetPath(downloadable?.files.poscar)}
           filename={downloadable ? makeStructureDownloadFilename(downloadable, "poscar") : null}
         />

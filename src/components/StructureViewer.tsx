@@ -4,6 +4,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { cellToVectors, fractionalToCartesian, parseCifStructure, type ParsedCrystalStructure } from "../lib/crystal";
 import { publicAssetPath } from "../lib/paths";
 import type { MaterialRecord } from "../lib/types";
+import { useI18n } from "../i18n/I18nProvider";
 
 type Orientation = "iso" | "ab" | "ac" | "bc";
 type StructureStyle = "ball-stick" | "space-filling" | "polyhedral";
@@ -26,6 +27,7 @@ const elementStyle: Record<string, { color: number; radius: number }> = {
 };
 
 function StructureViewer({ material }: { material: MaterialRecord }) {
+  const { t } = useI18n();
   const mountRef = useRef<HTMLDivElement | null>(null);
   const [structure, setStructure] = useState<ParsedCrystalStructure | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -153,16 +155,16 @@ function StructureViewer({ material }: { material: MaterialRecord }) {
   if (!cifPath) {
     return (
       <div className="structure-viewer empty">
-        <span>No CIF file is available for this structure yet.</span>
+        <span>{t("structure.noCif")}</span>
       </div>
     );
   }
 
   return (
     <div className="structure-viewer interactive">
-      <div className="viewer-toolbar" aria-label="Structure viewer controls">
+      <div className="viewer-toolbar" aria-label={t("structure.controls")}>
         <fieldset className="viewer-style-control">
-          <legend>Style</legend>
+          <legend>{t("structure.style")}</legend>
           <label>
             <input
               type="radio"
@@ -170,7 +172,7 @@ function StructureViewer({ material }: { material: MaterialRecord }) {
               checked={style === "ball-stick"}
               onChange={() => setStyle("ball-stick")}
             />
-            <span>Ball-and-stick</span>
+            <span>{t("structure.ballStick")}</span>
           </label>
           <label>
             <input
@@ -179,7 +181,7 @@ function StructureViewer({ material }: { material: MaterialRecord }) {
               checked={style === "space-filling"}
               onChange={() => setStyle("space-filling")}
             />
-            <span>Space-filling</span>
+            <span>{t("structure.spaceFilling")}</span>
           </label>
           <label>
             <input
@@ -188,42 +190,42 @@ function StructureViewer({ material }: { material: MaterialRecord }) {
               checked={style === "polyhedral"}
               onChange={() => setStyle("polyhedral")}
             />
-            <span>Polyhedral</span>
+            <span>{t("structure.polyhedral")}</span>
           </label>
         </fieldset>
         <label>
-          <span>Supercell a</span>
+          <span>{t("structure.supercellA")}</span>
           <AxisSelect value={supercell.a} onChange={(value) => setSupercell((current) => ({ ...current, a: value }))} />
         </label>
         <label>
-          <span>Supercell b</span>
+          <span>{t("structure.supercellB")}</span>
           <AxisSelect value={supercell.b} onChange={(value) => setSupercell((current) => ({ ...current, b: value }))} />
         </label>
         <label>
-          <span>Supercell c</span>
+          <span>{t("structure.supercellC")}</span>
           <AxisSelect value={supercell.c} onChange={(value) => setSupercell((current) => ({ ...current, c: value }))} />
         </label>
         <label>
-          <span>Orientation</span>
+          <span>{t("structure.orientation")}</span>
           <select value={orientation} onChange={(event) => setOrientation(event.target.value as Orientation)}>
-            <option value="iso">Isometric</option>
-            <option value="ab">AB plane</option>
-            <option value="ac">AC plane</option>
-            <option value="bc">BC plane</option>
+            <option value="iso">{t("structure.isometric")}</option>
+            <option value="ab">{t("structure.abPlane")}</option>
+            <option value="ac">{t("structure.acPlane")}</option>
+            <option value="bc">{t("structure.bcPlane")}</option>
           </select>
         </label>
       </div>
 
-      <div className="crystal-canvas" ref={mountRef} aria-label={`${material.formula} crystal structure`} />
+      <div className="crystal-canvas" ref={mountRef} aria-label={t("structure.crystalAria", { formula: material.formula })} />
 
       <div className="viewer-status">
-        {loading && <span>Loading CIF...</span>}
-        {error && <span>{error}</span>}
+        {loading && <span>{t("structure.loadingCif")}</span>}
+        {error && <span>{t("structure.loadError")}</span>}
         {!loading && !error && structure && (
           <>
-            <span>{structure.atoms.length * supercell.a * supercell.b * supercell.c} atoms shown</span>
-            <span>{styleLabel(style)}</span>
-            <span>Drag to rotate, scroll to zoom</span>
+            <span>{t("structure.atomsShown", { count: structure.atoms.length * supercell.a * supercell.b * supercell.c })}</span>
+            <span>{styleLabel(style, t("structure.ballStick"), t("structure.spaceFilling"), t("structure.polyhedral"))}</span>
+            <span>{t("structure.instructions")}</span>
           </>
         )}
       </div>
@@ -478,8 +480,8 @@ function isTransitionMetal(element: string) {
   ].includes(element);
 }
 
-function styleLabel(style: StructureStyle) {
-  if (style === "ball-stick") return "Ball-and-stick";
-  if (style === "space-filling") return "Space-filling";
-  return "Polyhedral";
+function styleLabel(style: StructureStyle, ballStickLabel: string, spaceFillingLabel: string, polyhedralLabel: string) {
+  if (style === "ball-stick") return ballStickLabel;
+  if (style === "space-filling") return spaceFillingLabel;
+  return polyhedralLabel;
 }

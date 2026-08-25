@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "dev:tmcc": "vite --host 127.0.0.1 --port 80",
-    "build": "tsc && vite build",
+    "build": "tsc && vite build && node scripts/create-route-entries.mjs",
     "preview": "vite preview --host 127.0.0.1",
     "test": "vitest run",
     "validate:data": "node scripts/validate-data.js"
@@ -16,6 +16,7 @@
     "lucide-react": "^0.468.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "read-excel-file": "9.3.10",
     "three": "^0.185.1",
     "typescript": "^5.7.2",
     "vite": "5.4.21"

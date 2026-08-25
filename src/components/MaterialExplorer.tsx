@@ -15,6 +15,8 @@ import {
   getSpaceGroupSymbol
 } from "../lib/materials";
 import type { MaterialRecord } from "../lib/types";
+import { useI18n } from "../i18n/I18nProvider";
+import { getCrystalSystemTranslationKey } from "../i18n/displayLabels";
 
 type Props = {
   materials: MaterialRecord[];
@@ -54,6 +56,7 @@ export function MaterialExplorer({
   onCategoryFilterChange = () => undefined,
   onResultCountChange = () => undefined
 }: Props) {
+  const { t } = useI18n();
   const [query, setQuery] = useState("");
   const [metal, setMetal] = useState("all");
   const [chalcogen, setChalcogen] = useState("all");
@@ -128,19 +131,19 @@ export function MaterialExplorer({
   return (
     <section id="explorer" className="explorer">
       <div className="section-heading">
-        <p className="eyebrow">Materials Explorer</p>
-        <h2>Search and filter structures</h2>
+        <p className="eyebrow">{t("explorer.eyebrow")}</p>
+        <h2>{t("explorer.title")}</h2>
       </div>
       {elementSearch.elements.length > 0 && (
         <div className="active-element-query">
-          <span>Element query</span>
+          <span>{t("explorer.elementQuery")}</span>
           <strong>{elementSearch.elements.join("-")}</strong>
-          <small>{elementSearch.mode === "only" ? "Only these elements" : "At least these elements"}</small>
+          <small>{elementSearch.mode === "only" ? t("periodic.onlyThese") : t("periodic.atLeastThese")}</small>
         </div>
       )}
       <div className="filters">
         <label>
-          <span>Category</span>
+          <span>{t("explorer.category")}</span>
           <select
             value={categoryFilter ?? "all"}
             onChange={(event) => {
@@ -148,26 +151,26 @@ export function MaterialExplorer({
               onCategoryFilterChange(value === "all" ? null : value as ExplorerCategoryFilter);
             }}
           >
-            <option value="all">All</option>
-            <option value="tmcdc">TMCDCs (M2X2C)</option>
-            <option value="intercalated">Intercalated TMCC/TMCDC</option>
-            <option value="tmcc">TMCCs (M2XC / M2XA)</option>
+            <option value="all">{t("explorer.all")}</option>
+            <option value="tmcdc">{t("explorer.tmcdcs")}</option>
+            <option value="intercalated">{t("explorer.intercalated")}</option>
+            <option value="tmcc">{t("explorer.tmccs")}</option>
           </select>
         </label>
         <label>
-          <span>Search</span>
+          <span>{t("explorer.search")}</span>
           <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="TMCC-0001, Nb2S2C, P-3m1" />
         </label>
-        <Filter label="Host metal" value={metal} values={metals} onChange={setMetal} />
-        <Filter label="Chalcogen" value={chalcogen} values={chalcogens} onChange={setChalcogen} />
-        <Filter label="A-site" value={anion} values={anions} onChange={setAnion} />
-        <Filter label="Subclass" value={subclass} values={subclasses} onChange={setSubclass} />
-        <Filter label="Structure type" value={structureType} values={structureTypes} onChange={setStructureType} />
+        <Filter label={t("explorer.hostMetal")} value={metal} values={metals} onChange={setMetal} />
+        <Filter label={t("explorer.chalcogen")} value={chalcogen} values={chalcogens} onChange={setChalcogen} />
+        <Filter label={t("explorer.anion")} value={anion} values={anions} onChange={setAnion} />
+        <Filter label={t("explorer.subclass")} value={subclass} values={subclasses} onChange={setSubclass} />
+        <Filter label={t("explorer.structureType")} value={structureType} values={structureTypes} onChange={setStructureType} />
       </div>
       {hasTooManyElementMatches ? (
         <div className="result-limit-warning" role="status">
-          <strong>More than 1000 matching materials</strong>
-          <span>Please add more elements or filters to make the search more specific.</span>
+          <strong>{t("explorer.moreThan1000")}</strong>
+          <span>{t("explorer.refineSearch")}</span>
         </div>
       ) : (
         <>
@@ -175,17 +178,17 @@ export function MaterialExplorer({
             <table className="materials-table">
               <thead>
                 <tr>
-                  <SortHeader label="Material ID" sortKey="material_id" activeSort={sort} onSort={handleSort} />
-                  <SortHeader label="Formula" sortKey="formula" activeSort={sort} onSort={handleSort} />
-                  <SortHeader label="Structure Type" sortKey="structure_type" activeSort={sort} onSort={handleSort} />
-                  <SortHeader label="Subclass" sortKey="subclass" activeSort={sort} onSort={handleSort} />
-                  <SortHeader label="Space Group" sortKey="space_group" activeSort={sort} onSort={handleSort} />
-                  <SortHeader label="Intercalant" sortKey="intercalant" activeSort={sort} onSort={handleSort} />
-                  <SortHeader label="Sites/cell" sortKey="sites" activeSort={sort} onSort={handleSort} />
+                  <SortHeader label={t("explorer.materialId")} sortKey="material_id" activeSort={sort} onSort={handleSort} />
+                  <SortHeader label={t("explorer.formula")} sortKey="formula" activeSort={sort} onSort={handleSort} />
+                  <SortHeader label={t("explorer.structureTypeColumn")} sortKey="structure_type" activeSort={sort} onSort={handleSort} />
+                  <SortHeader label={t("explorer.subclass")} sortKey="subclass" activeSort={sort} onSort={handleSort} />
+                  <SortHeader label={t("explorer.spaceGroup")} sortKey="space_group" activeSort={sort} onSort={handleSort} />
+                  <SortHeader label={t("explorer.intercalant")} sortKey="intercalant" activeSort={sort} onSort={handleSort} />
+                  <SortHeader label={t("explorer.sitesPerCell")} sortKey="sites" activeSort={sort} onSort={handleSort} />
                   <SortHeader label="E_DFT" unit="eV/f.u." sortKey="dft_energy" activeSort={sort} onSort={handleSort} />
                   <SortHeader label="E_form" unit="eV/atom" sortKey="formation_energy" activeSort={sort} onSort={handleSort} />
-                  <SortHeader label="Mech. Stab." sortKey="mechanical_stability" activeSort={sort} onSort={handleSort} />
-                  <SortHeader label="Band Gap" unit="eV" sortKey="band_gap" activeSort={sort} onSort={handleSort} />
+                  <SortHeader label={t("explorer.mechanicalStability")} sortKey="mechanical_stability" activeSort={sort} onSort={handleSort} />
+                  <SortHeader label={t("explorer.bandGap")} unit="eV" sortKey="band_gap" activeSort={sort} onSort={handleSort} />
                 </tr>
               </thead>
               <tbody>
@@ -209,8 +212,8 @@ export function MaterialExplorer({
                     <td><Formula formula={material.formula} /></td>
                     <td>
                       <span className="cell-stack">
-                        <span>{formatPropertyValue(material.structure.crystal_system)}</span>
-                        {getLatticeSettingLabel(material) && <small>{formatCompactLatticeSetting(getLatticeSettingLabel(material))}</small>}
+                        <span>{formatCrystalSystemLabel(material.structure.crystal_system, t)}</span>
+                        {getLatticeSettingLabel(material) && <small>{t("material.rhombohedralSettingCompact")}</small>}
                       </span>
                     </td>
                     <td>{getSubclassLabel(material)}</td>
@@ -226,9 +229,9 @@ export function MaterialExplorer({
               </tbody>
             </table>
           </div>
-          <div className="pagination-bar" aria-label="Materials table pagination">
+          <div className="pagination-bar" aria-label={t("explorer.pagination")}>
             <div className="page-size-controls">
-              <span>Rows per page</span>
+              <span>{t("explorer.rowsPerPage")}</span>
               {[10, 20, 50].map((size) => (
                 <button
                   key={size}
@@ -241,15 +244,17 @@ export function MaterialExplorer({
               ))}
             </div>
             <span className="page-summary">
-              {filtered.length === 0 ? "0 of 0" : `${pageStart + 1}-${pageEnd} of ${filtered.length}`}
+              {filtered.length === 0
+                ? t("explorer.noResults")
+                : t("explorer.pageRange", { start: pageStart + 1, end: pageEnd, total: filtered.length })}
             </span>
             <div className="page-nav">
               <button type="button" onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={currentPage === 1}>
-                Previous
+                {t("explorer.previous")}
               </button>
               <span>{currentPage} / {totalPages}</span>
               <button type="button" onClick={() => setPage((value) => Math.min(totalPages, value + 1))} disabled={currentPage === totalPages}>
-                Next
+                {t("explorer.next")}
               </button>
             </div>
           </div>
@@ -257,6 +262,11 @@ export function MaterialExplorer({
       )}
     </section>
   );
+}
+
+function formatCrystalSystemLabel(value: unknown, t: ReturnType<typeof useI18n>["t"]) {
+  const translationKey = getCrystalSystemTranslationKey(value);
+  return translationKey ? t(translationKey) : formatPropertyValue(value);
 }
 
 function filterMaterialsByCategory(materials: MaterialRecord[], categoryFilter: ExplorerCategoryFilter) {
@@ -273,17 +283,6 @@ function filterMaterialsByCategory(materials: MaterialRecord[], categoryFilter: 
 
     return getSubclassLabel(material) === "TMCC" && material.material_type !== "tm_intercalated";
   });
-}
-
-function getCategoryFilterLabel(categoryFilter: ExplorerCategoryFilter) {
-  if (categoryFilter === "tmcdc") return "TMCDCs (M2X2C)";
-  if (categoryFilter === "intercalated") return "Intercalated TMCC/TMCDC";
-  if (categoryFilter === "tmcc") return "TMCCs (M2XC / M2XA)";
-  return "";
-}
-
-function formatCompactLatticeSetting(value: string | null) {
-  return value?.replace(/\s*\(.+\)$/, "") ?? null;
 }
 
 function compareMaterials(
@@ -341,8 +340,14 @@ function getSortValue(material: MaterialRecord, key: SortKey): string | number {
 }
 
 function MechanicalStabilityValue({ material }: { material: MaterialRecord }) {
+  const { t } = useI18n();
   const label = getMechanicalStabilityLabel(material);
-  if (label === "Pending") return label;
+  const translatedLabel = label === "Stable"
+    ? t("material.stable")
+    : label === "Unstable"
+      ? t("material.unstable")
+      : t("material.pending");
+  if (label === "Pending") return translatedLabel;
 
   return (
     <a
@@ -350,7 +355,7 @@ function MechanicalStabilityValue({ material }: { material: MaterialRecord }) {
       href={`/?material=${encodeURIComponent(material.slug)}#mechanical-properties`}
       onClick={(event) => event.stopPropagation()}
     >
-      {label}
+      {translatedLabel}
     </a>
   );
 }
@@ -402,11 +407,12 @@ function Filter({
   values: string[];
   onChange: (value: string) => void;
 }) {
+  const { t } = useI18n();
   return (
     <label>
       <span>{label}</span>
       <select value={value} onChange={(event) => onChange(event.target.value)}>
-        <option value="all">All</option>
+        <option value="all">{t("explorer.all")}</option>
         {values.map((item) => <option key={item} value={item}>{item}</option>)}
       </select>
     </label>

@@ -1,9 +1,9 @@
-import { renderToStaticMarkup } from "react-dom/server";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { describe, expect, it } from "vitest";
 import { MaterialExplorer } from "../src/components/MaterialExplorer";
 import type { MaterialRecord } from "../src/lib/types";
+import { renderWithI18n, withI18n } from "./i18n-test-utils";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -44,7 +44,7 @@ function countRows(markup: string) {
 
 describe("MaterialExplorer", () => {
   it("paginates default materials without an ellipsis row", () => {
-    const markup = renderToStaticMarkup(
+    const markup = renderWithI18n(
       <MaterialExplorer
         materials={makeMaterials(12)}
         selectedId="TMCC-0001"
@@ -70,14 +70,14 @@ describe("MaterialExplorer", () => {
     const root = createRoot(container);
 
     await act(async () => {
-      root.render(
+      root.render(withI18n(
         <MaterialExplorer
           materials={makeMaterials(12)}
           selectedId="TMCC-0001"
           onSelect={() => undefined}
           elementSearch={{ elements: [], mode: "only" }}
         />
-      );
+      ));
     });
 
     expect(container.textContent).toContain("TMCC-0010");
@@ -124,14 +124,14 @@ describe("MaterialExplorer", () => {
     ] as MaterialRecord[];
 
     await act(async () => {
-      root.render(
+      root.render(withI18n(
         <MaterialExplorer
           materials={materials}
           selectedId="TMCC-0001"
           onSelect={() => undefined}
           elementSearch={{ elements: [], mode: "only" }}
         />
-      );
+      ));
     });
 
     const firstMaterialId = () => container.querySelector("tbody tr td button")?.textContent;
@@ -155,7 +155,7 @@ describe("MaterialExplorer", () => {
   });
 
   it("uses pagination for matching materials after an element-table search", () => {
-    const markup = renderToStaticMarkup(
+    const markup = renderWithI18n(
       <MaterialExplorer
         materials={makeMaterials(12)}
         selectedId="TMCC-0001"
@@ -169,7 +169,7 @@ describe("MaterialExplorer", () => {
   });
 
   it("asks for a more specific element search when more than 1000 records match", () => {
-    const markup = renderToStaticMarkup(
+    const markup = renderWithI18n(
       <MaterialExplorer
         materials={makeMaterials(1001)}
         selectedId="TMCC-0001"
@@ -185,7 +185,7 @@ describe("MaterialExplorer", () => {
   });
 
   it("renders long property units on a separate header line", () => {
-    const markup = renderToStaticMarkup(
+    const markup = renderWithI18n(
       <MaterialExplorer
         materials={makeMaterials(1)}
         selectedId="TMCC-0001"
@@ -217,7 +217,7 @@ describe("MaterialExplorer", () => {
       formula: "Nb2S2C",
       mechanical: {}
     } as MaterialRecord;
-    const markup = renderToStaticMarkup(
+    const markup = renderWithI18n(
       <MaterialExplorer
         materials={[stableMaterial, pendingMaterial]}
         selectedId="TMCC-0001"
@@ -232,7 +232,7 @@ describe("MaterialExplorer", () => {
   });
 
   it("shows DFT energy per formula unit and dashes for missing table values", () => {
-    const markup = renderToStaticMarkup(
+    const markup = renderWithI18n(
       <MaterialExplorer
         materials={[
           {
@@ -265,7 +265,7 @@ describe("MaterialExplorer", () => {
   });
 
   it("labels sites as sites per cell", () => {
-    const markup = renderToStaticMarkup(
+    const markup = renderWithI18n(
       <MaterialExplorer
         materials={makeMaterials(1)}
         selectedId="TMCC-0001"
@@ -278,7 +278,7 @@ describe("MaterialExplorer", () => {
   });
 
   it("shows structure type and TMCC subclass columns", () => {
-    const markup = renderToStaticMarkup(
+    const markup = renderWithI18n(
       <MaterialExplorer
         materials={makeMaterials(1)}
         selectedId="TMCC-0001"
@@ -324,7 +324,7 @@ describe("MaterialExplorer", () => {
       }
     ] as MaterialRecord[];
 
-    const markup = renderToStaticMarkup(
+    const markup = renderWithI18n(
       <MaterialExplorer
         materials={materials}
         selectedId="TMCC-0001"
@@ -343,7 +343,7 @@ describe("MaterialExplorer", () => {
   });
 
   it("uses a scoped class for materials-table alignment", () => {
-    const markup = renderToStaticMarkup(
+    const markup = renderWithI18n(
       <MaterialExplorer
         materials={makeMaterials(1)}
         selectedId="TMCC-0001"
@@ -356,7 +356,7 @@ describe("MaterialExplorer", () => {
   });
 
   it("shows pristine atomic site count per cell in the Sites/cell column", () => {
-    const markup = renderToStaticMarkup(
+    const markup = renderWithI18n(
       <MaterialExplorer
         materials={[
           {
@@ -387,7 +387,7 @@ describe("MaterialExplorer", () => {
   });
 
   it("keeps R-3m entries as separate TMCDC structural records", () => {
-    const markup = renderToStaticMarkup(
+    const markup = renderWithI18n(
       <MaterialExplorer
         materials={[
           {

@@ -37,6 +37,85 @@ pnpm test
 pnpm build
 ```
 
+## Bilingual Interface And Routes
+
+English is the default interface language. The compact `EN | 中文` control in the shared desktop and mobile navigation switches between English and Simplified Chinese without changing the URL. The selection is saved in `localStorage` under `tmcc-language`; a missing, invalid, or inaccessible value falls back to English. All translations are explicit project resources—no runtime machine translation is used.
+
+The static application exposes these routes:
+
+```text
+/                                   TMCC Materials Database
+/tools                              Materials Research Tools
+/tools/cv-kinetics                  CV Kinetics Analysis
+/tools/theoretical-capacity         Theoretical Capacity Calculator
+/tools/molecular-weight             Molecular Weight Calculator
+```
+
+The production build creates a route-specific `index.html` for the root and each Tools route so direct visits and refreshes work on static hosting.
+
+## Materials Research Tools
+
+All tool inputs and calculations remain in the browser. CV files and formulas are not uploaded to a server.
+
+### CV Kinetics Analysis
+
+The CV workflow accepts `.csv`, `.txt`, and `.xlsx` files in wide layout: one potential column and at least two current columns, with one current series per scan rate. Text import supports quote-aware comma, tab, and semicolon delimiters plus consistently structured whitespace-separated data. Scan rates are inferred from common headings such as `1`, `2 mV/s`, and `Current 5 mV s-1`, then remain editable for confirmation. Series are interpolated only within their overlapping potential range; the workflow never extrapolates.
+
+For b-value analysis, the fit is:
+
+```text
+log(|i|) = log(a) + b log(v)
+```
+
+Negative current is included by magnitude, while zero or non-finite current is excluded from a fit. At least two distinct positive scan rates are required at a potential.
+
+For Dunn analysis, the linearized fit and signed reconstructed components are:
+
+```text
+i / sqrt(v) = k1 sqrt(v) + k2
+i_cap = k1 v
+i_diff = k2 sqrt(v)
+```
+
+Capacitive and diffusion-controlled percentages use trapezoidal integration of `|i_cap|` and `|i_diff|`, so anodic and cathodic signs do not cancel. Failed fits remain unavailable rather than being replaced with zero.
+
+Valid combined results enable six CSV downloads:
+
+```text
+cv-interpolated-data.csv
+cv-b-value-results.csv
+cv-dunn-k1-k2.csv
+cv-capacitive-current.csv
+cv-diffusion-current.csv
+cv-contribution-summary.csv
+```
+
+Four figures—b-value, selected-potential fit, Dunn current components, and contribution percentage—can each be exported as SVG or PNG. Figures and their SVG/PNG exports use deterministic display sampling with a target of at most 2,000 points per series; preserving unavailable-gap boundaries may increase display output to at most 4,000 points per series. Every scientific fit, integration, numeric result, and CSV export continues to use the complete accepted dataset. Tables and charts use horizontally scrollable wide containers and responsive one-column layouts on narrow screens.
+
+### Theoretical Capacity Calculator
+
+The calculator uses a manually supplied positive electron-transfer number `n` and the molar mass `M` derived from the entered formula:
+
+```text
+Q = nF / (3.6M)
+F = 96485 C mol−1
+```
+
+`F` is the Faraday constant (displayed as `96485 C mol−1`; calculations use `96485.33212 C mol−1`), `M` is molar mass in `g mol−1`, and `n` is the manually supplied electron-transfer number. The calculator displays the normalized formula, the substituted equation, and the resulting theoretical specific capacity in `mAh g−1`. Version 1 does not infer valence, oxidation state, insertion stoichiometry, or electron count.
+
+### Molecular Weight Calculator
+
+The shared formula engine supports element symbols, positive integer or decimal stoichiometric counts, and nested parentheses. It reports the formula, total molar mass, and a bilingual element-contribution table with per-element count, atomic weight, mass contribution, and mass percentage. Scientific identifiers, formulas, numerical values, element symbols, and units remain unchanged when the interface language changes.
+
+### Current Limitations
+
+- Hydrate/adduct dot notation such as `CuSO4·5H2O` or `CuSO4•5H2O` is not supported. An ASCII period between digits is interpreted as a decimal stoichiometric count, not a hydrate separator.
+- Scan-rate headers use dot-decimal notation. Locale-comma or multiply punctuated values such as `1,5 mV/s` or `1..5 mV/s` are not inferred and must be corrected in the confirmation fields.
+- Legacy `.xls` files are not supported. For `.xlsx`, sheets are examined in workbook order and the first sheet containing a usable wide CV table is used; earlier empty, descriptive, or invalid sheets are skipped.
+- CV smoothing, extrapolation, paste-from-Excel, XLSX result export, and automatic electron-count inference are outside version 1.
+
+`read-excel-file@9.3.10` is the sole new direct production dependency. It is loaded only with the lazily split CV route and is used only to extract XLSX worksheet rows; parsing validation, scan-rate confirmation, interpolation, fitting, calculations, charts, localization, and exports remain project code. The homepage and other Tools routes are separate route chunks.
+
 ## Repository Layout
 
 ```text
@@ -53,7 +132,10 @@ scripts/
 src/
   components/      UI components
   data/            typed imports for static JSON records
+  i18n/            lightweight language provider and persistence
   lib/             types, statuses, formatting, validation, statistics
+  locales/         explicit English and Simplified Chinese resources
+  pages/           homepage and standalone Tools route pages
   styles/          global CSS
 ```
 

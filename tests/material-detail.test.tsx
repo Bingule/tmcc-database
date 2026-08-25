@@ -1,11 +1,11 @@
-import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { renderWithI18n } from "./i18n-test-utils";
 import { MaterialDetail } from "../src/components/MaterialDetail";
 import { materials } from "../src/data/materials";
 
 describe("MaterialDetail", () => {
   it("renders crystal structure beside a separate XRD and PDF panel", () => {
-    const markup = renderToStaticMarkup(<MaterialDetail material={materials[0]} />);
+    const markup = renderWithI18n(<MaterialDetail material={materials[0]} />);
 
     expect(markup).not.toContain("<h3>Overview</h3>");
     expect(markup).toContain("<h3>Crystal Structure</h3>");
@@ -25,7 +25,7 @@ describe("MaterialDetail", () => {
   });
 
   it("renders DOS and band structure inside the XRD/PDF panel", () => {
-    const markup = renderToStaticMarkup(<MaterialDetail material={materials[0]} />);
+    const markup = renderWithI18n(<MaterialDetail material={materials[0]} />);
 
     expect(markup).not.toContain("<h3>DOS / Band Structure</h3>");
     expect(markup).toContain("Density of states");
@@ -36,7 +36,7 @@ describe("MaterialDetail", () => {
   });
 
   it("shows the real available calculation settings for Nb2S2C P-3m1", () => {
-    const markup = renderToStaticMarkup(<MaterialDetail material={materials[0]} />);
+    const markup = renderWithI18n(<MaterialDetail material={materials[0]} />);
 
     expect(markup).toContain("Plane-wave cutoff");
     expect(markup).toContain("520 eV");
@@ -54,13 +54,13 @@ describe("MaterialDetail", () => {
         k_points: { density: 2.5, gamma: true }
       }
     };
-    const markup = renderToStaticMarkup(<MaterialDetail material={material} />);
+    const markup = renderWithI18n(<MaterialDetail material={material} />);
 
     expect(markup).toContain("density 2.5, gamma");
   });
 
   it("renders atomic sites from Nb2S2C P-3m1 structure data", () => {
-    const markup = renderToStaticMarkup(<MaterialDetail material={materials[0]} />);
+    const markup = renderWithI18n(<MaterialDetail material={materials[0]} />);
 
     expect(markup).toContain("Atomic sites");
     expect(markup).toContain("Nb1");
@@ -69,7 +69,7 @@ describe("MaterialDetail", () => {
   });
 
   it("renders geometric layer thickness and vdW gap from the structure", () => {
-    const markup = renderToStaticMarkup(<MaterialDetail material={materials[0]} />);
+    const markup = renderWithI18n(<MaterialDetail material={materials[0]} />);
 
     expect(markup).toContain("Layer thickness");
     expect(markup).toContain("5.637 Å");
@@ -87,7 +87,7 @@ describe("MaterialDetail", () => {
       },
       mechanical: { mechanically_stable: true }
     };
-    const markup = renderToStaticMarkup(<MaterialDetail material={material} />);
+    const markup = renderWithI18n(<MaterialDetail material={material} />);
 
     expect(markup).toContain("Cell volume (Å³)");
     expect(markup).toContain("Density (g/cm³)");
@@ -105,7 +105,7 @@ describe("MaterialDetail", () => {
       ...materials[0],
       mechanical: { elastic_constants: { C11: 100 } }
     };
-    const markup = renderToStaticMarkup(<MaterialDetail material={material} />);
+    const markup = renderWithI18n(<MaterialDetail material={material} />);
 
     expect(markup).toContain("Mechanical Stability");
     expect(markup).toContain("Pending");
@@ -136,7 +136,7 @@ describe("MaterialDetail", () => {
         }
       }
     };
-    const markup = renderToStaticMarkup(<MaterialDetail material={material} />);
+    const markup = renderWithI18n(<MaterialDetail material={material} />);
 
     expect(markup).toContain('<article id="mechanical-properties" class="panel"><h3>Mechanical / Elastic Properties</h3>');
     expect(markup).toContain("trigonal (-3m)");
@@ -149,7 +149,7 @@ describe("MaterialDetail", () => {
   });
 
   it("does not render an empty elastic-properties panel", () => {
-    const markup = renderToStaticMarkup(<MaterialDetail material={materials[1]} />);
+    const markup = renderWithI18n(<MaterialDetail material={materials[1]} />);
 
     expect(markup).toContain("Mechanical Stability");
     expect(markup).toContain("Pending");
@@ -158,7 +158,7 @@ describe("MaterialDetail", () => {
 
   it("shows the rhombohedral setting note for R-3m materials", () => {
     const material = materials.find((item) => item.material_id === "TMCC-0002") ?? materials[1];
-    const markup = renderToStaticMarkup(<MaterialDetail material={material} />);
+    const markup = renderWithI18n(<MaterialDetail material={material} />);
 
     expect(markup).toContain("Structure type");
     expect(markup).toContain("trigonal");
@@ -168,7 +168,7 @@ describe("MaterialDetail", () => {
 
   it("reports the per-layer thickness for R-3m hexagonal cells", () => {
     const material = materials.find((item) => item.material_id === "TMCC-0002") ?? materials[1];
-    const markup = renderToStaticMarkup(<MaterialDetail material={material} />);
+    const markup = renderWithI18n(<MaterialDetail material={material} />);
 
     expect(markup).toContain("5.629");
     expect(markup).not.toContain("22.614");
