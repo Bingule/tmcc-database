@@ -217,6 +217,7 @@ describe("Tools static integration", () => {
     expect(css).toMatch(/\.tools-page[^}]*:focus-visible|\.tools-page\s+:is\([^}]*\):focus-visible/s);
     expect(css).toMatch(/@media\s*\(max-width:\s*520px\)[\s\S]*?\.language-switch/s);
     expect(css).toMatch(/\.cv-import-fieldset\s+input\[type=\"radio\"\][^}]*width:\s*auto/s);
+    expect(css).toMatch(/\.cv-file-source\s+\.cv-file-input\s*\{[^}]*width:\s*1px[^}]*height:\s*1px[^}]*min-height:\s*1px/s);
     expect(css).toMatch(/\.cv-paste-source\s+textarea[^}]*width:\s*100%[^}]*min-height:\s*1[2-9]0px/s);
     expect(css).toMatch(/\.cv-format-choices\s*\{[^}]*grid-template-columns:\s*repeat\(2,/s);
     expect(css).toMatch(/\.cv-analysis-settings\s*\{[^}]*grid-template-columns:\s*repeat\(2,/s);

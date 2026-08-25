@@ -338,6 +338,8 @@ export const zh = {
   "cv.import.source.help": "文件和粘贴的电子表格数据仅在本浏览器本地解析，不会上传。",
   "cv.import.source.file": "上传文件",
   "cv.import.source.paste": "从 Excel 粘贴",
+  "cv.import.file.choose": "选择文件",
+  "cv.import.file.none": "未选择文件",
   "cv.import.paste.label": "Excel 兼容的粘贴数据",
   "cv.import.paste.placeholder": "粘贴使用制表符、逗号、分号或一致空格分隔的 CV 数据",
   "cv.import.paste.parse": "解析粘贴数据",

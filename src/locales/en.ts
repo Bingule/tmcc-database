@@ -336,6 +336,8 @@ export const en = {
   "cv.import.source.help": "Files and pasted spreadsheet data are parsed locally in this browser and are not uploaded.",
   "cv.import.source.file": "File upload",
   "cv.import.source.paste": "Paste from Excel",
+  "cv.import.file.choose": "Choose file",
+  "cv.import.file.none": "No file selected",
   "cv.import.paste.label": "Excel-compatible pasted data",
   "cv.import.paste.placeholder": "Paste tab-, comma-, semicolon-, or whitespace-delimited CV data",
   "cv.import.paste.parse": "Parse pasted data",

@@ -82,7 +82,14 @@ describe("CvImportPanel", () => {
 
     const header = view.querySelector<HTMLInputElement>('input[name="cv-header-mode"][value="header"]')!;
     expect(header.checked).toBe(true);
-    expect(view.querySelector<HTMLInputElement>('input[type="file"]')?.accept).toBe(".csv,.txt,.xlsx");
+    const fileInput = view.querySelector<HTMLInputElement>('input[type="file"]')!;
+    expect(fileInput.accept).toBe(".csv,.txt,.xlsx");
+    expect(fileInput.className).toBe("cv-file-input");
+    expect(view.querySelector(".cv-file-button")?.textContent).toBe("Choose file");
+    const fileName = view.querySelector(".cv-file-name")!;
+    expect(fileName.textContent).toBe("No file selected");
+    expect(fileName.getAttribute("role")).toBe("status");
+    expect(fileName.hasAttribute("aria-live")).toBe(false);
     expect(view.querySelector("textarea")).toBeNull();
 
     const rates = view.querySelector<HTMLInputElement>('input[name="cv-scan-rates"]')!;
@@ -101,6 +108,23 @@ describe("CvImportPanel", () => {
     expect(view.textContent).toContain("XYYYYY");
     expect(view.textContent).toContain("XYXYXY");
     expect(view.querySelector<HTMLButtonElement>('button[name="cv-analyze"]')?.disabled).toBe(true);
+  });
+
+  it("uses localized site text instead of the operating system file-input caption", async () => {
+    const view = await renderPanel();
+    const fileInput = view.querySelector<HTMLInputElement>('input[type="file"]')!;
+    const file = new File(["E,I1,I2,I3"], "experiment.csv", { type: "text/csv" });
+    Object.defineProperty(fileInput, "files", { configurable: true, value: [file] });
+
+    await act(async () => fileInput.dispatchEvent(new Event("change", { bubbles: true })));
+    expect(view.querySelector(".cv-file-name")?.textContent).toBe("experiment.csv");
+
+    await click(view, "中文");
+    expect(view.querySelector(".cv-file-button")?.textContent).toBe("选择文件");
+    expect(view.querySelector(".cv-file-name")?.textContent).toBe("experiment.csv");
+
+    await click(view, "EN");
+    expect(view.querySelector(".cv-file-button")?.textContent).toBe("Choose file");
   });
 
   it("localizes labels, help, format examples, and ARIA while preserving the controlled draft", async () => {

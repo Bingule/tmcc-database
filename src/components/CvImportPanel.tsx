@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useI18n } from "../i18n/I18nProvider";
 import {
   CvParseError,
@@ -49,6 +50,7 @@ export function CvImportPanel({
   onAnalyze
 }: CvImportPanelProps) {
   const { t } = useI18n();
+  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const validation = validateDraft(draft, table);
   const displayedError = error ?? validation.visibleCode;
   const rates = validation.rates;
@@ -58,6 +60,10 @@ export function CvImportPanel({
   const updateOptions = (patch: Partial<CvImportDraft["options"]>) => {
     onDraftChange({ ...draft, options: { ...draft.options, ...patch } });
   };
+
+  useEffect(() => {
+    setSelectedFileName(null);
+  }, [draft.options.headerMode, draft.options.layout, draft.source]);
 
   return <section className="tool-section cv-import">
     <h2>{t("cv.import.title")}</h2>
@@ -151,20 +157,32 @@ export function CvImportPanel({
       </label>
     </fieldset>
 
-    {draft.source === "file" ? <label className="cv-file-source" htmlFor="cv-file-input">
-      {t("cv.upload")}
-      <input
-        id="cv-file-input"
-        aria-label={t("cv.aria.file")}
-        type="file"
-        accept=".csv,.txt,.xlsx"
-        disabled={busy}
-        onChange={(event) => {
-          const file = event.currentTarget.files?.[0];
-          if (file) onFile(file);
-        }}
-      />
-    </label> : <div className="cv-paste-source">
+    {draft.source === "file" ? <div className="cv-file-source">
+      <span className="cv-file-label">{t("cv.upload")}</span>
+      <div className="cv-file-picker">
+        <input
+          className="cv-file-input"
+          id="cv-file-input"
+          aria-label={t("cv.aria.file")}
+          type="file"
+          accept=".csv,.txt,.xlsx"
+          disabled={busy}
+          onChange={(event) => {
+            const file = event.currentTarget.files?.[0];
+            if (!file) return;
+            setSelectedFileName(file.name);
+            onFile(file);
+            event.currentTarget.value = "";
+          }}
+        />
+        <label className="cv-file-button" htmlFor="cv-file-input" aria-disabled={busy}>
+          {t("cv.import.file.choose")}
+        </label>
+        <span className="cv-file-name" role="status">
+          {selectedFileName ?? t("cv.import.file.none")}
+        </span>
+      </div>
+    </div> : <div className="cv-paste-source">
       <label htmlFor="cv-paste-text">{t("cv.import.paste.label")}</label>
       <textarea
         id="cv-paste-text"
