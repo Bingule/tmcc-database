@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import { Breadcrumbs } from "../components/Breadcrumbs";
 import {
   CvImportPanel,
@@ -379,14 +379,58 @@ class PageAnalysisError extends Error { constructor(readonly code: "noBFit" | "a
 
 function DataTable({ headers, rows, tableId }: { headers: string[]; rows: Array<Array<string | number | null>>; tableId?: string }) {
   const { t } = useI18n();
+  const controlId = useId();
+  const [selectedColumns, setSelectedColumns] = useState<Set<number>>(() => new Set());
+  const [copyStatus, setCopyStatus] = useState<"success" | "error" | null>(null);
+  const supportsColumnCopy = rows.length > 1;
+
+  function toggleColumn(index: number) {
+    setSelectedColumns((current) => {
+      const next = new Set(current);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+    setCopyStatus(null);
+  }
+
+  async function copySelectedColumns() {
+    const indices = headers.map((_, index) => index)
+      .filter((index) => selectedColumns.has(index));
+    if (indices.length === 0) return;
+    const text = [headers, ...rows]
+      .map((row) => indices.map((index) => format(row[index] ?? null)).join("\t"))
+      .join("\r\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopyStatus("success");
+    } catch {
+      setCopyStatus("error");
+    }
+  }
+
   if (rows.length === 0) return null;
   const displayedRows = rows.slice(0, MAX_TABLE_ROWS);
   const scrollsVertically = displayedRows.length > MAX_VISIBLE_TABLE_ROWS;
   return <div className="cv-result-table-block">
+    {supportsColumnCopy && <div className="cv-table-copy-toolbar">
+      <span id={`${controlId}-columns`}>{t("cv.table.copy.columns")}</span>
+      <div className="cv-table-copy-columns" aria-labelledby={`${controlId}-columns`}>
+        {headers.map((header, index) => {
+          const checkboxId = `${controlId}-column-${index}`;
+          return <label htmlFor={checkboxId} key={index}>
+            <input id={checkboxId} type="checkbox" value={index} checked={selectedColumns.has(index)} onChange={() => toggleColumn(index)} />
+            {header}
+          </label>;
+        })}
+      </div>
+      <button type="button" disabled={selectedColumns.size === 0} onClick={copySelectedColumns}>{t("cv.table.copy.action")}</button>
+      <p role="status" aria-live="polite">{copyStatus && t(`cv.table.copy.${copyStatus}`)}</p>
+    </div>}
     <div className={`cv-result-table-frame${scrollsVertically ? " cv-result-table-frame-scroll" : ""}`}>
       <div className="tool-table-wrap">
         <div className="cv-result-table-viewport">
-          <table data-table-id={tableId}><thead><tr>{headers.map((header) => <th scope="col" key={header}>{header}</th>)}</tr></thead>
+          <table data-table-id={tableId}><thead><tr>{headers.map((header, index) => <th scope="col" key={index}>{header}</th>)}</tr></thead>
             <tbody>{displayedRows.map((row, index) => <tr key={index}>{row.map((cell, cellIndex) => <td key={cellIndex}>{format(cell)}</td>)}</tr>)}</tbody></table>
         </div>
       </div>

@@ -2787,6 +2787,32 @@ td button {
   box-sizing: border-box;
 }
 
+.cv-table-copy-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 12px 0 6px;
+}
+
+.cv-table-copy-columns {
+  display: flex;
+  flex: 1 1 420px;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+
+.cv-table-copy-columns label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  font-weight: 500;
+}
+
+.cv-table-copy-toolbar button { margin: 0; }
+.cv-table-copy-toolbar [role="status"] { flex-basis: 100%; min-height: 1.4em; }
+
 .scientific-chart-shell {
   width: 100%;
   margin: 14px 0;

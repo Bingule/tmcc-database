@@ -749,9 +749,14 @@ describe("CV kinetics page", () => {
   });
 
   it("caps chart and table rendering while CSV export retains the full analysis", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText }
+    });
     const view = await renderPage();
-    const rowCount = 2_501;
-    const contents = ["Potential,Current 1 mV/s,Current 4 mV/s,Current 9 mV/s", ...Array.from({ length: rowCount }, (_, index) => `${index},${index + 1},${4 * (index + 1)},${9 * (index + 1)}`)].join("\n");
+    const sourceRowCount = 2_501;
+    const contents = ["Potential,Current 1 mV/s,Current 4 mV/s,Current 9 mV/s", ...Array.from({ length: sourceRowCount }, (_, index) => `${index},${index + 1},${4 * (index + 1)},${9 * (index + 1)}`)].join("\n");
     await upload(view, contents);
     await click(view, "Run analysis");
     expect(view.querySelector('select[name="selectedPotential"]')).toBeNull();
@@ -770,12 +775,37 @@ describe("CV kinetics page", () => {
       ?.closest('.cv-result-table-frame');
     expect(shortFrame?.classList.contains('cv-result-table-frame-scroll')).toBe(false);
 
+    const dunnTable = view.querySelector('[data-table-id="cv-dunn-current-table"]')!;
+    const toolbar = dunnTable.closest('.cv-result-table-block')?.querySelector<HTMLElement>('.cv-table-copy-toolbar')!;
+    const copyButton = [...toolbar.querySelectorAll('button')]
+      .find((item) => item.textContent === "Copy selected columns")!;
+    expect(copyButton.disabled).toBe(true);
+    await act(async () => toolbar.querySelector<HTMLInputElement>('input[value="3"]')!.click());
+    await act(async () => toolbar.querySelector<HTMLInputElement>('input[value="0"]')!.click());
+    await act(async () => copyButton.click());
+
+    const copied = writeText.mock.calls[0][0] as string;
+    expect(copied.split("\r\n")).toHaveLength(sourceRowCount + 1);
+    expect(copied.split("\r\n")[0]).toBe("Potential (V)\tCapacitive contribution (arb. units)");
+    expect(copied).not.toContain("Interpolated input current");
+    expect(toolbar.textContent).toContain("Copied selected columns.");
+
+    writeText.mockRejectedValueOnce(new Error("Clipboard access denied"));
+    await act(async () => copyButton.click());
+    expect(toolbar.textContent).toContain("Could not copy selected columns.");
+
+    await click(view, "中文");
+    expect(toolbar.textContent).toContain("复制所选列");
+    expect(toolbar.textContent).toContain("无法复制所选列。");
+    expect(view.querySelector('[data-table-id="cv-selected-b-record-table"]')
+      ?.closest('.cv-result-table-block')?.querySelector('.cv-table-copy-toolbar')).toBeNull();
+
     const blobs: Blob[] = [];
     vi.stubGlobal("URL", { createObjectURL: vi.fn((blob: Blob) => { blobs.push(blob); return "blob:full"; }), revokeObjectURL: vi.fn() });
     vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
     await click(view, "cv-interpolated-data.csv");
     const exported = await new Promise<string>((resolve) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.readAsText(blobs[0]); });
-    expect(exported.split("\r\n")).toHaveLength(rowCount + 1);
+    expect(exported.split("\r\n")).toHaveLength(sourceRowCount + 1);
   }, 30_000);
 
   it("adds the CV table viewport only after the twelfth rendered row", async () => {
