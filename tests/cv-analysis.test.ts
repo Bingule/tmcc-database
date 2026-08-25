@@ -54,18 +54,18 @@ describe("interpolateCommonGrid", () => {
         label: "slow",
         scanRate: 1,
         points: [
-          { potential: 4, current: 8 },
+          { potential: 0, current: 0 },
           { potential: 2, current: 4 },
-          { potential: 0, current: 0 }
+          { potential: 4, current: 8 }
         ]
       },
       {
         label: "fast",
         scanRate: 5,
         points: [
+          { potential: 1, current: 10 },
           { potential: 3, current: 30 },
-          { potential: 5, current: 50 },
-          { potential: 1, current: 10 }
+          { potential: 5, current: 50 }
         ]
       }
     ];
@@ -79,7 +79,8 @@ describe("interpolateCommonGrid", () => {
       currents: [
         [2, 4, 6, 8],
         [10, 20, 30, 40]
-      ]
+      ],
+      branches: [{ branchIndex: 0, direction: 1, startIndex: 0, endIndex: 3 }]
     });
     expect(input).toEqual(snapshot);
   });
@@ -103,14 +104,164 @@ describe("interpolateCommonGrid", () => {
     ]), "noCommonPotentialRange");
   });
 
-  it("rejects duplicate potentials within a series with a stable typed error", () => {
+  it("rejects structurally invalid duplicate potentials with a stable typed error", () => {
     expectCvError(() => interpolateCommonGrid([
       {
         label: "duplicate",
         scanRate: 1,
         points: [{ potential: 0, current: 1 }, { potential: 0, current: 2 }]
       }
-    ]), "duplicatePotential");
+    ]), "invalidCycleStructure");
+  });
+
+  it("preserves a shared turning point once and records overlapping branch spans", () => {
+    const result = interpolateCommonGrid([
+      {
+        label: "shared",
+        scanRate: 1,
+        points: [
+          { potential: 0, current: 1 },
+          { potential: 1, current: 2 },
+          { potential: 2, current: 3 },
+          { potential: 1, current: 20 },
+          { potential: 0, current: 10 }
+        ]
+      }
+    ]);
+
+    expect(result.potentials).toEqual([0, 1, 2, 1, 0]);
+    expect(result.branches).toEqual([
+      { branchIndex: 0, direction: 1, startIndex: 0, endIndex: 2 },
+      { branchIndex: 1, direction: -1, startIndex: 2, endIndex: 4 }
+    ]);
+    expect(result.currents[0]).toEqual([1, 2, 3, 20, 10]);
+  });
+
+  it("keeps separate turning-point rows when any aligned series records both sides", () => {
+    const result = interpolateCommonGrid([
+      {
+        label: "double",
+        scanRate: 1,
+        points: [
+          { potential: 0, current: 1 },
+          { potential: 1, current: 2 },
+          { potential: 2, current: 3 },
+          { potential: 2, current: 30 },
+          { potential: 1, current: 20 },
+          { potential: 0, current: 10 }
+        ]
+      },
+      {
+        label: "shared",
+        scanRate: 2,
+        points: [
+          { potential: 0, current: 10 },
+          { potential: 1, current: 20 },
+          { potential: 2, current: 30 },
+          { potential: 1, current: 200 },
+          { potential: 0, current: 100 }
+        ]
+      }
+    ]);
+
+    expect(result.potentials).toEqual([0, 1, 2, 2, 1, 0]);
+    expect(result.branches).toEqual([
+      { branchIndex: 0, direction: 1, startIndex: 0, endIndex: 2 },
+      { branchIndex: 1, direction: -1, startIndex: 3, endIndex: 5 }
+    ]);
+    expect(result.currents).toEqual([
+      [1, 2, 3, 30, 20, 10],
+      [10, 20, 30, 30, 200, 100]
+    ]);
+  });
+
+  it("reuses a shared series endpoint at both mixed-boundary positions when turning extents differ", () => {
+    const result = interpolateCommonGrid([
+      {
+        label: "double-at-two",
+        scanRate: 1,
+        points: [
+          { potential: 0, current: 0 },
+          { potential: 1, current: 10 },
+          { potential: 2, current: 20 },
+          { potential: 2, current: 200 },
+          { potential: 1, current: 100 },
+          { potential: 0, current: 0 }
+        ]
+      },
+      {
+        label: "shared-at-three",
+        scanRate: 2,
+        points: [
+          { potential: 0, current: 0 },
+          { potential: 1, current: 10 },
+          { potential: 3, current: 30 },
+          { potential: 1, current: 300 },
+          { potential: 0, current: 0 }
+        ]
+      }
+    ]);
+
+    expect(result.potentials).toEqual([0, 1, 2, 2, 1, 0]);
+    expect(result.currents).toEqual([
+      [0, 10, 20, 200, 100, 0],
+      [0, 10, 20, 20, 300, 0]
+    ]);
+  });
+
+  it("retains all three branches in source order across two turns", () => {
+    const result = interpolateCommonGrid([{
+      label: "two-turn",
+      scanRate: 1,
+      points: [
+        { potential: 0, current: 1 },
+        { potential: 1, current: 2 },
+        { potential: 2, current: 3 },
+        { potential: 1, current: 4 },
+        { potential: 0, current: 5 },
+        { potential: 1, current: 6 },
+        { potential: 2, current: 7 }
+      ]
+    }]);
+
+    expect(result.potentials).toEqual([0, 1, 2, 1, 0, 1, 2]);
+    expect(result.branches).toEqual([
+      { branchIndex: 0, direction: 1, startIndex: 0, endIndex: 2 },
+      { branchIndex: 1, direction: -1, startIndex: 2, endIndex: 4 },
+      { branchIndex: 2, direction: 1, startIndex: 4, endIndex: 6 }
+    ]);
+    expect(result.currents[0]).toEqual([1, 2, 3, 4, 5, 6, 7]);
+  });
+
+  it("interpolates each branch from that branch's measured-potential union", () => {
+    const result = interpolateCommonGrid([
+      {
+        label: "sparse-forward",
+        scanRate: 1,
+        points: [
+          { potential: 0, current: 0 },
+          { potential: 2, current: 20 },
+          { potential: 1, current: 30 },
+          { potential: 0, current: 0 }
+        ]
+      },
+      {
+        label: "sparse-reverse",
+        scanRate: 2,
+        points: [
+          { potential: 0, current: 0 },
+          { potential: 1, current: 100 },
+          { potential: 2, current: 200 },
+          { potential: 0, current: 0 }
+        ]
+      }
+    ]);
+
+    expect(result.potentials).toEqual([0, 1, 2, 1, 0]);
+    expect(result.currents).toEqual([
+      [0, 10, 20, 30, 0],
+      [0, 100, 200, 100, 0]
+    ]);
   });
 
   it("rejects empty, non-finite, and non-positive inputs without returning invalid numbers", () => {

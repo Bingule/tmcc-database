@@ -46,7 +46,10 @@ describe("selectPointInterval", () => {
     const all = selectPointInterval(data, 1);
     const endpoints = selectPointInterval(data, 30);
 
-    expect(all).toEqual(data);
+    expect(all).toEqual({
+      ...data,
+      branches: [{ branchIndex: 0, direction: 1, startIndex: 0, endIndex: 6 }]
+    });
     expect(all).not.toBe(data);
     expect(all.potentials).not.toBe(data.potentials);
     expect(all.scanRates).not.toBe(data.scanRates);
@@ -58,6 +61,49 @@ describe("selectPointInterval", () => {
 
   it.each([0, 31, 1.5, Number.NaN])("rejects invalid interval %s with a stable error", (interval) => {
     expectCvError(() => selectPointInterval(data, interval), "invalidPointInterval");
+  });
+
+  it("samples every branch independently and rebases a shared boundary", () => {
+    const cyclic: InterpolatedCvData = {
+      potentials: [0, 1, 2, 3, 2, 1, 0],
+      scanRates: [1],
+      currents: [[10, 11, 12, 13, 14, 15, 16]],
+      branches: [
+        { branchIndex: 0, direction: 1, startIndex: 0, endIndex: 3 },
+        { branchIndex: 1, direction: -1, startIndex: 3, endIndex: 6 }
+      ]
+    };
+
+    const selected = selectPointInterval(cyclic, 2);
+
+    expect(selected.potentials).toEqual([0, 2, 3, 1, 0]);
+    expect(selected.currents[0]).toEqual([10, 12, 13, 15, 16]);
+    expect(selected.branches).toEqual([
+      { branchIndex: 0, direction: 1, startIndex: 0, endIndex: 2 },
+      { branchIndex: 1, direction: -1, startIndex: 2, endIndex: 4 }
+    ]);
+  });
+
+  it("retains every branch boundary when the interval exceeds all branch lengths", () => {
+    const cyclic: InterpolatedCvData = {
+      potentials: [0, 1, 2, 1, 0, 1, 2],
+      scanRates: [1],
+      currents: [[10, 11, 12, 13, 14, 15, 16]],
+      branches: [
+        { branchIndex: 0, direction: 1, startIndex: 0, endIndex: 2 },
+        { branchIndex: 1, direction: -1, startIndex: 2, endIndex: 4 },
+        { branchIndex: 2, direction: 1, startIndex: 4, endIndex: 6 }
+      ]
+    };
+
+    const selected = selectPointInterval(cyclic, 30);
+
+    expect(selected.potentials).toEqual([0, 2, 0, 2]);
+    expect(selected.branches).toEqual([
+      { branchIndex: 0, direction: 1, startIndex: 0, endIndex: 1 },
+      { branchIndex: 1, direction: -1, startIndex: 1, endIndex: 2 },
+      { branchIndex: 2, direction: 1, startIndex: 2, endIndex: 3 }
+    ]);
   });
 });
 

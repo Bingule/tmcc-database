@@ -19,10 +19,18 @@ export interface CvSweepBranch {
   sharesStartWithPrevious: boolean;
 }
 
+export interface CvGridBranch {
+  branchIndex: number;
+  direction: SweepDirection;
+  startIndex: number;
+  endIndex: number;
+}
+
 export interface InterpolatedCvData {
   potentials: number[];
   scanRates: number[];
   currents: number[][];
+  branches?: CvGridBranch[];
 }
 
 export interface BValuePoint {
@@ -107,6 +115,7 @@ export type CvAnalysisErrorCode =
   | "invalidPotential"
   | "invalidCurrent"
   | "duplicatePotential"
+  | "invalidCycleStructure"
   | "noCommonPotentialRange"
   | "invalidDataShape"
   | "invalidPointInterval"

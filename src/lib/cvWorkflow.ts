@@ -3,6 +3,7 @@ import {
   attemptDunnFits,
   integrateDunnContributions,
   interpolateCommonGrid,
+  resolveGridBranches,
   validateInterpolatedCvData
 } from "./cvAnalysis";
 import {
@@ -21,17 +22,27 @@ import {
 export function selectPointInterval(data: InterpolatedCvData, interval: number): InterpolatedCvData {
   validatePointInterval(interval);
   validateInterpolatedCvData(data);
-  const indices = Array.from(
-    { length: Math.ceil(data.potentials.length / interval) },
-    (_, index) => index * interval
-  ).filter((index) => index < data.potentials.length);
-  const last = data.potentials.length - 1;
-  if (last >= 0 && indices.at(-1) !== last) indices.push(last);
+  const sourceBranches = resolveGridBranches(data);
+  const selectedIndices = new Set<number>();
+  for (const branch of sourceBranches) {
+    for (let index = branch.startIndex; index <= branch.endIndex; index += interval) {
+      selectedIndices.add(index);
+    }
+    selectedIndices.add(branch.endIndex);
+  }
+  const indices = [...selectedIndices].sort((left, right) => left - right);
+  const rebasedIndices = new Map(indices.map((sourceIndex, outputIndex) => [sourceIndex, outputIndex]));
 
   return {
     potentials: indices.map((index) => data.potentials[index]),
     scanRates: [...data.scanRates],
-    currents: data.currents.map((row) => indices.map((index) => row[index]))
+    currents: data.currents.map((row) => indices.map((index) => row[index])),
+    branches: sourceBranches.map((branch) => ({
+      branchIndex: branch.branchIndex,
+      direction: branch.direction,
+      startIndex: rebasedIndices.get(branch.startIndex)!,
+      endIndex: rebasedIndices.get(branch.endIndex)!
+    }))
   };
 }
 

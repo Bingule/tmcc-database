@@ -1,35 +1,47 @@
 import { linearRegression } from "./regression";
+import { CvCycleStructureError, splitAlignedCvCycles } from "./cvCycle";
 import {
   CvAnalysisError,
   type BValuePoint,
   type CvFitRecord,
+  type CvGridBranch,
   type CvSeries,
+  type CvSweepBranch,
   type DunnAnalysisResult,
   type DunnContribution,
   type DunnPoint,
-  type InterpolatedCvData
+  type InterpolatedCvData,
+  type SweepDirection
 } from "./cvTypes";
 
-type SortedSeries = CvSeries & { points: Array<{ potential: number; current: number }> };
+type InterpolatedBranch = {
+  direction: SweepDirection;
+  potentials: number[];
+  scanRates: number[];
+  currents: number[][];
+  sharesStartWithPrevious: boolean[];
+};
+
+type SortedPoints = Array<{ potential: number; current: number }>;
 
 export function interpolateCommonGrid(series: CvSeries[]): InterpolatedCvData {
   if (series.length === 0) throw new CvAnalysisError("noSeries");
-  const sortedSeries = series.map(validateAndSortSeries);
-  const commonMinimum = Math.max(...sortedSeries.map((item) => item.points[0].potential));
-  const commonMaximum = Math.min(...sortedSeries.map((item) => item.points[item.points.length - 1].potential));
-  if (commonMinimum > commonMaximum) throw new CvAnalysisError("noCommonPotentialRange");
+  series.forEach(validateSeriesInput);
+  if (series.every((item) => item.points.length === 1)) return interpolateSinglePointSeries(series);
 
-  const potentials = [...new Set(sortedSeries.flatMap((item) => item.points
-    .map((point) => point.potential)
-    .filter((potential) => potential >= commonMinimum && potential <= commonMaximum)))]
-    .sort((left, right) => left - right);
-  if (potentials.length === 0) throw new CvAnalysisError("noCommonPotentialRange");
-
-  return {
-    potentials,
-    scanRates: sortedSeries.map((item) => item.scanRate),
-    currents: sortedSeries.map((item) => potentials.map((potential) => interpolateAt(item.points, potential)))
-  };
+  try {
+    const cycles = splitAlignedCvCycles(series);
+    const branchResults = cycles[0].map((_, branchIndex) => interpolateAlignedBranch(
+      cycles.map((cycle) => cycle[branchIndex]),
+      series.map((item) => item.scanRate)
+    ));
+    return recombineBranchGrids(branchResults);
+  } catch (error) {
+    if (error instanceof CvCycleStructureError) {
+      throw new CvAnalysisError("invalidCycleStructure");
+    }
+    throw error;
+  }
 }
 
 export function analyzeBValue(data: InterpolatedCvData): BValuePoint[] {
@@ -156,21 +168,84 @@ export function integrateDunnContributions(
   });
 }
 
-function validateAndSortSeries(series: CvSeries): SortedSeries {
+function validateSeriesInput(series: CvSeries) {
   if (!Number.isFinite(series.scanRate) || series.scanRate <= 0) throw new CvAnalysisError("invalidScanRate");
   if (series.points.length === 0) throw new CvAnalysisError("noPoints");
   for (const point of series.points) {
     if (!Number.isFinite(point.potential)) throw new CvAnalysisError("invalidPotential");
     if (!Number.isFinite(point.current)) throw new CvAnalysisError("invalidCurrent");
   }
-  const points = [...series.points].sort((left, right) => left.potential - right.potential);
-  for (let index = 1; index < points.length; index += 1) {
-    if (points[index].potential === points[index - 1].potential) throw new CvAnalysisError("duplicatePotential");
-  }
-  return { ...series, points };
 }
 
-function interpolateAt(points: SortedSeries["points"], potential: number) {
+function interpolateSinglePointSeries(series: CvSeries[]): InterpolatedCvData {
+  const commonMinimum = Math.max(...series.map((item) => item.points[0].potential));
+  const commonMaximum = Math.min(...series.map((item) => item.points[0].potential));
+  if (commonMinimum > commonMaximum) throw new CvAnalysisError("noCommonPotentialRange");
+  return {
+    potentials: [commonMinimum],
+    scanRates: series.map((item) => item.scanRate),
+    currents: series.map((item) => [item.points[0].current]),
+    branches: [{ branchIndex: 0, direction: 1, startIndex: 0, endIndex: 0 }]
+  };
+}
+
+function interpolateAlignedBranch(branches: CvSweepBranch[], scanRates: number[]): InterpolatedBranch {
+  const sortedBranches = branches.map((branch) => [...branch.points]
+    .sort((left, right) => left.potential - right.potential));
+  const commonMinimum = Math.max(...sortedBranches.map((points) => points[0].potential));
+  const commonMaximum = Math.min(...sortedBranches.map((points) => points[points.length - 1].potential));
+  if (commonMinimum > commonMaximum) throw new CvAnalysisError("noCommonPotentialRange");
+
+  const ascendingPotentials = [...new Set(sortedBranches.flatMap((points) => points
+    .map((point) => point.potential)
+    .filter((potential) => potential >= commonMinimum && potential <= commonMaximum)))]
+    .sort((left, right) => left - right);
+  if (ascendingPotentials.length === 0) throw new CvAnalysisError("noCommonPotentialRange");
+
+  const direction = branches[0].direction;
+  const potentials = direction === -1 ? [...ascendingPotentials].reverse() : ascendingPotentials;
+  return {
+    direction,
+    potentials,
+    scanRates: [...scanRates],
+    currents: sortedBranches.map((points) => potentials.map((potential) => interpolateAt(points, potential))),
+    sharesStartWithPrevious: branches.map((branch) => branch.sharesStartWithPrevious)
+  };
+}
+
+function recombineBranchGrids(branches: InterpolatedBranch[]): InterpolatedCvData {
+  const potentials: number[] = [];
+  const scanRates = [...branches[0].scanRates];
+  const currents = scanRates.map(() => [] as number[]);
+  const gridBranches: CvGridBranch[] = [];
+
+  branches.forEach((branch, branchIndex) => {
+    const mergeStart = branchIndex > 0 && branch.sharesStartWithPrevious.every(Boolean);
+    const omittedCount = mergeStart ? 1 : 0;
+    const startIndex = mergeStart ? potentials.length - 1 : potentials.length;
+    potentials.push(...branch.potentials.slice(omittedCount));
+    currents.forEach((row, seriesIndex) => {
+      const branchCurrents = branch.currents[seriesIndex].slice(omittedCount);
+      if (branchIndex > 0
+        && !mergeStart
+        && branch.sharesStartWithPrevious[seriesIndex]
+        && branchCurrents.length > 0) {
+        branchCurrents[0] = row[row.length - 1];
+      }
+      row.push(...branchCurrents);
+    });
+    gridBranches.push({
+      branchIndex,
+      direction: branch.direction,
+      startIndex,
+      endIndex: potentials.length - 1
+    });
+  });
+
+  return { potentials, scanRates, currents, branches: gridBranches };
+}
+
+function interpolateAt(points: SortedPoints, potential: number) {
   let low = 0;
   let high = points.length - 1;
   while (low <= high) {
@@ -193,12 +268,49 @@ export function validateInterpolatedCvData(data: InterpolatedCvData) {
     || data.currents.some((row) => row.length !== data.potentials.length)) {
     throw new CvAnalysisError("invalidDataShape");
   }
-  for (let index = 0; index < data.potentials.length; index += 1) {
-    if (!Number.isFinite(data.potentials[index])) throw new CvAnalysisError("invalidPotential");
-    if (index > 0 && data.potentials[index] <= data.potentials[index - 1]) {
+  for (const potential of data.potentials) {
+    if (!Number.isFinite(potential)) throw new CvAnalysisError("invalidPotential");
+  }
+
+  const branches = resolveGridBranches(data);
+  if (data.potentials.length === 0) {
+    if (branches.length > 0) throw new CvAnalysisError("invalidDataShape");
+    return;
+  }
+  if (branches.length === 0) throw new CvAnalysisError("invalidDataShape");
+
+  let previousEnd = -1;
+  branches.forEach((branch, branchPosition) => {
+    if (branch.branchIndex !== branchPosition
+      || (branch.direction !== 1 && branch.direction !== -1)
+      || !Number.isInteger(branch.startIndex)
+      || !Number.isInteger(branch.endIndex)
+      || branch.startIndex < 0
+      || branch.endIndex < branch.startIndex
+      || branch.endIndex >= data.potentials.length
+      || (branchPosition === 0 && branch.startIndex !== 0)
+      || (branchPosition > 0 && branch.startIndex !== previousEnd && branch.startIndex !== previousEnd + 1)) {
       throw new CvAnalysisError("invalidDataShape");
     }
-  }
+    for (let index = branch.startIndex + 1; index <= branch.endIndex; index += 1) {
+      if ((data.potentials[index] - data.potentials[index - 1]) * branch.direction <= 0) {
+        throw new CvAnalysisError("invalidDataShape");
+      }
+    }
+    previousEnd = branch.endIndex;
+  });
+  if (previousEnd !== data.potentials.length - 1) throw new CvAnalysisError("invalidDataShape");
+}
+
+export function resolveGridBranches(data: InterpolatedCvData): CvGridBranch[] {
+  if (data.branches) return data.branches.map((branch) => ({ ...branch }));
+  if (data.potentials.length === 0) return [];
+  return [{
+    branchIndex: 0,
+    direction: 1,
+    startIndex: 0,
+    endIndex: data.potentials.length - 1
+  }];
 }
 
 function makeContribution(
