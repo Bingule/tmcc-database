@@ -98,14 +98,14 @@ The calculator uses a manually supplied positive electron-transfer number `n` an
 
 ```text
 Q = nF / (3.6M)
-F = 96485.33212 C/mol
+F = 96485 C mol−1
 ```
 
-`M` is in g/mol and `Q` is reported in mAh/g. Version 1 does not infer valence, oxidation state, insertion stoichiometry, or electron count.
+`F` is the Faraday constant (displayed as `96485 C mol−1`; calculations use `96485.33212 C mol−1`), `M` is molar mass in `g mol−1`, and `n` is the manually supplied electron-transfer number. The calculator displays the normalized formula, the substituted equation, and the resulting theoretical specific capacity in `mAh g−1`. Version 1 does not infer valence, oxidation state, insertion stoichiometry, or electron count.
 
 ### Molecular Weight Calculator
 
-The shared formula engine supports element symbols, positive integer or decimal stoichiometric counts, and nested parentheses. It reports total molar mass plus per-element count, atomic weight, mass contribution, and mass percentage. Scientific identifiers, formulas, numerical values, element symbols, and units remain unchanged when the interface language changes.
+The shared formula engine supports element symbols, positive integer or decimal stoichiometric counts, and nested parentheses. It reports the formula, total molar mass, and a bilingual element-contribution table with per-element count, atomic weight, mass contribution, and mass percentage. Scientific identifiers, formulas, numerical values, element symbols, and units remain unchanged when the interface language changes.
 
 ### Current Limitations
 
@@ -114,7 +114,7 @@ The shared formula engine supports element symbols, positive integer or decimal 
 - Legacy `.xls` files are not supported. For `.xlsx`, sheets are examined in workbook order and the first sheet containing a usable wide CV table is used; earlier empty, descriptive, or invalid sheets are skipped.
 - CV smoothing, extrapolation, paste-from-Excel, XLSX result export, and automatic electron-count inference are outside version 1.
 
-`read-excel-file@9.3.10` is the sole new direct production dependency. It is used only to extract XLSX worksheet rows; parsing validation, scan-rate confirmation, interpolation, fitting, calculations, charts, localization, and exports remain project code.
+`read-excel-file@9.3.10` is the sole new direct production dependency. It is loaded only with the lazily split CV route and is used only to extract XLSX worksheet rows; parsing validation, scan-rate confirmation, interpolation, fitting, calculations, charts, localization, and exports remain project code. The homepage and other Tools routes are separate route chunks.
 
 ## Repository Layout
 

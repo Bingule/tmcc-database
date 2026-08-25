@@ -5,6 +5,7 @@ import { FARADAY_CONSTANT, calculateTheoreticalCapacity } from "../lib/capacity"
 import { calculateMolarMass, FormulaError } from "../lib/chemistry";
 
 type CapacityResult = {
+  formula: string;
   molarMass: number;
   electrons: number;
   capacity: number;
@@ -24,9 +25,10 @@ export function TheoreticalCapacityPage() {
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const normalizedFormula = formula.trim();
     let molarMass: number;
     try {
-      molarMass = calculateMolarMass(formula).molarMass;
+      molarMass = calculateMolarMass(normalizedFormula).molarMass;
     } catch (caught) {
       setResult(null);
       setError(caught instanceof FormulaError ? caught : { code: "invalidFormula" });
@@ -49,7 +51,7 @@ export function TheoreticalCapacityPage() {
       return;
     }
 
-    setResult({ molarMass, electrons: electronCount, capacity });
+    setResult({ formula: normalizedFormula, molarMass, electrons: electronCount, capacity });
     setError(null);
   }
 
@@ -88,23 +90,36 @@ export function TheoreticalCapacityPage() {
         {result && (
           <section className="tool-panel" aria-labelledby="capacity-result">
             <h2 id="capacity-result">{t("capacity.result")}</h2>
-            <p>Q = nF/(3.6M)</p>
+            <p><strong>{t("capacity.formulaResult", { formula: result.formula })}</strong></p>
+            <p>{t("capacity.equationExplanation")}</p>
+            <ul>
+              <li>{t("capacity.faradayDefinition", { faraday: Math.round(FARADAY_CONSTANT) })}</li>
+              <li>{t("capacity.molarMassDefinition")}</li>
+              <li>{t("capacity.electronNumberDefinition")}</li>
+            </ul>
             <div className="tool-result-table">
               <table>
                 <tbody>
                   <tr><th scope="row">M</th><td>{formatNumber(result.molarMass)} g/mol</td></tr>
                   <tr><th scope="row">n</th><td>{formatNumber(result.electrons)}</td></tr>
-                  <tr><th scope="row">Q</th><td>{formatNumber(result.capacity)} mAh/g</td></tr>
+                  <tr><th scope="row">Q</th><td>{formatNumber(result.capacity)} mAh g−1</td></tr>
                 </tbody>
               </table>
             </div>
-            <p>Q = ({formatNumber(result.electrons)} × {FARADAY_CONSTANT}) / (3.6 × {formatNumber(result.molarMass)}) = {formatNumber(result.capacity)} mAh/g</p>
+            <p>{t("capacity.substitution", {
+              n: formatNumber(result.electrons),
+              faraday: FARADAY_CONSTANT,
+              molarMass: formatNumber(result.molarMass),
+              capacity: formatNumber(result.capacity)
+            })}</p>
           </section>
         )}
       </div>
     </section>
   );
 }
+
+export default TheoreticalCapacityPage;
 
 function getErrorMessage(error: PageError, t: ReturnType<typeof useI18n>["t"]) {
   switch (error.code) {

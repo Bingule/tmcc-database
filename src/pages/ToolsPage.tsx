@@ -28,3 +28,5 @@ export function ToolsPage() {
     </section>
   );
 }
+
+export default ToolsPage;

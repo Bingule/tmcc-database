@@ -2450,6 +2450,20 @@ td button {
   min-width: 560px;
 }
 
+.scientific-chart-point:focus-visible {
+  outline: none;
+  stroke: #a6423f;
+  stroke-width: 3;
+  vector-effect: non-scaling-stroke;
+}
+
+.tool-result-table caption {
+  padding: 10px 12px;
+  color: #2d414a;
+  font-weight: 700;
+  text-align: left;
+}
+
 .scientific-chart-empty {
   display: grid;
   min-height: 180px;

@@ -12,7 +12,7 @@ export function MolecularWeightPage() {
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     try {
-      setResult(calculateMolarMass(formula));
+      setResult(calculateMolarMass(formula.trim()));
       setError(null);
     } catch (caught) {
       setResult(null);
@@ -46,9 +46,11 @@ export function MolecularWeightPage() {
         {result && (
           <section className="tool-panel" aria-labelledby="molecular-weight-result">
             <h2 id="molecular-weight-result">{t("molecularWeight.result")}</h2>
+            <p><strong>{t("molecularWeight.formulaResult", { formula: result.formula })}</strong></p>
             <p><strong>{formatNumber(result.molarMass)} g/mol</strong></p>
             <div className="tool-result-table">
               <table>
+                <caption>{t("molecularWeight.elementContributions")}</caption>
                 <thead>
                   <tr>
                     <th scope="col">{t("molecularWeight.element")}</th>
@@ -77,6 +79,8 @@ export function MolecularWeightPage() {
     </section>
   );
 }
+
+export default MolecularWeightPage;
 
 function getFormulaError(error: FormulaError, t: ReturnType<typeof useI18n>["t"]) {
   switch (error.code) {

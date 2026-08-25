@@ -22,7 +22,13 @@ async function renderRoute(path: string) {
   document.body.appendChild(view);
   const root = createRoot(view);
   roots.push(root);
-  await act(async () => root.render(<I18nProvider><App /></I18nProvider>));
+  await act(async () => {
+    root.render(<I18nProvider><App /></I18nProvider>);
+    if (path === "/tools") await import("../src/pages/ToolsPage");
+    if (path === "/tools/cv-kinetics") await import("../src/pages/CvKineticsPage");
+    if (path === "/tools/theoretical-capacity") await import("../src/pages/TheoreticalCapacityPage");
+    if (path === "/tools/molecular-weight") await import("../src/pages/MolecularWeightPage");
+  });
   return view;
 }
 
@@ -175,6 +181,7 @@ describe("Tools static integration", () => {
     expect(css).toMatch(/@media\s*\(max-width:\s*900px\)[\s\S]*?\.tool-layout\s*\{[^}]*grid-template-columns:\s*1fr/s);
     expect(css).toMatch(/\.tool-table-wrap[^}]*overflow-x:\s*auto/s);
     expect(css).toMatch(/\.scientific-chart-svg[^}]*width:\s*100%/s);
+    expect(css).toMatch(/\.scientific-chart-point:focus-visible\s*\{[^}]*stroke:\s*#[0-9a-f]{6}[^}]*stroke-width:\s*[2-9]/s);
     expect(css).toMatch(/\.tools-page[^}]*:focus-visible|\.tools-page\s+:is\([^}]*\):focus-visible/s);
     expect(css).toMatch(/@media\s*\(max-width:\s*520px\)[\s\S]*?\.language-switch/s);
   });

@@ -30,6 +30,13 @@ async function renderApp(): Promise<HTMLElement> {
         <App />
       </I18nProvider>
     );
+    const path = window.location.pathname;
+    if (path === "/") await import("../src/components/StructureViewer");
+    if (path === "/tools") await import("../src/pages/ToolsPage");
+    if (path === "/tools/cv-kinetics") await import("../src/pages/CvKineticsPage");
+    if (path === "/tools/theoretical-capacity") await import("../src/pages/TheoreticalCapacityPage");
+    if (path === "/tools/molecular-weight") await import("../src/pages/MolecularWeightPage");
+    if (!path.startsWith("/tools") && path !== "/") await import("../src/pages/NotFoundPage");
   });
 
   return view;
@@ -47,6 +54,22 @@ describe("normalizePathname", () => {
 });
 
 describe("App routes", () => {
+  it("localizes the not-found route and breadcrumb without changing the route", async () => {
+    history.replaceState(null, "", "/missing");
+    const view = await renderApp();
+
+    expect(view.querySelector("h1")?.textContent).toBe("Page not found");
+    expect(view.querySelector('[aria-current="page"]')?.textContent).toBe("Page not found");
+
+    const chinese = [...view.querySelectorAll<HTMLButtonElement>("button")]
+      .find((button) => button.textContent === "中文");
+    await act(async () => chinese?.click());
+
+    expect(window.location.pathname).toBe("/missing");
+    expect(view.querySelector("h1")?.textContent).toBe("页面未找到");
+    expect(view.querySelector('[aria-current="page"]')?.textContent).toBe("页面未找到");
+  });
+
   it("keeps the CV tool route available while calculator routes use their dedicated pages", async () => {
     history.replaceState(null, "", "/tools/cv-kinetics");
     const view = await renderApp();

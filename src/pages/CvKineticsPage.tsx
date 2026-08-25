@@ -213,6 +213,8 @@ export function CvKineticsPage() {
   );
 }
 
+export default CvKineticsPage;
+
 class PageAnalysisError extends Error { constructor(readonly code: "noBFit" | "analysis") { super(code); } }
 
 function errorMessage(code: CvParseErrorCode | "noOverlap" | "noBFit" | "analysis" | "export", t: ReturnType<typeof useI18n>["t"]) {

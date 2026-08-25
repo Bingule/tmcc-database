@@ -8,6 +8,7 @@
 - Added six localized CSV result downloads and SVG/PNG downloads for four scientific figures.
 - Added shared chemical-formula, molar-mass, and theoretical-specific-capacity utilities with localized validation and scientific explanations.
 - Added static direct-route build entries, responsive Tools layouts, accessibility markup, sitemap entries, and regression coverage without changing the deployed version number.
+- Completed bilingual calculator result terminology and equation explanations, restored full periodic-element accessible names, and split Tools pages into lazy route chunks so XLSX support is not loaded by the homepage.
 - Added `read-excel-file@9.3.10` as the only new direct production dependency for browser-side XLSX row extraction.
 
 ## 2026-08-12

@@ -131,8 +131,8 @@ export function PeriodicTable({ materials, onMetalSelect, onElementSearch }: Pro
                 if (hasRecord) onMetalSelect(element.symbol);
               }}
               aria-pressed={isSelected}
-              aria-label={`${element.symbol}: ${hasRecord ? t("periodic.recordAvailable") : isHostEligible ? t("periodic.hostCandidateShort") + ", " + t("status.notCalculated") : t("periodic.compositionSearch")}`}
-              title={`${element.symbol} - ${hasRecord ? t("periodic.recordAvailable") : isHostEligible ? t("periodic.hostCandidateShort") : t("periodic.compositionSearch")}`}
+              aria-label={`${element.name} (${element.symbol}): ${hasRecord ? t("periodic.recordAvailable") : isHostEligible ? t("periodic.hostCandidateShort") + ", " + t("status.notCalculated") : t("periodic.compositionSearch")}`}
+              title={`${element.name} (${element.symbol}) - ${hasRecord ? t("periodic.recordAvailable") : isHostEligible ? t("periodic.hostCandidateShort") : t("periodic.compositionSearch")}`}
             >
               <small>{element.atomicNumber}</small>
               <strong>{element.symbol}</strong>

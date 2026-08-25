@@ -103,6 +103,14 @@ describe("ScientificLineChart", () => {
     expect(view.querySelector('circle[data-selected-x="1"]')).not.toBeNull();
   });
 
+  it("marks keyboard-selectable SVG points with the focus-visible styling hook", async () => {
+    const view = await renderChart({ ...baseProps, onSelectX: vi.fn() });
+    const target = view.querySelector<SVGCircleElement>('circle[role="button"]');
+
+    expect(target?.classList.contains("scientific-chart-point")).toBe(true);
+    expect(target?.getAttribute("tabindex")).toBe("0");
+  });
+
   it("renders observed point series without a misleading connecting line", async () => {
     const view = await renderChart({
       ...baseProps,

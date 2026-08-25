@@ -1,12 +1,15 @@
+import { lazy, Suspense, type ReactNode } from "react";
 import { SiteFooter } from "./components/SiteFooter";
 import { SiteHeader } from "./components/SiteHeader";
+import { useI18n } from "./i18n/I18nProvider";
 import { normalizePathname } from "./lib/routes";
 import { HomePage } from "./pages/HomePage";
-import { MolecularWeightPage } from "./pages/MolecularWeightPage";
-import { NotFoundPage } from "./pages/NotFoundPage";
-import { TheoreticalCapacityPage } from "./pages/TheoreticalCapacityPage";
-import { ToolsPage } from "./pages/ToolsPage";
-import { CvKineticsPage } from "./pages/CvKineticsPage";
+
+const ToolsPage = lazy(() => import("./pages/ToolsPage"));
+const CvKineticsPage = lazy(() => import("./pages/CvKineticsPage"));
+const TheoreticalCapacityPage = lazy(() => import("./pages/TheoreticalCapacityPage"));
+const MolecularWeightPage = lazy(() => import("./pages/MolecularWeightPage"));
+const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
 
 export default function App() {
   const route = normalizePathname(window.location.pathname);
@@ -19,6 +22,11 @@ export default function App() {
   return <Shell><NotFoundPage /></Shell>;
 }
 
-function Shell({ children }: { children: React.ReactNode }) {
-  return <main><SiteHeader />{children}<SiteFooter /></main>;
+function Shell({ children }: { children: ReactNode }) {
+  return <main><SiteHeader /><Suspense fallback={<RouteLoading />}>{children}</Suspense><SiteFooter /></main>;
+}
+
+function RouteLoading() {
+  const { t } = useI18n();
+  return <div className="route-loading" role="status">{t("common.loading")}</div>;
 }

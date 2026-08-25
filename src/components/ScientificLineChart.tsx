@@ -152,6 +152,7 @@ export function ScientificLineChart({
               {onSelectX && item.points.flatMap((point, index) => point.y === null ? [] : [(
                 <circle
                   key={`${item.id}-${point.x}-${index}`}
+                  className="scientific-chart-point"
                   data-point-x={String(point.x)}
                   cx={projectX(point.x)}
                   cy={projectY(point.y)}
