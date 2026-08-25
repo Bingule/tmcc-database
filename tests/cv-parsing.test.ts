@@ -345,6 +345,59 @@ describe("confirmCvSeries", () => {
       reason: "inconsistentBranches"
     });
   });
+
+  it("accepts aligned paired series with mixed single and double recorded turning points", () => {
+    const table = parseDelimitedCv(
+      [
+        "E1,I1,E2,I2,E3,I3",
+        "0,1,0,2,0,3",
+        "1,2,1,4,1,6",
+        "2,3,2,6,2,9",
+        ",,2,60,2,90",
+        "1,20,1,40,1,60",
+        "0,10,0,20,0,30"
+      ].join("\n"),
+      { layout: "pairedPotentialCurrent", headerMode: "header" }
+    );
+
+    expect(confirmCvSeries(table, [1, 4, 9])).toEqual([
+      {
+        label: "I1",
+        scanRate: 1,
+        points: [
+          { potential: 0, current: 1 },
+          { potential: 1, current: 2 },
+          { potential: 2, current: 3 },
+          { potential: 1, current: 20 },
+          { potential: 0, current: 10 }
+        ]
+      },
+      {
+        label: "I2",
+        scanRate: 4,
+        points: [
+          { potential: 0, current: 2 },
+          { potential: 1, current: 4 },
+          { potential: 2, current: 6 },
+          { potential: 2, current: 60 },
+          { potential: 1, current: 40 },
+          { potential: 0, current: 20 }
+        ]
+      },
+      {
+        label: "I3",
+        scanRate: 9,
+        points: [
+          { potential: 0, current: 3 },
+          { potential: 1, current: 6 },
+          { potential: 2, current: 9 },
+          { potential: 2, current: 90 },
+          { potential: 1, current: 60 },
+          { potential: 0, current: 30 }
+        ]
+      }
+    ]);
+  });
 });
 
 describe("parseCvFile", () => {

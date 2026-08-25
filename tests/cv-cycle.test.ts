@@ -36,6 +36,16 @@ describe("splitCvCycle", () => {
     expect(branches[1].points.map((point) => point.sourceIndex)).toEqual([2, 3, 4]);
   });
 
+  it("does not mutate the input points while segmenting", () => {
+    const input = points([0, 1, 2, 1, 0]);
+    const original = input.map((point) => ({ ...point }));
+
+    splitCvCycle(input);
+
+    expect(input).toEqual(original);
+    expect(input[0]).not.toBe(original[0]);
+  });
+
   it("keeps separately recorded turning points exclusive to their branches", () => {
     const branches = splitCvCycle(points([0, 1, 2, 2, 1, 0]));
 
