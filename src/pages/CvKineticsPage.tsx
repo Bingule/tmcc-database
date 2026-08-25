@@ -222,8 +222,11 @@ function errorMessage(code: CvParseErrorCode | "noOverlap" | "noBFit" | "analysi
     emptyFile: "cv.error.emptyFile", malformedFile: "cv.error.malformedFile", potentialColumnMissing: "cv.error.potentialColumnMissing",
     currentColumnsMissing: "cv.error.currentColumnsMissing", missingScanRate: "cv.error.missingScanRate", duplicateScanRate: "cv.error.duplicateScanRate",
     invalidScanRate: "cv.error.invalidScanRate", insufficientSeries: "cv.error.insufficientSeries", resourceLimitExceeded: "cv.error.resourceLimitExceeded", noOverlap: "cv.error.noOverlap",
-    noBFit: "cv.error.noBFit", analysis: "cv.error.analysis", export: "cv.error.export"
-  } as const;
+    noBFit: "cv.error.noBFit", analysis: "cv.error.analysis", export: "cv.error.export",
+    // Task 4 replaces these temporary shared fallback keys with dedicated localized messages.
+    formatRequired: "cv.error.malformedFile", oddPairColumnCount: "cv.error.malformedFile",
+    scanRateCountMismatch: "cv.error.malformedFile", tooManySeries: "cv.error.insufficientSeries"
+  } satisfies Record<CvParseErrorCode | "noOverlap" | "noBFit" | "analysis" | "export", Parameters<typeof t>[0]>;
   return t(keys[code]);
 }
 

@@ -29,6 +29,12 @@ describe("parseScanRateList", () => {
       expect.objectContaining({ code: "invalidScanRate" }),
     );
   });
+
+  it.each(["1x", "Infinity", "1e999", "１"])("rejects non-ASCII or non-finite token %s", (token) => {
+    expect(() => parseScanRateList(`1,2,${token}`)).toThrowError(
+      expect.objectContaining({ code: "invalidScanRate" }),
+    );
+  });
 });
 
 describe("makeColumnPairs", () => {
