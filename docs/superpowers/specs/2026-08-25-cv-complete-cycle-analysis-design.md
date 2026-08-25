@@ -30,6 +30,7 @@ Forward and return currents at the same potential are separate observations. The
 - Two direction changes: accept as three branches.
 - More than two genuine direction changes: reject with a localized cycle-structure error.
 - Every scan-rate series must have the same branch count and the same ordered direction pattern.
+- Scan rates may differ in whether a turning potential is recorded once or twice; this difference alone is not a structural mismatch.
 - Each branch must contain enough distinct potential points for interpolation. Existing fit-level insufficient-data statuses remain responsible for regression sufficiency.
 
 Direction is determined from consecutive finite potential differences without smoothing the input.
@@ -43,6 +44,10 @@ For a sequence such as `0 → 1 → 2 → 1 → 0`, the source point at `2` is s
 For a sequence such as `0 → 1 → 2a → 2b → 1 → 0`, where `2a` and `2b` have the same potential but may have different currents, `2a` belongs to the incoming branch and `2b` belongs to the outgoing branch. Both sequential observations are retained and are never averaged.
 
 Other duplicate potentials inside a monotonic branch remain invalid because they cannot be interpolated unambiguously without altering the measured sequence.
+
+### Mixed single/double turning-point records across scan rates
+
+If one scan rate records the vertex once while another records it twice, analysis continues as long as branch count and direction order match. The single observation is available internally as the shared endpoint of both adjacent branches. The two distinct observations remain assigned to the incoming and outgoing branches respectively. If any aligned series has two distinct vertex observations, the recombined processed grid retains separate incoming/outgoing vertex positions; a series with one observation supplies its shared endpoint current to both positions without averaging or modifying its retained original series.
 
 ## Data Model
 
@@ -72,7 +77,7 @@ For each branch position:
 
 No interpolation crosses a turning-point boundary. The return branch never uses the forward branch current at the same potential.
 
-After all branches are interpolated, concatenate them in traversal order. A boundary created from one shared source point is emitted once; two separately recorded equal-potential boundary points are both emitted.
+After all branches are interpolated, concatenate them in traversal order. A boundary is emitted once only when every aligned scan-rate series uses one shared source point there. If any series separately records the incoming and outgoing vertex, the processed grid emits both branch positions; single-record series use their shared endpoint value at both positions.
 
 ## Point Interval
 

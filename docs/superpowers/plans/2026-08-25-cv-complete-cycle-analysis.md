@@ -12,6 +12,7 @@
 
 - Preserve every imported potential/current point in source order; never sort or truncate the confirmed cycle.
 - Support zero, one, or two potential-direction changes; reject more than two.
+- Require matching branch count and ordered directions across scan rates, while allowing mixed single/double recording of the same turning potential.
 - Never average or merge forward and return currents at the same potential.
 - Split only for branch-local interpolation, point sampling, fitting, and integration; recombine outputs in traversal order.
 - Apply point interval independently per branch and retain the cycle ends and every turning boundary.
@@ -91,6 +92,7 @@ Also assert:
 - monotonic ascending and descending inputs produce one branch.
 - more than two turns, an internal duplicate without a reversal, or a branch with fewer than two distinct potentials throws `CvCycleStructureError` with a stable reason.
 - aligned series with different branch counts/directions throws `CvCycleStructureError("inconsistentBranches")`.
+- aligned series with the same branch count/directions but mixed single/double turning-point recording remains valid.
 
 - [ ] **Step 2: Run the segmentation test and confirm RED**
 
@@ -137,7 +139,7 @@ Implement one pass over consecutive potential differences:
 - reject any other zero-width edge
 - reject a third direction change
 - validate two distinct potentials per branch
-- in `splitAlignedCvCycles`, compare branch count, direction, and `sharesStartWithPrevious` across all scan rates
+- in `splitAlignedCvCycles`, compare only branch count and ordered direction; retain each series' own `sharesStartWithPrevious` metadata
 
 - [ ] **Step 4: Preserve full points in `confirmCvSeries`**
 
@@ -275,7 +277,7 @@ return recombineBranchGrids(branchResults);
 
 `interpolateAlignedBranch` must sort only a temporary branch copy ascending for binary interpolation, compute the overlap/union exactly as the current single-grid function does, and reverse the completed grid when `direction === -1`.
 
-`recombineBranchGrids` omits the next branch's first sample only when `sharesStartWithPrevious` is true. Its `CvGridBranch` span starts at the preceding output index in that case; separately recorded equal-potential boundary rows remain separate indices.
+`recombineBranchGrids` omits the next branch's first sample only when every aligned series has `sharesStartWithPrevious: true` at that boundary. Its `CvGridBranch` span starts at the preceding output index in that case. If any series has two separately recorded vertex rows, emit distinct incoming/outgoing grid positions; series with one shared vertex supplies that endpoint current to both branch positions, while double-record series keep their two currents separate.
 
 Export or keep a focused `resolveGridBranches(data)` helper that supplies one full-array branch when `data.branches` is absent. Update `validateInterpolatedCvData` to require strict monotonicity inside each branch span, not globally. Add `"invalidCycleStructure"` to `CvAnalysisErrorCode`; if direct library input fails `splitAlignedCvCycles`, translate `CvCycleStructureError` to `CvAnalysisError("invalidCycleStructure")` so callers never receive a private helper error.
 
