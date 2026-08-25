@@ -104,7 +104,7 @@ describe("CvImportPanel", () => {
     expect(threshold).toMatchObject({ min: "0", max: "1", step: "0.01", value: "0.95" });
     expect(view.textContent).toContain("subsamples the common potential grid; it does not smooth or average currents");
     expect(view.textContent).toContain("Choose a data format before importing data");
-    expect(view.textContent).toContain("0 disables quality exclusion");
+    expect(view.textContent).toContain("Recommended threshold: 0.95 (only fits with R² ≥ 0.95 are treated as valid).");
     expect(view.textContent).toContain("XYYYYY");
     expect(view.textContent).toContain("XYXYXY");
     expect(view.querySelector<HTMLButtonElement>('button[name="cv-analyze"]')?.disabled).toBe(true);
@@ -139,7 +139,7 @@ describe("CvImportPanel", () => {
     expect(view.textContent).toContain("首行为表头");
     expect(view.textContent).toContain("从 Excel 粘贴");
     expect(view.textContent).toContain("仅对共同电位网格进行抽样；不会平滑或平均电流");
-    expect(view.textContent).toContain("设为 0 时禁用质量排除");
+    expect(view.textContent).toContain("建议阈值：0.95（仅将 R² ≥ 0.95 的拟合视为有效）。");
     expect(view.textContent).toContain("导入数据前请选择数据格式");
     expect(view.querySelector("textarea")?.getAttribute("aria-label")).toBe("粘贴 Excel 兼容的 CV 数据");
     expect(view.querySelector<HTMLInputElement>('input[name="cv-scan-rates"]')?.getAttribute("aria-label")).toBe("有序扫描速率列表");

@@ -349,7 +349,7 @@ export const zh = {
   "cv.import.pointInterval": "取点间隔",
   "cv.import.pointInterval.help": "请选择 1–30，并同时应用于两种分析。仅对共同电位网格进行抽样；不会平滑或平均电流，并保留最后一点；较大间隔可能隐藏狭窄的电位相关特征。",
   "cv.import.rSquaredThreshold": "R² 阈值",
-  "cv.import.rSquaredThreshold.help": "同时应用于两种回归。设为 0 时禁用质量排除，但仍报告 R²。",
+  "cv.import.rSquaredThreshold.help": "建议阈值：0.95（仅将 R² ≥ 0.95 的拟合视为有效）。",
   "cv.import.mapping.shared": "{{current}} → {{rate}} mV/s",
   "cv.import.mapping.paired": "{{potential}} / {{current}} → {{rate}} mV/s",
   "cv.preview.title": "数据预览",

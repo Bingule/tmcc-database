@@ -254,10 +254,6 @@ export function CvImportPanel({
       </div>
     </div>
 
-    <p className="tool-validation" aria-atomic="true" aria-live="polite" role="status">
-      {displayedError ? errorMessage(displayedError, t, table?.pairs.length) : ""}
-    </p>
-
     <section className="cv-preview" aria-label={t("cv.aria.preview")}>
       <h3>{t("cv.preview.title")}</h3>
       {!table ? <p>{t("cv.preview.emptyControlled")}</p> : <>
@@ -288,6 +284,9 @@ export function CvImportPanel({
     >
       {t("cv.analysis.run")}
     </button>
+    <p className="tool-validation" aria-atomic="true" aria-live="polite" role="status">
+      {displayedError ? errorMessage(displayedError, t, table?.pairs.length) : ""}
+    </p>
   </section>;
 }
 

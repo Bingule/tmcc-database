@@ -347,7 +347,7 @@ export const en = {
   "cv.import.pointInterval": "Point interval",
   "cv.import.pointInterval.help": "Select 1–30 for both analyses. This subsamples the common potential grid; it does not smooth or average currents. The final point is retained, while larger intervals may hide narrow potential-dependent features.",
   "cv.import.rSquaredThreshold": "R² threshold",
-  "cv.import.rSquaredThreshold.help": "Applies to both regressions. 0 disables quality exclusion while R² is still reported.",
+  "cv.import.rSquaredThreshold.help": "Recommended threshold: 0.95 (only fits with R² ≥ 0.95 are treated as valid).",
   "cv.import.mapping.shared": "{{current}} → {{rate}} mV/s",
   "cv.import.mapping.paired": "{{potential}} / {{current}} → {{rate}} mV/s",
   "cv.preview.title": "Data Preview",

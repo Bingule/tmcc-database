@@ -253,6 +253,38 @@ describe("CV kinetics page", () => {
     expect(view.querySelector('[aria-live="polite"]')?.textContent).toContain("3–20");
   });
 
+  it("retains mathematical b-value and Dunn fits when every R-squared value is below 0.95", async () => {
+    const view = await renderPage();
+    await upload(view, "Potential,Current 1 mV/s,Current 4 mV/s,Current 9 mV/s\n0,1,100,2\n0.5,2,200,4\n1,3,300,6");
+    await click(view, "Run analysis");
+
+    const bRows = view.querySelectorAll('[data-table-id="cv-b-records-table"] tbody tr');
+    const dunnRows = view.querySelectorAll('[data-table-id="cv-dunn-records-table"] tbody tr');
+    expect(bRows.length).toBeGreaterThan(0);
+    expect(dunnRows.length).toBeGreaterThan(0);
+    expect(bRows[0]?.textContent).toContain("Below R² threshold");
+    expect(dunnRows[0]?.textContent).toContain("Below R² threshold");
+    expect(bRows[0]?.querySelectorAll("td")[1]?.textContent).not.toBe("—");
+    expect(dunnRows[0]?.querySelectorAll("td")[1]?.textContent).not.toBe("—");
+    expect(view.querySelector('[data-table-id="cv-contribution-table"]')).toBeNull();
+    expect(view.querySelector('[aria-live="polite"]')?.textContent).not.toContain("No b-value fit");
+
+    await click(view, "中文");
+    expect(view.querySelector('[data-table-id="cv-b-records-table"]')?.textContent).toContain("低于 R² 阈值");
+  });
+
+  it("shows a genuine analysis failure immediately beside the Run analysis action", async () => {
+    const view = await renderPage();
+    await upload(view, "Potential,Current 1 mV/s,Current 4 mV/s,Current 9 mV/s\n0,0,0,0\n1,0,0,0");
+    await click(view, "Run analysis");
+
+    const analyze = button(view, "Run analysis");
+    const status = analyze.nextElementSibling;
+    expect(status?.classList.contains("tool-validation")).toBe(true);
+    expect(status?.getAttribute("aria-live")).toBe("polite");
+    expect(status?.textContent).toContain("No b-value fit");
+  });
+
   it.each([
     ["duplicate", csv, "unique", async (view: HTMLElement) => {
       await setValue(view.querySelector<HTMLInputElement>('input[name="cv-scan-rates"]')!, "1, 1, 9");
