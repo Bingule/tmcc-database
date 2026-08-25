@@ -21,7 +21,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -2367,7 +2368,8 @@ td button {
 
 .tool-form input,
 .tool-section input,
-.tool-section select {
+.tool-section select,
+.tool-section textarea {
   width: 100%;
   min-height: 42px;
   padding: 8px 10px;
@@ -2410,6 +2412,166 @@ td button {
   margin-top: 10px;
   color: #9b2c2c;
   line-height: 1.45;
+}
+
+.cv-import {
+  display: grid;
+  gap: 14px;
+}
+
+.cv-import > :is(h2, p) {
+  margin: 0;
+}
+
+.cv-import-fieldset {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+  margin: 0;
+  padding: 14px;
+  border: 1px solid #d6dfdc;
+  border-radius: 7px;
+}
+
+.cv-import-fieldset legend {
+  padding: 0 5px;
+  color: #263f49;
+  font-weight: 800;
+}
+
+.cv-import-fieldset > p,
+.cv-field-help {
+  margin: 0;
+  color: #607078;
+  font-size: 0.86rem;
+}
+
+.cv-import-fieldset input[type="radio"] {
+  width: auto;
+  min-height: 18px;
+  margin: 0;
+  padding: 0;
+}
+
+.cv-import-fieldset label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 0.9rem;
+}
+
+.cv-format-choices {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.cv-source-controls {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.cv-analysis-settings {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.cv-format-choices > :is(legend, p) {
+  grid-column: 1 / -1;
+}
+
+.cv-format-choice {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #e0e7e4;
+  border-radius: 6px;
+  background: #fbfcfb;
+}
+
+.cv-format-example {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.cv-format-example code {
+  display: block;
+  padding: 6px 8px;
+  overflow-wrap: anywhere;
+  border-radius: 4px;
+  color: #31535e;
+  background: #eef4f2;
+  font-size: 0.76rem;
+}
+
+.cv-format-example table {
+  width: 100%;
+  min-width: max-content;
+  margin-top: 6px;
+  border-collapse: collapse;
+  color: #52666e;
+  font-size: 0.72rem;
+}
+
+.cv-format-example th {
+  padding: 4px 6px;
+  border: 1px solid #dce5e1;
+  font-weight: 700;
+  text-align: left;
+}
+
+.cv-file-source,
+.cv-paste-source,
+.cv-scan-rate-control,
+.cv-control-with-help {
+  min-width: 0;
+}
+
+.cv-paste-source {
+  display: grid;
+  gap: 8px;
+}
+
+.cv-paste-source textarea {
+  width: 100%;
+  min-height: 140px;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.cv-paste-source button {
+  width: fit-content;
+}
+
+.cv-scan-rate-control input {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.cv-control-with-help {
+  display: grid;
+  gap: 7px;
+}
+
+.cv-import :is(input, select, textarea)[aria-invalid="true"] {
+  border-color: #a6423f;
+  box-shadow: 0 0 0 1px rgba(166, 66, 63, 0.14);
+}
+
+.cv-import :is(input, select, textarea):disabled {
+  color: #748087;
+  background: #f1f4f3;
+  cursor: not-allowed;
+}
+
+.cv-import .tool-validation:empty {
+  display: none;
+  min-height: 0;
+  margin: 0;
+}
+
+.cv-import button:disabled {
+  cursor: not-allowed;
 }
 
 .tool-result-table,
@@ -2476,7 +2638,7 @@ td button {
   text-align: center;
 }
 
-.tools-page :is(a, button, input, select):focus-visible {
+.tools-page :is(a, button, input, select, textarea):focus-visible {
   outline: 2px solid #2f5f73;
   outline-offset: 3px;
 }
@@ -2594,6 +2756,16 @@ sub {
     grid-column: auto;
   }
 
+  .cv-format-choices,
+  .cv-source-controls,
+  .cv-analysis-settings {
+    grid-template-columns: 1fr;
+  }
+
+  .cv-format-choices > :is(legend, p) {
+    grid-column: auto;
+  }
+
   .periodic-table {
     grid-template-columns: repeat(18, minmax(48px, 1fr));
   }
@@ -2636,6 +2808,19 @@ sub {
   .tool-section,
   .tool-card {
     padding: 16px;
+  }
+
+  .cv-import-fieldset {
+    padding: 12px;
+  }
+
+  .cv-analysis-settings {
+    grid-template-columns: 1fr;
+  }
+
+  .cv-paste-source button {
+    width: 100%;
+    margin-right: 0;
   }
 
   .hero-copy h1 span:last-child {

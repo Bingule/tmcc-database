@@ -66,32 +66,36 @@ export function CvImportPanel({
     <fieldset className="cv-import-fieldset cv-format-choices" role="radiogroup" aria-required="true" aria-label={t("cv.aria.layout")}>
       <legend>{t("cv.import.layout")}</legend>
       <p>{t("cv.import.layout.help")}</p>
-      <label>
-        <input
-          type="radio"
-          name="cv-layout"
-          value="sharedPotential"
-          required
-          checked={draft.options.layout === "sharedPotential"}
-          aria-label={t("cv.aria.layout.shared")}
-          onChange={() => updateOptions({ layout: "sharedPotential" })}
-        />
-        {t("cv.import.layout.shared")}
-      </label>
-      <code>{t("cv.import.layout.shared.example")}</code>
-      <label>
-        <input
-          type="radio"
-          name="cv-layout"
-          value="pairedPotentialCurrent"
-          required
-          checked={draft.options.layout === "pairedPotentialCurrent"}
-          aria-label={t("cv.aria.layout.paired")}
-          onChange={() => updateOptions({ layout: "pairedPotentialCurrent" })}
-        />
-        {t("cv.import.layout.paired")}
-      </label>
-      <code>{t("cv.import.layout.paired.example")}</code>
+      <div className="cv-format-choice">
+        <label>
+          <input
+            type="radio"
+            name="cv-layout"
+            value="sharedPotential"
+            required
+            checked={draft.options.layout === "sharedPotential"}
+            aria-label={t("cv.aria.layout.shared")}
+            onChange={() => updateOptions({ layout: "sharedPotential" })}
+          />
+          {t("cv.import.layout.shared")}
+        </label>
+        <FormatExample value={t("cv.import.layout.shared.example")} />
+      </div>
+      <div className="cv-format-choice">
+        <label>
+          <input
+            type="radio"
+            name="cv-layout"
+            value="pairedPotentialCurrent"
+            required
+            checked={draft.options.layout === "pairedPotentialCurrent"}
+            aria-label={t("cv.aria.layout.paired")}
+            onChange={() => updateOptions({ layout: "pairedPotentialCurrent" })}
+          />
+          {t("cv.import.layout.paired")}
+        </label>
+        <FormatExample value={t("cv.import.layout.paired.example")} />
+      </div>
     </fieldset>
 
     <fieldset className="cv-import-fieldset" role="radiogroup" aria-label={t("cv.aria.headerMode")}>
@@ -119,7 +123,7 @@ export function CvImportPanel({
       </label>
     </fieldset>
 
-    <fieldset className="cv-import-fieldset" role="radiogroup" aria-label={t("cv.aria.source")}>
+    <fieldset className="cv-import-fieldset cv-source-controls" role="radiogroup" aria-label={t("cv.aria.source")}>
       <legend>{t("cv.import.source")}</legend>
       <p>{t("cv.import.source.help")}</p>
       <label>
@@ -144,7 +148,7 @@ export function CvImportPanel({
       </label>
     </fieldset>
 
-    {draft.source === "file" ? <label htmlFor="cv-file-input">
+    {draft.source === "file" ? <label className="cv-file-source" htmlFor="cv-file-input">
       {t("cv.upload")}
       <input
         id="cv-file-input"
@@ -163,6 +167,7 @@ export function CvImportPanel({
         id="cv-paste-text"
         name="cv-paste-text"
         aria-label={t("cv.aria.paste")}
+        disabled={busy}
         placeholder={t("cv.import.paste.placeholder")}
         value={draft.pasteText}
         onChange={(event) => update({ pasteText: event.target.value })}
@@ -172,54 +177,63 @@ export function CvImportPanel({
       </button>
     </div>}
 
-    <label htmlFor="cv-scan-rates">
+    <label className="cv-scan-rate-control" htmlFor="cv-scan-rates">
       {t("cv.import.scanRates")} (mV/s)
       <input
         id="cv-scan-rates"
         name="cv-scan-rates"
         type="text"
         inputMode="decimal"
+        aria-invalid={displayedError === "missingScanRate" || displayedError === "duplicateScanRate" || displayedError === "invalidScanRate" || displayedError === "insufficientSeries" || displayedError === "tooManySeries" || displayedError === "scanRateCountMismatch"}
         aria-label={t("cv.aria.scanRates")}
         placeholder="0.2, 0.4, 0.6, 0.8, 1"
         value={draft.scanRateText}
         onChange={(event) => update({ scanRateText: event.target.value })}
       />
     </label>
-    <p>{t("cv.import.scanRates.help")}</p>
+    <p className="cv-field-help">{t("cv.import.scanRates.help")}</p>
 
-    <label htmlFor="cv-point-interval">
-      {t("cv.import.pointInterval")}
-      <select
-        id="cv-point-interval"
-        name="cv-point-interval"
-        aria-label={t("cv.aria.pointInterval")}
-        value={draft.pointInterval}
-        onChange={(event) => update({ pointInterval: Number(event.target.value) })}
-      >
-        {intervalOptions.map((interval) => <option key={interval} value={interval}>{interval}</option>)}
-      </select>
-    </label>
-    <p>{t("cv.import.pointInterval.help")}</p>
+    <div className="cv-analysis-settings">
+      <div className="cv-control-with-help">
+        <label htmlFor="cv-point-interval">
+          {t("cv.import.pointInterval")}
+          <select
+            id="cv-point-interval"
+            name="cv-point-interval"
+            aria-invalid={displayedError === "invalidPointInterval"}
+            aria-label={t("cv.aria.pointInterval")}
+            value={draft.pointInterval}
+            onChange={(event) => update({ pointInterval: Number(event.target.value) })}
+          >
+            {intervalOptions.map((interval) => <option key={interval} value={interval}>{interval}</option>)}
+          </select>
+        </label>
+        <p className="cv-field-help">{t("cv.import.pointInterval.help")}</p>
+      </div>
 
-    <label htmlFor="cv-r-squared-threshold">
-      {t("cv.import.rSquaredThreshold")}
-      <input
-        id="cv-r-squared-threshold"
-        name="cv-r-squared-threshold"
-        type="number"
-        min="0"
-        max="1"
-        step="0.01"
-        aria-label={t("cv.aria.rSquaredThreshold")}
-        value={Number.isFinite(draft.rSquaredThreshold) ? draft.rSquaredThreshold : ""}
-        onChange={(event) => update({
-          rSquaredThreshold: event.target.value === "" ? Number.NaN : Number(event.target.value)
-        })}
-      />
-    </label>
-    <p>{t("cv.import.rSquaredThreshold.help")}</p>
+      <div className="cv-control-with-help">
+        <label htmlFor="cv-r-squared-threshold">
+          {t("cv.import.rSquaredThreshold")}
+          <input
+            id="cv-r-squared-threshold"
+            name="cv-r-squared-threshold"
+            type="number"
+            min="0"
+            max="1"
+            step="0.01"
+            aria-invalid={displayedError === "invalidRSquaredThreshold"}
+            aria-label={t("cv.aria.rSquaredThreshold")}
+            value={Number.isFinite(draft.rSquaredThreshold) ? draft.rSquaredThreshold : ""}
+            onChange={(event) => update({
+              rSquaredThreshold: event.target.value === "" ? Number.NaN : Number(event.target.value)
+            })}
+          />
+        </label>
+        <p className="cv-field-help">{t("cv.import.rSquaredThreshold.help")}</p>
+      </div>
+    </div>
 
-    <p className="tool-validation" aria-live="polite" role="status">
+    <p className="tool-validation" aria-atomic="true" aria-live="polite" role="status">
       {displayedError ? errorMessage(displayedError, t, table?.pairs.length) : ""}
     </p>
 
@@ -324,6 +338,16 @@ function PreviewTable({ table }: { table: ParsedCvTable }) {
       {row.map((cell, cellIndex) => <td key={cellIndex}>{formatCell(cell)}</td>)}
     </tr>)}</tbody>
   </table></div>;
+}
+
+function FormatExample({ value }: { value: string }) {
+  const columns = value.split(" | ");
+  return <div className="cv-format-example">
+    <code>{value}</code>
+    <table>
+      <thead><tr>{columns.map((column) => <th scope="col" key={column}>{column}</th>)}</tr></thead>
+    </table>
+  </div>;
 }
 
 function formatCell(value: string | number | null) {

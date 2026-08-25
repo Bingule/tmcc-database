@@ -153,6 +153,32 @@ describe("Tools page markup", () => {
     expect(region.getAttribute("aria-live")).toBe("polite");
   });
 
+  it("uses semantic, labeled import controls with responsive styling hooks", async () => {
+    const view = await renderRoute("/tools/cv-kinetics");
+    const importPanel = view.querySelector<HTMLElement>(".cv-import")!;
+    const fieldsets = [...importPanel.querySelectorAll("fieldset.cv-import-fieldset")];
+
+    expect(fieldsets).toHaveLength(3);
+    expect(fieldsets.every((fieldset) => fieldset.querySelector("legend") !== null)).toBe(true);
+    expect(importPanel.querySelectorAll(".cv-format-choice")).toHaveLength(2);
+    expect(importPanel.querySelectorAll(".cv-format-choice code")).toHaveLength(2);
+    expect(importPanel.querySelectorAll(".cv-format-choice table")).toHaveLength(2);
+
+    const ids = ["cv-file-input", "cv-scan-rates", "cv-point-interval", "cv-r-squared-threshold"];
+    for (const id of ids) expect(importPanel.querySelector(`label[for=\"${id}\"]`)).not.toBeNull();
+
+    const pasteSource = importPanel.querySelector<HTMLInputElement>('input[name="cv-source"][value="paste"]')!;
+    await act(async () => pasteSource.click());
+    const textarea = importPanel.querySelector<HTMLTextAreaElement>("textarea#cv-paste-text")!;
+    expect(textarea.labels?.[0]?.htmlFor).toBe("cv-paste-text");
+    expect(textarea.getAttribute("aria-label")).not.toBeNull();
+
+    const interval = importPanel.querySelector<HTMLSelectElement>("#cv-point-interval")!;
+    const threshold = importPanel.querySelector<HTMLInputElement>("#cv-r-squared-threshold")!;
+    expect(interval.disabled).toBe(false);
+    expect(threshold.disabled).toBe(false);
+  });
+
   it("uses responsive layout hooks and table-based calculator result regions", async () => {
     const capacity = await renderRoute("/tools/theoretical-capacity");
     expect(capacity.querySelector(".tool-layout")).not.toBeNull();
@@ -184,6 +210,14 @@ describe("Tools static integration", () => {
     expect(css).toMatch(/\.scientific-chart-point:focus-visible\s*\{[^}]*stroke:\s*#[0-9a-f]{6}[^}]*stroke-width:\s*[2-9]/s);
     expect(css).toMatch(/\.tools-page[^}]*:focus-visible|\.tools-page\s+:is\([^}]*\):focus-visible/s);
     expect(css).toMatch(/@media\s*\(max-width:\s*520px\)[\s\S]*?\.language-switch/s);
+    expect(css).toMatch(/\.cv-import-fieldset\s+input\[type=\"radio\"\][^}]*width:\s*auto/s);
+    expect(css).toMatch(/\.cv-paste-source\s+textarea[^}]*width:\s*100%[^}]*min-height:\s*1[2-9]0px/s);
+    expect(css).toMatch(/\.cv-format-choices\s*\{[^}]*grid-template-columns:\s*repeat\(2,/s);
+    expect(css).toMatch(/\.cv-analysis-settings\s*\{[^}]*grid-template-columns:\s*repeat\(2,/s);
+    expect(css).toMatch(/@media\s*\(max-width:\s*520px\)[\s\S]*?\.cv-analysis-settings\s*\{[^}]*grid-template-columns:\s*1fr/s);
+    expect(css).toMatch(/\.tools-page\s+:is\([^}]*textarea[^}]*\):focus-visible/s);
+    expect(css).toMatch(/\.cv-import\s+\.tool-validation:empty[^}]*display:\s*none/s);
+    expect(css).toMatch(/\.cv-import\s+button:disabled[^}]*cursor:\s*not-allowed/s);
   });
 
   it("keeps root metadata database-focused", async () => {
