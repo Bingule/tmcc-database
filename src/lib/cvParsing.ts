@@ -1,16 +1,9 @@
 import readXlsxFile from "read-excel-file/browser";
 import type { CvSeries } from "./cvTypes";
+import { CvParseError } from "./cvImport";
+import type { CvParseErrorCode, ParsedCvTable as CvImportParsedCvTable } from "./cvImport";
 
-export type CvParseErrorCode =
-  | "emptyFile"
-  | "malformedFile"
-  | "potentialColumnMissing"
-  | "currentColumnsMissing"
-  | "missingScanRate"
-  | "duplicateScanRate"
-  | "invalidScanRate"
-  | "insufficientSeries"
-  | "resourceLimitExceeded";
+export { CvParseError, type CvParseErrorCode } from "./cvImport";
 
 export const MAX_FILE_BYTES = 20 * 1024 * 1024;
 export const MAX_SHEETS = 50;
@@ -23,27 +16,16 @@ export const MAX_XLSX_TOTAL_UNCOMPRESSED_BYTES = 100 * 1024 * 1024;
 export const MAX_XLSX_ENTRY_UNCOMPRESSED_BYTES = 50 * 1024 * 1024;
 export const MAX_XLSX_COMPRESSION_RATIO = 100;
 
-export interface ParsedCvTable {
-  headers: string[];
-  rows: Array<Array<string | number | null>>;
+export type ParsedCvTable = Omit<CvImportParsedCvTable, "layout" | "headerMode" | "pairs"> & {
+  layout?: CvImportParsedCvTable["layout"];
+  headerMode?: CvImportParsedCvTable["headerMode"];
+  pairs?: CvImportParsedCvTable["pairs"];
   potentialColumn: number;
   currentColumns: Array<{
     column: number;
     header: string;
     inferredScanRate: number | null;
   }>;
-}
-
-export class CvParseError extends Error {
-  readonly code: CvParseErrorCode;
-  readonly detail: Readonly<Record<string, unknown>>;
-
-  constructor(code: CvParseErrorCode, detail: Readonly<Record<string, unknown>> = {}) {
-    super(code);
-    this.name = "CvParseError";
-    this.code = code;
-    this.detail = detail;
-  }
 }
 
 export function parseDelimitedCv(text: string): ParsedCvTable {
