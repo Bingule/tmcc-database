@@ -2759,6 +2759,34 @@ td button {
   padding: 10px 12px;
 }
 
+.cv-result-table-viewport {
+  width: max-content;
+  min-width: 100%;
+}
+
+.cv-result-table-frame-scroll {
+  --cv-visible-table-rows: 12;
+}
+
+.cv-result-table-frame-scroll .cv-result-table-viewport {
+  max-height: calc(43px * (var(--cv-visible-table-rows) + 1));
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.cv-result-table-frame-scroll .cv-result-table-viewport thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f5f7f6;
+}
+
+.cv-result-table-frame-scroll .cv-result-table-viewport th,
+.cv-result-table-frame-scroll .cv-result-table-viewport td {
+  height: 43px;
+  box-sizing: border-box;
+}
+
 .scientific-chart-shell {
   width: 100%;
   margin: 14px 0;

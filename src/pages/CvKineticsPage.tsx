@@ -33,6 +33,7 @@ export const MAX_CHART_POINTS = 2_000;
 const MAX_CHART_GAP_RUNS = 500;
 export const MAX_CHART_OUTPUT_POINTS = 4_000;
 const MAX_TABLE_ROWS = 500;
+export const MAX_VISIBLE_TABLE_ROWS = 12;
 const initialDraft: CvImportDraft = {
   options: { layout: "", headerMode: "header" },
   source: "file",
@@ -380,9 +381,18 @@ function DataTable({ headers, rows, tableId }: { headers: string[]; rows: Array<
   const { t } = useI18n();
   if (rows.length === 0) return null;
   const displayedRows = rows.slice(0, MAX_TABLE_ROWS);
-  return <div className="tool-table-wrap"><table data-table-id={tableId}><thead><tr>{headers.map((header) => <th scope="col" key={header}>{header}</th>)}</tr></thead>
-    <tbody>{displayedRows.map((row, index) => <tr key={index}>{row.map((cell, cellIndex) => <td key={cellIndex}>{format(cell)}</td>)}</tr>)}</tbody></table>
-    {rows.length > displayedRows.length && <p role="status">{t("cv.table.showingRows", { shown: displayedRows.length, total: rows.length })}</p>}</div>;
+  const scrollsVertically = displayedRows.length > MAX_VISIBLE_TABLE_ROWS;
+  return <div className="cv-result-table-block">
+    <div className={`cv-result-table-frame${scrollsVertically ? " cv-result-table-frame-scroll" : ""}`}>
+      <div className="tool-table-wrap">
+        <div className="cv-result-table-viewport">
+          <table data-table-id={tableId}><thead><tr>{headers.map((header) => <th scope="col" key={header}>{header}</th>)}</tr></thead>
+            <tbody>{displayedRows.map((row, index) => <tr key={index}>{row.map((cell, cellIndex) => <td key={cellIndex}>{format(cell)}</td>)}</tr>)}</tbody></table>
+        </div>
+      </div>
+    </div>
+    {rows.length > displayedRows.length && <p role="status">{t("cv.table.showingRows", { shown: displayedRows.length, total: rows.length })}</p>}
+  </div>;
 }
 
 function QualitySummary({ analysis, metadata }: { analysis: AnalysisState; metadata: ResultMetadata }) {

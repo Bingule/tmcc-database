@@ -219,6 +219,9 @@ describe("Tools static integration", () => {
     expect(css).toMatch(/\.tool-layout\s*\{[^}]*grid-template-columns:\s*repeat\(2,/s);
     expect(css).toMatch(/@media\s*\(max-width:\s*900px\)[\s\S]*?\.tool-layout\s*\{[^}]*grid-template-columns:\s*1fr/s);
     expect(css).toMatch(/\.tool-table-wrap[^}]*overflow-x:\s*auto/s);
+    expect(css).toMatch(/\.cv-result-table-frame-scroll\s*\{[^}]*--cv-visible-table-rows:\s*12/s);
+    expect(css).toMatch(/\.cv-result-table-frame-scroll\s+\.cv-result-table-viewport\s*\{[^}]*max-height:\s*calc\(43px\s*\*\s*\(var\(--cv-visible-table-rows\)\s*\+\s*1\)\)[^}]*overflow-y:\s*auto/s);
+    expect(css).toMatch(/\.cv-result-table-frame-scroll\s+\.cv-result-table-viewport\s+thead\s+th\s*\{[^}]*position:\s*sticky[^}]*top:\s*0/s);
     expect(css).toMatch(/\.scientific-chart-svg[^}]*width:\s*100%/s);
     expect(css).toMatch(/\.scientific-chart-point:focus-visible\s*\{[^}]*stroke:\s*#[0-9a-f]{6}[^}]*stroke-width:\s*[2-9]/s);
     expect(css).toMatch(/\.tools-page[^}]*:focus-visible|\.tools-page\s+:is\([^}]*\):focus-visible/s);

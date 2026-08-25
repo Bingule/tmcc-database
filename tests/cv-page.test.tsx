@@ -763,6 +763,12 @@ describe("CV kinetics page", () => {
     expect(Number(view.querySelector('[data-series-id="b-values"]')?.getAttribute("data-render-point-count"))).toBeLessThanOrEqual(2_000);
     expect(view.querySelectorAll('[data-table-id="cv-dunn-current-table"] tbody tr').length).toBeLessThanOrEqual(500);
     expect(view.textContent).toContain("Showing 500 of 2501 rows");
+    const longFrame = view.querySelector('[data-table-id="cv-dunn-current-table"]')
+      ?.closest('.cv-result-table-frame');
+    expect(longFrame?.classList.contains('cv-result-table-frame-scroll')).toBe(true);
+    const shortFrame = view.querySelector('[data-table-id="cv-contribution-table"]')
+      ?.closest('.cv-result-table-frame');
+    expect(shortFrame?.classList.contains('cv-result-table-frame-scroll')).toBe(false);
 
     const blobs: Blob[] = [];
     vi.stubGlobal("URL", { createObjectURL: vi.fn((blob: Blob) => { blobs.push(blob); return "blob:full"; }), revokeObjectURL: vi.fn() });
@@ -771,6 +777,28 @@ describe("CV kinetics page", () => {
     const exported = await new Promise<string>((resolve) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.readAsText(blobs[0]); });
     expect(exported.split("\r\n")).toHaveLength(rowCount + 1);
   }, 30_000);
+
+  it("adds the CV table viewport only after the twelfth rendered row", async () => {
+    const analyzeRows = async (rowCount: number) => {
+      const view = await renderPage();
+      const contents = ["Potential,Current 1 mV/s,Current 4 mV/s,Current 9 mV/s", ...Array.from({ length: rowCount }, (_, index) => `${index},${index + 1},${4 * (index + 1)},${9 * (index + 1)}`)].join("\n");
+      await upload(view, contents);
+      await click(view, "Run analysis");
+      return view;
+    };
+
+    const atThreshold = await analyzeRows(12);
+    const atThresholdFrame = atThreshold.querySelector('[data-table-id="cv-dunn-current-table"]')
+      ?.closest('.cv-result-table-frame');
+    expect(atThresholdFrame?.classList.contains('cv-result-table-frame-scroll')).toBe(false);
+    expect(atThresholdFrame?.querySelector('.cv-result-table-viewport')).not.toBeNull();
+
+    const overThreshold = await analyzeRows(13);
+    const overThresholdFrame = overThreshold.querySelector('[data-table-id="cv-dunn-current-table"]')
+      ?.closest('.cv-result-table-frame');
+    expect(overThresholdFrame?.classList.contains('cv-result-table-frame-scroll')).toBe(true);
+    expect(overThresholdFrame?.querySelector('.cv-result-table-viewport')).not.toBeNull();
+  });
 
   it("preserves every unavailable-gap run when downsampling a long b-value curve", async () => {
     const view = await renderPage();
