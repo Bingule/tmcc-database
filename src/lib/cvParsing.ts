@@ -578,14 +578,28 @@ function isNumericToken(value: string) {
   return /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(value);
 }
 
-function readFileText(file: File) {
-  if (typeof file.text === "function") return file.text();
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.addEventListener("load", () => resolve(String(reader.result ?? "")));
-    reader.addEventListener("error", () => reject(reader.error));
-    reader.readAsText(file);
-  });
+async function readFileText(file: File) {
+  return decodeTextBuffer(await readFileArrayBuffer(file));
+}
+
+function decodeTextBuffer(buffer: ArrayBuffer) {
+  const bytes = new Uint8Array(buffer);
+  if (bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) {
+    return new TextDecoder("utf-8").decode(bytes.subarray(3));
+  }
+  if (bytes[0] === 0xff && bytes[1] === 0xfe) {
+    return new TextDecoder("utf-16le").decode(bytes.subarray(2));
+  }
+  if (bytes[0] === 0xfe && bytes[1] === 0xff) {
+    const content = bytes.subarray(2);
+    const littleEndian = new Uint8Array(content.length);
+    for (let index = 0; index < content.length; index += 2) {
+      littleEndian[index] = content[index + 1] ?? 0;
+      littleEndian[index + 1] = content[index] ?? 0;
+    }
+    return new TextDecoder("utf-16le").decode(littleEndian);
+  }
+  return new TextDecoder("utf-8").decode(bytes);
 }
 
 function readFileArrayBuffer(file: File) {
