@@ -118,8 +118,16 @@ describe("analyzeCvWorkflow quality records", () => {
     expect(unfiltered.dunnRecords).toHaveLength(1);
     expect(unfiltered.bRecords[0].status).toBe("valid");
     expect(unfiltered.dunnRecords[0].status).toBe("valid");
-    expect(strict.bRecords[0]).toMatchObject({ status: "belowRSquaredThreshold" });
-    expect(strict.dunnRecords[0]).toMatchObject({ status: "belowRSquaredThreshold" });
+    expect(strict.bRecords[0]).toMatchObject({
+      sequenceIndex: 0,
+      branchIndex: 0,
+      status: "belowRSquaredThreshold"
+    });
+    expect(strict.dunnRecords[0]).toMatchObject({
+      sequenceIndex: 0,
+      branchIndex: 0,
+      status: "belowRSquaredThreshold"
+    });
     expect(strict.bRecords[0].fit).not.toBeNull();
     expect(strict.dunnRecords[0].fit).not.toBeNull();
     expect(strict.bRecords[0].fit!.rSquared).toBeLessThan(1);
@@ -147,17 +155,23 @@ describe("analyzeCvWorkflow quality records", () => {
     );
 
     expect(zeroCurrent.bRecords).toEqual([{
+      sequenceIndex: 0,
+      branchIndex: 0,
       potential: 0,
       fit: null,
       status: "zeroCurrentLogUnavailable"
     }]);
     expect(zeroCurrent.dunnRecords[0].status).toBe("valid");
     expect(twoRates.bRecords).toEqual([{
+      sequenceIndex: 0,
+      branchIndex: 0,
       potential: 0,
       fit: null,
       status: "insufficientData"
     }]);
     expect(twoRates.dunnRecords).toEqual([{
+      sequenceIndex: 0,
+      branchIndex: 0,
       potential: 0,
       fit: null,
       status: "insufficientData"
@@ -178,6 +192,8 @@ describe("analyzeCvWorkflow quality records", () => {
 
     expect(currents.every(Number.isFinite)).toBe(true);
     expect(result.dunnRecords).toEqual([{
+      sequenceIndex: 0,
+      branchIndex: 0,
       potential: 0,
       fit: null,
       status: "regressionFailed"
@@ -194,6 +210,37 @@ describe("analyzeCvWorkflow quality records", () => {
 });
 
 describe("analyzeCvWorkflow Dunn mask and integration", () => {
+  it("keeps a full-loop R-squared mask branch-local while preserving fit identities", () => {
+    const potentials = [0, 1, 2, 1, 0];
+    const scanRates = [1, 4, 9, 16];
+    const k1 = [1, 1, 1, 3, 3];
+    const k2 = [4, 4, 4, 1, 1];
+    const currentsByPotential = potentials.map((_, potentialIndex) =>
+      scanRates.map((scanRate) => potentialIndex === 1
+        ? [1, 100, 2, 50][scanRates.indexOf(scanRate)]
+        : k1[potentialIndex] * scanRate + k2[potentialIndex] * Math.sqrt(scanRate))
+    );
+
+    const result = analyzeCvWorkflow(
+      makeSeries(potentials, scanRates, currentsByPotential),
+      { pointInterval: 1, rSquaredThreshold: 0.95 }
+    );
+    const contribution = result.contributions.find((item) => item.scanRate === 1)!;
+
+    expect(result.dunnRecords.filter((record) => record.potential === 1)
+      .map(({ sequenceIndex, branchIndex, status }) => ({ sequenceIndex, branchIndex, status }))).toEqual([
+      { sequenceIndex: 1, branchIndex: 0, status: "belowRSquaredThreshold" },
+      { sequenceIndex: 3, branchIndex: 1, status: "valid" }
+    ]);
+    expect(contribution.capacitiveCurrent).toEqual([1, null, 1, 3, 3]);
+    expect(contribution.diffusionCurrent).toEqual([4, null, 4, 1, 1]);
+    expect(contribution.capacitivePercent).toBeCloseTo(5 / 8.5 * 100, 10);
+    expect(contribution.diffusionPercent).toBeCloseTo(3.5 / 8.5 * 100, 10);
+    expect(contribution.validPointCount).toBe(4);
+    expect(contribution.sampledPointCount).toBe(5);
+    expect(contribution.coveragePercent).toBe(80);
+  });
+
   it("uses the valid Dunn mask for currents, contiguous integration, and coverage", () => {
     const potentials = [0, 1, 2, 3, 4];
     const scanRates = [1, 4, 9, 16];

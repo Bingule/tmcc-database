@@ -81,6 +81,8 @@ export interface CvAnalysisSettings {
 }
 
 export interface CvFitRecord<T> {
+  sequenceIndex: number;
+  branchIndex: number;
   potential: number;
   fit: T | null;
   status: CvFitStatus;

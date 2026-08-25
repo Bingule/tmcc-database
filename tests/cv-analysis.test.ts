@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   analyzeBValue,
   analyzeDunn,
+  attemptBValueFits,
+  attemptDunnFits,
   integrateDunnContributions,
   interpolateCommonGrid
 } from "../src/lib/cvAnalysis";
@@ -34,6 +36,21 @@ function makeDunnData(options: {
     currents: options.scanRates.map((scanRate) =>
       potentials.map(() => options.k1 * scanRate + options.k2 * Math.sqrt(scanRate))
     )
+  };
+}
+
+function makeCompleteLoopFitData(): InterpolatedCvData {
+  const potentials = [0, 1, 2, 1, 0];
+  const scanRates = [1, 4, 9];
+  const coefficients = [1, 2, 3, 7, 8];
+  return {
+    potentials,
+    scanRates,
+    currents: scanRates.map((scanRate) => coefficients.map((coefficient) => coefficient * scanRate)),
+    branches: [
+      { branchIndex: 0, direction: 1, startIndex: 0, endIndex: 2 },
+      { branchIndex: 1, direction: -1, startIndex: 2, endIndex: 4 }
+    ]
   };
 }
 
@@ -280,6 +297,18 @@ describe("interpolateCommonGrid", () => {
 });
 
 describe("analyzeBValue", () => {
+  it("keeps repeated potentials branch-addressable and fits each branch's currents", () => {
+    const records = attemptBValueFits(makeCompleteLoopFitData())
+      .filter((record) => record.potential === 1);
+
+    expect(records.map(({ sequenceIndex, branchIndex }) => ({ sequenceIndex, branchIndex }))).toEqual([
+      { sequenceIndex: 1, branchIndex: 0 },
+      { sequenceIndex: 3, branchIndex: 1 }
+    ]);
+    expect(records[0].fit!.intercept).toBeCloseTo(Math.log(2), 10);
+    expect(records[1].fit!.intercept).toBeCloseTo(Math.log(7), 10);
+  });
+
   it.each([0.5, 1])("recovers a synthetic b value of %s", (expectedB) => {
     const result = analyzeBValue(makeBValueData({ a: 2.5, b: expectedB, scanRates: [1, 2, 5, 10] }));
 
@@ -340,6 +369,20 @@ describe("analyzeBValue", () => {
 });
 
 describe("analyzeDunn", () => {
+  it("keeps repeated potentials branch-addressable and fits each branch's currents", () => {
+    const records = attemptDunnFits(makeCompleteLoopFitData())
+      .filter((record) => record.potential === 1);
+
+    expect(records.map(({ sequenceIndex, branchIndex }) => ({ sequenceIndex, branchIndex }))).toEqual([
+      { sequenceIndex: 1, branchIndex: 0 },
+      { sequenceIndex: 3, branchIndex: 1 }
+    ]);
+    expect(records[0].fit!.k1).toBeCloseTo(2, 10);
+    expect(records[0].fit!.k2).toBeCloseTo(0, 10);
+    expect(records[1].fit!.k1).toBeCloseTo(7, 10);
+    expect(records[1].fit!.k2).toBeCloseTo(0, 10);
+  });
+
   it("recovers signed k1 and k2 coefficients and normalized contributions", () => {
     const result = analyzeDunn(makeDunnData({ k1: 1.7, k2: -0.8, scanRates: [1, 2, 5, 10] }));
 
@@ -384,6 +427,98 @@ describe("analyzeDunn", () => {
     contribution.diffusionCurrent.forEach((current, index) => expect(current).toBeCloseTo(k2[index], 10));
     expect(contribution.capacitivePercent).toBeCloseTo(2 / 3 * 100, 10);
     expect(contribution.diffusionPercent).toBeCloseTo(1 / 3 * 100, 10);
+  });
+
+  it("integrates both sides of a shared-turning-point loop once with positive branch widths", () => {
+    const data: InterpolatedCvData = {
+      potentials: [0, 1, 2, 1, 0],
+      scanRates: [1],
+      currents: [[0, 0, 0, 0, 0]],
+      branches: [
+        { branchIndex: 0, direction: 1, startIndex: 0, endIndex: 2 },
+        { branchIndex: 1, direction: -1, startIndex: 2, endIndex: 4 }
+      ]
+    };
+    const contribution = integrateDunnContributions(data, [
+      { k1: 1, k2: 4 },
+      { k1: 1, k2: 4 },
+      { k1: 1, k2: 4 },
+      { k1: 3, k2: 1 },
+      { k1: 3, k2: 1 }
+    ])[0];
+
+    expect(contribution.capacitivePercent).toBeCloseTo(7 / 18.5 * 100, 10);
+    expect(contribution.diffusionPercent).toBeCloseTo(11.5 / 18.5 * 100, 10);
+    expect(contribution).toMatchObject({
+      validPointCount: 5,
+      sampledPointCount: 5,
+      coveragePercent: 100
+    });
+  });
+
+  it.each([
+    {
+      name: "a gap between branch endpoints",
+      potentials: [0, 1, 3, 6, 4, 2],
+      expectedCapacitivePercent: 19 / 32 * 100
+    },
+    {
+      name: "separately duplicated turning potentials",
+      potentials: [0, 1, 2, 2, 1, 0],
+      expectedCapacitivePercent: 10 / 18 * 100
+    }
+  ])("does not create a cross-branch interval for $name", ({ potentials, expectedCapacitivePercent }) => {
+    const data: InterpolatedCvData = {
+      potentials,
+      scanRates: [1],
+      currents: [potentials.map(() => 0)],
+      branches: [
+        { branchIndex: 0, direction: 1, startIndex: 0, endIndex: 2 },
+        { branchIndex: 1, direction: -1, startIndex: 3, endIndex: 5 }
+      ]
+    };
+    const contribution = integrateDunnContributions(data, [
+      { k1: 1, k2: 3 },
+      { k1: 1, k2: 3 },
+      { k1: 1, k2: 3 },
+      { k1: 4, k2: 1 },
+      { k1: 4, k2: 1 },
+      { k1: 4, k2: 1 }
+    ])[0];
+
+    expect(contribution.capacitivePercent).toBeCloseTo(expectedCapacitivePercent, 10);
+    expect(contribution.diffusionPercent).toBeCloseTo(100 - expectedCapacitivePercent, 10);
+    expect(contribution).toMatchObject({
+      validPointCount: 6,
+      sampledPointCount: 6,
+      coveragePercent: 100
+    });
+  });
+
+  it("lets a null coefficient break only intervals in its own branch", () => {
+    const data: InterpolatedCvData = {
+      potentials: [0, 1, 2, 5, 4, 3],
+      scanRates: [1],
+      currents: [[0, 0, 0, 0, 0, 0]],
+      branches: [
+        { branchIndex: 0, direction: 1, startIndex: 0, endIndex: 2 },
+        { branchIndex: 1, direction: -1, startIndex: 3, endIndex: 5 }
+      ]
+    };
+    const contribution = integrateDunnContributions(data, [
+      { k1: 1, k2: 1 },
+      null,
+      { k1: 1, k2: 4 },
+      { k1: 3, k2: 1 },
+      { k1: 3, k2: 1 },
+      { k1: 3, k2: 1 }
+    ])[0];
+
+    expect(contribution.capacitivePercent).toBeCloseTo(75, 10);
+    expect(contribution.diffusionPercent).toBeCloseTo(25, 10);
+    expect(contribution.validPointCount).toBe(5);
+    expect(contribution.sampledPointCount).toBe(6);
+    expect(contribution.coveragePercent).toBeCloseTo(5 / 6 * 100, 10);
   });
 
   it("uses only adjacent intervals where both reconstructed components are jointly valid", () => {

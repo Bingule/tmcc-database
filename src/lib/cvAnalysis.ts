@@ -51,8 +51,10 @@ export function analyzeBValue(data: InterpolatedCvData): BValuePoint[] {
 export function attemptBValueFits(data: InterpolatedCvData): Array<CvFitRecord<BValuePoint>> {
   validateInterpolatedCvData(data);
   const records: Array<CvFitRecord<BValuePoint>> = [];
+  const branches = resolveGridBranches(data);
 
   for (let potentialIndex = 0; potentialIndex < data.potentials.length; potentialIndex += 1) {
+    const identity = fitRecordIdentity(branches, potentialIndex);
     const fitPoints: BValuePoint["fitPoints"] = [];
     const distinctScanRates = new Set<number>();
     let zeroCurrentUnavailable = false;
@@ -73,6 +75,7 @@ export function attemptBValueFits(data: InterpolatedCvData): Array<CvFitRecord<B
     const potential = data.potentials[potentialIndex];
     if (distinctScanRates.size < 3) {
       records.push({
+        ...identity,
         potential,
         fit: null,
         status: zeroCurrentUnavailable ? "zeroCurrentLogUnavailable" : "insufficientData"
@@ -85,10 +88,11 @@ export function attemptBValueFits(data: InterpolatedCvData): Array<CvFitRecord<B
       y: point.logCurrentMagnitude
     })));
     if (!regression) {
-      records.push({ potential, fit: null, status: "regressionFailed" });
+      records.push({ ...identity, potential, fit: null, status: "regressionFailed" });
       continue;
     }
     records.push({
+      ...identity,
       potential,
       status: "valid",
       fit: {
@@ -117,8 +121,10 @@ export function analyzeDunn(data: InterpolatedCvData): DunnAnalysisResult {
 export function attemptDunnFits(data: InterpolatedCvData): Array<CvFitRecord<DunnPoint>> {
   validateInterpolatedCvData(data);
   const records: Array<CvFitRecord<DunnPoint>> = [];
+  const branches = resolveGridBranches(data);
 
   for (let potentialIndex = 0; potentialIndex < data.potentials.length; potentialIndex += 1) {
+    const identity = fitRecordIdentity(branches, potentialIndex);
     const fitPoints: Array<{ x: number; y: number }> = [];
     const distinctScanRates = new Set<number>();
     for (let seriesIndex = 0; seriesIndex < data.scanRates.length; seriesIndex += 1) {
@@ -133,13 +139,13 @@ export function attemptDunnFits(data: InterpolatedCvData): Array<CvFitRecord<Dun
     }
     const potential = data.potentials[potentialIndex];
     if (distinctScanRates.size < 3) {
-      records.push({ potential, fit: null, status: "insufficientData" });
+      records.push({ ...identity, potential, fit: null, status: "insufficientData" });
       continue;
     }
 
     const regression = linearRegression(fitPoints);
     if (!regression) {
-      records.push({ potential, fit: null, status: "regressionFailed" });
+      records.push({ ...identity, potential, fit: null, status: "regressionFailed" });
       continue;
     }
     const point = {
@@ -149,7 +155,7 @@ export function attemptDunnFits(data: InterpolatedCvData): Array<CvFitRecord<Dun
       rSquared: regression.rSquared,
       pointCount: regression.pointCount
     };
-    records.push({ potential, fit: point, status: "valid" });
+    records.push({ ...identity, potential, fit: point, status: "valid" });
   }
 
   return records;
@@ -163,7 +169,7 @@ export function integrateDunnContributions(
   if (coefficients.length !== data.potentials.length) throw new CvAnalysisError("invalidDataShape");
   return data.scanRates.flatMap((scanRate) => {
     if (!Number.isFinite(scanRate) || scanRate <= 0) return [];
-    const contribution = makeContribution(scanRate, data.potentials, coefficients);
+    const contribution = makeContribution(scanRate, data, coefficients);
     return contribution ? [contribution] : [];
   });
 }
@@ -313,9 +319,16 @@ export function resolveGridBranches(data: InterpolatedCvData): CvGridBranch[] {
   }];
 }
 
+function fitRecordIdentity(branches: CvGridBranch[], sequenceIndex: number) {
+  const branch = branches.find((candidate) =>
+    sequenceIndex >= candidate.startIndex && sequenceIndex <= candidate.endIndex);
+  if (!branch) throw new CvAnalysisError("invalidDataShape");
+  return { sequenceIndex, branchIndex: branch.branchIndex };
+}
+
 function makeContribution(
   scanRate: number,
-  potentials: number[],
+  data: InterpolatedCvData,
   coefficients: Array<{ k1: number; k2: number } | null>
 ): DunnContribution | null {
   const squareRootRate = Math.sqrt(scanRate);
@@ -329,25 +342,27 @@ function makeContribution(
   const capacitiveCurrent = reconstructed.map((current) => current.capacitive);
   const diffusionCurrent = reconstructed.map((current) => current.diffusion);
   const validPointCount = reconstructed.filter((current) => current.capacitive !== null).length;
-  const sampledPointCount = potentials.length;
+  const sampledPointCount = data.potentials.length;
   let capacitiveArea = 0;
   let diffusionArea = 0;
   let intervalCount = 0;
 
-  for (let index = 0; index < potentials.length - 1; index += 1) {
-    const capLeft = capacitiveCurrent[index];
-    const capRight = capacitiveCurrent[index + 1];
-    const diffLeft = diffusionCurrent[index];
-    const diffRight = diffusionCurrent[index + 1];
-    if (capLeft === null || capRight === null || diffLeft === null || diffRight === null) continue;
-    const width = potentials[index + 1] - potentials[index];
-    const capIncrement = width * (Math.abs(capLeft) + Math.abs(capRight)) / 2;
-    const diffIncrement = width * (Math.abs(diffLeft) + Math.abs(diffRight)) / 2;
-    if (!Number.isFinite(capIncrement) || !Number.isFinite(diffIncrement)) return null;
-    capacitiveArea += capIncrement;
-    diffusionArea += diffIncrement;
-    if (!Number.isFinite(capacitiveArea) || !Number.isFinite(diffusionArea)) return null;
-    intervalCount += 1;
+  for (const branch of resolveGridBranches(data)) {
+    for (let index = branch.startIndex; index < branch.endIndex; index += 1) {
+      const capLeft = capacitiveCurrent[index];
+      const capRight = capacitiveCurrent[index + 1];
+      const diffLeft = diffusionCurrent[index];
+      const diffRight = diffusionCurrent[index + 1];
+      if (capLeft === null || capRight === null || diffLeft === null || diffRight === null) continue;
+      const width = Math.abs(data.potentials[index + 1] - data.potentials[index]);
+      const capIncrement = width * (Math.abs(capLeft) + Math.abs(capRight)) / 2;
+      const diffIncrement = width * (Math.abs(diffLeft) + Math.abs(diffRight)) / 2;
+      if (!Number.isFinite(capIncrement) || !Number.isFinite(diffIncrement)) return null;
+      capacitiveArea += capIncrement;
+      diffusionArea += diffIncrement;
+      if (!Number.isFinite(capacitiveArea) || !Number.isFinite(diffusionArea)) return null;
+      intervalCount += 1;
+    }
   }
 
   const percentages = normalizedPercentages(capacitiveArea, diffusionArea, intervalCount);
