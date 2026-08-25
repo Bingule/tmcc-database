@@ -60,6 +60,12 @@ async function setValue(input: HTMLInputElement, value: string) {
   });
 }
 
+function button(view: HTMLElement, label: string) {
+  const result = [...view.querySelectorAll<HTMLButtonElement>("button")].find((item) => item.textContent?.trim() === label);
+  if (!result) throw new Error(`Missing button: ${label}`);
+  return result;
+}
+
 async function chooseRadio(view: HTMLElement, name: string, value: string) {
   const input = view.querySelector<HTMLInputElement>(`input[name="${name}"][value="${value}"]`);
   if (!input) throw new Error(`Missing radio: ${name}=${value}`);
@@ -71,6 +77,12 @@ async function setSelect(select: HTMLSelectElement, value: string) {
     select.value = value;
     select.dispatchEvent(new Event("change", { bubbles: true }));
   });
+}
+
+async function setPotential(view: HTMLElement, value: string) {
+  const input = view.querySelector<HTMLInputElement>('input[name="selectedPotential"]');
+  if (!input) throw new Error("Missing exact potential input");
+  await setValue(input, value);
 }
 
 function readBlob(blob: Blob): Promise<string> {
@@ -215,7 +227,7 @@ describe("CV kinetics page", () => {
     expect(view.textContent).toContain("Dunn Analysis");
     expect(view.querySelectorAll("svg")).toHaveLength(4);
     expect(view.querySelector<HTMLSelectElement>('select[name="selectedRate"]')?.value).toBe("1");
-    expect(view.querySelector<HTMLSelectElement>('select[name="selectedPotential"]')?.value).toBe("0");
+    expect(view.querySelector<HTMLInputElement>('input[name="selectedPotential"]')?.value).toBe("0");
     expect(view.textContent).toContain("Contribution percentage by scan rate");
     expect(view.querySelectorAll<HTMLButtonElement>(".cv-export button:disabled")).toHaveLength(0);
     expect([...view.querySelectorAll<HTMLButtonElement>(".cv-export button")].filter((button) => button.textContent?.endsWith(".csv")).map((button) => button.textContent)).toEqual(csvFilenames);
@@ -228,7 +240,7 @@ describe("CV kinetics page", () => {
     expect(view.querySelectorAll("svg")).toHaveLength(4);
     await click(view, "EN");
     expect(view.querySelector<HTMLSelectElement>('select[name="selectedRate"]')?.value).toBe("1");
-    expect(view.querySelector<HTMLSelectElement>('select[name="selectedPotential"]')?.value).toBe("0");
+    expect(view.querySelector<HTMLInputElement>('input[name="selectedPotential"]')?.value).toBe("0");
   });
 
   it("localizes validation and keeps exports disabled before valid analysis", async () => {
@@ -276,8 +288,8 @@ describe("CV kinetics page", () => {
     const view = await renderPage();
     await upload(view, "Potential,Current 1 mV/s,Current 4 mV/s,Current 9 mV/s\n0,0,0,0\n0.5,2,8,18\n1,3,6,9");
     await click(view, "Run analysis");
-    const potential = view.querySelector<HTMLSelectElement>('select[name="selectedPotential"]')!;
-    expect([...potential.options].map((option) => option.value)).toEqual(["0", "0.5", "1"]);
+    expect(view.querySelector<HTMLInputElement>('input[name="selectedPotential"]')?.type).toBe("number");
+    expect(view.querySelector('select[name="selectedPotential"]')).toBeNull();
     expect(view.textContent).toContain("Missing b-value fits: 1 of 3 potential points");
     expect(view.querySelector('[data-export-id="cv-dunn-chart"] [data-selected-x="0.5"]')).not.toBeNull();
     expect(view.querySelector('[data-export-id="cv-fit-chart"]')?.textContent).toContain("log(|current|)");
@@ -289,13 +301,24 @@ describe("CV kinetics page", () => {
     expect(exported).toContain("0,,,,,Zero-current logarithm unavailable");
   });
 
+  it("round-trips a high-precision retained potential without display rounding", async () => {
+    const view = await renderPage();
+    await upload(view, "Potential,Current 1 mV/s,Current 4 mV/s,Current 9 mV/s\n0.123456789,1,4,9\n0.5,2,8,18\n1,3,12,27");
+    await click(view, "Run analysis");
+
+    expect(view.querySelector<HTMLInputElement>('input[name="selectedPotential"]')?.value).toBe("0.123456789");
+    await click(view, "Next potential");
+    await click(view, "Previous potential");
+    expect(view.querySelector<HTMLInputElement>('input[name="selectedPotential"]')?.value).toBe("0.123456789");
+    expect(view.querySelector('[data-export-id="cv-b-chart"] [data-selected-x="0.123456789"]')).not.toBeNull();
+  });
+
   it("maps exact potential and rate selections to the signed Dunn curves", async () => {
     const view = await renderPage();
     await upload(view, "Potential,Current 1 mV/s,Current 4 mV/s,Current 9 mV/s\n0,1,6,15\n1,-1,-4,-9");
     await click(view, "Run analysis");
-    const potential = view.querySelector<HTMLSelectElement>('select[name="selectedPotential"]')!;
     const rate = view.querySelector<HTMLSelectElement>('select[name="selectedRate"]')!;
-    await act(async () => { potential.value = "1"; potential.dispatchEvent(new Event("change", { bubbles: true })); });
+    await setPotential(view, "1");
     await act(async () => { rate.value = "9"; rate.dispatchEvent(new Event("change", { bubbles: true })); });
     expect(view.querySelector('[data-export-id="cv-fit-chart"] [data-selected-x]')).toBeNull();
     expect(view.querySelector('[data-export-id="cv-dunn-chart"] [data-selected-x="1"]')).not.toBeNull();
@@ -391,9 +414,8 @@ describe("CV kinetics page", () => {
     expect([...unavailableRow.cells].slice(1, 5).map((cell) => cell.textContent)).toEqual(["—", "—", "—", "—"]);
     expect(unavailableRow.textContent).toContain("Zero-current logarithm unavailable");
 
-    const potential = view.querySelector<HTMLSelectElement>('select[name="selectedPotential"]')!;
-    expect([...potential.options].map((option) => option.value)).toEqual(["0", "5", "10", "15", "20"]);
-    await setSelect(potential, "5");
+    expect(view.querySelector('select[name="selectedPotential"]')).toBeNull();
+    await setPotential(view, "5");
     expect(view.querySelector('[data-selected-fit-status="true"]')?.textContent).toContain("Below R² threshold");
     expect(view.querySelector('[data-selected-fit-status="true"]')?.textContent).toContain("R²");
     expect(view.querySelector('[data-export-id="cv-b-chart"] [data-selected-x="5"]')).toBeNull();
@@ -447,6 +469,8 @@ describe("CV kinetics page", () => {
     expect(svg).toContain("interval = 5");
     expect(svg).toContain("R² ≥ 0.95");
     expect(svg).toContain("XYYYYY");
+    expect(svg).toContain("First row contains headers");
+    expect(svg).toContain("rates = 1, 4, 9 mV/s");
 
     const drawImage = vi.fn();
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({ drawImage } as unknown as CanvasRenderingContext2D);
@@ -457,6 +481,77 @@ describe("CV kinetics page", () => {
     const pngSourceSvg = await readBlob(blobs[8]);
     expect(pngSourceSvg).toContain("interval = 5");
     expect(pngSourceSvg).toContain("R² ≥ 0.95");
+  });
+
+  it("keeps quality records and all six CSV exports when Dunn contributions are unavailable", async () => {
+    const view = await renderPage();
+    await upload(view, "Potential,Current 1 mV/s,Current 4 mV/s,Current 9 mV/s\n0,1,4,9\n1,1,8,2\n2,3,12,27");
+    await click(view, "Run analysis");
+
+    expect(view.querySelector('[data-quality-summary="true"]')).not.toBeNull();
+    expect(view.querySelectorAll('[data-table-id="cv-b-records-table"] tbody tr')).toHaveLength(3);
+    expect(view.querySelectorAll('[data-table-id="cv-dunn-records-table"] tbody tr')).toHaveLength(3);
+    expect(view.querySelector('[data-table-id="cv-contribution-table"]')).toBeNull();
+    expect(view.textContent).toContain("unavailable when no contiguous valid segment");
+    const csvButtons = [...view.querySelectorAll<HTMLButtonElement>('.cv-export button')].filter((item) => item.textContent?.endsWith(".csv"));
+    expect(csvButtons).toHaveLength(6);
+    expect(csvButtons.every((item) => !item.disabled)).toBe(true);
+    expect(button(view, "Export SVG — cv-b-chart.svg").disabled).toBe(false);
+    expect(button(view, "Export SVG — cv-fit-chart.svg").disabled).toBe(false);
+    expect(button(view, "Export SVG — cv-dunn-chart.svg").disabled).toBe(true);
+    expect(button(view, "Export SVG — cv-contribution-chart.svg").disabled).toBe(true);
+
+    const blobs: Blob[] = [];
+    vi.stubGlobal("URL", { createObjectURL: vi.fn((blob: Blob) => { blobs.push(blob); return "blob:no-contribution"; }), revokeObjectURL: vi.fn() });
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    await click(view, "cv-contribution-summary.csv");
+    const summary = await readBlob(blobs[0]);
+    expect(summary).toContain("Unavailable");
+    expect(summary).toContain(",2,3,");
+  });
+
+  it("disables only the selected-potential fit exports for a genuinely unavailable b record", async () => {
+    const view = await renderPage();
+    await upload(view, "Potential,Current 1 mV/s,Current 4 mV/s,Current 9 mV/s\n0,0,0,0\n0.5,2,8,18\n1,3,12,27");
+    await click(view, "Run analysis");
+    await setPotential(view, "0");
+
+    expect(view.querySelector('[data-export-id="cv-fit-chart"]')).toBeNull();
+    expect(button(view, "Export SVG — cv-fit-chart.svg").disabled).toBe(true);
+    expect(button(view, "Export PNG — cv-fit-chart.png").disabled).toBe(true);
+    expect(button(view, "Export SVG — cv-b-chart.svg").disabled).toBe(false);
+    expect(view.querySelector('[aria-live="polite"]')?.textContent).toBe("");
+  });
+
+  it("embeds header mode, ordered rates, and figure-specific selections in bilingual metadata", async () => {
+    const view = await renderPage();
+    await chooseRadio(view, "cv-layout", "sharedPotential");
+    await chooseRadio(view, "cv-header-mode", "data");
+    const headerless = Array.from({ length: 21 }, (_, potential) => {
+      const scale = potential + 1;
+      return `${potential},${9 * scale},${scale},${4 * scale}`;
+    }).join("\n");
+    await uploadFile(view, new File([headerless], "headerless.csv"));
+    await setValue(view.querySelector<HTMLInputElement>('input[name="cv-scan-rates"]')!, "9, 1, 4");
+    await setSelect(view.querySelector<HTMLSelectElement>('select[name="cv-point-interval"]')!, "5");
+    await click(view, "Run analysis");
+    await setPotential(view, "5");
+    await setSelect(view.querySelector<HTMLSelectElement>('select[name="selectedRate"]')!, "9");
+
+    const common = view.querySelector('[data-export-id="cv-b-chart"] [data-chart-metadata="true"]')?.textContent ?? "";
+    expect(common).toContain("XYYYYY");
+    expect(common).toContain("File upload");
+    expect(common).toContain("First row is numeric data");
+    expect(common).toContain("rates = 9, 1, 4 mV/s");
+    expect(common).toContain("interval = 5");
+    expect(common).toContain("R² ≥ 0.95");
+    expect(view.querySelector('[data-export-id="cv-fit-chart"] [data-chart-metadata="true"]')?.textContent).toContain("potential = 5 V");
+    expect(view.querySelector('[data-export-id="cv-dunn-chart"] [data-chart-metadata="true"]')?.textContent).toContain("scan rate = 9 mV/s");
+
+    await click(view, "中文");
+    expect(view.querySelector('[data-export-id="cv-b-chart"] [data-chart-metadata="true"]')?.textContent).toContain("首行为数值数据");
+    expect(view.querySelector('[data-export-id="cv-fit-chart"] [data-chart-metadata="true"]')?.textContent).toContain("电位 = 5 V");
+    expect(view.querySelector('[data-export-id="cv-dunn-chart"] [data-chart-metadata="true"]')?.textContent).toContain("扫描速率 = 9 mV/s");
   });
 
   it("sorts scan-rate displays, uses point-only b observations, and breaks b curves across unavailable potentials", async () => {
@@ -491,6 +586,12 @@ describe("CV kinetics page", () => {
     const contents = ["Potential,Current 1 mV/s,Current 4 mV/s,Current 9 mV/s", ...Array.from({ length: rowCount }, (_, index) => `${index},${index + 1},${4 * (index + 1)},${9 * (index + 1)}`)].join("\n");
     await upload(view, contents);
     await click(view, "Run analysis");
+    expect(view.querySelector('select[name="selectedPotential"]')).toBeNull();
+    expect(view.querySelectorAll('datalist[name="selectedPotential"] option')).toHaveLength(0);
+    await setPotential(view, "2500");
+    expect(view.querySelector('[data-table-id="cv-selected-b-record-table"] tbody tr')?.firstElementChild?.textContent).toBe("2500");
+    expect(button(view, "Previous potential").disabled).toBe(false);
+    expect(button(view, "Next potential").disabled).toBe(true);
     expect(Number(view.querySelector('[data-series-id="b-values"]')?.getAttribute("data-render-point-count"))).toBeLessThanOrEqual(2_000);
     expect(view.querySelectorAll('[data-table-id="cv-dunn-current-table"] tbody tr').length).toBeLessThanOrEqual(500);
     expect(view.textContent).toContain("Showing 500 of 2501 rows");

@@ -7,14 +7,19 @@ import {
 } from "../components/CvImportPanel";
 import { ScientificLineChart, type ChartSeries } from "../components/ScientificLineChart";
 import { useI18n } from "../i18n/I18nProvider";
-import { parseScanRateList, type CvDataLayout } from "../lib/cvImport";
+import { parseScanRateList, type CvDataLayout, type CvHeaderMode } from "../lib/cvImport";
 import { confirmCvSeries, CvParseError, parseCvFile, parseDelimitedCv, type ParsedCvTable } from "../lib/cvParsing";
 import { analyzeCvWorkflow } from "../lib/cvWorkflow";
 import { CvAnalysisError, type BValuePoint, type CvFitStatus, type CvSeries, type CvWorkflowResult, type DunnContribution } from "../lib/cvTypes";
 import { downloadCsv, downloadPng, downloadSvg, rowsToCsv } from "../lib/toolExport";
 
 type AnalysisState = CvWorkflowResult;
-type ResultMetadata = { layout: CvDataLayout; source: CvImportDraft["source"] };
+type ResultMetadata = {
+  layout: CvDataLayout;
+  headerMode: CvHeaderMode;
+  source: CvImportDraft["source"];
+  orderedScanRates: number[];
+};
 
 const csvFiles = [
   "cv-interpolated-data.csv",
@@ -28,7 +33,6 @@ export const MAX_CHART_POINTS = 2_000;
 const MAX_CHART_GAP_RUNS = 500;
 export const MAX_CHART_OUTPUT_POINTS = 4_000;
 const MAX_TABLE_ROWS = 500;
-const MAX_POTENTIAL_OPTIONS = 500;
 const initialDraft: CvImportDraft = {
   options: { layout: "", headerMode: "header" },
   source: "file",
@@ -44,17 +48,21 @@ export function CvKineticsPage() {
   const [table, setTable] = useState<ParsedCvTable | null>(null);
   const [busy, setBusy] = useState(false);
   const [analysis, setAnalysis] = useState<AnalysisState | null>(null);
+  const [analysisMetadata, setAnalysisMetadata] = useState<ResultMetadata | null>(null);
   const [selectedPotential, setSelectedPotential] = useState<number | undefined>();
+  const [potentialInput, setPotentialInput] = useState("");
   const [selectedRate, setSelectedRate] = useState<number | undefined>();
   const [errorCode, setErrorCode] = useState<CvUiError | null>(null);
   const importVersion = useRef(0);
   const bValues = (analysis?.bRecords ?? []).flatMap((record) => record.status === "valid" && record.fit ? [record.fit] : []);
   const contributions = analysis?.contributions ?? [];
-  const valid = Boolean(analysis && bValues.length > 0 && analysis.summary.validDunnCount > 0 && contributions.length > 0);
+  const canExportCsv = Boolean(analysis && analysisMetadata);
 
   function invalidateAnalysis() {
     setAnalysis(null);
+    setAnalysisMetadata(null);
     setSelectedPotential(undefined);
+    setPotentialInput("");
     setSelectedRate(undefined);
     setErrorCode(null);
   }
@@ -131,9 +139,9 @@ export function CvKineticsPage() {
   }
 
   function handleCsvExport(filename: typeof csvFiles[number]) {
-    if (!analysis || !table) return;
+    if (!analysis || !analysisMetadata) return;
     setErrorCode(null);
-    try { exportCsv(filename, analysis, { layout: table.layout, source: draft.source }, t); }
+    try { exportCsv(filename, analysis, analysisMetadata, t); }
     catch { setErrorCode("export"); }
   }
 
@@ -156,12 +164,16 @@ export function CvKineticsPage() {
       });
       const firstB = result.bRecords.find((record) => record.status === "valid" && record.fit)?.fit;
       if (!firstB) throw new PageAnalysisError("noBFit");
-      if (result.summary.validDunnCount === 0 || result.contributions.length === 0) {
-        throw new PageAnalysisError("analysis");
-      }
       setAnalysis(result);
+      setAnalysisMetadata({
+        layout: table.layout,
+        headerMode: table.headerMode,
+        source: draft.source,
+        orderedScanRates: [...parsedRates]
+      });
       setSelectedPotential(firstB.potential);
-      setSelectedRate([...result.contributions].sort((left, right) => left.scanRate - right.scanRate)[0].scanRate);
+      setPotentialInput(String(firstB.potential));
+      setSelectedRate([...result.contributions].sort((left, right) => left.scanRate - right.scanRate)[0]?.scanRate);
     } catch (error) {
       if (error instanceof CvParseError) setErrorCode(error.code);
       else if (error instanceof PageAnalysisError) setErrorCode(error.code);
@@ -178,8 +190,7 @@ export function CvKineticsPage() {
   const selectedSeriesIndex = analysis?.analysisGrid.scanRates.findIndex((rate) => rate === selectedRate) ?? -1;
   const selectedOriginalSeries = analysis?.series.find((item) => item.scanRate === selectedRate);
   const sortedContributions = [...contributions].sort((left, right) => left.scanRate - right.scanRate);
-  const potentialOptions = downsampleValues((analysis?.bRecords ?? []).map((record) => record.potential), MAX_POTENTIAL_OPTIONS);
-  if (selectedPotential !== undefined && !potentialOptions.includes(selectedPotential)) potentialOptions.unshift(selectedPotential);
+  const selectedPotentialIndex = analysis?.bRecords.findIndex((record) => record.potential === selectedPotential) ?? -1;
   const bChart: ChartSeries[] = analysis ? [{
     id: "b-values", label: t("cv.b.value"), color: "#16697a",
     points: analysis.bRecords.map((record) => ({
@@ -193,17 +204,53 @@ export function CvKineticsPage() {
   const sampledBChart = sampleChartSeries(bChart);
   const bGapRunCount = countNullRuns(bChart[0]?.points ?? []);
   const missingBFitCount = analysis?.summary.unavailableBCount ?? 0;
-  const resultMetadata: ResultMetadata | null = analysis && table
-    ? { layout: table.layout, source: draft.source }
-    : null;
+  const resultMetadata = analysis ? analysisMetadata : null;
   const chartMetadata = analysis && resultMetadata
-    ? t("cv.chart.settings", {
-      layout: layoutIdentifier(resultMetadata.layout),
-      source: t(sourceKey(resultMetadata.source)),
-      interval: analysis.settings.pointInterval,
-      threshold: format(analysis.settings.rSquaredThreshold)
-    })
+    ? [
+      t("cv.chart.importSettings", {
+        layout: layoutIdentifier(resultMetadata.layout),
+        source: t(sourceKey(resultMetadata.source)),
+        header: t(headerModeKey(resultMetadata.headerMode))
+      }),
+      t("cv.chart.analysisSettings", {
+        rates: resultMetadata.orderedScanRates.map((rate) => format(rate)).join(", "),
+        interval: analysis.settings.pointInterval,
+        threshold: format(analysis.settings.rSquaredThreshold)
+      })
+    ]
     : undefined;
+  const fitChartMetadata = chartMetadata && selectedBRecord
+    ? [...chartMetadata, t("cv.chart.selectedPotential", { potential: format(selectedBRecord.potential) })]
+    : chartMetadata;
+  const dunnChartMetadata = chartMetadata && selectedRate !== undefined
+    ? [...chartMetadata, t("cv.chart.selectedRate", { rate: format(selectedRate) })]
+    : chartMetadata;
+  const figureAvailability = {
+    "cv-b-chart": hasChartPoints(sampledBChart),
+    "cv-fit-chart": hasChartPoints(fitChart),
+    "cv-dunn-chart": hasChartPoints(dunnChart),
+    "cv-contribution-chart": hasChartPoints(contributionChart)
+  } as const;
+
+  function choosePotential(potential: number) {
+    setSelectedPotential(potential);
+    setPotentialInput(String(potential));
+  }
+
+  function handlePotentialInput(value: string) {
+    setPotentialInput(value);
+    const potential = value.trim() === "" ? Number.NaN : Number(value);
+    const record = Number.isFinite(potential)
+      ? analysis?.bRecords.find((item) => item.potential === potential)
+      : undefined;
+    setSelectedPotential(record?.potential);
+  }
+
+  function movePotential(offset: -1 | 1) {
+    if (!analysis || selectedPotentialIndex < 0) return;
+    const record = analysis.bRecords[selectedPotentialIndex + offset];
+    if (record) choosePotential(record.potential);
+  }
 
   return (
     <section className="tools-page cv-page">
@@ -233,23 +280,36 @@ export function CvKineticsPage() {
 
       <section className="tool-section cv-b-analysis">
         <h2>{t("cv.b.title")}</h2><p>{t("cv.b.help")}</p>
-        <label>{t("cv.results.potential")} (V)<select name="selectedPotential" value={selectedPotential ?? ""} onChange={(event) => setSelectedPotential(Number(event.target.value))}>
-          {potentialOptions.map((potential) => <option key={potential} value={potential}>{potential}</option>)}
-        </select></label>
+        <label htmlFor="cv-selected-potential">{t("cv.results.potential")} (V)</label>
+        <input
+          id="cv-selected-potential"
+          name="selectedPotential"
+          type="number"
+          step="any"
+          inputMode="decimal"
+          aria-label={t("cv.aria.selectedPotential")}
+          aria-invalid={potentialInput !== "" && selectedPotential === undefined}
+          value={potentialInput}
+          onChange={(event) => handlePotentialInput(event.target.value)}
+        />
+        <button type="button" disabled={selectedPotentialIndex <= 0} onClick={() => movePotential(-1)}>{t("cv.results.previousPotential")}</button>
+        <button type="button" disabled={!analysis || selectedPotentialIndex < 0 || selectedPotentialIndex >= analysis.bRecords.length - 1} onClick={() => movePotential(1)}>{t("cv.results.nextPotential")}</button>
+        <p>{t("cv.results.potentialHelp")}</p>
+        {potentialInput !== "" && selectedPotential === undefined && <p role="status">{t("cv.results.potentialUnavailable")}</p>}
         {analysis && missingBFitCount > 0 && <p role="status">{t("cv.b.missingFits", { count: missingBFitCount, total: analysis.analysisGrid.potentials.length })}</p>}
         {bGapRunCount > MAX_CHART_GAP_RUNS && <p role="status">{t("cv.chart.tooManyGaps")}</p>}
         <ScientificLineChart title={t("cv.b.chart")} xLabel={`${t("cv.table.potential")} (V)`} yLabel={t("cv.b.value")}
-          emptyLabel={t("cv.chart.empty")} legendLabel={t("cv.chart.legend")} series={sampledBChart} selectedX={selectedPotential} onSelectX={setSelectedPotential} exportId="cv-b-chart" metadata={chartMetadata} />
+          emptyLabel={t("cv.chart.empty")} legendLabel={t("cv.chart.legend")} series={sampledBChart} selectedX={selectedPotential} onSelectX={choosePotential} exportId="cv-b-chart" metadata={chartMetadata} />
         <DataTable tableId="cv-b-records-table" headers={[`${t("cv.table.potential")} (V)`, t("cv.b.value"), t("cv.b.intercept"), t("cv.results.rSquared"), t("cv.table.pointCount"), t("cv.results.fitStatus")]}
           rows={(analysis?.bRecords ?? []).map((record) => bRecordRow(record, t))} />
         <ScientificLineChart title={t("cv.b.fitChart")} xLabel={t("cv.b.logRate")} yLabel={t("cv.b.logCurrent")}
-          emptyLabel={t("cv.results.noFit")} legendLabel={t("cv.chart.legend")} series={fitChart} exportId="cv-fit-chart" metadata={chartMetadata} />
+          emptyLabel={t("cv.results.noFit")} legendLabel={t("cv.chart.legend")} series={fitChart} exportId="cv-fit-chart" metadata={fitChartMetadata} />
         {selectedBRecord && <p data-selected-fit-status="true">{t("cv.results.selectedFit", {
           status: fitStatusLabel(selectedBRecord.status, t),
           rSquared: selectedBRecord.fit ? format(selectedBRecord.fit.rSquared) : "—",
           points: selectedBRecord.fit ? selectedBRecord.fit.pointCount : "—"
         })}</p>}
-        <DataTable headers={[t("cv.results.potential"), t("cv.b.value"), t("cv.b.intercept"), t("cv.results.rSquared"), t("cv.results.points"), t("cv.results.fitStatus")]}
+        <DataTable tableId="cv-selected-b-record-table" headers={[t("cv.results.potential"), t("cv.b.value"), t("cv.b.intercept"), t("cv.results.rSquared"), t("cv.results.points"), t("cv.results.fitStatus")]}
           rows={selectedBRecord ? [bRecordRow(selectedBRecord, t)] : []} />
       </section>
 
@@ -259,7 +319,7 @@ export function CvKineticsPage() {
           {sortedContributions.map((item) => <option key={item.scanRate} value={item.scanRate}>{item.scanRate}</option>)}
         </select></label>
         <ScientificLineChart title={t("cv.dunn.chart")} xLabel={`${t("cv.table.potential")} (V)`} yLabel={t("cv.table.currentArbitrary")}
-          emptyLabel={t("cv.chart.empty")} legendLabel={t("cv.chart.legend")} series={dunnChart} selectedX={selectedPotential} exportId="cv-dunn-chart" metadata={chartMetadata} />
+          emptyLabel={t("cv.chart.empty")} legendLabel={t("cv.chart.legend")} series={dunnChart} selectedX={selectedPotential} exportId="cv-dunn-chart" metadata={dunnChartMetadata} />
         <DataTable tableId="cv-original-current-table" headers={[`${t("cv.table.potential")} (V)`, t("cv.dunn.originalMeasured")]}
           rows={(selectedOriginalSeries?.points ?? []).map((point) => [point.potential, point.current])} />
         <DataTable tableId="cv-dunn-current-table" headers={[`${t("cv.table.potential")} (V)`, t("cv.dunn.interpolatedInput"), t("cv.dunn.reconstructedTotalUnits"), t("cv.dunn.capacitive") + " (arb. units)", t("cv.dunn.diffusion") + " (arb. units)"]}
@@ -279,11 +339,11 @@ export function CvKineticsPage() {
 
       <section className="tool-section tool-section-wide cv-export">
         <h2>{t("cv.export.title")}</h2><h3>{t("cv.export.csv")}</h3>
-        {csvFiles.map((filename) => <button key={filename} type="button" disabled={!valid} onClick={() => handleCsvExport(filename)}>{filename}</button>)}
+        {csvFiles.map((filename) => <button key={filename} type="button" disabled={!canExportCsv} onClick={() => handleCsvExport(filename)}>{filename}</button>)}
         <h3>{t("cv.export.figures")}</h3>
         {(["cv-b-chart", "cv-fit-chart", "cv-dunn-chart", "cv-contribution-chart"] as const).flatMap((id) => [
-          <button key={`${id}-svg`} type="button" disabled={!valid} onClick={() => void handleFigureExport(id, "svg")}>{t("cv.export.svg")} — {id}.svg</button>,
-          <button key={`${id}-png`} type="button" disabled={!valid} onClick={() => void handleFigureExport(id, "png")}>{t("cv.export.png")} — {id}.png</button>
+          <button key={`${id}-svg`} type="button" disabled={!figureAvailability[id]} onClick={() => void handleFigureExport(id, "svg")}>{t("cv.export.svg")} — {id}.svg</button>,
+          <button key={`${id}-png`} type="button" disabled={!figureAvailability[id]} onClick={() => void handleFigureExport(id, "png")}>{t("cv.export.png")} — {id}.png</button>
         ])}
       </section>
       </div>
@@ -317,7 +377,7 @@ function QualitySummary({ analysis, metadata }: { analysis: AnalysisState; metad
       <li>{t("cv.quality.layout", { layout: layoutIdentifier(metadata.layout) })}</li>
       <li>{t("cv.quality.source", { source: t(sourceKey(metadata.source)) })}</li>
       <li>{t("cv.quality.curves", { count: analysis.series.length })}</li>
-      <li>{t("cv.quality.rates", { rates: analysis.series.map((item) => format(item.scanRate)).join(", ") })}</li>
+      <li>{t("cv.quality.rates", { rates: metadata.orderedScanRates.map((rate) => format(rate)).join(", ") })}</li>
       <li>{t("cv.quality.overlap", { minimum: format(minimum), maximum: format(maximum) })}</li>
       <li>{t("cv.quality.points", {
         common: analysis.summary.commonPointCount,
@@ -385,6 +445,10 @@ function layoutIdentifier(layout: CvDataLayout) {
 
 function sourceKey(source: CvImportDraft["source"]) {
   return source === "file" ? "cv.import.source.file" as const : "cv.import.source.paste" as const;
+}
+
+function headerModeKey(headerMode: CvHeaderMode) {
+  return headerMode === "header" ? "cv.import.headerMode.header" as const : "cv.import.headerMode.data" as const;
 }
 
 function format(value: string | number | null) { return typeof value === "number" ? Number(value.toPrecision(7)).toString() : value ?? "—"; }
@@ -481,9 +545,8 @@ function countNullRuns(points: Array<{ y: number | null }>) {
   return count;
 }
 
-function downsampleValues(values: number[], limit: number): number[] {
-  if (values.length <= limit) return values;
-  return Array.from({ length: limit }, (_, index) => values[Math.round(index * (values.length - 1) / (limit - 1))]);
+function hasChartPoints(series: ChartSeries[]) {
+  return series.some((item) => item.points.some((point) => point.y !== null));
 }
 
 function exportCsv(
@@ -499,13 +562,17 @@ function exportCsv(
     t("cv.export.dataLayout"),
     t("cv.export.dataSource"),
     t("cv.export.pointInterval"),
-    t("cv.export.rSquaredThreshold")
+    t("cv.export.rSquaredThreshold"),
+    t("cv.export.headerMode"),
+    t("cv.export.orderedScanRates")
   ];
   const metadataValues = [
     layoutIdentifier(metadata.layout),
     t(sourceKey(metadata.source)),
     analysis.settings.pointInterval,
-    analysis.settings.rSquaredThreshold
+    analysis.settings.rSquaredThreshold,
+    t(headerModeKey(metadata.headerMode)),
+    metadata.orderedScanRates.map((rate) => format(rate)).join(" ")
   ];
   let csv: string;
   const potentialHeader = `${t("cv.table.potential")} (V)`;
@@ -571,6 +638,8 @@ function withWideMetadata(
   const suffix = [
     `${t("cv.export.dataLayout")}: ${layoutIdentifier(metadata.layout)}`,
     `${t("cv.export.dataSource")}: ${t(sourceKey(metadata.source))}`,
+    `${t("cv.export.headerMode")}: ${t(headerModeKey(metadata.headerMode))}`,
+    `${t("cv.export.orderedScanRates")}: ${metadata.orderedScanRates.map((rate) => format(rate)).join(" ")}`,
     `${t("cv.export.pointInterval")}: ${analysis.settings.pointInterval}`,
     `${t("cv.export.rSquaredThreshold")}: ${format(analysis.settings.rSquaredThreshold)}`
   ].join("; ");

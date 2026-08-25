@@ -19,7 +19,7 @@ interface ScientificLineChartProps {
   selectedX?: number;
   onSelectX?: (x: number) => void;
   exportId?: string;
-  metadata?: string;
+  metadata?: string | string[];
 }
 
 const dimensions = { width: 800, height: 420 };
@@ -52,7 +52,8 @@ export function ScientificLineChart({
   const yDomain = expandedDomain(allPoints, "y");
   const legendColumns = 4;
   const legendRows = Math.ceil(finiteSeries.length / legendColumns);
-  const legendTop = metadata ? 39 : 17;
+  const metadataLines = typeof metadata === "string" ? [metadata] : metadata ?? [];
+  const legendTop = metadataLines.length > 0 ? 17 + metadataLines.length * 18 + 4 : 17;
   const chartMargin = { ...margin, top: Math.max(margin.top, legendTop + legendRows * 22) };
   const plotWidth = dimensions.width - chartMargin.left - chartMargin.right;
   const plotHeight = dimensions.height - chartMargin.top - chartMargin.bottom;
@@ -76,13 +77,15 @@ export function ScientificLineChart({
         className="scientific-chart-svg"
       >
         <title id={titleId}>{title}</title>
-        {metadata && <text
-          data-chart-metadata="true"
-          x={chartMargin.left}
-          y={17}
-          fill="#455a64"
-          fontSize={11}
-        >{metadata}</text>}
+        {metadataLines.length > 0 && <g data-chart-metadata="true">
+          {metadataLines.map((line, index) => <text
+            key={`${index}-${line}`}
+            x={chartMargin.left}
+            y={17 + index * 18}
+            fill="#455a64"
+            fontSize={11}
+          >{line}</text>)}
+        </g>}
         <g
           className="scientific-chart-legend"
           data-chart-legend="true"
