@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added responsive, accessible CV import controls and documentation for explicit XYYYYY/XYXYXY layouts, browser-local Excel paste, 3–20 ordered scan rates, non-smoothing 1–30 point intervals, R² quality filtering, bilingual status/export metadata, and valid-coverage reporting.
 - Added standalone Materials Research Tools routes for CV kinetics analysis, theoretical capacity, and molecular weight calculations.
 - Added explicit English and Simplified Chinese interface resources, a shared `EN | 中文` navigation control, and persistent English-default language selection.
 - Added browser-local wide-format CSV, TXT, and XLSX CV import with scan-rate confirmation, overlapping-range interpolation, b-value fitting, and Dunn contribution analysis.

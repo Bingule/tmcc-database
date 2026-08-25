@@ -59,7 +59,22 @@ All tool inputs and calculations remain in the browser. CV files and formulas ar
 
 ### CV Kinetics Analysis
 
-The CV workflow accepts `.csv`, `.txt`, and `.xlsx` files in wide layout: one potential column and at least two current columns, with one current series per scan rate. Text import supports quote-aware comma, tab, and semicolon delimiters plus consistently structured whitespace-separated data. Scan rates are inferred from common headings such as `1`, `2 mV/s`, and `Current 5 mV s-1`, then remain editable for confirmation. Series are interpolated only within their overlapping potential range; the workflow never extrapolates.
+The CV workflow accepts browser-local `.csv`, `.txt`, and `.xlsx` uploads, plus Excel-compatible pasted text. Pasted data is parsed in this browser only and is never uploaded to a server. Text import accepts quote-aware comma, tab, and semicolon delimiters plus consistently structured whitespace-separated data.
+
+Choose the data format explicitly before importing; the application never guesses it:
+
+```text
+XYYYYY: Potential | Current 1 | Current 2 | Current 3
+XYXYXY: Potential 1 | Current 1 | Potential 2 | Current 2
+```
+
+`XYYYYY` uses one shared potential column followed by current columns. `XYXYXY` pairs each potential column with the following current column, so pairs may have independent ranges, spacings, and populated lengths. Choose whether row 1 contains headings or numeric data. In headerless mode, all rows are read as numbers and display-only column labels are generated; neither header mode nor layout is inferred from cell contents.
+
+Enter one ordered list of 3–20 distinct positive scan rates in `mV/s`, separated by commas, semicolons, spaces, tabs, or newlines. The list maps positionally to current columns or XY pairs and must match their count. Series are interpolated only within their overlapping potential range; the workflow never extrapolates.
+
+The point interval is an integer from 1 to 30. It subsamples the common potential grid for both b-value and Dunn analysis, always retaining the last point. It is not smoothing: the workflow never averages, filters, or mutates original CV potential/current values. A larger interval lowers regression density and can hide narrow potential-dependent features.
+
+The shared R² threshold ranges from 0 to 1 in 0.01 UI steps and defaults to 0.95; `0` disables quality exclusion while still reporting R². The threshold applies independently to both b-value and Dunn regressions. Fits below it, and unavailable fits, stay in tables and CSV exports with explicit localized statuses. Valid-only figures preserve gaps, and Dunn integration uses the same valid-potential mask, reporting valid/sample coverage rather than silently including excluded fits.
 
 For b-value analysis, the fit is:
 
@@ -67,7 +82,7 @@ For b-value analysis, the fit is:
 log(|i|) = log(a) + b log(v)
 ```
 
-Negative current is included by magnitude, while zero or non-finite current is excluded from a fit. At least two distinct positive scan rates are required at a potential.
+Negative current is included by magnitude, while zero or non-finite current is excluded from a fit. At least three distinct positive scan rates are required at a potential.
 
 For Dunn analysis, the linearized fit and signed reconstructed components are:
 
@@ -79,7 +94,7 @@ i_diff = k2 sqrt(v)
 
 Capacitive and diffusion-controlled percentages use trapezoidal integration of `|i_cap|` and `|i_diff|`, so anodic and cathodic signs do not cancel. Failed fits remain unavailable rather than being replaced with zero.
 
-Valid combined results enable six CSV downloads:
+Completed analyses enable six CSV downloads:
 
 ```text
 cv-interpolated-data.csv
@@ -90,7 +105,7 @@ cv-diffusion-current.csv
 cv-contribution-summary.csv
 ```
 
-Four figures—b-value, selected-potential fit, Dunn current components, and contribution percentage—can each be exported as SVG or PNG. Figures and their SVG/PNG exports use deterministic display sampling with a target of at most 2,000 points per series; preserving unavailable-gap boundaries may increase display output to at most 4,000 points per series. Every scientific fit, integration, numeric result, and CSV export continues to use the complete accepted dataset. Tables and charts use horizontally scrollable wide containers and responsive one-column layouts on narrow screens.
+The six CSV exports retain low-quality and unavailable rows for auditability and include applicable layout, source, interval, R² threshold, fit-status, and Dunn-coverage metadata. They, together with every b-value/Dunn fit and integration, use the interval-selected analysis grid. Original CV series are retained independently and are not changed by point-interval analysis sampling. Their chart rendering may use the display-only sampling described below for performance; that never changes the retained original series, fitting/integration inputs, or CSV data. Four figures—b-value, selected-potential fit, Dunn current components, and contribution percentage—can each be exported as SVG or PNG. Figures and their SVG/PNG exports identify the analysis settings and use deterministic display sampling with a target of at most 2,000 points per series; preserving unavailable-gap boundaries may increase display output to at most 4,000 points per series. Tables and charts use horizontally scrollable wide containers and responsive one-column layouts on narrow screens.
 
 ### Theoretical Capacity Calculator
 
@@ -110,9 +125,9 @@ The shared formula engine supports element symbols, positive integer or decimal 
 ### Current Limitations
 
 - Hydrate/adduct dot notation such as `CuSO4·5H2O` or `CuSO4•5H2O` is not supported. An ASCII period between digits is interpreted as a decimal stoichiometric count, not a hydrate separator.
-- Scan-rate headers use dot-decimal notation. Locale-comma or multiply punctuated values such as `1,5 mV/s` or `1..5 mV/s` are not inferred and must be corrected in the confirmation fields.
-- Legacy `.xls` files are not supported. For `.xlsx`, sheets are examined in workbook order and the first sheet containing a usable wide CV table is used; earlier empty, descriptive, or invalid sheets are skipped.
-- CV smoothing, extrapolation, paste-from-Excel, XLSX result export, and automatic electron-count inference are outside version 1.
+- Scan-rate lists use dot-decimal notation. Locale-comma or multiply punctuated values such as `1,5` or `1..5` are not valid rates and must be corrected before analysis.
+- Legacy `.xls` files are not supported. For `.xlsx`, sheets are examined in workbook order and the first sheet satisfying the selected layout/header contract is used; earlier empty, descriptive, or invalid sheets are skipped.
+- CV smoothing, extrapolation, automatic format detection, automatic electron-count inference, and XLSX result export are outside version 1.
 
 `read-excel-file@9.3.10` is the sole new direct production dependency. It is loaded only with the lazily split CV route and is used only to extract XLSX worksheet rows; parsing validation, scan-rate confirmation, interpolation, fitting, calculations, charts, localization, and exports remain project code. The homepage and other Tools routes are separate route chunks.
 

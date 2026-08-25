@@ -129,4 +129,58 @@ describe("ScientificLineChart", () => {
     const path = view.querySelector('path[data-series-id="gapped"]')?.getAttribute("d") ?? "";
     expect(path.match(/\bM\b/g)).toHaveLength(2);
   });
+
+  it("does not substitute the nearest rendered point for an exact unavailable selection", async () => {
+    const view = await renderChart({
+      ...baseProps,
+      selectedX: 1,
+      series: [{
+        id: "gapped",
+        label: "Gapped",
+        color: "#123456",
+        points: [{ x: 0, y: 1 }, { x: 1, y: null }, { x: 2, y: 3 }]
+      }]
+    });
+
+    expect(view.querySelector('[data-selected-x="1"]')).toBeNull();
+  });
+
+  it("renders export settings as visible SVG text", async () => {
+    const view = await renderChart({
+      ...baseProps,
+      metadata: "XYYYYY · File upload · interval = 5 · R² ≥ 0.95"
+    });
+
+    const metadata = view.querySelector('[data-chart-metadata="true"]');
+    expect(metadata?.textContent).toBe("XYYYYY · File upload · interval = 5 · R² ≥ 0.95");
+  });
+
+  it("wraps a 20-rate metadata line within the viewBox", async () => {
+    const rates = Array.from({ length: 20 }, (_, index) => `0.${String(index + 1).padStart(15, "0")}`);
+    const view = await renderChart({
+      ...baseProps,
+      metadata: `rates = ${rates.join(", ")} mV/s · interval = 30 · R² ≥ 0.987654321`
+    });
+
+    const lines = [...view.querySelectorAll<SVGTextElement>('[data-chart-metadata="true"] text')];
+    expect(lines.length).toBeGreaterThan(1);
+    expect(lines.every((line) => (line.textContent?.length ?? 0) <= 60)).toBe(true);
+    expect(lines.every((line) => Number(line.getAttribute("x")) + 60 * 11 <= 800 - 24)).toBe(true);
+  });
+
+  it("exposes all settings and the current figure selection through an SVG description", async () => {
+    const metadata = [
+      "XYYYYY · File upload · First row contains headers",
+      "rates = 0.123456789, 0.987654321 mV/s · interval = 5 · R² ≥ 0.876543219",
+      "potential = 0.123456789 V"
+    ];
+    const view = await renderChart({ ...baseProps, metadata });
+    const svg = view.querySelector("svg")!;
+    const descriptionId = svg.getAttribute("aria-describedby");
+    const description = svg.querySelector("desc");
+
+    expect(descriptionId).toBeTruthy();
+    expect(description?.id).toBe(descriptionId);
+    expect(description?.textContent).toBe(metadata.join(". "));
+  });
 });

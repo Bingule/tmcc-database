@@ -1,16 +1,9 @@
 import readXlsxFile from "read-excel-file/browser";
 import type { CvSeries } from "./cvTypes";
+import { CvParseError, makeColumnPairs } from "./cvImport";
+import type { CvColumnPair, CvImportOptions, CvParseErrorCode, ParsedCvTable as CvImportParsedCvTable } from "./cvImport";
 
-export type CvParseErrorCode =
-  | "emptyFile"
-  | "malformedFile"
-  | "potentialColumnMissing"
-  | "currentColumnsMissing"
-  | "missingScanRate"
-  | "duplicateScanRate"
-  | "invalidScanRate"
-  | "insufficientSeries"
-  | "resourceLimitExceeded";
+export { CvParseError, type CvParseErrorCode } from "./cvImport";
 
 export const MAX_FILE_BYTES = 20 * 1024 * 1024;
 export const MAX_SHEETS = 50;
@@ -23,9 +16,7 @@ export const MAX_XLSX_TOTAL_UNCOMPRESSED_BYTES = 100 * 1024 * 1024;
 export const MAX_XLSX_ENTRY_UNCOMPRESSED_BYTES = 50 * 1024 * 1024;
 export const MAX_XLSX_COMPRESSION_RATIO = 100;
 
-export interface ParsedCvTable {
-  headers: string[];
-  rows: Array<Array<string | number | null>>;
+export type ParsedCvTable = CvImportParsedCvTable & {
   potentialColumn: number;
   currentColumns: Array<{
     column: number;
@@ -34,23 +25,11 @@ export interface ParsedCvTable {
   }>;
 }
 
-export class CvParseError extends Error {
-  readonly code: CvParseErrorCode;
-  readonly detail: Readonly<Record<string, unknown>>;
-
-  constructor(code: CvParseErrorCode, detail: Readonly<Record<string, unknown>> = {}) {
-    super(code);
-    this.name = "CvParseError";
-    this.code = code;
-    this.detail = detail;
-  }
-}
-
-export function parseDelimitedCv(text: string): ParsedCvTable {
+export function parseDelimitedCv(text: string, options: CvImportOptions): ParsedCvTable {
   if (text.trim().length === 0) throw new CvParseError("emptyFile");
   const byteLength = text.length > MAX_FILE_BYTES ? text.length : new TextEncoder().encode(text).byteLength;
   if (byteLength > MAX_FILE_BYTES) throwResourceLimit("fileBytes", MAX_FILE_BYTES, byteLength);
-  const delimiter = detectDelimiter(text);
+  const delimiter = detectDelimiter(text, options);
   const rawRows = delimiter === null ? parseWhitespaceRows(text) : parseDelimitedRows(text, delimiter);
   const rows = rawRows.filter((row) => row.some((cell) => cell.trim().length > 0));
   if (rows.length === 0) throw new CvParseError("emptyFile");
@@ -69,10 +48,10 @@ export function parseDelimitedCv(text: string): ParsedCvTable {
     }
   }
 
-  return makeParsedTable(rows.map((row) => row.map(parseTextCell)));
+  return makeParsedTable(rows.map((row) => row.map(parseTextCell)), options);
 }
 
-export async function parseCvFile(file: File): Promise<ParsedCvTable> {
+export async function parseCvFile(file: File, options: CvImportOptions): Promise<ParsedCvTable> {
   if (file.size > MAX_FILE_BYTES) throwResourceLimit("fileBytes", MAX_FILE_BYTES, file.size);
   const extension = file.name.trim().toLocaleLowerCase("en-US").match(/\.[^.]+$/)?.[0] ?? "";
   if (extension === ".xls") {
@@ -80,7 +59,7 @@ export async function parseCvFile(file: File): Promise<ParsedCvTable> {
   }
   if (extension === ".csv" || extension === ".txt") {
     try {
-      return parseDelimitedCv(await readFileText(file));
+      return parseDelimitedCv(await readFileText(file), options);
     } catch (error) {
       if (error instanceof CvParseError) throw error;
       throw new CvParseError("malformedFile", {
@@ -107,7 +86,7 @@ export async function parseCvFile(file: File): Promise<ParsedCvTable> {
     }
     for (const sheet of sheets) {
       try {
-        const table = makeParsedTable(sheet.data.map((row) => row.map(normalizeWorkbookCell)));
+        const table = makeParsedTable(sheet.data.map((row) => row.map(normalizeWorkbookCell)), options);
         if (isUsefulCvTable(table)) return table;
       } catch (error) {
         if (!(error instanceof CvParseError)) throw error;
@@ -233,7 +212,7 @@ function throwResourceLimit(resource: "fileBytes" | "sheets" | "rows" | "columns
 
 function isUsefulCvTable(table: ParsedCvTable) {
   try {
-    confirmCvSeries(table, table.currentColumns.map((_, index) => index + 1));
+    confirmCvSeries(table, table.pairs.map((_, index) => index + 1));
     return true;
   } catch (error) {
     if (error instanceof CvParseError) return false;
@@ -242,27 +221,27 @@ function isUsefulCvTable(table: ParsedCvTable) {
 }
 
 export function confirmCvSeries(table: ParsedCvTable, scanRates: number[]): CvSeries[] {
-  if (table.currentColumns.length < 2) {
+  if (table.pairs.length < 2) {
     throw new CvParseError("insufficientSeries", {
       reason: "seriesCount",
-      seriesCount: table.currentColumns.length
+      seriesCount: table.pairs.length
     });
   }
-  if (scanRates.length !== table.currentColumns.length) {
-    throw new CvParseError("missingScanRate", {
-      expected: table.currentColumns.length,
+  if (scanRates.length !== table.pairs.length) {
+    throw new CvParseError("scanRateCountMismatch", {
+      expected: table.pairs.length,
       actual: scanRates.length
     });
   }
 
-  const confirmedRates = Array.from({ length: table.currentColumns.length }, (_, index) => {
+  const confirmedRates = Array.from({ length: table.pairs.length }, (_, index) => {
     const scanRate = scanRates[index];
     if (scanRate === undefined || scanRate === null) {
-      throw new CvParseError("missingScanRate", { column: table.currentColumns[index].column });
+      throw new CvParseError("missingScanRate", { column: table.pairs[index].currentColumn });
     }
     if (!Number.isFinite(scanRate) || scanRate <= 0) {
       throw new CvParseError("invalidScanRate", {
-        column: table.currentColumns[index].column,
+        column: table.pairs[index].currentColumn,
         scanRate
       });
     }
@@ -274,35 +253,47 @@ export function confirmCvSeries(table: ParsedCvTable, scanRates: number[]): CvSe
     seenRates.add(scanRate);
   }
 
-  return table.currentColumns.map((currentColumn, seriesIndex) => {
+  return table.pairs.map((pair, seriesIndex) => {
     const points: CvSeries["points"] = [];
     const seenPotentials = new Set<number>();
     for (let rowIndex = 0; rowIndex < table.rows.length; rowIndex += 1) {
       const row = table.rows[rowIndex];
-      const currentCell = row[currentColumn.column] ?? null;
-      if (isMissingCell(currentCell)) continue;
-      const potential = finiteNumber(row[table.potentialColumn]);
+      const potentialCell = row[pair.potentialColumn] ?? null;
+      const currentCell = row[pair.currentColumn] ?? null;
+      const potentialMissing = isMissingCell(potentialCell);
+      const currentMissing = isMissingCell(currentCell);
+      if (table.layout === "sharedPotential" && currentMissing) continue;
+      if (table.layout === "pairedPotentialCurrent" && potentialMissing && currentMissing) continue;
+      if (table.layout === "pairedPotentialCurrent" && potentialMissing !== currentMissing) {
+        throw new CvParseError("malformedFile", {
+          reason: "incompletePairRow",
+          row: rowIndex + (table.headerMode === "header" ? 2 : 1),
+          potentialColumn: pair.potentialColumn,
+          currentColumn: pair.currentColumn
+        });
+      }
+      const potential = finiteNumber(potentialCell);
       if (potential === null) {
         throw new CvParseError("malformedFile", {
           reason: "invalidPotential",
-          row: rowIndex + 2,
-          value: row[table.potentialColumn]
+          row: rowIndex + (table.headerMode === "header" ? 2 : 1),
+          value: potentialCell
         });
       }
       const current = finiteNumber(currentCell);
       if (current === null) {
         throw new CvParseError("malformedFile", {
           reason: "invalidCurrent",
-          row: rowIndex + 2,
-          header: currentColumn.header,
+          row: rowIndex + (table.headerMode === "header" ? 2 : 1),
+          header: pair.currentHeader,
           value: currentCell
         });
       }
       if (seenPotentials.has(potential)) {
         throw new CvParseError("malformedFile", {
           reason: "duplicatePotential",
-          row: rowIndex + 2,
-          header: currentColumn.header,
+          row: rowIndex + (table.headerMode === "header" ? 2 : 1),
+          header: pair.currentHeader,
           potential
         });
       }
@@ -312,38 +303,37 @@ export function confirmCvSeries(table: ParsedCvTable, scanRates: number[]): CvSe
     if (points.length < 2) {
       throw new CvParseError("insufficientSeries", {
         reason: "pointCount",
-        header: currentColumn.header,
+        header: pair.currentHeader,
         pointCount: points.length
       });
     }
     points.sort((left, right) => left.potential - right.potential);
-    return { label: currentColumn.header, scanRate: confirmedRates[seriesIndex], points };
+    return { label: pair.currentHeader, scanRate: confirmedRates[seriesIndex], points };
   });
 }
 
-function detectDelimiter(text: string) {
+function detectDelimiter(text: string, options: CvImportOptions) {
   const candidates = [",", "\t", ";"] as const;
-  const evaluations = candidates.map((delimiter) => evaluateDelimiter(text, delimiter));
+  const evaluations = candidates.map((delimiter) => evaluateDelimiter(text, delimiter, options));
   const valid = evaluations
     .filter((evaluation) => evaluation.valid)
     .sort(compareDelimiterEvaluations);
   if (valid.length > 0) return valid[0].delimiter;
-  if (hasValidWhitespaceCvStructure(text)) return null;
+  if (hasValidWhitespaceStructure(text, options)) return null;
 
   const malformed = evaluations
-    .filter((evaluation) => evaluation.headerCurrentCount > 0 || evaluation.quotedCvPrefix)
+    .filter((evaluation) => evaluation.columnCount > 1 || evaluation.quotedDelimiterPrefix)
     .sort(compareDelimiterEvaluations);
   return malformed[0]?.delimiter ?? null;
 }
 
-function hasValidWhitespaceCvStructure(text: string) {
+function hasValidWhitespaceStructure(text: string, options: CvImportOptions) {
   const rows = parseWhitespaceRows(text);
   if (rows.length < 2 || rows[0].length < 2
     || rows.some((row) => row.length !== rows[0].length)) return false;
   try {
-    const table = makeParsedTable(rows.map((row) => row.map(parseTextCell)));
-    return table.rows.some((row) => finiteNumber(row[table.potentialColumn]) !== null
-      && table.currentColumns.some((currentColumn) => finiteNumber(row[currentColumn.column]) !== null));
+    const table = makeParsedTable(rows.map((row) => row.map(parseTextCell)), options);
+    return hasCompletePairRow(table);
   } catch {
     return false;
   }
@@ -353,21 +343,21 @@ interface DelimiterEvaluation {
   delimiter: string;
   valid: boolean;
   validDataRows: number;
-  headerCurrentCount: number;
+  pairCount: number;
   columnCount: number;
   consistentRows: number;
-  quotedCvPrefix: boolean;
+  quotedDelimiterPrefix: boolean;
 }
 
-function evaluateDelimiter(text: string, delimiter: string): DelimiterEvaluation {
+function evaluateDelimiter(text: string, delimiter: string, options: CvImportOptions): DelimiterEvaluation {
   const empty = {
     delimiter,
     valid: false,
     validDataRows: 0,
-    headerCurrentCount: 0,
+    pairCount: 0,
     columnCount: 0,
     consistentRows: 0,
-    quotedCvPrefix: looksLikeQuotedCvDelimiter(text, delimiter)
+    quotedDelimiterPrefix: looksLikeQuotedDelimiter(text, delimiter)
   };
   let rows: string[][];
   try {
@@ -379,29 +369,25 @@ function evaluateDelimiter(text: string, delimiter: string): DelimiterEvaluation
   if (rows.length === 0) return empty;
 
   const columnCount = rows[0].length;
-  const headers = rows[0].map((cell) => headerText(parseTextCell(cell)));
-  const potentialColumn = headers.findIndex(isPotentialHeader);
-  const headerCurrentCount = headers.filter((header, column) => column !== potentialColumn
-    && (inferScanRate(header) !== null || isCurrentHeader(header))).length;
   const consistentRows = rows.filter((row) => row.length === columnCount).length;
-  if (rows.length < 2 || columnCount < 2 || consistentRows !== rows.length
-    || potentialColumn === -1 || headerCurrentCount === 0) {
-    return { ...empty, columnCount, consistentRows, headerCurrentCount };
+  if (rows.length < 2 || columnCount < 2 || consistentRows !== rows.length) {
+    return { ...empty, columnCount, consistentRows };
   }
 
   let table: ParsedCvTable;
   try {
-    table = makeParsedTable(rows.map((row) => row.map(parseTextCell)));
+    table = makeParsedTable(rows.map((row) => row.map(parseTextCell)), options);
   } catch {
-    return { ...empty, columnCount, consistentRows, headerCurrentCount };
+    return { ...empty, columnCount, consistentRows };
   }
-  const validDataRows = table.rows.filter((row) => finiteNumber(row[table.potentialColumn]) !== null
-    && table.currentColumns.some((currentColumn) => finiteNumber(row[currentColumn.column]) !== null)).length;
+  const validDataRows = table.rows.filter((row) => table.pairs.some((pair) =>
+    finiteNumber(row[pair.potentialColumn]) !== null && finiteNumber(row[pair.currentColumn]) !== null
+  )).length;
   return {
     ...empty,
     valid: validDataRows > 0,
     validDataRows,
-    headerCurrentCount: table.currentColumns.length,
+    pairCount: table.pairs.length,
     columnCount,
     consistentRows
   };
@@ -409,16 +395,15 @@ function evaluateDelimiter(text: string, delimiter: string): DelimiterEvaluation
 
 function compareDelimiterEvaluations(left: DelimiterEvaluation, right: DelimiterEvaluation) {
   return right.validDataRows - left.validDataRows
-    || right.headerCurrentCount - left.headerCurrentCount
+    || right.pairCount - left.pairCount
     || right.columnCount - left.columnCount
     || right.consistentRows - left.consistentRows;
 }
 
-function looksLikeQuotedCvDelimiter(text: string, delimiter: string) {
+function looksLikeQuotedDelimiter(text: string, delimiter: string) {
   const delimiterIndex = text.indexOf(delimiter);
   return delimiterIndex > 0
     && text.includes(`${delimiter}"`)
-    && isPotentialHeader(text.slice(0, delimiterIndex).trim());
 }
 
 function parseDelimitedRows(text: string, delimiter: string) {
@@ -494,29 +479,43 @@ function parseWhitespaceRows(text: string) {
     .map((line) => line.split(/\s+/));
 }
 
-function makeParsedTable(inputRows: Array<Array<string | number | null>>) {
-  const rows = inputRows.filter((row) => row.some((cell) => !isMissingCell(cell)));
+function makeParsedTable(rawRows: Array<Array<string | number | null>>, options: CvImportOptions): ParsedCvTable {
+  const rows = rawRows.filter((row) => row.some((cell) => !isMissingCell(cell)));
   if (rows.length === 0) throw new CvParseError("emptyFile");
-  const headers = rows[0].map(headerText);
-  if (headers.length === 0 || headers.every((header) => header.length === 0)) {
-    throw new CvParseError("malformedFile", { reason: "headerMissing" });
-  }
-  const dataRows = rows.slice(1).map((row) => Array.from(
-    { length: headers.length },
-    (_, column) => row[column] ?? null
-  ));
+  const width = rows[0]?.length ?? 0;
+  if (width === 0) throw new CvParseError("emptyFile");
+  const sourceHeaders = options.headerMode === "header" ? rows[0] : [];
+  const dataRows = options.headerMode === "header" ? rows.slice(1) : rows;
   if (dataRows.length === 0) throw new CvParseError("malformedFile", { reason: "dataRowsMissing" });
+  const headers = options.headerMode === "header"
+    ? sourceHeaders.map(headerText)
+    : makeGeneratedHeaders(width, options);
+  const pairs = makeColumnPairs(headers, options);
+  return { ...options, headers, rows: dataRows, pairs, ...makeLegacyCompatibility(pairs) };
+}
 
-  const potentialColumn = headers.findIndex(isPotentialHeader);
-  if (potentialColumn === -1) throw new CvParseError("potentialColumnMissing");
-  const currentColumns = headers.flatMap((header, column) => {
-    if (column === potentialColumn) return [];
-    const inferredScanRate = inferScanRate(header);
-    if (inferredScanRate === null && !isCurrentHeader(header)) return [];
-    return [{ column, header, inferredScanRate }];
-  });
-  if (currentColumns.length === 0) throw new CvParseError("currentColumnsMissing");
-  return { headers, rows: dataRows, potentialColumn, currentColumns };
+function makeGeneratedHeaders(width: number, options: CvImportOptions) {
+  if (options.layout === "sharedPotential") {
+    return Array.from({ length: width }, (_, column) => column === 0 ? "X" : `Y${column}`);
+  }
+  return Array.from({ length: width }, (_, column) => `${column % 2 === 0 ? "X" : "Y"}${Math.floor(column / 2) + 1}`);
+}
+
+function makeLegacyCompatibility(pairs: CvColumnPair[]) {
+  return {
+    potentialColumn: pairs[0]?.potentialColumn ?? 0,
+    currentColumns: pairs.map((pair) => ({
+      column: pair.currentColumn,
+      header: pair.currentHeader,
+      inferredScanRate: inferScanRate(pair.currentHeader)
+    }))
+  };
+}
+
+function hasCompletePairRow(table: ParsedCvTable) {
+  return table.rows.some((row) => table.pairs.some((pair) =>
+    finiteNumber(row[pair.potentialColumn]) !== null && finiteNumber(row[pair.currentColumn]) !== null
+  ));
 }
 
 function parseTextCell(value: string): string | number | null {
@@ -543,21 +542,6 @@ function normalizeWorkbookCell(value: unknown): string | number | null {
 
 function headerText(value: string | number | null) {
   return value === null ? "" : String(value).trim();
-}
-
-function isPotentialHeader(header: string) {
-  const normalized = header.normalize("NFKC").trim().toLocaleLowerCase("en-US");
-  if (["potential", "voltage", "电位", "电压", "電位", "電壓", "potencial", "potenziale"].includes(normalized)) {
-    return true;
-  }
-  if (/(?:^|[^a-z])(potential|voltage)(?:$|[^a-z])/.test(normalized)) return true;
-  return /^e(?:\s*(?:[/(_-]\s*)?(?:m?v|volts?)\s*\)?)?$/.test(normalized);
-}
-
-function isCurrentHeader(header: string) {
-  const normalized = header.normalize("NFKC").trim().toLocaleLowerCase("en-US");
-  if (["i", "current", "电流", "電流", "corriente", "courant", "strom"].includes(normalized)) return true;
-  return /(?:^|[^a-z])current(?:$|[^a-z])/.test(normalized) || /电流|電流/.test(normalized);
 }
 
 function inferScanRate(header: string) {

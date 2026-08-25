@@ -19,10 +19,12 @@ interface ScientificLineChartProps {
   selectedX?: number;
   onSelectX?: (x: number) => void;
   exportId?: string;
+  metadata?: string | string[];
 }
 
 const dimensions = { width: 800, height: 420 };
 const margin = { top: 34, right: 24, bottom: 58, left: 72 };
+const metadataLineLength = 60;
 
 export function ScientificLineChart({
   title,
@@ -33,9 +35,11 @@ export function ScientificLineChart({
   series,
   selectedX,
   onSelectX,
-  exportId
+  exportId,
+  metadata
 }: ScientificLineChartProps): React.ReactElement {
   const titleId = useId();
+  const descriptionId = useId();
   const finiteSeries = series.map((item) => ({
     ...item,
     points: item.points.filter((point) => Number.isFinite(point.x) && (point.y === null || Number.isFinite(point.y)))
@@ -50,7 +54,10 @@ export function ScientificLineChart({
   const yDomain = expandedDomain(allPoints, "y");
   const legendColumns = 4;
   const legendRows = Math.ceil(finiteSeries.length / legendColumns);
-  const chartMargin = { ...margin, top: Math.max(margin.top, 18 + legendRows * 22) };
+  const metadataSourceLines = typeof metadata === "string" ? [metadata] : metadata ?? [];
+  const metadataLines = metadataSourceLines.flatMap((line) => wrapMetadataLine(line));
+  const legendTop = metadataLines.length > 0 ? 17 + metadataLines.length * 18 + 4 : 17;
+  const chartMargin = { ...margin, top: Math.max(margin.top, legendTop + legendRows * 22) };
   const plotWidth = dimensions.width - chartMargin.left - chartMargin.right;
   const plotHeight = dimensions.height - chartMargin.top - chartMargin.bottom;
   const projectX = (value: number) => chartMargin.left + normalized(value, xDomain) * plotWidth;
@@ -58,7 +65,7 @@ export function ScientificLineChart({
   const xTicks = ticks(xDomain);
   const yTicks = ticks(yDomain);
   const selectedPoint = Number.isFinite(selectedX)
-    ? allPoints.reduce((nearest, point) => Math.abs(point.x - selectedX!) < Math.abs(nearest.x - selectedX!) ? point : nearest)
+    ? allPoints.find((point) => point.x === selectedX) ?? null
     : null;
 
   return (
@@ -66,6 +73,7 @@ export function ScientificLineChart({
       <svg
         role="img"
         aria-labelledby={titleId}
+        aria-describedby={metadataSourceLines.length > 0 ? descriptionId : undefined}
         viewBox={`0 0 ${dimensions.width} ${dimensions.height}`}
         width="100%"
         height="auto"
@@ -73,6 +81,16 @@ export function ScientificLineChart({
         className="scientific-chart-svg"
       >
         <title id={titleId}>{title}</title>
+        {metadataSourceLines.length > 0 && <desc id={descriptionId}>{metadataSourceLines.join(". ")}</desc>}
+        {metadataLines.length > 0 && <g data-chart-metadata="true">
+          {metadataLines.map((line, index) => <text
+            key={`${index}-${line}`}
+            x={chartMargin.left}
+            y={17 + index * 18}
+            fill="#455a64"
+            fontSize={11}
+          >{line}</text>)}
+        </g>}
         <g
           className="scientific-chart-legend"
           data-chart-legend="true"
@@ -83,7 +101,7 @@ export function ScientificLineChart({
             const column = index % legendColumns;
             const row = Math.floor(index / legendColumns);
             const x = chartMargin.left + column * (plotWidth / legendColumns);
-            const y = 17 + row * 22;
+            const y = legendTop + row * 22;
             return (
               <g key={item.id} className="scientific-chart-legend-item" transform={`translate(${x} ${y})`}>
                 {item.mode === "points" ? <circle cx={13} cy={0} r={3.5} fill={item.color} /> : <line x1={0} y1={0} x2={26} y2={0} stroke={item.color} strokeWidth={2.25} strokeDasharray={item.dash} />}
@@ -256,6 +274,20 @@ function countNullRuns(points: Array<{ y: number | null }>) {
     else if (point.y !== null) inside = false;
   }
   return count;
+}
+
+function wrapMetadataLine(line: string): string[] {
+  const lines: string[] = [];
+  let remaining = line.trim();
+  while (remaining.length > metadataLineLength) {
+    const candidate = remaining.slice(0, metadataLineLength + 1);
+    const whitespace = candidate.lastIndexOf(" ");
+    const end = whitespace > 0 ? whitespace : metadataLineLength;
+    lines.push(remaining.slice(0, end).trimEnd());
+    remaining = remaining.slice(end).trimStart();
+  }
+  if (remaining !== "") lines.push(remaining);
+  return lines;
 }
 
 function formatTick(value: number): string {
