@@ -2,7 +2,7 @@
 
 Date: 2026-08-25  
 Branch: `enhance-cv-import-controls`  
-Status: Draft for user review
+Status: Approved by user
 
 ## 1. Objective
 
@@ -154,7 +154,7 @@ An analysis-quality summary appears before the plots and tables:
 - valid, below-threshold, and unavailable fit counts;
 - Dunn valid potential coverage.
 
-Existing CSV, SVG, and PNG exports remain available. Relevant CSV schemas add stable fields for layout, point interval, R² threshold, fit status, and coverage. Low-quality or unavailable rows are retained with blank scientific outputs and an explicit status. Figure legends or adjacent export descriptions state the point interval and R² threshold. Scientific identifiers, formulas, numerical values, units, and element symbols are not translated.
+Existing CSV, SVG, and PNG exports remain available. Relevant CSV schemas add stable fields for layout, point interval, R² threshold, fit status, and coverage. Below-threshold rows retain their calculated fit values and R² for auditability, while genuinely unavailable fits use blank scientific cells; both remain present with explicit statuses. Figure legends or adjacent export descriptions state the point interval and R² threshold. Scientific identifiers, formulas, numerical values, units, and element symbols are not translated.
 
 ## 10. Validation and Error Handling
 
