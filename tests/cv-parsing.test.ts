@@ -80,7 +80,7 @@ describe("parseDelimitedCv", () => {
     const data = Array.from({ length: width }, () => "1").join(",");
     expectParseError(() => parseDelimitedCv([header, ...Array.from({ length: rows - 1 }, () => data)].join("\n")), "resourceLimitExceeded", { resource: "cells", limit: MAX_CELLS });
   }, 30_000);
-  it("parses quote-aware comma CSV and recognizes potential, current columns, and common rate headings", () => {
+  it("parses quote-aware comma CSV into positional shared-potential pairs with compatibility rate hints", () => {
     const table = parseDelimitedCv([
       'Potential,"1","2 mV/s","Current 5 mV s-1","Current, unassigned"',
       "0,10,20,50,5",
@@ -124,7 +124,7 @@ describe("parseDelimitedCv", () => {
     expect(table.currentColumns).toHaveLength(2);
   });
 
-  it("prefers a semantically valid whitespace table over malformed delimiter punctuation", () => {
+  it("prefers a structurally valid whitespace table over malformed delimiter punctuation", () => {
     const table = parseDelimitedCv("Potential;foo Current 2\n0 10 20\n1 11 21");
 
     expect(table.headers).toEqual(["Potential;foo", "Current", "2"]);
@@ -150,7 +150,7 @@ describe("parseDelimitedCv", () => {
       ].join("\n"),
       ["Potential", "1", "2", "Notes"]
     ]
-  ])("chooses the %s delimiter from row structure and CV semantics instead of punctuation counts", (
+  ])("chooses the %s delimiter from row structure and selected layout instead of punctuation counts", (
     _name,
     text,
     headers
@@ -170,7 +170,7 @@ describe("parseDelimitedCv", () => {
     ]);
   });
 
-  it("infers scan rates only from complete dot-decimal numeric tokens", () => {
+  it("retains only valid dot-decimal compatibility rate hints without filtering positional columns", () => {
     const table = parseDelimitedCv([
       'Potential,"1,5 mV/s","1..5 mV/s","1.5.2 mV/s","1.5 mV/s",2',
       "0,10,20,30,40,50",
@@ -186,7 +186,7 @@ describe("parseDelimitedCv", () => {
     ]);
   });
 
-  it("rejects empty input, unclosed quotes, malformed row widths, and tables without current columns", () => {
+  it("rejects empty input, unclosed quotes, and malformed row widths while preserving positional columns", () => {
     expectParseError(() => parseDelimitedCv(" \r\n\t"), "emptyFile");
     expectParseError(() => parseDelimitedCv('Potential,"1\n0,10'), "malformedFile", { reason: "unclosedQuote" });
     expectParseError(
@@ -255,7 +255,7 @@ describe("confirmCvSeries", () => {
     expectParseError(() => confirmCvSeries(table, [1]), "scanRateCountMismatch", { expected: 2, actual: 1 });
   });
 
-  it("keeps missing inferred rates editable and uses the confirmed values", () => {
+  it("uses confirmed rates for positional pairs when compatibility rate hints are absent", () => {
     const table = parseDelimitedCv("Potential,Current,Current\n0,10,20\n1,11,21");
     expect(table.currentColumns.map((item) => item.inferredScanRate)).toEqual([null, null]);
 
@@ -383,6 +383,37 @@ describe("parseCvFile", () => {
 
     expect(table.headers).toEqual(["Potential", "1 mV/s", "2 mV/s"]);
     expect(table.rows).toEqual([[0, 10, 20], [1, 11, 21]]);
+  });
+
+  it("selects the first XLSX sheet that satisfies explicit paired headerless options", async () => {
+    const file = makeWorkbookFile([
+      {
+        name: "Shared columns",
+        rows: [[0, 10, 20], [1, 11, 21]]
+      },
+      {
+        name: "Paired columns",
+        rows: [[0, 10, 0.1, 20], [1, 11, 1.1, 21], [null, null, 2.1, 22]]
+      }
+    ], "paired-headerless.xlsx");
+    const options = { layout: "pairedPotentialCurrent", headerMode: "data" } as const;
+
+    const table = await parseCvFile(file, options);
+
+    expect(table.headers).toEqual(["X1", "Y1", "X2", "Y2"]);
+    expect(table.rows).toEqual([[0, 10, 0.1, 20], [1, 11, 1.1, 21], [null, null, 2.1, 22]]);
+    expect(table.pairs).toEqual([
+      { potentialColumn: 0, currentColumn: 1, potentialHeader: "X1", currentHeader: "Y1" },
+      { potentialColumn: 2, currentColumn: 3, potentialHeader: "X2", currentHeader: "Y2" }
+    ]);
+    expect(confirmCvSeries(table, [1, 5])).toEqual([
+      { label: "Y1", scanRate: 1, points: [{ potential: 0, current: 10 }, { potential: 1, current: 11 }] },
+      {
+        label: "Y2",
+        scanRate: 5,
+        points: [{ potential: 0.1, current: 20 }, { potential: 1.1, current: 21 }, { potential: 2.1, current: 22 }]
+      }
+    ]);
   });
 
   it("reports a stable error when no workbook sheet contains a useful CV table", async () => {
