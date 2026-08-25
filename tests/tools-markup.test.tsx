@@ -157,9 +157,14 @@ describe("Tools page markup", () => {
     const view = await renderRoute("/tools/cv-kinetics");
     const importPanel = view.querySelector<HTMLElement>(".cv-import")!;
     const fieldsets = [...importPanel.querySelectorAll("fieldset.cv-import-fieldset")];
+    const formatChoices = importPanel.querySelector<HTMLElement>(".cv-format-choices")!;
 
     expect(fieldsets).toHaveLength(3);
     expect(fieldsets.every((fieldset) => fieldset.querySelector("legend") !== null)).toBe(true);
+    expect(formatChoices.getAttribute("aria-invalid")).toBe("true");
+    expect(formatChoices.classList.contains("cv-format-choices-invalid")).toBe(true);
+    expect([...formatChoices.querySelectorAll<HTMLInputElement>('input[name="cv-layout"]')]
+      .every((radio) => radio.getAttribute("aria-invalid") === "true")).toBe(true);
     expect(importPanel.querySelectorAll(".cv-format-choice")).toHaveLength(2);
     expect(importPanel.querySelectorAll(".cv-format-choice code")).toHaveLength(2);
     expect(importPanel.querySelectorAll(".cv-format-choice table")).toHaveLength(2);
@@ -218,6 +223,11 @@ describe("Tools static integration", () => {
     expect(css).toMatch(/\.tools-page\s+:is\([^}]*textarea[^}]*\):focus-visible/s);
     expect(css).toMatch(/\.cv-import\s+\.tool-validation:empty[^}]*display:\s*none/s);
     expect(css).toMatch(/\.cv-import\s+button:disabled[^}]*cursor:\s*not-allowed/s);
+    expect(css).toMatch(/\.cv-import\s*\{[^}]*min-width:\s*0/s);
+    expect(css).toMatch(/\.cv-preview\s*\{[^}]*min-width:\s*0[^}]*max-width:\s*100%/s);
+    expect(css).toMatch(/\.cv-preview\s+\.tool-table-wrap\s*\{[^}]*width:\s*100%[^}]*overflow-x:\s*auto/s);
+    expect(css).toMatch(/\.cv-import\s+\.tool-validation\s*\{[^}]*color:\s*#[0-9a-f]{6}/s);
+    expect(css).toMatch(/\.cv-format-choices-invalid\s*\{[^}]*border-color:\s*#[0-9a-f]{6}/s);
   });
 
   it("keeps root metadata database-focused", async () => {

@@ -2416,6 +2416,7 @@ td button {
 
 .cv-import {
   display: grid;
+  min-width: 0;
   gap: 14px;
 }
 
@@ -2463,6 +2464,11 @@ td button {
 
 .cv-format-choices {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.cv-format-choices-invalid {
+  border-color: #a6423f;
+  background: #fffafa;
 }
 
 .cv-source-controls {
@@ -2570,8 +2576,29 @@ td button {
   margin: 0;
 }
 
+.cv-import .tool-validation {
+  color: #9b2c2c;
+  font-weight: 700;
+}
+
 .cv-import button:disabled {
   cursor: not-allowed;
+}
+
+.cv-preview {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.cv-preview .tool-table-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.cv-mapping-list {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .tool-result-table,

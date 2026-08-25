@@ -52,6 +52,7 @@ export function CvImportPanel({
   const validation = validateDraft(draft, table);
   const displayedError = error ?? validation.visibleCode;
   const rates = validation.rates;
+  const layoutInvalid = displayedError === "formatRequired";
 
   const update = (patch: Partial<CvImportDraft>) => onDraftChange({ ...draft, ...patch });
   const updateOptions = (patch: Partial<CvImportDraft["options"]>) => {
@@ -63,7 +64,7 @@ export function CvImportPanel({
     <p>{t("cv.import.help")}</p>
     <p>{t("cv.import.accepted")}</p>
 
-    <fieldset className="cv-import-fieldset cv-format-choices" role="radiogroup" aria-required="true" aria-label={t("cv.aria.layout")}>
+    <fieldset className={`cv-import-fieldset cv-format-choices${layoutInvalid ? " cv-format-choices-invalid" : ""}`} role="radiogroup" aria-invalid={layoutInvalid} aria-required="true" aria-label={t("cv.aria.layout")}>
       <legend>{t("cv.import.layout")}</legend>
       <p>{t("cv.import.layout.help")}</p>
       <div className="cv-format-choice">
@@ -74,6 +75,7 @@ export function CvImportPanel({
             value="sharedPotential"
             required
             checked={draft.options.layout === "sharedPotential"}
+            aria-invalid={layoutInvalid}
             aria-label={t("cv.aria.layout.shared")}
             onChange={() => updateOptions({ layout: "sharedPotential" })}
           />
@@ -89,6 +91,7 @@ export function CvImportPanel({
             value="pairedPotentialCurrent"
             required
             checked={draft.options.layout === "pairedPotentialCurrent"}
+            aria-invalid={layoutInvalid}
             aria-label={t("cv.aria.layout.paired")}
             onChange={() => updateOptions({ layout: "pairedPotentialCurrent" })}
           />
