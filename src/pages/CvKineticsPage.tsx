@@ -22,9 +22,9 @@ const csvFiles = [
   "cv-diffusion-current.csv",
   "cv-contribution-summary.csv"
 ] as const;
-const MAX_CHART_POINTS = 2_000;
+export const MAX_CHART_POINTS = 2_000;
 const MAX_CHART_GAP_RUNS = 500;
-const MAX_CHART_OUTPUT_POINTS = 4_000;
+export const MAX_CHART_OUTPUT_POINTS = 4_000;
 const MAX_TABLE_ROWS = 500;
 const MAX_POTENTIAL_OPTIONS = 500;
 
@@ -121,7 +121,10 @@ export function CvKineticsPage() {
       <header className="tool-page-header">
         <h1>{t("cv.title")}</h1>
         <p>{t("cv.subtitle")}</p>
-        <p>{t("cv.chart.samplingNotice", { count: MAX_CHART_POINTS })}</p>
+        <p>{t("cv.chart.samplingNotice", {
+          target: MAX_CHART_POINTS,
+          maximum: MAX_CHART_OUTPUT_POINTS
+        })}</p>
       </header>
 
       <div className="tool-layout">

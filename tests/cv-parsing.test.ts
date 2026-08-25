@@ -1,4 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+const { readXlsxFileSpy } = vi.hoisted(() => ({ readXlsxFileSpy: vi.fn() }));
+
+vi.mock("read-excel-file/browser", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("read-excel-file/browser")>();
+  readXlsxFileSpy.mockImplementation(actual.default);
+  return { ...actual, default: readXlsxFileSpy };
+});
 import {
   CvParseError,
   MAX_CELLS,
@@ -273,6 +281,18 @@ describe("parseCvFile", () => {
     });
   });
 
+  it("ignores a false EOCD signature inside a legal ZIP comment and finds the real EOCD", async () => {
+    const base = makeMinimalXlsxFile();
+    const archive = await readFileBuffer(base);
+    const commented = addZipComment(archive, new Uint8Array([0x50, 0x4b, 0x05, 0x06, ...Array(18).fill(0)]));
+    readXlsxFileSpy.mockResolvedValueOnce([{
+      name: "CV",
+      data: [["Potential", "1", "2"], [0, 1, 2], [1, 2, 3]]
+    }]);
+    await expect(parseCvFile(new File([commented], "commented.xlsx"))).resolves.toMatchObject({ potentialColumn: 0 });
+    expect(readXlsxFileSpy).toHaveBeenCalledWith(expect.any(ArrayBuffer));
+  });
+
   it("skips a description sheet and selects the first useful CV sheet in workbook order", async () => {
     const file = makeWorkbookFile([
       { name: "Read me", rows: [["TMCC CV workbook"], ["Data is on the next sheet"]] },
@@ -347,6 +367,24 @@ function makeMinimalXlsxFile() {
       [1, 11, 51]
     ]
   }], "cv-wide.xlsx");
+}
+
+function readFileBuffer(file: File): Promise<ArrayBuffer> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as ArrayBuffer);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+function addZipComment(buffer: ArrayBuffer, comment: Uint8Array) {
+  const original = new Uint8Array(buffer);
+  const result = new Uint8Array(original.length + comment.length);
+  result.set(original);
+  result.set(comment, original.length);
+  new DataView(result.buffer).setUint16(original.length - 2, comment.length, true);
+  return result.buffer;
 }
 
 function makeWorkbookFile(

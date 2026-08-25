@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "../src/App";
 import { I18nProvider } from "../src/i18n/I18nProvider";
 import { MAX_FILE_BYTES } from "../src/lib/cvParsing";
+import { MAX_CHART_OUTPUT_POINTS, MAX_CHART_POINTS } from "../src/pages/CvKineticsPage";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 let root: ReturnType<typeof createRoot> | undefined;
@@ -64,7 +65,8 @@ describe("CV kinetics page", () => {
     const view = await renderPage();
     expect(view.textContent).toContain("CV Kinetics Analysis");
     expect(view.textContent).toContain("Import Data");
-    expect(view.textContent).toContain("Figures and SVG/PNG exports use deterministic display sampling");
+    expect(view.textContent).toContain(`target up to ${MAX_CHART_POINTS} points per series`);
+    expect(view.textContent).toContain(`up to ${MAX_CHART_OUTPUT_POINTS} points per series`);
     await upload(view, csv);
     expect(view.textContent).toContain("Data Preview");
     const rateInputs = view.querySelectorAll<HTMLInputElement>('input[name="scanRate"]');
@@ -84,6 +86,8 @@ describe("CV kinetics page", () => {
     await click(view, "中文");
     expect(view.textContent).toContain("CV 动力学分析");
     expect(view.textContent).toContain("Dunn 分析");
+    expect(view.textContent).toContain(`目标为每个序列最多 ${MAX_CHART_POINTS} 个点`);
+    expect(view.textContent).toContain(`最多可增加到每个序列 ${MAX_CHART_OUTPUT_POINTS} 个点`);
     expect(view.querySelectorAll("svg")).toHaveLength(4);
     await click(view, "EN");
     expect(view.querySelector<HTMLSelectElement>('select[name="selectedRate"]')?.value).toBe("1");

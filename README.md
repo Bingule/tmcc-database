@@ -90,7 +90,7 @@ cv-diffusion-current.csv
 cv-contribution-summary.csv
 ```
 
-Four figures—b-value, selected-potential fit, Dunn current components, and contribution percentage—can each be exported as SVG or PNG. Figures and their SVG/PNG exports use deterministic display sampling (normally at most 2,000 points per series) to keep browser rendering bounded; every scientific fit, integration, numeric result, and CSV export continues to use the complete accepted dataset. Tables and charts use horizontally scrollable wide containers and responsive one-column layouts on narrow screens.
+Four figures—b-value, selected-potential fit, Dunn current components, and contribution percentage—can each be exported as SVG or PNG. Figures and their SVG/PNG exports use deterministic display sampling with a target of at most 2,000 points per series; preserving unavailable-gap boundaries may increase display output to at most 4,000 points per series. Every scientific fit, integration, numeric result, and CSV export continues to use the complete accepted dataset. Tables and charts use horizontally scrollable wide containers and responsive one-column layouts on narrow screens.
 
 ### Theoretical Capacity Calculator
 

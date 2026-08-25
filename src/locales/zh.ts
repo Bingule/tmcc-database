@@ -367,7 +367,7 @@ export const zh = {
   "cv.export.png": "导出 PNG",
   "cv.chart.empty": "运行有效分析后显示此图。",
   "cv.chart.legend": "图例",
-  "cv.chart.samplingNotice": "图形及 SVG/PNG 导出采用确定性显示抽样（每个序列最多 {{count}} 个点）；科学分析和 CSV 导出保留完整数据集。",
+  "cv.chart.samplingNotice": "图形及 SVG/PNG 导出采用确定性显示抽样：目标为每个序列最多 {{target}} 个点；为保留不可用区间断点，显示输出最多可增加到每个序列 {{maximum}} 个点。科学分析和 CSV 导出保留完整数据集。",
   "cv.chart.tooManyGaps": "不可用区段过多，无法绘制连续 b 值曲线；已改为抽样散点视图。",
   "cv.table.potential": "电位",
   "cv.table.current": "电流",

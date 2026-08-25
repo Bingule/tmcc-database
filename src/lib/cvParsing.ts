@@ -136,7 +136,27 @@ function preflightXlsxArchive(buffer: ArrayBuffer) {
   const searchStart = Math.max(0, bytes.length - 65_557);
   let eocd = -1;
   for (let offset = bytes.length - minimumEocdSize; offset >= searchStart; offset -= 1) {
-    if (view.getUint32(offset, true) === 0x06054b50) { eocd = offset; break; }
+    if (view.getUint32(offset, true) !== 0x06054b50) continue;
+
+    const candidateDisk = view.getUint16(offset + 4, true);
+    const candidateCentralDisk = view.getUint16(offset + 6, true);
+    const candidateEntriesOnDisk = view.getUint16(offset + 8, true);
+    const candidateEntryCount = view.getUint16(offset + 10, true);
+    const candidateCentralSize = view.getUint32(offset + 12, true);
+    const candidateCentralOffset = view.getUint32(offset + 16, true);
+    const candidateCommentLength = view.getUint16(offset + 20, true);
+    if (offset + minimumEocdSize + candidateCommentLength !== bytes.length) continue;
+    if (candidateDisk !== 0 || candidateCentralDisk !== 0 || candidateEntriesOnDisk !== candidateEntryCount) continue;
+
+    const candidateUsesZip64 = candidateEntriesOnDisk === 0xffff
+      || candidateEntryCount === 0xffff
+      || candidateCentralSize === 0xffffffff
+      || candidateCentralOffset === 0xffffffff;
+    if (!candidateUsesZip64
+      && (candidateCentralOffset > offset || candidateCentralOffset + candidateCentralSize !== offset)) continue;
+
+    eocd = offset;
+    break;
   }
   if (eocd < 0) throw new Error("zipEocdMissing");
 
