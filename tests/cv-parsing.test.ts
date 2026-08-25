@@ -51,6 +51,25 @@ async function expectAsyncParseError(
 }
 
 describe("parseDelimitedCv", () => {
+  it("constructs shared-potential pairs from the selected header layout", () => {
+    const table = parseDelimitedCv("E\tI1\tI2\n0\t1\t2\n1\t3\t4", {
+      layout: "sharedPotential",
+      headerMode: "header"
+    });
+
+    expect(table.pairs.map((pair) => [pair.potentialColumn, pair.currentColumn])).toEqual([[0, 1], [0, 2]]);
+  });
+
+  it("generates shared-potential headers when the first row is data", () => {
+    const table = parseDelimitedCv("0\t1\t2\n1\t3\t4", {
+      layout: "sharedPotential",
+      headerMode: "data"
+    });
+
+    expect(table.headers).toEqual(["X", "Y1", "Y2"]);
+    expect(table.rows).toHaveLength(2);
+  });
+
   it("rejects delimited tables that exceed row, column, or cell resource limits", () => {
     expectParseError(() => parseDelimitedCv(Array.from({ length: MAX_ROWS + 1 }, (_, index) => index === 0 ? "Potential,1" : `${index},1`).join("\n")), "resourceLimitExceeded", { resource: "rows", limit: MAX_ROWS });
     const wideHeader = ["Potential", ...Array.from({ length: MAX_COLUMNS }, (_, index) => String(index + 1))].join(",");
@@ -140,16 +159,15 @@ describe("parseDelimitedCv", () => {
 
     expect(table.headers).toEqual(headers);
     expect(table.rows[0]).toHaveLength(4);
-    expect(table.currentColumns.map((column) => column.header)).toEqual(["1", "2"]);
+    expect(table.currentColumns.map((column) => column.header)).toEqual(["1", "2", "Notes"]);
   });
 
-  it("only accepts exact electrochemical E headings rather than matching e inside arbitrary words", () => {
+  it("uses the selected shared-potential column positions without inferring header names", () => {
     expect(parseDelimitedCv("E (V),1,2\n0,10,20\n1,11,21").potentialColumn).toBe(0);
     expect(parseDelimitedCv("电位,1,2\n0,10,20\n1,11,21").potentialColumn).toBe(0);
-    expectParseError(
-      () => parseDelimitedCv("Temperature,Current 1 mV/s\n0,10\n1,11"),
-      "potentialColumnMissing"
-    );
+    expect(parseDelimitedCv("Temperature,Current 1 mV/s\n0,10\n1,11").pairs).toEqual([
+      { potentialColumn: 0, currentColumn: 1, potentialHeader: "Temperature", currentHeader: "Current 1 mV/s" }
+    ]);
   });
 
   it("infers scan rates only from complete dot-decimal numeric tokens", () => {
@@ -160,6 +178,9 @@ describe("parseDelimitedCv", () => {
     ].join("\n"));
 
     expect(table.currentColumns).toEqual([
+      { column: 1, header: "1,5 mV/s", inferredScanRate: null },
+      { column: 2, header: "1..5 mV/s", inferredScanRate: null },
+      { column: 3, header: "1.5.2 mV/s", inferredScanRate: null },
       { column: 4, header: "1.5 mV/s", inferredScanRate: 1.5 },
       { column: 5, header: "2", inferredScanRate: 2 }
     ]);
@@ -177,11 +198,63 @@ describe("parseDelimitedCv", () => {
       reason: "rowWidth",
       row: 2
     });
-    expectParseError(() => parseDelimitedCv("Potential,Time\n0,0\n1,1"), "currentColumnsMissing");
+    expect(parseDelimitedCv("Potential,Time\n0,0\n1,1").pairs).toHaveLength(1);
   });
 });
 
 describe("confirmCvSeries", () => {
+  it("confirms independent paired-potential-current ranges by position", () => {
+    const table = parseDelimitedCv(
+      "E1,I1,E2,I2\n0,10,0.1,20\n1,11,1.1,21\n,,2.1,22",
+      { layout: "pairedPotentialCurrent", headerMode: "header" }
+    );
+
+    expect(confirmCvSeries(table, [1, 5])).toEqual([
+      { label: "I1", scanRate: 1, points: [{ potential: 0, current: 10 }, { potential: 1, current: 11 }] },
+      {
+        label: "I2",
+        scanRate: 5,
+        points: [{ potential: 0.1, current: 20 }, { potential: 1.1, current: 21 }, { potential: 2.1, current: 22 }]
+      }
+    ]);
+  });
+
+  it("rejects incomplete paired rows instead of coercing a blank cell to zero", () => {
+    const table = parseDelimitedCv("E1,I1,E2,I2\n0,10,0,20\n1,,1,21\n2,12,2,22", {
+      layout: "pairedPotentialCurrent",
+      headerMode: "header"
+    });
+
+    expectParseError(() => confirmCvSeries(table, [1, 5]), "malformedFile", {
+      reason: "incompletePairRow",
+      row: 3,
+      potentialColumn: 0,
+      currentColumn: 1
+    });
+  });
+
+  it("requires two complete points for every paired series", () => {
+    const table = parseDelimitedCv("E1,I1,E2,I2\n0,10,0,20\n,,1,21\n,,2,22", {
+      layout: "pairedPotentialCurrent",
+      headerMode: "header"
+    });
+
+    expectParseError(() => confirmCvSeries(table, [1, 5]), "insufficientSeries", {
+      reason: "pointCount",
+      header: "I1",
+      pointCount: 1
+    });
+  });
+
+  it("reports paired scan-rate count mismatches with expected and actual counts", () => {
+    const table = parseDelimitedCv("E1,I1,E2,I2\n0,10,0,20\n1,11,1,21", {
+      layout: "pairedPotentialCurrent",
+      headerMode: "header"
+    });
+
+    expectParseError(() => confirmCvSeries(table, [1]), "scanRateCountMismatch", { expected: 2, actual: 1 });
+  });
+
   it("keeps missing inferred rates editable and uses the confirmed values", () => {
     const table = parseDelimitedCv("Potential,Current,Current\n0,10,20\n1,11,21");
     expect(table.currentColumns.map((item) => item.inferredScanRate)).toEqual([null, null]);
@@ -194,7 +267,7 @@ describe("confirmCvSeries", () => {
 
   it("blocks missing, duplicate, zero, negative, and non-finite confirmed rates", () => {
     const table = parseDelimitedCv("Potential,1,2\n0,10,20\n1,11,21");
-    expectParseError(() => confirmCvSeries(table, [1]), "missingScanRate");
+    expectParseError(() => confirmCvSeries(table, [1]), "scanRateCountMismatch", { expected: 2, actual: 1 });
     const sparseRates = [1, 2];
     delete sparseRates[1];
     expectParseError(() => confirmCvSeries(table, sparseRates), "missingScanRate");
@@ -270,7 +343,7 @@ describe("parseCvFile", () => {
   it("reads a valid XLSX File through the read-excel-file browser API", async () => {
     const table = await parseCvFile(makeMinimalXlsxFile());
 
-    expect(table).toEqual({
+    expect(table).toMatchObject({
       headers: ["Potential", "1 mV/s", "Current 5 mV s-1"],
       rows: [[0, 10, 50], [1, 11, 51]],
       potentialColumn: 0,
