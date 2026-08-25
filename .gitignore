@@ -5,3 +5,4 @@ dist/
 .tmcc-hosts-result.txt
 cluster_calculations/
 .superpowers/
+.worktrees/
