@@ -18,6 +18,11 @@ describe("parseScanRateList", () => {
     );
   });
 
+  it("accepts the inclusive three-rate and twenty-rate boundaries", () => {
+    expect(parseScanRateList("1,2,3")).toEqual([1, 2, 3]);
+    expect(parseScanRateList(Array.from({ length: 20 }, (_, index) => index + 1).join(" "))).toHaveLength(20);
+  });
+
   it("rejects duplicate scan rates", () => {
     expect(() => parseScanRateList("1,2,2")).toThrowError(
       expect.objectContaining({ code: "duplicateScanRate" }),

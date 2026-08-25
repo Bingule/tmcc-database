@@ -24,6 +24,10 @@ import {
   type CvParseErrorCode
 } from "../src/lib/cvParsing";
 
+const sharedHeaderOptions = { layout: "sharedPotential", headerMode: "header" } as const;
+const parseShared = (text: string) => parseDelimitedCv(text, sharedHeaderOptions);
+const parseSharedFile = (file: File) => parseCvFile(file, sharedHeaderOptions);
+
 function expectParseError(action: () => unknown, code: CvParseErrorCode, detail?: Record<string, unknown>) {
   try {
     action();
@@ -51,6 +55,11 @@ async function expectAsyncParseError(
 }
 
 describe("parseDelimitedCv", () => {
+  it("requires callers to provide explicit import options", () => {
+    expect(parseDelimitedCv.length).toBe(2);
+    expect(parseCvFile.length).toBe(2);
+  });
+
   it("constructs shared-potential pairs from the selected header layout", () => {
     const table = parseDelimitedCv("E\tI1\tI2\n0\t1\t2\n1\t3\t4", {
       layout: "sharedPotential",
@@ -71,17 +80,17 @@ describe("parseDelimitedCv", () => {
   });
 
   it("rejects delimited tables that exceed row, column, or cell resource limits", () => {
-    expectParseError(() => parseDelimitedCv(Array.from({ length: MAX_ROWS + 1 }, (_, index) => index === 0 ? "Potential,1" : `${index},1`).join("\n")), "resourceLimitExceeded", { resource: "rows", limit: MAX_ROWS });
+    expectParseError(() => parseShared(Array.from({ length: MAX_ROWS + 1 }, (_, index) => index === 0 ? "Potential,1" : `${index},1`).join("\n")), "resourceLimitExceeded", { resource: "rows", limit: MAX_ROWS });
     const wideHeader = ["Potential", ...Array.from({ length: MAX_COLUMNS }, (_, index) => String(index + 1))].join(",");
-    expectParseError(() => parseDelimitedCv(`${wideHeader}\n${Array.from({ length: MAX_COLUMNS + 1 }, () => "1").join(",")}`), "resourceLimitExceeded", { resource: "columns", limit: MAX_COLUMNS });
+    expectParseError(() => parseShared(`${wideHeader}\n${Array.from({ length: MAX_COLUMNS + 1 }, () => "1").join(",")}`), "resourceLimitExceeded", { resource: "columns", limit: MAX_COLUMNS });
     const width = 201;
     const rows = Math.floor(MAX_CELLS / width) + 2;
     const header = ["Potential", ...Array.from({ length: width - 1 }, (_, index) => String(index + 1))].join(",");
     const data = Array.from({ length: width }, () => "1").join(",");
-    expectParseError(() => parseDelimitedCv([header, ...Array.from({ length: rows - 1 }, () => data)].join("\n")), "resourceLimitExceeded", { resource: "cells", limit: MAX_CELLS });
+    expectParseError(() => parseShared([header, ...Array.from({ length: rows - 1 }, () => data)].join("\n")), "resourceLimitExceeded", { resource: "cells", limit: MAX_CELLS });
   }, 30_000);
   it("parses quote-aware comma CSV into positional shared-potential pairs with compatibility rate hints", () => {
-    const table = parseDelimitedCv([
+    const table = parseShared([
       'Potential,"1","2 mV/s","Current 5 mV s-1","Current, unassigned"',
       "0,10,20,50,5",
       "0.5,11,21,51,6"
@@ -112,20 +121,20 @@ describe("parseDelimitedCv", () => {
     ["semicolon", "Potential;1;2\n0;10;20\n1;11;21"],
     ["whitespace", "Potential 1 2\n0 10 20\n1 11 21"]
   ])("parses %s-separated tables", (_name, text) => {
-    const table = parseDelimitedCv(text);
+    const table = parseShared(text);
     expect(table.headers).toEqual(["Potential", "1", "2"]);
     expect(table.rows).toEqual([[0, 10, 20], [1, 11, 21]]);
   });
 
   it("falls back to whitespace when punctuation in a heading is not delimiter structure", () => {
-    const table = parseDelimitedCv("Potential current;raw 2\n0 10 20\n1 11 21");
+    const table = parseShared("Potential current;raw 2\n0 10 20\n1 11 21");
 
     expect(table.headers).toEqual(["Potential", "current;raw", "2"]);
     expect(table.currentColumns).toHaveLength(2);
   });
 
   it("prefers a structurally valid whitespace table over malformed delimiter punctuation", () => {
-    const table = parseDelimitedCv("Potential;foo Current 2\n0 10 20\n1 11 21");
+    const table = parseShared("Potential;foo Current 2\n0 10 20\n1 11 21");
 
     expect(table.headers).toEqual(["Potential;foo", "Current", "2"]);
     expect(table.currentColumns.map((column) => column.header)).toEqual(["Current", "2"]);
@@ -155,7 +164,7 @@ describe("parseDelimitedCv", () => {
     text,
     headers
   ) => {
-    const table = parseDelimitedCv(text);
+    const table = parseShared(text);
 
     expect(table.headers).toEqual(headers);
     expect(table.rows[0]).toHaveLength(4);
@@ -163,15 +172,15 @@ describe("parseDelimitedCv", () => {
   });
 
   it("uses the selected shared-potential column positions without inferring header names", () => {
-    expect(parseDelimitedCv("E (V),1,2\n0,10,20\n1,11,21").potentialColumn).toBe(0);
-    expect(parseDelimitedCv("电位,1,2\n0,10,20\n1,11,21").potentialColumn).toBe(0);
-    expect(parseDelimitedCv("Temperature,Current 1 mV/s\n0,10\n1,11").pairs).toEqual([
+    expect(parseShared("E (V),1,2\n0,10,20\n1,11,21").potentialColumn).toBe(0);
+    expect(parseShared("电位,1,2\n0,10,20\n1,11,21").potentialColumn).toBe(0);
+    expect(parseShared("Temperature,Current 1 mV/s\n0,10\n1,11").pairs).toEqual([
       { potentialColumn: 0, currentColumn: 1, potentialHeader: "Temperature", currentHeader: "Current 1 mV/s" }
     ]);
   });
 
   it("retains only valid dot-decimal compatibility rate hints without filtering positional columns", () => {
-    const table = parseDelimitedCv([
+    const table = parseShared([
       'Potential,"1,5 mV/s","1..5 mV/s","1.5.2 mV/s","1.5 mV/s",2',
       "0,10,20,30,40,50",
       "1,11,21,31,41,51"
@@ -187,18 +196,18 @@ describe("parseDelimitedCv", () => {
   });
 
   it("rejects empty input, unclosed quotes, and malformed row widths while preserving positional columns", () => {
-    expectParseError(() => parseDelimitedCv(" \r\n\t"), "emptyFile");
-    expectParseError(() => parseDelimitedCv('Potential,"1\n0,10'), "malformedFile", { reason: "unclosedQuote" });
+    expectParseError(() => parseShared(" \r\n\t"), "emptyFile");
+    expectParseError(() => parseShared('Potential,"1\n0,10'), "malformedFile", { reason: "unclosedQuote" });
     expectParseError(
-      () => parseDelimitedCv('Potential,"1"junk,2\n0,10,20\n1,11,21'),
+      () => parseShared('Potential,"1"junk,2\n0,10,20\n1,11,21'),
       "malformedFile",
       { reason: "charactersAfterQuote" }
     );
-    expectParseError(() => parseDelimitedCv("Potential,1,2\n0,10\n1,11,21"), "malformedFile", {
+    expectParseError(() => parseShared("Potential,1,2\n0,10\n1,11,21"), "malformedFile", {
       reason: "rowWidth",
       row: 2
     });
-    expect(parseDelimitedCv("Potential,Time\n0,0\n1,1").pairs).toHaveLength(1);
+    expect(parseShared("Potential,Time\n0,0\n1,1").pairs).toHaveLength(1);
   });
 });
 
@@ -256,7 +265,7 @@ describe("confirmCvSeries", () => {
   });
 
   it("uses confirmed rates for positional pairs when compatibility rate hints are absent", () => {
-    const table = parseDelimitedCv("Potential,Current,Current\n0,10,20\n1,11,21");
+    const table = parseShared("Potential,Current,Current\n0,10,20\n1,11,21");
     expect(table.currentColumns.map((item) => item.inferredScanRate)).toEqual([null, null]);
 
     expect(confirmCvSeries(table, [2, 5])).toEqual([
@@ -266,7 +275,7 @@ describe("confirmCvSeries", () => {
   });
 
   it("blocks missing, duplicate, zero, negative, and non-finite confirmed rates", () => {
-    const table = parseDelimitedCv("Potential,1,2\n0,10,20\n1,11,21");
+    const table = parseShared("Potential,1,2\n0,10,20\n1,11,21");
     expectParseError(() => confirmCvSeries(table, [1]), "scanRateCountMismatch", { expected: 2, actual: 1 });
     const sparseRates = [1, 2];
     delete sparseRates[1];
@@ -278,7 +287,7 @@ describe("confirmCvSeries", () => {
   });
 
   it("preserves sparse points independently for each current series", () => {
-    const table = parseDelimitedCv("Potential,1,2\n2,12,22\n0,10,\n1,,20");
+    const table = parseShared("Potential,1,2\n2,12,22\n0,10,\n1,,20");
 
     expect(confirmCvSeries(table, [1, 2])).toEqual([
       { label: "1", scanRate: 1, points: [{ potential: 0, current: 10 }, { potential: 2, current: 12 }] },
@@ -288,12 +297,12 @@ describe("confirmCvSeries", () => {
 
   it("requires two points per series and reports duplicate potentials with stable detail", () => {
     expectParseError(
-      () => confirmCvSeries(parseDelimitedCv("Potential,1,2\n0,10,20\n1,,21"), [1, 2]),
+      () => confirmCvSeries(parseShared("Potential,1,2\n0,10,20\n1,,21"), [1, 2]),
       "insufficientSeries",
       { header: "1", pointCount: 1 }
     );
     expectParseError(
-      () => confirmCvSeries(parseDelimitedCv("Potential,1,2\n0,10,20\n0,11,21"), [1, 2]),
+      () => confirmCvSeries(parseShared("Potential,1,2\n0,10,20\n0,11,21"), [1, 2]),
       "malformedFile",
       { reason: "duplicatePotential", header: "1", potential: 0 }
     );
@@ -304,44 +313,44 @@ describe("parseCvFile", () => {
   it("rejects oversized files and workbooks with too many sheets before table processing", async () => {
     const oversized = new File(["Potential,1,2\n0,1,2"], "large.csv");
     Object.defineProperty(oversized, "size", { value: MAX_FILE_BYTES + 1 });
-    await expectAsyncParseError(() => parseCvFile(oversized), "resourceLimitExceeded", { resource: "fileBytes", limit: MAX_FILE_BYTES });
+    await expectAsyncParseError(() => parseSharedFile(oversized), "resourceLimitExceeded", { resource: "fileBytes", limit: MAX_FILE_BYTES });
 
     const sheets = Array.from({ length: MAX_SHEETS + 1 }, (_, index) => ({ name: `S${index}`, rows: [["Potential", "1", "2"], [0, 1, 2], [1, 2, 3]] }));
-    await expectAsyncParseError(() => parseCvFile(makeWorkbookFile(sheets, "many-sheets.xlsx")), "resourceLimitExceeded", { resource: "zipWorksheets", limit: MAX_SHEETS });
+    await expectAsyncParseError(() => parseSharedFile(makeWorkbookFile(sheets, "many-sheets.xlsx")), "resourceLimitExceeded", { resource: "zipWorksheets", limit: MAX_SHEETS });
   });
 
   it("rejects XLSX compression bombs and excessive worksheet declarations in central-directory preflight", async () => {
     const ratioBomb = makeDeclaredZip([{ name: "xl/worksheets/sheet1.xml", compressed: 1, uncompressed: MAX_XLSX_COMPRESSION_RATIO + 1 }]);
-    await expectAsyncParseError(() => parseCvFile(new File([ratioBomb], "ratio.xlsx")), "resourceLimitExceeded", { resource: "zipCompressionRatio", limit: MAX_XLSX_COMPRESSION_RATIO });
+    await expectAsyncParseError(() => parseSharedFile(new File([ratioBomb], "ratio.xlsx")), "resourceLimitExceeded", { resource: "zipCompressionRatio", limit: MAX_XLSX_COMPRESSION_RATIO });
 
     const singleBomb = makeDeclaredZip([{ name: "xl/sharedStrings.xml", compressed: 1_000_000, uncompressed: MAX_XLSX_ENTRY_UNCOMPRESSED_BYTES + 1 }]);
-    await expectAsyncParseError(() => parseCvFile(new File([singleBomb], "single.xlsx")), "resourceLimitExceeded", { resource: "zipEntryBytes", limit: MAX_XLSX_ENTRY_UNCOMPRESSED_BYTES });
+    await expectAsyncParseError(() => parseSharedFile(new File([singleBomb], "single.xlsx")), "resourceLimitExceeded", { resource: "zipEntryBytes", limit: MAX_XLSX_ENTRY_UNCOMPRESSED_BYTES });
 
     const totalBomb = makeDeclaredZip(Array.from({ length: 3 }, (_, index) => ({ name: `xl/media/item${index}.bin`, compressed: 1_000_000, uncompressed: Math.floor(MAX_XLSX_TOTAL_UNCOMPRESSED_BYTES / 3) + 1 })));
-    await expectAsyncParseError(() => parseCvFile(new File([totalBomb], "total.xlsx")), "resourceLimitExceeded", { resource: "zipTotalBytes", limit: MAX_XLSX_TOTAL_UNCOMPRESSED_BYTES });
+    await expectAsyncParseError(() => parseSharedFile(new File([totalBomb], "total.xlsx")), "resourceLimitExceeded", { resource: "zipTotalBytes", limit: MAX_XLSX_TOTAL_UNCOMPRESSED_BYTES });
 
     const worksheetBomb = makeDeclaredZip(Array.from({ length: MAX_XLSX_WORKSHEETS + 1 }, (_, index) => ({ name: `xl/worksheets/sheet${index}.xml`, compressed: 0, uncompressed: 0 })));
-    await expectAsyncParseError(() => parseCvFile(new File([worksheetBomb], "worksheets.xlsx")), "resourceLimitExceeded", { resource: "zipWorksheets", limit: MAX_XLSX_WORKSHEETS });
+    await expectAsyncParseError(() => parseSharedFile(new File([worksheetBomb], "worksheets.xlsx")), "resourceLimitExceeded", { resource: "zipWorksheets", limit: MAX_XLSX_WORKSHEETS });
   });
 
   it("rejects ZIP64 sentinels and malformed central-directory signatures before XLSX decompression", async () => {
     const zip64 = makeDeclaredZip([{ name: "xl/workbook.xml", compressed: 1, uncompressed: 1 }], { zip64: true });
-    await expectAsyncParseError(() => parseCvFile(new File([zip64], "zip64.xlsx")), "resourceLimitExceeded", { resource: "zip64" });
+    await expectAsyncParseError(() => parseSharedFile(new File([zip64], "zip64.xlsx")), "resourceLimitExceeded", { resource: "zip64" });
 
     const malformed = new Uint8Array(makeDeclaredZip([{ name: "xl/workbook.xml", compressed: 1, uncompressed: 1 }]));
     new DataView(malformed.buffer).setUint32(30, 0x12345678, true);
-    await expectAsyncParseError(() => parseCvFile(new File([malformed], "bad-central.xlsx")), "malformedFile", { reason: "invalidXlsx" });
+    await expectAsyncParseError(() => parseSharedFile(new File([malformed], "bad-central.xlsx")), "malformedFile", { reason: "invalidXlsx" });
   });
   it("parses CSV and TXT File objects through the shared delimited parser", async () => {
     const csv = new File(["Potential,1,2\n0,10,20\n1,11,21"], "example.csv", { type: "text/csv" });
     const txt = new File(["Potential\t1\t2\n0\t10\t20\n1\t11\t21"], "example.txt", { type: "text/plain" });
 
-    await expect(parseCvFile(csv)).resolves.toMatchObject({ potentialColumn: 0 });
-    await expect(parseCvFile(txt)).resolves.toMatchObject({ potentialColumn: 0 });
+    await expect(parseSharedFile(csv)).resolves.toMatchObject({ potentialColumn: 0 });
+    await expect(parseSharedFile(txt)).resolves.toMatchObject({ potentialColumn: 0 });
   });
 
   it("reads a valid XLSX File through the read-excel-file browser API", async () => {
-    const table = await parseCvFile(makeMinimalXlsxFile());
+    const table = await parseSharedFile(makeMinimalXlsxFile());
 
     expect(table).toMatchObject({
       headers: ["Potential", "1 mV/s", "Current 5 mV s-1"],
@@ -362,7 +371,7 @@ describe("parseCvFile", () => {
       name: "CV",
       data: [["Potential", "1", "2"], [0, 1, 2], [1, 2, 3]]
     }]);
-    await expect(parseCvFile(new File([commented], "commented.xlsx"))).resolves.toMatchObject({ potentialColumn: 0 });
+    await expect(parseSharedFile(new File([commented], "commented.xlsx"))).resolves.toMatchObject({ potentialColumn: 0 });
     expect(readXlsxFileSpy).toHaveBeenCalledWith(expect.any(ArrayBuffer));
   });
 
@@ -379,7 +388,7 @@ describe("parseCvFile", () => {
       }
     ], "multi-sheet.xlsx");
 
-    const table = await parseCvFile(file);
+    const table = await parseSharedFile(file);
 
     expect(table.headers).toEqual(["Potential", "1 mV/s", "2 mV/s"]);
     expect(table.rows).toEqual([[0, 10, 20], [1, 11, 21]]);
@@ -422,7 +431,7 @@ describe("parseCvFile", () => {
       { name: "Empty", rows: [] }
     ], "no-useful-sheet.xlsx");
 
-    await expectAsyncParseError(() => parseCvFile(file), "malformedFile", {
+    await expectAsyncParseError(() => parseSharedFile(file), "malformedFile", {
       reason: "usefulSheetMissing",
       fileName: "no-useful-sheet.xlsx",
       sheetCount: 2
@@ -431,11 +440,11 @@ describe("parseCvFile", () => {
 
   it("explicitly rejects legacy .xls files and wraps malformed XLSX files", async () => {
     await expectAsyncParseError(
-      () => parseCvFile(new File(["legacy"], "legacy.xls", { type: "application/vnd.ms-excel" })),
+      () => parseSharedFile(new File(["legacy"], "legacy.xls", { type: "application/vnd.ms-excel" })),
       "malformedFile"
     );
     await expectAsyncParseError(
-      () => parseCvFile(new File(["not a zip"], "broken.xlsx")),
+      () => parseSharedFile(new File(["not a zip"], "broken.xlsx")),
       "malformedFile",
       { reason: "invalidXlsx", fileName: "broken.xlsx" }
     );
@@ -448,7 +457,7 @@ describe("parseCvFile", () => {
     });
 
     try {
-      await parseCvFile(unreadable);
+      await parseSharedFile(unreadable);
       throw new Error("expectedCvParseError");
     } catch (error) {
       expect(error).toBeInstanceOf(CvParseError);

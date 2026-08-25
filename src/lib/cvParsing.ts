@@ -25,9 +25,7 @@ export type ParsedCvTable = CvImportParsedCvTable & {
   }>;
 }
 
-const LEGACY_IMPORT_OPTIONS: CvImportOptions = { layout: "sharedPotential", headerMode: "header" };
-
-export function parseDelimitedCv(text: string, options: CvImportOptions = LEGACY_IMPORT_OPTIONS): ParsedCvTable {
+export function parseDelimitedCv(text: string, options: CvImportOptions): ParsedCvTable {
   if (text.trim().length === 0) throw new CvParseError("emptyFile");
   const byteLength = text.length > MAX_FILE_BYTES ? text.length : new TextEncoder().encode(text).byteLength;
   if (byteLength > MAX_FILE_BYTES) throwResourceLimit("fileBytes", MAX_FILE_BYTES, byteLength);
@@ -53,7 +51,7 @@ export function parseDelimitedCv(text: string, options: CvImportOptions = LEGACY
   return makeParsedTable(rows.map((row) => row.map(parseTextCell)), options);
 }
 
-export async function parseCvFile(file: File, options: CvImportOptions = LEGACY_IMPORT_OPTIONS): Promise<ParsedCvTable> {
+export async function parseCvFile(file: File, options: CvImportOptions): Promise<ParsedCvTable> {
   if (file.size > MAX_FILE_BYTES) throwResourceLimit("fileBytes", MAX_FILE_BYTES, file.size);
   const extension = file.name.trim().toLocaleLowerCase("en-US").match(/\.[^.]+$/)?.[0] ?? "";
   if (extension === ".xls") {
