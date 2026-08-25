@@ -129,4 +129,29 @@ describe("ScientificLineChart", () => {
     const path = view.querySelector('path[data-series-id="gapped"]')?.getAttribute("d") ?? "";
     expect(path.match(/\bM\b/g)).toHaveLength(2);
   });
+
+  it("does not substitute the nearest rendered point for an exact unavailable selection", async () => {
+    const view = await renderChart({
+      ...baseProps,
+      selectedX: 1,
+      series: [{
+        id: "gapped",
+        label: "Gapped",
+        color: "#123456",
+        points: [{ x: 0, y: 1 }, { x: 1, y: null }, { x: 2, y: 3 }]
+      }]
+    });
+
+    expect(view.querySelector('[data-selected-x="1"]')).toBeNull();
+  });
+
+  it("renders export settings as visible SVG text", async () => {
+    const view = await renderChart({
+      ...baseProps,
+      metadata: "XYYYYY · File upload · interval = 5 · R² ≥ 0.95"
+    });
+
+    const metadata = view.querySelector('[data-chart-metadata="true"]');
+    expect(metadata?.textContent).toBe("XYYYYY · File upload · interval = 5 · R² ≥ 0.95");
+  });
 });

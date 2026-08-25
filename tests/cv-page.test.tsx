@@ -73,6 +73,15 @@ async function setSelect(select: HTMLSelectElement, value: string) {
   });
 }
 
+function readBlob(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsText(blob);
+  });
+}
+
 function expectAnalysisInvalidated(view: HTMLElement) {
   expect(view.querySelectorAll("svg")).toHaveLength(0);
   expect(view.querySelectorAll<HTMLButtonElement>(".cv-export button:not(:disabled)")).toHaveLength(0);
@@ -80,6 +89,20 @@ function expectAnalysisInvalidated(view: HTMLElement) {
 
 const csv = `Potential,Current 1 mV/s,Current 4 mV/s,Current 9 mV/s\n0,3,8,15\n0.5,4.5,18,40.5\n1,6,32,90`;
 const csvFilenames = ["cv-interpolated-data.csv", "cv-b-value-results.csv", "cv-dunn-k1-k2.csv", "cv-capacitive-current.csv", "cv-diffusion-current.csv", "cv-contribution-summary.csv"];
+
+function qualityCsv() {
+  const special = new Map<number, [number, number, number]>([
+    [5, [1, 8, 2]],
+    [10, [0, 4, 9]]
+  ]);
+  return [
+    "Potential,Current 1 mV/s,Current 4 mV/s,Current 9 mV/s",
+    ...Array.from({ length: 21 }, (_, potential) => {
+      const currents = special.get(potential) ?? [potential + 1, 4 * (potential + 1), 9 * (potential + 1)];
+      return `${potential},${currents.join(",")}`;
+    })
+  ].join("\n");
+}
 
 describe("CV kinetics page", () => {
   it("requires an explicit layout and parses both upload and Excel paste with selected header handling", async () => {
@@ -254,7 +277,7 @@ describe("CV kinetics page", () => {
     await upload(view, "Potential,Current 1 mV/s,Current 4 mV/s,Current 9 mV/s\n0,0,0,0\n0.5,2,8,18\n1,3,6,9");
     await click(view, "Run analysis");
     const potential = view.querySelector<HTMLSelectElement>('select[name="selectedPotential"]')!;
-    expect([...potential.options].map((option) => option.value)).toEqual(["0.5", "1"]);
+    expect([...potential.options].map((option) => option.value)).toEqual(["0", "0.5", "1"]);
     expect(view.textContent).toContain("Missing b-value fits: 1 of 3 potential points");
     expect(view.querySelector('[data-export-id="cv-dunn-chart"] [data-selected-x="0.5"]')).not.toBeNull();
     expect(view.querySelector('[data-export-id="cv-fit-chart"]')?.textContent).toContain("log(|current|)");
@@ -263,7 +286,7 @@ describe("CV kinetics page", () => {
     vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
     await click(view, "cv-b-value-results.csv");
     const exported = await new Promise<string>((resolve) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.readAsText(blobs[0]); });
-    expect(exported).toContain("0,,,,,Unavailable");
+    expect(exported).toContain("0,,,,,Zero-current logarithm unavailable");
   });
 
   it("maps exact potential and rate selections to the signed Dunn curves", async () => {
@@ -329,6 +352,111 @@ describe("CV kinetics page", () => {
     const png = [...view.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.includes("cv-b-chart.png"))!;
     await act(async () => { png.click(); await new Promise((resolve) => setTimeout(resolve, 0)); });
     expect(view.querySelector('[aria-live="polite"]')?.textContent).toContain("导出失败");
+  });
+
+  it("reports full quality metadata, retains every fit record, and selects excluded potentials exactly", async () => {
+    const view = await renderPage();
+    await upload(view, qualityCsv());
+    await setSelect(view.querySelector<HTMLSelectElement>('select[name="cv-point-interval"]')!, "5");
+    await click(view, "Run analysis");
+
+    const summary = view.querySelector('[data-quality-summary="true"]')?.textContent ?? "";
+    expect(summary).toContain("XYYYYY");
+    expect(summary).toContain("File upload");
+    expect(summary).toContain("3 curves");
+    expect(summary).toContain("1, 4, 9 mV/s");
+    expect(summary).toContain("0–20 V");
+    expect(summary).toContain("21");
+    expect(summary).toContain("5 retained");
+    expect(summary).toContain("interval 5");
+    expect(summary).toContain("R² ≥ 0.95");
+    expect(summary).toContain("3 valid / 1 excluded / 1 unavailable");
+    expect(summary).toContain("4 valid / 1 excluded / 0 unavailable");
+    expect(summary).toContain("4 / 5");
+    expect(summary).toContain("80%");
+
+    const bTable = view.querySelector('[data-table-id="cv-b-records-table"]')!;
+    const dunnTable = view.querySelector('[data-table-id="cv-dunn-records-table"]')!;
+    expect(bTable.querySelector("thead")?.textContent).toContain("Fit status");
+    expect(dunnTable.querySelector("thead")?.textContent).toContain("Fit status");
+    expect(bTable.querySelectorAll("tbody tr")).toHaveLength(5);
+    expect(dunnTable.querySelectorAll("tbody tr")).toHaveLength(5);
+
+    const excludedRow = [...bTable.querySelectorAll<HTMLTableRowElement>("tbody tr")].find((row) => row.cells[0].textContent === "5")!;
+    expect(excludedRow.textContent).toContain("Below R² threshold");
+    expect(excludedRow.cells[1].textContent).not.toBe("—");
+    expect(excludedRow.cells[3].textContent).not.toBe("—");
+    expect(excludedRow.cells[4].textContent).toBe("3");
+    const unavailableRow = [...bTable.querySelectorAll<HTMLTableRowElement>("tbody tr")].find((row) => row.cells[0].textContent === "10")!;
+    expect([...unavailableRow.cells].slice(1, 5).map((cell) => cell.textContent)).toEqual(["—", "—", "—", "—"]);
+    expect(unavailableRow.textContent).toContain("Zero-current logarithm unavailable");
+
+    const potential = view.querySelector<HTMLSelectElement>('select[name="selectedPotential"]')!;
+    expect([...potential.options].map((option) => option.value)).toEqual(["0", "5", "10", "15", "20"]);
+    await setSelect(potential, "5");
+    expect(view.querySelector('[data-selected-fit-status="true"]')?.textContent).toContain("Below R² threshold");
+    expect(view.querySelector('[data-selected-fit-status="true"]')?.textContent).toContain("R²");
+    expect(view.querySelector('[data-export-id="cv-b-chart"] [data-selected-x="5"]')).toBeNull();
+    expect((view.querySelector('path[data-series-id="b-values"]')?.getAttribute("d") ?? "").match(/\bM\b/g)).toHaveLength(2);
+
+    const contributionTable = view.querySelector('[data-table-id="cv-contribution-table"]')!;
+    expect(contributionTable.querySelector("thead")?.textContent).toContain("Valid / sampled points");
+    expect(contributionTable.querySelector("thead")?.textContent).toContain("Coverage");
+    expect(contributionTable.textContent).toContain("4 / 5");
+    expect(view.textContent).toContain("unavailable when no contiguous valid segment");
+
+    await click(view, "中文");
+    expect(view.querySelector('[data-table-id="cv-b-records-table"]')?.textContent).toContain("低于 R² 阈值");
+    expect(view.querySelector('[data-quality-summary="true"]')?.textContent).toContain("80%");
+  });
+
+  it("exports exactly six bilingual audit-ready CSVs and embeds current settings in SVG and PNG", async () => {
+    const view = await renderPage();
+    await upload(view, qualityCsv());
+    await setSelect(view.querySelector<HTMLSelectElement>('select[name="cv-point-interval"]')!, "5");
+    await click(view, "Run analysis");
+    const blobs: Blob[] = [];
+    const downloaded: string[] = [];
+    vi.stubGlobal("URL", { createObjectURL: vi.fn((blob: Blob) => { blobs.push(blob); return `blob:${blobs.length}`; }), revokeObjectURL: vi.fn() });
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) { downloaded.push(this.download); });
+
+    for (const filename of csvFilenames) await click(view, filename);
+    expect(downloaded).toEqual(csvFilenames);
+    expect([...view.querySelectorAll<HTMLButtonElement>('.cv-export button')].filter((button) => button.textContent?.endsWith(".csv"))).toHaveLength(6);
+    const exported = await Promise.all(blobs.map(readBlob));
+    expect(exported[0].split("\r\n")[0]).toContain("Data layout: XYYYYY");
+    expect(exported[0].split("\r\n")[0]).toContain("Point interval: 5");
+    expect(exported[1]).toContain("Fit status,Data layout,Data source,Point interval,R² threshold");
+    expect(exported[1]).toContain("Below R² threshold,XYYYYY,File upload,5,0.95");
+    expect(exported[1]).toContain("10,,,,,Zero-current logarithm unavailable");
+    expect(exported[2]).toContain("Fit status,Data layout,Data source,Point interval,R² threshold");
+    expect(exported[3].split("\r\n")[0]).toContain("R² threshold: 0.95");
+    expect(exported[4].split("\r\n")[0]).toContain("R² threshold: 0.95");
+    expect(exported[5]).toContain("Valid points,Sampled points,Coverage (%),Contribution status,Data layout,Data source,Point interval,R² threshold");
+    expect(exported[5]).toContain(",4,5,80,Available,XYYYYY,File upload,5,0.95");
+
+    await click(view, "中文");
+    await click(view, "cv-b-value-results.csv");
+    const chinese = await readBlob(blobs[6]);
+    expect(chinese).toContain("拟合状态,数据格式,数据来源,取点间隔,R² 阈值");
+    expect(chinese).toContain("低于 R² 阈值,XYYYYY,上传文件,5,0.95");
+
+    await click(view, "EN");
+    await click(view, "Export SVG — cv-b-chart.svg");
+    const svg = await readBlob(blobs[7]);
+    expect(svg).toContain("interval = 5");
+    expect(svg).toContain("R² ≥ 0.95");
+    expect(svg).toContain("XYYYYY");
+
+    const drawImage = vi.fn();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({ drawImage } as unknown as CanvasRenderingContext2D);
+    vi.spyOn(HTMLCanvasElement.prototype, "toBlob").mockImplementation((callback) => callback(new Blob(["png"], { type: "image/png" })));
+    class LoadingImage { onload: null | (() => void) = null; onerror: null | (() => void) = null; set src(_value: string) { queueMicrotask(() => this.onload?.()); } }
+    vi.stubGlobal("Image", LoadingImage);
+    await click(view, "Export PNG — cv-b-chart.png");
+    const pngSourceSvg = await readBlob(blobs[8]);
+    expect(pngSourceSvg).toContain("interval = 5");
+    expect(pngSourceSvg).toContain("R² ≥ 0.95");
   });
 
   it("sorts scan-rate displays, uses point-only b observations, and breaks b curves across unavailable potentials", async () => {

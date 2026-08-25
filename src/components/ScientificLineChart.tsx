@@ -19,6 +19,7 @@ interface ScientificLineChartProps {
   selectedX?: number;
   onSelectX?: (x: number) => void;
   exportId?: string;
+  metadata?: string;
 }
 
 const dimensions = { width: 800, height: 420 };
@@ -33,7 +34,8 @@ export function ScientificLineChart({
   series,
   selectedX,
   onSelectX,
-  exportId
+  exportId,
+  metadata
 }: ScientificLineChartProps): React.ReactElement {
   const titleId = useId();
   const finiteSeries = series.map((item) => ({
@@ -50,7 +52,8 @@ export function ScientificLineChart({
   const yDomain = expandedDomain(allPoints, "y");
   const legendColumns = 4;
   const legendRows = Math.ceil(finiteSeries.length / legendColumns);
-  const chartMargin = { ...margin, top: Math.max(margin.top, 18 + legendRows * 22) };
+  const legendTop = metadata ? 39 : 17;
+  const chartMargin = { ...margin, top: Math.max(margin.top, legendTop + legendRows * 22) };
   const plotWidth = dimensions.width - chartMargin.left - chartMargin.right;
   const plotHeight = dimensions.height - chartMargin.top - chartMargin.bottom;
   const projectX = (value: number) => chartMargin.left + normalized(value, xDomain) * plotWidth;
@@ -58,7 +61,7 @@ export function ScientificLineChart({
   const xTicks = ticks(xDomain);
   const yTicks = ticks(yDomain);
   const selectedPoint = Number.isFinite(selectedX)
-    ? allPoints.reduce((nearest, point) => Math.abs(point.x - selectedX!) < Math.abs(nearest.x - selectedX!) ? point : nearest)
+    ? allPoints.find((point) => point.x === selectedX) ?? null
     : null;
 
   return (
@@ -73,6 +76,13 @@ export function ScientificLineChart({
         className="scientific-chart-svg"
       >
         <title id={titleId}>{title}</title>
+        {metadata && <text
+          data-chart-metadata="true"
+          x={chartMargin.left}
+          y={17}
+          fill="#455a64"
+          fontSize={11}
+        >{metadata}</text>}
         <g
           className="scientific-chart-legend"
           data-chart-legend="true"
@@ -83,7 +93,7 @@ export function ScientificLineChart({
             const column = index % legendColumns;
             const row = Math.floor(index / legendColumns);
             const x = chartMargin.left + column * (plotWidth / legendColumns);
-            const y = 17 + row * 22;
+            const y = legendTop + row * 22;
             return (
               <g key={item.id} className="scientific-chart-legend-item" transform={`translate(${x} ${y})`}>
                 {item.mode === "points" ? <circle cx={13} cy={0} r={3.5} fill={item.color} /> : <line x1={0} y1={0} x2={26} y2={0} stroke={item.color} strokeWidth={2.25} strokeDasharray={item.dash} />}

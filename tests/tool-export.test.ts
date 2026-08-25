@@ -77,6 +77,9 @@ describe("browser downloads", () => {
     const mocks = installUrlMocks();
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svg.setAttribute("viewBox", "0 0 120 60");
+    const metadata = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    metadata.textContent = "interval = 5 · R² ≥ 0.95";
+    svg.appendChild(metadata);
     const drawImage = vi.fn();
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({ drawImage } as unknown as CanvasRenderingContext2D);
     vi.spyOn(HTMLCanvasElement.prototype, "toBlob").mockImplementation((callback) => callback(new Blob(["png"], { type: "image/png" })));
@@ -92,6 +95,7 @@ describe("browser downloads", () => {
     expect(drawImage).toHaveBeenCalledWith(expect.any(LoadingImage), 0, 0, 240, 120);
     expect(mocks.click).toHaveBeenCalledOnce();
     expect(mocks.created.map((blob) => blob.type)).toEqual(["image/svg+xml;charset=utf-8", "image/png"]);
+    await expect(readBlob(mocks.created[0])).resolves.toContain("interval = 5 · R² ≥ 0.95");
     expect(mocks.revoked).toEqual(["blob:test-2", "blob:test-1"]);
   });
 
