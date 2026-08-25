@@ -1,7 +1,7 @@
 # CV Import Formats, Point Interval, and R² Filtering Design
 
-Date: 2026-08-25  
-Branch: `enhance-cv-import-controls`  
+Date: 2026-08-25
+Branch: `enhance-cv-import-controls`
 Status: Approved by user
 
 ## 1. Objective

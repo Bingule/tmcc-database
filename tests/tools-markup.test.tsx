@@ -208,6 +208,7 @@ describe("Tools static integration", () => {
   it("defines scoped desktop/mobile layout, overflow, chart, focus, and compact-language styles", async () => {
     const css = await readFile("src/styles/global.css", "utf8");
 
+    expect(css).toMatch(/body\s*\{[^}]*min-width:\s*0/s);
     expect(css).toMatch(/\.tool-layout\s*\{[^}]*grid-template-columns:\s*repeat\(2,/s);
     expect(css).toMatch(/@media\s*\(max-width:\s*900px\)[\s\S]*?\.tool-layout\s*\{[^}]*grid-template-columns:\s*1fr/s);
     expect(css).toMatch(/\.tool-table-wrap[^}]*overflow-x:\s*auto/s);
