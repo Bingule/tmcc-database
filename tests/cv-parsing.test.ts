@@ -349,6 +349,37 @@ describe("parseCvFile", () => {
     await expect(parseSharedFile(txt)).resolves.toMatchObject({ potentialColumn: 0 });
   });
 
+  it.each([
+    ["UTF-8", new TextEncoder().encode("Potential,1,5\n0,10,50\n1,11,51")],
+    ["UTF-8 BOM", withPrefix([0xef, 0xbb, 0xbf], new TextEncoder().encode("Potential,1,5\n0,10,50\n1,11,51"))],
+    ["UTF-16LE BOM", encodeUtf16("Potential\t1\t5\n0\t10\t50\n1\t11\t51", "le")],
+    ["UTF-16BE BOM", encodeUtf16("Potential\t1\t5\n0\t10\t50\n1\t11\t51", "be")]
+  ])("normalizes %s text files to the same parsed table", async (encoding, bytes) => {
+    const extension = encoding.startsWith("UTF-16") ? "txt" : "csv";
+    const file = new File([bytes], `cv-${encoding}.${extension}`);
+    if (encoding.startsWith("UTF-16")) {
+      Object.defineProperty(file, "text", {
+        value: () => Promise.resolve(new TextDecoder().decode(bytes))
+      });
+    }
+    const table = await parseSharedFile(file);
+
+    expect(table.headers).toEqual(["Potential", "1", "5"]);
+    expect(table.rows).toEqual([[0, 10, 50], [1, 11, 51]]);
+    expect(confirmCvSeries(table, [1, 5])).toEqual([
+      { label: "1", scanRate: 1, points: [{ potential: 0, current: 10 }, { potential: 1, current: 11 }] },
+      { label: "5", scanRate: 5, points: [{ potential: 0, current: 50 }, { potential: 1, current: 51 }] }
+    ]);
+  });
+
+  it("parses a headerless UTF-16 TXT file when numeric first-row mode is selected", async () => {
+    const file = new File([encodeUtf16("0\t10\t50\n1\t11\t51", "le")], "headerless.txt");
+    const table = await parseCvFile(file, { layout: "sharedPotential", headerMode: "data" });
+
+    expect(table.headers).toEqual(["X", "Y1", "Y2"]);
+    expect(table.rows).toEqual([[0, 10, 50], [1, 11, 51]]);
+  });
+
   it("reads a valid XLSX File through the read-excel-file browser API", async () => {
     const table = await parseSharedFile(makeMinimalXlsxFile());
 
@@ -452,6 +483,9 @@ describe("parseCvFile", () => {
 
   it("wraps text File read failures in the stable parse error contract", async () => {
     const unreadable = new File(["ignored"], "unreadable.csv", { type: "text/csv" });
+    Object.defineProperty(unreadable, "arrayBuffer", {
+      value: () => Promise.reject(new DOMException("denied", "NotReadableError"))
+    });
     Object.defineProperty(unreadable, "text", {
       value: () => Promise.reject(new DOMException("denied", "NotReadableError"))
     });
@@ -470,6 +504,25 @@ describe("parseCvFile", () => {
     }
   });
 });
+
+function withPrefix(prefix: number[], bytes: Uint8Array) {
+  const result = new Uint8Array(prefix.length + bytes.length);
+  result.set(prefix);
+  result.set(bytes, prefix.length);
+  return result;
+}
+
+function encodeUtf16(text: string, endian: "le" | "be") {
+  const result = new Uint8Array(2 + text.length * 2);
+  result.set(endian === "le" ? [0xff, 0xfe] : [0xfe, 0xff]);
+  for (let index = 0; index < text.length; index += 1) {
+    const code = text.charCodeAt(index);
+    const offset = 2 + index * 2;
+    result[offset] = endian === "le" ? code & 0xff : code >> 8;
+    result[offset + 1] = endian === "le" ? code >> 8 : code & 0xff;
+  }
+  return result;
+}
 
 function makeMinimalXlsxFile() {
   return makeWorkbookFile([{

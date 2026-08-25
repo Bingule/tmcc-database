@@ -199,7 +199,14 @@ describe("Tools page markup", () => {
     expect(molecular.querySelector(".tool-result-table table")).not.toBeNull();
 
     const cv = await renderRoute("/tools/cv-kinetics");
-    expect(cv.querySelector(".tool-layout")).not.toBeNull();
+    const cvLayout = cv.querySelector(".tool-layout.cv-tool-layout");
+    expect(cvLayout).not.toBeNull();
+    expect(cvLayout?.querySelector(":scope > .cv-import.cv-import-wide")).not.toBeNull();
+    expect(cvLayout?.querySelector(":scope > .cv-b-analysis")).not.toBeNull();
+    expect(cvLayout?.querySelector(":scope > .cv-dunn-analysis")).not.toBeNull();
+    expect(cvLayout?.querySelector(":scope > .cv-results.tool-section-wide")).not.toBeNull();
+    expect(cvLayout?.querySelector(":scope > .cv-export.tool-section-wide")).not.toBeNull();
+    expect(cv.querySelector(".cv-import .cv-analysis-actions > button[name=\"cv-analyze\"] + .tool-validation")).not.toBeNull();
     expect(cv.querySelectorAll('.scientific-chart-empty[role="status"]')).toHaveLength(4);
   });
 });
@@ -230,6 +237,11 @@ describe("Tools static integration", () => {
     expect(css).toMatch(/\.cv-preview\s+\.tool-table-wrap\s*\{[^}]*width:\s*100%[^}]*overflow-x:\s*auto/s);
     expect(css).toMatch(/\.cv-import\s+\.tool-validation\s*\{[^}]*color:\s*#[0-9a-f]{6}/s);
     expect(css).toMatch(/\.cv-format-choices-invalid\s*\{[^}]*border-color:\s*#[0-9a-f]{6}/s);
+    expect(css).toMatch(/\.cv-tool-layout\s+\.cv-import-wide\s*\{[^}]*grid-column:\s*1\s*\/\s*-1/s);
+    expect(css).toMatch(/\.cv-import\s*\{[^}]*grid-template-columns:\s*repeat\(2,/s);
+    expect(css).toMatch(/\.cv-import\s*>\s*:is\([^}]*\.cv-preview[^}]*\)\s*\{[^}]*grid-column:\s*1\s*\/\s*-1/s);
+    expect(css).toMatch(/@media\s*\(max-width:\s*900px\)[\s\S]*?\.cv-import\s*\{[^}]*grid-template-columns:\s*1fr/s);
+    expect(css).toMatch(/@media\s*\(max-width:\s*900px\)[\s\S]*?\.cv-tool-layout\s+\.cv-import-wide\s*\{[^}]*grid-column:\s*auto/s);
   });
 
   it("keeps root metadata database-focused", async () => {

@@ -152,7 +152,10 @@ export function CvKineticsPage() {
   }
 
   function runAnalysis() {
-    if (!table) return;
+    if (!table) {
+      setErrorCode("analysis");
+      return;
+    }
     setErrorCode(null);
     setAnalysis(null);
     try {
@@ -162,7 +165,7 @@ export function CvKineticsPage() {
         pointInterval: draft.pointInterval,
         rSquaredThreshold: draft.rSquaredThreshold
       });
-      const firstB = result.bRecords.find((record) => record.status === "valid" && record.fit)?.fit;
+      const firstB = result.bRecords.find((record) => record.fit)?.fit;
       if (!firstB) throw new PageAnalysisError("noBFit");
       setAnalysis(result);
       setAnalysisMetadata({
@@ -264,7 +267,7 @@ export function CvKineticsPage() {
         })}</p>
       </header>
 
-      <div className="tool-layout">
+      <div className="tool-layout cv-tool-layout">
         <CvImportPanel
           draft={draft}
           table={table}

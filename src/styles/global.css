@@ -2454,12 +2454,22 @@ td button {
 
 .cv-import {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   min-width: 0;
-  gap: 14px;
+  gap: 12px 14px;
+  padding: 16px;
 }
 
 .cv-import > :is(h2, p) {
   margin: 0;
+}
+
+.cv-tool-layout .cv-import-wide {
+  grid-column: 1 / -1;
+}
+
+.cv-import > :is(h2, p, .cv-format-choices, .cv-analysis-settings, .cv-preview, .cv-analysis-actions) {
+  grid-column: 1 / -1;
 }
 
 .cv-import-fieldset {
@@ -2566,6 +2576,7 @@ td button {
 
 .cv-file-source,
 .cv-paste-source,
+.cv-scan-rate-group,
 .cv-scan-rate-control,
 .cv-control-with-help {
   min-width: 0;
@@ -2652,6 +2663,12 @@ td button {
   max-width: 100%;
 }
 
+.cv-scan-rate-group {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+}
+
 .cv-control-with-help {
   display: grid;
   gap: 7px;
@@ -2681,6 +2698,26 @@ td button {
 
 .cv-import button:disabled {
   cursor: not-allowed;
+}
+
+.cv-analysis-actions {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 6px 14px;
+}
+
+.cv-analysis-actions > button {
+  margin: 0;
+}
+
+.cv-analysis-actions .tool-validation {
+  margin: 0;
+}
+
+.cv-analysis-notice {
+  grid-column: 1 / -1;
+  margin: 0;
 }
 
 .cv-preview {
@@ -2878,6 +2915,22 @@ sub {
   }
 
   .tool-section-wide {
+    grid-column: auto;
+  }
+
+  .cv-import {
+    grid-template-columns: 1fr;
+  }
+
+  .cv-tool-layout .cv-import-wide {
+    grid-column: auto;
+  }
+
+  .cv-analysis-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .cv-analysis-notice {
     grid-column: auto;
   }
 

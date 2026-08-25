@@ -65,7 +65,7 @@ export function CvImportPanel({
     setSelectedFileName(null);
   }, [draft.options.headerMode, draft.options.layout, draft.source]);
 
-  return <section className="tool-section cv-import">
+  return <section className="tool-section cv-import cv-import-wide">
     <h2>{t("cv.import.title")}</h2>
     <p>{t("cv.import.help")}</p>
     <p>{t("cv.import.accepted")}</p>
@@ -198,21 +198,23 @@ export function CvImportPanel({
       </button>
     </div>}
 
-    <label className="cv-scan-rate-control" htmlFor="cv-scan-rates">
-      {t("cv.import.scanRates")} (mV/s)
-      <input
-        id="cv-scan-rates"
-        name="cv-scan-rates"
-        type="text"
-        inputMode="decimal"
-        aria-invalid={displayedError === "missingScanRate" || displayedError === "duplicateScanRate" || displayedError === "invalidScanRate" || displayedError === "insufficientSeries" || displayedError === "tooManySeries" || displayedError === "scanRateCountMismatch"}
-        aria-label={t("cv.aria.scanRates")}
-        placeholder="0.2, 0.4, 0.6, 0.8, 1"
-        value={draft.scanRateText}
-        onChange={(event) => update({ scanRateText: event.target.value })}
-      />
-    </label>
-    <p className="cv-field-help">{t("cv.import.scanRates.help")}</p>
+    <div className="cv-scan-rate-group">
+      <label className="cv-scan-rate-control" htmlFor="cv-scan-rates">
+        {t("cv.import.scanRates")} (mV/s)
+        <input
+          id="cv-scan-rates"
+          name="cv-scan-rates"
+          type="text"
+          inputMode="decimal"
+          aria-invalid={displayedError === "missingScanRate" || displayedError === "duplicateScanRate" || displayedError === "invalidScanRate" || displayedError === "insufficientSeries" || displayedError === "tooManySeries" || displayedError === "scanRateCountMismatch"}
+          aria-label={t("cv.aria.scanRates")}
+          placeholder="0.2, 0.4, 0.6, 0.8, 1"
+          value={draft.scanRateText}
+          onChange={(event) => update({ scanRateText: event.target.value })}
+        />
+      </label>
+      <p className="cv-field-help">{t("cv.import.scanRates.help")}</p>
+    </div>
 
     <div className="cv-analysis-settings">
       <div className="cv-control-with-help">
@@ -254,10 +256,6 @@ export function CvImportPanel({
       </div>
     </div>
 
-    <p className="tool-validation" aria-atomic="true" aria-live="polite" role="status">
-      {displayedError ? errorMessage(displayedError, t, table?.pairs.length) : ""}
-    </p>
-
     <section className="cv-preview" aria-label={t("cv.aria.preview")}>
       <h3>{t("cv.preview.title")}</h3>
       {!table ? <p>{t("cv.preview.emptyControlled")}</p> : <>
@@ -278,16 +276,21 @@ export function CvImportPanel({
       </>}
     </section>
 
-    <p>{t("cv.analysis.notice")}</p>
-    <button
-      type="button"
-      name="cv-analyze"
-      aria-label={t("cv.aria.analyze")}
-      disabled={!validation.ready || busy}
-      onClick={onAnalyze}
-    >
-      {t("cv.analysis.run")}
-    </button>
+    <div className="cv-analysis-actions">
+      <button
+        type="button"
+        name="cv-analyze"
+        aria-label={t("cv.aria.analyze")}
+        disabled={!validation.ready || busy}
+        onClick={onAnalyze}
+      >
+        {t("cv.analysis.run")}
+      </button>
+      <p className="tool-validation" aria-atomic="true" aria-live="polite" role="status">
+        {displayedError ? errorMessage(displayedError, t, table?.pairs.length) : ""}
+      </p>
+      <p className="cv-analysis-notice">{t("cv.analysis.notice")}</p>
+    </div>
   </section>;
 }
 

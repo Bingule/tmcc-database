@@ -5,6 +5,7 @@ import App from "../src/App";
 import { I18nProvider } from "../src/i18n/I18nProvider";
 import { MAX_FILE_BYTES } from "../src/lib/cvParsing";
 import { MAX_CHART_OUTPUT_POINTS, MAX_CHART_POINTS } from "../src/pages/CvKineticsPage";
+import { makeXlsxFile } from "./xlsx-test-fixture";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 let root: ReturnType<typeof createRoot> | undefined;
@@ -92,6 +93,17 @@ function readBlob(blob: Blob): Promise<string> {
     reader.onerror = () => reject(reader.error);
     reader.readAsText(blob);
   });
+}
+
+function encodeUtf16Le(text: string) {
+  const bytes = new Uint8Array(2 + text.length * 2);
+  bytes.set([0xff, 0xfe]);
+  for (let index = 0; index < text.length; index += 1) {
+    const code = text.charCodeAt(index);
+    bytes[2 + index * 2] = code & 0xff;
+    bytes[3 + index * 2] = code >> 8;
+  }
+  return bytes;
 }
 
 function expectAnalysisInvalidated(view: HTMLElement) {
@@ -196,15 +208,15 @@ describe("CV kinetics page", () => {
   it("prevents an older asynchronous file import from overwriting newer settings", async () => {
     const view = await renderPage();
     await chooseRadio(view, "cv-layout", "sharedPotential");
-    let resolveOld!: (value: string) => void;
+    let resolveOld!: (value: ArrayBuffer) => void;
     const oldFile = new File(["ignored"], "old.csv");
-    Object.defineProperty(oldFile, "text", {
-      value: () => new Promise<string>((resolve) => { resolveOld = resolve; })
+    Object.defineProperty(oldFile, "arrayBuffer", {
+      value: () => new Promise<ArrayBuffer>((resolve) => { resolveOld = resolve; })
     });
     await uploadFile(view, oldFile, 0);
     await chooseRadio(view, "cv-header-mode", "data");
     await act(async () => {
-      resolveOld(csv);
+      resolveOld(new TextEncoder().encode(csv).buffer);
       await Promise.resolve();
     });
     expect(view.textContent).toContain("No parsed table is ready");
@@ -251,6 +263,59 @@ describe("CV kinetics page", () => {
     expect(view.querySelector('[aria-live="polite"]')?.textContent).toContain("3 to 20");
     await click(view, "中文");
     expect(view.querySelector('[aria-live="polite"]')?.textContent).toContain("3–20");
+  });
+
+  it.each([
+    ["CSV", () => new File([csv], "equivalent.csv", { type: "text/csv" })],
+    ["UTF-16 TXT", () => new File([encodeUtf16Le(csv.replaceAll(",", "\t"))], "equivalent.txt", { type: "text/plain" })],
+    ["XLSX", () => makeXlsxFile([
+      ["Potential", "Current 1 mV/s", "Current 4 mV/s", "Current 9 mV/s"],
+      [0, 3, 8, 15],
+      [0.5, 4.5, 18, 40.5],
+      [1, 6, 32, 90]
+    ], "equivalent.xlsx")]
+  ])("runs visible b-value and Dunn results from %s import", async (_format, makeFile) => {
+    const view = await renderPage();
+    await uploadFile(view, makeFile());
+
+    expect(view.querySelector<HTMLInputElement>('input[name="cv-scan-rates"]')?.value).toBe("1, 4, 9");
+    expect(view.querySelectorAll(".cv-preview tbody tr")).toHaveLength(3);
+    await click(view, "Run analysis");
+    expect(view.querySelectorAll('[data-table-id="cv-b-records-table"] tbody tr').length).toBeGreaterThan(0);
+    expect(view.querySelectorAll('[data-table-id="cv-dunn-records-table"] tbody tr').length).toBeGreaterThan(0);
+    expect(view.querySelector('[aria-live="polite"]')?.textContent).toBe("");
+  });
+
+  it("retains mathematical b-value and Dunn fits when every R-squared value is below 0.95", async () => {
+    const view = await renderPage();
+    await upload(view, "Potential,Current 1 mV/s,Current 4 mV/s,Current 9 mV/s\n0,1,100,2\n0.5,2,200,4\n1,3,300,6");
+    await click(view, "Run analysis");
+
+    const bRows = view.querySelectorAll('[data-table-id="cv-b-records-table"] tbody tr');
+    const dunnRows = view.querySelectorAll('[data-table-id="cv-dunn-records-table"] tbody tr');
+    expect(bRows.length).toBeGreaterThan(0);
+    expect(dunnRows.length).toBeGreaterThan(0);
+    expect(bRows[0]?.textContent).toContain("Below R² threshold");
+    expect(dunnRows[0]?.textContent).toContain("Below R² threshold");
+    expect(bRows[0]?.querySelectorAll("td")[1]?.textContent).not.toBe("—");
+    expect(dunnRows[0]?.querySelectorAll("td")[1]?.textContent).not.toBe("—");
+    expect(view.querySelector('[data-table-id="cv-contribution-table"]')).toBeNull();
+    expect(view.querySelector('[aria-live="polite"]')?.textContent).not.toContain("No b-value fit");
+
+    await click(view, "中文");
+    expect(view.querySelector('[data-table-id="cv-b-records-table"]')?.textContent).toContain("低于 R² 阈值");
+  });
+
+  it("shows a genuine analysis failure immediately beside the Run analysis action", async () => {
+    const view = await renderPage();
+    await upload(view, "Potential,Current 1 mV/s,Current 4 mV/s,Current 9 mV/s\n0,0,0,0\n1,0,0,0");
+    await click(view, "Run analysis");
+
+    const analyze = button(view, "Run analysis");
+    const status = analyze.nextElementSibling;
+    expect(status?.classList.contains("tool-validation")).toBe(true);
+    expect(status?.getAttribute("aria-live")).toBe("polite");
+    expect(status?.textContent).toContain("No b-value fit");
   });
 
   it.each([
@@ -338,12 +403,15 @@ describe("CV kinetics page", () => {
     await setValue(rates, "1, 4, 9");
     expect(view.querySelector('[aria-live="polite"]')?.textContent).toBe("");
 
-    let resolveOld!: (value: string) => void;
+    let resolveOld!: (value: ArrayBuffer) => void;
     const oldFile = new File(["ignored"], "old.csv");
-    Object.defineProperty(oldFile, "text", { value: () => new Promise<string>((resolve) => { resolveOld = resolve; }) });
+    Object.defineProperty(oldFile, "arrayBuffer", { value: () => new Promise<ArrayBuffer>((resolve) => { resolveOld = resolve; }) });
     await uploadFile(view, oldFile, 0);
     await upload(view, "Potential,Current 2 mV/s,Current 8 mV/s,Current 18 mV/s\n0,2,8,18\n1,4,16,36");
-    await act(async () => { resolveOld("Potential,Current 1 mV/s,Current 4 mV/s,Current 9 mV/s\n0,1,4,9\n1,2,8,18"); await Promise.resolve(); });
+    await act(async () => {
+      resolveOld(new TextEncoder().encode("Potential,Current 1 mV/s,Current 4 mV/s,Current 9 mV/s\n0,1,4,9\n1,2,8,18").buffer);
+      await Promise.resolve();
+    });
     expect(view.querySelector<HTMLInputElement>('input[name="cv-scan-rates"]')?.value).toBe("2, 8, 18");
   });
 
