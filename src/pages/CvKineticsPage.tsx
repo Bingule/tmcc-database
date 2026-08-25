@@ -45,6 +45,7 @@ const initialDraft: CvImportDraft = {
 export function CvKineticsPage() {
   const { t } = useI18n();
   const [draft, setDraft] = useState<CvImportDraft>(initialDraft);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [table, setTable] = useState<ParsedCvTable | null>(null);
   const [busy, setBusy] = useState(false);
   const [analysis, setAnalysis] = useState<AnalysisState | null>(null);
@@ -68,25 +69,41 @@ export function CvKineticsPage() {
   }
 
   function handleDraftChange(next: CvImportDraft) {
-    const parsingChanged = next.options.layout !== draft.options.layout
-      || next.options.headerMode !== draft.options.headerMode
-      || next.source !== draft.source
-      || next.pasteText !== draft.pasteText;
+    const fileSettingsChanged = next.options.layout !== draft.options.layout
+      || next.options.headerMode !== draft.options.headerMode;
+    const sourceChanged = next.source !== draft.source;
+    const pasteChanged = next.pasteText !== draft.pasteText;
+    const parsingChanged = fileSettingsChanged || sourceChanged || pasteChanged;
     importVersion.current += 1;
     setBusy(false);
-    setDraft(next);
     if (parsingChanged) setTable(null);
+    setDraft(next);
     invalidateAnalysis();
+    if (next.source === "file" && selectedFile && (fileSettingsChanged || sourceChanged)) {
+      if (next.options.layout) void parseSelectedFile(selectedFile, {
+        layout: next.options.layout,
+        headerMode: next.options.headerMode
+      });
+      else setErrorCode("formatRequired");
+    }
   }
 
   async function importFile(file: File) {
+    setSelectedFile(file);
+    setTable(null);
+    invalidateAnalysis();
     if (!draft.options.layout) {
       importVersion.current += 1;
-      setTable(null);
-      invalidateAnalysis();
       setErrorCode("formatRequired");
       return;
     }
+    await parseSelectedFile(file, {
+      layout: draft.options.layout,
+      headerMode: draft.options.headerMode
+    });
+  }
+
+  async function parseSelectedFile(file: File, options: { layout: CvDataLayout; headerMode: CvHeaderMode }) {
     const version = ++importVersion.current;
     invalidateAnalysis();
     setTable(null);
@@ -94,8 +111,8 @@ export function CvKineticsPage() {
     setBusy(true);
     try {
       const parsed = await parseCvFile(file, {
-        layout: draft.options.layout,
-        headerMode: draft.options.headerMode
+        layout: options.layout,
+        headerMode: options.headerMode
       });
       if (version !== importVersion.current) return;
       setTable(parsed);
@@ -271,6 +288,7 @@ export function CvKineticsPage() {
         <CvImportPanel
           draft={draft}
           table={table}
+          selectedFileName={selectedFile?.name ?? null}
           busy={busy}
           error={errorCode}
           onDraftChange={handleDraftChange}

@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { useI18n } from "../i18n/I18nProvider";
 import {
   CvParseError,
@@ -29,6 +28,7 @@ export type CvUiError = CvParseErrorCode
 export interface CvImportPanelProps {
   draft: CvImportDraft;
   table: ParsedCvTable | null;
+  selectedFileName: string | null;
   busy: boolean;
   error: CvUiError | null;
   onDraftChange(next: CvImportDraft): void;
@@ -42,6 +42,7 @@ const intervalOptions = Array.from({ length: 30 }, (_, index) => index + 1);
 export function CvImportPanel({
   draft,
   table,
+  selectedFileName,
   busy,
   error,
   onDraftChange,
@@ -50,7 +51,6 @@ export function CvImportPanel({
   onAnalyze
 }: CvImportPanelProps) {
   const { t } = useI18n();
-  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const validation = validateDraft(draft, table);
   const displayedError = error ?? validation.visibleCode;
   const rates = validation.rates;
@@ -60,10 +60,6 @@ export function CvImportPanel({
   const updateOptions = (patch: Partial<CvImportDraft["options"]>) => {
     onDraftChange({ ...draft, options: { ...draft.options, ...patch } });
   };
-
-  useEffect(() => {
-    setSelectedFileName(null);
-  }, [draft.options.headerMode, draft.options.layout, draft.source]);
 
   return <section className="tool-section cv-import cv-import-wide">
     <h2>{t("cv.import.title")}</h2>
@@ -170,7 +166,6 @@ export function CvImportPanel({
           onChange={(event) => {
             const file = event.currentTarget.files?.[0];
             if (!file) return;
-            setSelectedFileName(file.name);
             onFile(file);
             event.currentTarget.value = "";
           }}

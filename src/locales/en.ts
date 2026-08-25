@@ -358,7 +358,7 @@ export const en = {
   "cv.preview.currentColumn": "Current column",
   "cv.preview.rows": "Preview rows",
   "cv.analysis.run": "Run analysis",
-  "cv.analysis.notice": "Series are linearly interpolated only within their overlapping potential range; no extrapolation or smoothing is applied.",
+  "cv.analysis.notice": "Series are linearly interpolated only within their overlapping potential range; no extrapolation or smoothing is applied. For a complete CV cycle, the first monotonic sweep in each column is analyzed; forward and reverse currents are never averaged.",
   "cv.b.title": "b-value Analysis",
   "cv.b.help": "Fits log(|i|) = log(a) + b log(v). Absolute current is used; zero-current points are omitted.",
   "cv.b.chart": "b-value by potential",

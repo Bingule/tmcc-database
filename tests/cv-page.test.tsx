@@ -142,9 +142,16 @@ describe("CV kinetics page", () => {
       await Promise.resolve();
     });
     expect(view.querySelector('[aria-live="polite"]')?.textContent).toContain("Choose a data format");
+    expect(view.querySelector(".cv-file-name")?.textContent).toBe("cv.csv");
 
     await chooseRadio(view, "cv-layout", "sharedPotential");
-    await uploadFile(view, new File([csv], "cv.csv"));
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 25)));
+    expect(view.textContent).toContain("Current 1 mV/s → 1 mV/s");
+
+    await chooseRadio(view, "cv-header-mode", "data");
+    expect(view.querySelector(".cv-file-name")?.textContent).toBe("cv.csv");
+    await chooseRadio(view, "cv-header-mode", "header");
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 25)));
     expect(view.textContent).toContain("Current 1 mV/s → 1 mV/s");
 
     await chooseRadio(view, "cv-source", "paste");
@@ -161,6 +168,20 @@ describe("CV kinetics page", () => {
     await click(view, "Parse pasted data");
     expect(view.textContent).toContain("X1 / Y1");
     expect(view.textContent).toContain("X3 / Y3");
+  });
+
+  it("retains the uploaded file while switching source and reparses it when returning to file mode", async () => {
+    const view = await renderPage();
+    await chooseRadio(view, "cv-layout", "sharedPotential");
+    await uploadFile(view, new File([csv], "retained.csv"));
+    expect(view.querySelector(".cv-file-name")?.textContent).toBe("retained.csv");
+
+    await chooseRadio(view, "cv-source", "paste");
+    await chooseRadio(view, "cv-source", "file");
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 25)));
+
+    expect(view.querySelector(".cv-file-name")?.textContent).toBe("retained.csv");
+    expect(view.textContent).toContain("Current 1 mV/s → 1 mV/s");
   });
 
   it.each([
@@ -208,18 +229,22 @@ describe("CV kinetics page", () => {
   it("prevents an older asynchronous file import from overwriting newer settings", async () => {
     const view = await renderPage();
     await chooseRadio(view, "cv-layout", "sharedPotential");
-    let resolveOld!: (value: ArrayBuffer) => void;
+    const resolvers: Array<(value: ArrayBuffer) => void> = [];
     const oldFile = new File(["ignored"], "old.csv");
     Object.defineProperty(oldFile, "arrayBuffer", {
-      value: () => new Promise<ArrayBuffer>((resolve) => { resolveOld = resolve; })
+      value: () => new Promise<ArrayBuffer>((resolve) => { resolvers.push(resolve); })
     });
     await uploadFile(view, oldFile, 0);
     await chooseRadio(view, "cv-header-mode", "data");
     await act(async () => {
-      resolveOld(new TextEncoder().encode(csv).buffer);
+      resolvers[1](new TextEncoder().encode("0,3,8,15\n0.5,4.5,18,40.5\n1,6,32,90").buffer);
       await Promise.resolve();
     });
-    expect(view.textContent).toContain("No parsed table is ready");
+    await act(async () => {
+      resolvers[0](new TextEncoder().encode(csv).buffer);
+      await Promise.resolve();
+    });
+    expect(view.textContent).toContain("Y1 →");
     expect(view.textContent).not.toContain("Current 1 mV/s →");
   });
 
@@ -281,6 +306,26 @@ describe("CV kinetics page", () => {
     expect(view.querySelector<HTMLInputElement>('input[name="cv-scan-rates"]')?.value).toBe("1, 4, 9");
     expect(view.querySelectorAll(".cv-preview tbody tr")).toHaveLength(3);
     await click(view, "Run analysis");
+    expect(view.querySelectorAll('[data-table-id="cv-b-records-table"] tbody tr').length).toBeGreaterThan(0);
+    expect(view.querySelectorAll('[data-table-id="cv-dunn-records-table"] tbody tr').length).toBeGreaterThan(0);
+    expect(view.querySelector('[aria-live="polite"]')?.textContent).toBe("");
+  });
+
+  it("runs analysis from an XLSX file containing a complete forward/reverse CV cycle", async () => {
+    const view = await renderPage();
+    await chooseRadio(view, "cv-layout", "pairedPotentialCurrent");
+    const file = makeXlsxFile([
+      ["E1", "I1", "E2", "I2", "E3", "I3"],
+      [0, 1, 0, 2, 0, 3],
+      [1, 2, 1, 4, 1, 6],
+      [2, 3, 2, 6, 2, 9],
+      [1, 20, 1, 40, 1, 60],
+      [0, 10, 0, 20, 0, 30]
+    ], "complete-cycle.xlsx");
+    await uploadFile(view, file);
+    await setValue(view.querySelector<HTMLInputElement>('input[name="cv-scan-rates"]')!, "1, 4, 9");
+    await click(view, "Run analysis");
+
     expect(view.querySelectorAll('[data-table-id="cv-b-records-table"] tbody tr').length).toBeGreaterThan(0);
     expect(view.querySelectorAll('[data-table-id="cv-dunn-records-table"] tbody tr').length).toBeGreaterThan(0);
     expect(view.querySelector('[aria-live="polite"]')?.textContent).toBe("");
