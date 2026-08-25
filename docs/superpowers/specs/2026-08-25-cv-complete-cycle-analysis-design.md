@@ -116,7 +116,7 @@ Invalid or low-quality Dunn positions remain null in reconstructed component arr
 
 ## Exports
 
-- Raw-cycle export retains the original point order for every scan-rate series.
+- Retained original series preserve the source order for page plots and internal state; this version does not add a seventh raw-data export.
 - Interpolated and Dunn component exports follow the recombined complete-cycle order.
 - b-value and Dunn fitted-record CSVs include the localized branch column so repeated potentials remain distinguishable.
 - Existing metadata, R² filtering, numerical precision, and bilingual schemas remain intact.
@@ -161,4 +161,3 @@ Automated tests cover:
 - Automatic repair of inconsistent branch structures
 - Changing the b-value or Dunn regression formulas
 - Redesigning unrelated pages
-
