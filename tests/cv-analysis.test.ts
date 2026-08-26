@@ -148,6 +148,67 @@ describe("interpolateCommonGrid", () => {
     ]), "noCommonPotentialRange");
   });
 
+  it("allows a one-point common range only for a normalized cyclic closure", () => {
+    const result = interpolateCommonGrid([
+      {
+        label: "seam-crossing",
+        scanRate: 1,
+        points: [
+          { potential: 0.2, current: 2 },
+          { potential: 1, current: 10 },
+          { potential: 0, current: 1 },
+          { potential: 0.2, current: 3 }
+        ]
+      },
+      {
+        label: "turning-point-start",
+        scanRate: 2,
+        points: [
+          { potential: 0.2, current: 4 },
+          { potential: 1, current: 20 },
+          { potential: 0, current: 2 }
+        ]
+      }
+    ]);
+
+    expect(result.potentials).toEqual([0.2, 1, 0, 0.2]);
+    expect(result.branches).toEqual([
+      { branchIndex: 0, direction: 1, startIndex: 0, endIndex: 1 },
+      { branchIndex: 1, direction: -1, startIndex: 1, endIndex: 2 },
+      { branchIndex: 2, direction: 1, startIndex: 3, endIndex: 3 }
+    ]);
+  });
+
+  it("retains repeated same-direction potentials as separate analysis positions", () => {
+    const result = interpolateCommonGrid([
+      {
+        label: "plateau",
+        scanRate: 1,
+        points: [
+          { potential: 0, current: 1 },
+          { potential: 1, current: 2 },
+          { potential: 1, current: 3 },
+          { potential: 2, current: 4 }
+        ]
+      },
+      {
+        label: "single",
+        scanRate: 2,
+        points: [
+          { potential: 0, current: 10 },
+          { potential: 1, current: 20 },
+          { potential: 2, current: 40 }
+        ]
+      }
+    ]);
+
+    expect(result.potentials).toEqual([0, 1, 1, 2]);
+    expect(result.currents).toEqual([
+      [1, 2, 3, 4],
+      [10, 20, 20, 40]
+    ]);
+  });
+
   it("rejects structurally invalid duplicate potentials with a stable typed error", () => {
     expectCvError(() => interpolateCommonGrid([
       {

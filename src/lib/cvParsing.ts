@@ -212,8 +212,9 @@ function throwResourceLimit(resource: "fileBytes" | "sheets" | "rows" | "columns
 }
 
 function isUsefulCvTable(table: ParsedCvTable) {
+  if (table.pairs.length < 2) return false;
   try {
-    confirmCvSeries(table, table.pairs.map((_, index) => index + 1));
+    table.pairs.forEach((pair) => collectPointsInRowOrder(table, pair));
     return true;
   } catch (error) {
     if (error instanceof CvParseError) return false;

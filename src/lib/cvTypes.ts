@@ -17,6 +17,7 @@ export interface CvSweepBranch {
   direction: SweepDirection;
   points: CvSweepPoint[];
   sharesStartWithPrevious: boolean;
+  cyclicClosure?: boolean;
 }
 
 export interface CvGridBranch {

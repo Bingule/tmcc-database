@@ -71,8 +71,11 @@ describe("splitCvCycle", () => {
     expectStructureError(() => splitCvCycle(points([0, 1, 0, 1, 0])), "tooManyTurningPoints");
   });
 
-  it("rejects an internal duplicate that does not record a reversal", () => {
-    expectStructureError(() => splitCvCycle(points([0, 1, 1, 2])), "duplicatePotential");
+  it("keeps same-direction potential plateaus in their original branch order", () => {
+    const branches = splitCvCycle(points([0, 1, 1, 2]));
+
+    expect(branches).toHaveLength(1);
+    expect(branches[0].points.map((point) => point.sourceIndex)).toEqual([0, 1, 2, 3]);
   });
 
   it("rejects a branch without two distinct potentials", () => {
@@ -96,5 +99,24 @@ describe("splitAlignedCvCycles", () => {
 
     expect(branches[0][1].sharesStartWithPrevious).toBe(true);
     expect(branches[1][1].sharesStartWithPrevious).toBe(false);
+  });
+
+  it("aligns a cycle recorded from a turning point with one recorded across the cycle seam", () => {
+    const branches = splitAlignedCvCycles([
+      series([0.2, 1, 0, 0.2], "seam-crossing"),
+      series([0, 0.5, 1, 0.5, 0], "turning-point-start")
+    ]);
+
+    expect(branches.map((cycle) => cycle.map((branch) => branch.direction))).toEqual([
+      [1, -1, 1],
+      [1, -1, 1]
+    ]);
+    expect(branches[1][2]).toMatchObject({
+      branchIndex: 2,
+      direction: 1,
+      sharesStartWithPrevious: false,
+      cyclicClosure: true
+    });
+    expect(branches[1][2].points.map((point) => point.sourceIndex)).toEqual([0, 1, 2]);
   });
 });

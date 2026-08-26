@@ -63,15 +63,14 @@ export function splitCvCycle(points: CvSeries["points"]): CvSweepBranch[] {
   for (let edgeIndex = 0; edgeIndex < points.length - 1; edgeIndex += 1) {
     const nextDirection = directionForEdge(points, edgeIndex);
     if (nextDirection === null) {
-      const followingDirection = directionForEdge(points, edgeIndex + 1);
-      if (direction === null || followingDirection === null || followingDirection !== -direction) {
-        throw new CvCycleStructureError("duplicatePotential", { sourceIndex: edgeIndex + 1 });
+      const followingDirection = nextNonZeroDirection(points, edgeIndex + 1);
+      if (direction !== null && followingDirection === -direction) {
+        recordTurningPoint();
+        closeBranch(edgeIndex);
+        branchStart = edgeIndex + 1;
+        direction = followingDirection;
+        sharesStartWithPrevious = false;
       }
-      recordTurningPoint();
-      closeBranch(edgeIndex);
-      branchStart = edgeIndex + 1;
-      direction = followingDirection;
-      sharesStartWithPrevious = false;
       continue;
     }
 
@@ -93,7 +92,7 @@ export function splitCvCycle(points: CvSeries["points"]): CvSweepBranch[] {
 }
 
 export function splitAlignedCvCycles(series: CvSeries[]): CvSweepBranch[][] {
-  const split = series.map((item) => splitCvCycle(item.points));
+  const split = alignCyclicSeams(series.map((item) => splitCvCycle(item.points)));
   const expected = split[0];
   if (expected === undefined) return split;
 
@@ -110,6 +109,43 @@ export function splitAlignedCvCycles(series: CvSeries[]): CvSweepBranch[][] {
   return split;
 }
 
+function alignCyclicSeams(cycles: CvSweepBranch[][]): CvSweepBranch[][] {
+  if (!cycles.some((cycle) => cycle.length === 2) || !cycles.some((cycle) => cycle.length === 3)) {
+    return cycles;
+  }
+  const reference = cycles.find((cycle) => cycle.length === 3)!;
+  const initialDirection = reference[0].direction;
+  const matchesCyclicPattern = cycles.every((cycle) => {
+    if (cycle.length === 2) {
+      return cycle[0].direction === initialDirection && cycle[1].direction === -initialDirection;
+    }
+    return cycle.length === 3
+      && cycle[0].direction === initialDirection
+      && cycle[1].direction === -initialDirection
+      && cycle[2].direction === initialDirection;
+  });
+  if (!matchesCyclicPattern) return cycles;
+
+  return cycles.map((cycle) => {
+    if (cycle.length === 3) {
+      return cycle.map((branch, branchIndex) => branchIndex === 2
+        ? { ...branch, cyclicClosure: true }
+        : branch);
+    }
+    const initial = cycle[0];
+    return [
+      ...cycle,
+      {
+        branchIndex: 2,
+        direction: initial.direction,
+        points: initial.points.map((point) => ({ ...point })),
+        sharesStartWithPrevious: false,
+        cyclicClosure: true
+      }
+    ];
+  });
+}
+
 function directionForEdge(points: CvSeries["points"], edgeIndex: number): SweepDirection | null {
   const left = points[edgeIndex];
   const right = points[edgeIndex + 1];
@@ -117,4 +153,12 @@ function directionForEdge(points: CvSeries["points"], edgeIndex: number): SweepD
   const delta = right.potential - left.potential;
   if (delta === 0) return null;
   return delta > 0 ? 1 : -1;
+}
+
+function nextNonZeroDirection(points: CvSeries["points"], edgeIndex: number): SweepDirection | null {
+  for (let index = edgeIndex; index < points.length - 1; index += 1) {
+    const direction = directionForEdge(points, index);
+    if (direction !== null) return direction;
+  }
+  return null;
 }

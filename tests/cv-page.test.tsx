@@ -130,6 +130,30 @@ function completeCycleDelimited(delimiter: string) {
   return completeCycleRows.map((row) => row.join(delimiter)).join("\n");
 }
 
+const ncpLikeSeries = [
+  { rate: 50, potentials: [0.2, 0.6, 1, 0.5, 0, 0.3] },
+  { rate: 20, potentials: [0, 0.5, 1, 0.5, 0] },
+  { rate: 10, potentials: [0, 0.5, 1, 0.5, 0, 0.2] },
+  { rate: 5, potentials: [0.2, 0.6, 1, 0.5, 0.5, 0] },
+  { rate: 2, potentials: [0, 0.5, 1, 0.5, 0] }
+] as const;
+
+const ncpLikeRows: Array<Array<string | number | null>> = [
+  ncpLikeSeries.flatMap((_, index) => [`电压V`, `电流I${index + 1}`])
+];
+for (let rowIndex = 0; rowIndex < Math.max(...ncpLikeSeries.map((series) => series.potentials.length)); rowIndex += 1) {
+  ncpLikeRows.push(ncpLikeSeries.flatMap((series) => {
+    const potential = series.potentials[rowIndex];
+    return potential === undefined
+      ? [null, null]
+      : [potential, Math.sqrt(series.rate) * (2 + potential)];
+  }));
+}
+
+function ncpLikeDelimited() {
+  return ncpLikeRows.map((row) => row.map((cell) => cell ?? "").join(",")).join("\n");
+}
+
 function pathXs(path: string) {
   return [...path.matchAll(/[ML]\s+([^\s]+)/g)].map((match) => Number(match[1]));
 }
@@ -427,6 +451,24 @@ describe("CV kinetics page", () => {
       ]);
     }
     expect(view.querySelector('[aria-live="polite"]')?.textContent).toBe("");
+  });
+
+  it.each([
+    ["CSV", () => new File([ncpLikeDelimited()], "ncp-cycle.csv", { type: "text/csv" })],
+    ["XLSX", () => makeXlsxFile(ncpLikeRows, "ncp-cycle.xlsx")]
+  ])("runs analysis for %s cycles with mixed seam starts and same-direction plateaus", async (_format, makeFile) => {
+    const view = await renderPage();
+    await chooseRadio(view, "cv-layout", "pairedPotentialCurrent");
+    await uploadFile(view, makeFile());
+    await setValue(view.querySelector<HTMLInputElement>('input[name="cv-scan-rates"]')!, "50, 20, 10, 5, 2");
+    await click(view, "Run analysis");
+
+    expect(view.querySelector('[aria-live="polite"]')?.textContent).toBe("");
+    expect(view.querySelectorAll('[data-table-id="cv-b-records-table"] tbody tr').length).toBeGreaterThan(0);
+    expect(view.querySelectorAll('[data-table-id="cv-dunn-records-table"] tbody tr').length).toBeGreaterThan(0);
+    await setSelect(view.querySelector<HTMLSelectElement>('select[name="selectedRate"]')!, "50");
+    expect([...view.querySelectorAll<HTMLTableRowElement>('[data-table-id="cv-original-current-table"] tbody tr')]
+      .map((row) => row.cells[0].textContent)).toEqual(["0.2", "0.6", "1", "0.5", "0", "0.3"]);
   });
 
   it("retains quality counts when every R-squared value is below 0.95", async () => {

@@ -295,7 +295,7 @@ describe("confirmCvSeries", () => {
     ]);
   });
 
-  it("requires two points per series and reports duplicate potentials as invalid cycle structure", () => {
+  it("requires two points per series and rejects an all-constant potential series", () => {
     expectParseError(
       () => confirmCvSeries(parseShared("Potential,1,2\n0,10,20\n1,,21"), [1, 2]),
       "insufficientSeries",
@@ -304,7 +304,7 @@ describe("confirmCvSeries", () => {
     expectParseError(
       () => confirmCvSeries(parseShared("Potential,1,2\n0,10,20\n0,11,21"), [1, 2]),
       "invalidCycleStructure",
-      { reason: "duplicatePotential", sourceIndex: 1 }
+      { reason: "branchPointCount" }
     );
   });
 
@@ -526,6 +526,26 @@ describe("parseCvFile", () => {
       { potential: 1, current: 20 },
       { potential: 0, current: 10 }
     ]);
+  });
+
+  it("parses a structurally valid XLSX table before cycle consistency is checked", async () => {
+    const file = makeWorkbookFile([{
+      name: "CV",
+      rows: [
+        ["E1", "I1", "E2", "I2", "E3", "I3"],
+        [0, 1, 0, 2, 0, 3],
+        [1, 2, 1, 4, 1, 6],
+        [0, 3, 2, 6, 0, 9]
+      ]
+    }], "analysis-validation.xlsx");
+
+    const table = await parseCvFile(file, {
+      layout: "pairedPotentialCurrent",
+      headerMode: "header"
+    });
+
+    expect(table.pairs).toHaveLength(3);
+    expectParseError(() => confirmCvSeries(table, [1, 4, 9]), "invalidCycleStructure");
   });
 
   it("confirms the same complete CV cycle from CSV, UTF-16 TXT, and XLSX", async () => {
