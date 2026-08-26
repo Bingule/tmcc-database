@@ -251,6 +251,43 @@ describe("ScientificLineChart", () => {
     expect(areas.compareDocumentPosition(lines) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
+  it("reduces legend columns when long publication labels would overlap", async () => {
+    const view = await renderChart({
+      ...baseProps,
+      series: [baseProps.series[0]],
+      areas: [
+        { id: "capacitive", label: "Capacitive contribution (arb. units)", color: "#7656a8", segments: [[{ x: 0, lower: 0, upper: 1 }, { x: 1, lower: 0, upper: 2 }]] },
+        { id: "diffusion", label: "Diffusion-controlled contribution (arb. units)", color: "#6fb7a7", segments: [[{ x: 0, lower: 1, upper: 2 }, { x: 1, lower: 2, upper: 3 }]] },
+        { id: "excluded", label: "Excluded by R² threshold / unavailable", color: "#7d858b", pattern: "diagonalHatch", segments: [[{ x: 0, lower: -1, upper: 0 }, { x: 1, lower: -2, upper: 0 }]] }
+      ]
+    });
+
+    const legend = view.querySelector('[data-chart-legend="true"]');
+    const rows = new Set([...legend!.querySelectorAll("g")].map((item) => item.getAttribute("transform")?.split(" ").at(-1)));
+    expect(legend?.getAttribute("data-legend-columns")).toBe("2");
+    expect(rows.size).toBe(2);
+  });
+
+  it("splits area bands at null boundaries instead of bridging the gap", async () => {
+    const view = await renderChart({
+      ...baseProps,
+      areas: [{
+        id: "gapped-area",
+        label: "Gapped area",
+        color: "#6fb7a7",
+        segments: [[
+          { x: 0, lower: 0, upper: 1 },
+          { x: 1, lower: 0, upper: 2 },
+          { x: 2, lower: 0, upper: null },
+          { x: 3, lower: 0, upper: 2 },
+          { x: 4, lower: 0, upper: 1 }
+        ]]
+      }]
+    });
+
+    expect(view.querySelectorAll('[data-area-series-id="gapped-area"]')).toHaveLength(2);
+  });
+
   it("keeps area segments separate, omits singletons, and includes band bounds in the domain", async () => {
     const view = await renderChart({
       ...baseProps,

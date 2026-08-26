@@ -18,6 +18,12 @@ export interface ChartSeries {
 
 export interface ChartAreaPoint {
   x: number;
+  lower: number | null;
+  upper: number | null;
+}
+
+interface FiniteChartAreaPoint {
+  x: number;
   lower: number;
   upper: number;
 }
@@ -75,9 +81,7 @@ export function ScientificLineChart({
   }));
   const finiteAreas = areas.map((item) => ({
     ...item,
-    segments: item.segments.map((segment) => segment.filter((point) =>
-      Number.isFinite(point.x) && Number.isFinite(point.lower) && Number.isFinite(point.upper)))
-      .filter((segment) => segment.length >= 2)
+    segments: item.segments.flatMap(splitFiniteAreaSegment)
   }));
   const allPoints = finiteSeries.flatMap((item) => item.points.flatMap((point) => point.y === null ? [] : [{ ...point, y: point.y }]));
   const areaBounds = finiteAreas.flatMap((item) => item.segments.flatMap((segment) => segment.flatMap((point) => [
@@ -92,7 +96,10 @@ export function ScientificLineChart({
 
   const xDomain = expandedDomain(domainPoints, "x");
   const yDomain = expandedDomain(domainPoints, "y");
-  const legendColumns = 4;
+  const legendColumns = calculateLegendColumns([
+    ...finiteAreas.map((item) => item.label),
+    ...finiteSeries.map((item) => item.label)
+  ]);
   const legendRows = Math.ceil((finiteAreas.length + finiteSeries.length) / legendColumns);
   const metadataSourceLines = typeof metadata === "string" ? [metadata] : metadata ?? [];
   const metadataLines = metadataSourceLines.flatMap((line) => wrapMetadataLine(line));
@@ -155,6 +162,7 @@ export function ScientificLineChart({
         <g
           className="scientific-chart-legend"
           data-chart-legend="true"
+          data-legend-columns={legendColumns}
           role="group"
           aria-label={legendLabel}
         >
@@ -195,6 +203,7 @@ export function ScientificLineChart({
               key={`${item.id}-${segmentIndex}`}
               data-area-series-id={item.id}
               data-area-segment-index={segmentIndex}
+              data-render-point-count={segment.length}
               d={areaPath(segment, projectX, projectY)}
               fill={item.pattern === "diagonalHatch" ? `url(#${patternId(item)})` : item.color}
               fillOpacity={item.pattern ? 1 : item.opacity ?? 0.68}
@@ -347,8 +356,18 @@ function linePath(
   return commands.join(" ");
 }
 
+function calculateLegendColumns(labels: string[]) {
+  if (labels.length === 0) return 1;
+  const availableWidth = dimensions.width - margin.left - margin.right;
+  const widestItem = Math.max(...labels.map((label) => 44 + [...label].reduce(
+    (width, character) => width + (character.charCodeAt(0) > 255 ? 11 : 6.2),
+    0
+  )));
+  return Math.max(1, Math.min(4, labels.length, Math.floor(availableWidth / widestItem)));
+}
+
 function areaPath(
-  segment: ChartAreaPoint[],
+  segment: FiniteChartAreaPoint[],
   projectX: (value: number) => number,
   projectY: (value: number) => number
 ): string {
@@ -357,6 +376,24 @@ function areaPath(
   const lower = [...segment].reverse().map((point) =>
     `L ${projectX(point.x)} ${projectY(point.lower)}`);
   return [...upper, ...lower, "Z"].join(" ");
+}
+
+function splitFiniteAreaSegment(segment: ChartAreaPoint[]): FiniteChartAreaPoint[][] {
+  const runs: FiniteChartAreaPoint[][] = [];
+  let current: FiniteChartAreaPoint[] = [];
+  const flush = () => {
+    if (current.length >= 2) runs.push(current);
+    current = [];
+  };
+  for (const point of segment) {
+    if (Number.isFinite(point.x)
+      && typeof point.lower === "number" && Number.isFinite(point.lower)
+      && typeof point.upper === "number" && Number.isFinite(point.upper)) {
+      current.push({ x: point.x, lower: point.lower, upper: point.upper });
+    } else flush();
+  }
+  flush();
+  return runs;
 }
 
 function countNullRuns(points: Array<{ y: number | null }>) {

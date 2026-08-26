@@ -392,8 +392,12 @@ describe("CV kinetics page", () => {
     expect(originalXs[3]).toBeLessThan(originalXs[2]);
     expect(originalXs[4]).toBeLessThan(originalXs[3]);
     expect(view.querySelector('[data-series-id="reconstructed-total"]')).toBeNull();
-    expect(view.querySelectorAll('[data-area-series-id="capacitive-area"]').length).toBeGreaterThan(0);
-    expect(view.querySelectorAll('[data-area-series-id="diffusion-area"]').length).toBeGreaterThan(0);
+    const capacitiveAreas = [...view.querySelectorAll<SVGPathElement>('[data-area-series-id="capacitive-area"]')];
+    const diffusionAreas = [...view.querySelectorAll<SVGPathElement>('[data-area-series-id="diffusion-area"]')];
+    expect(capacitiveAreas).toHaveLength(2);
+    expect(diffusionAreas).toHaveLength(2);
+    expect(capacitiveAreas.map((path) => path.dataset.renderPointCount)).toEqual(["3", "3"]);
+    expect(diffusionAreas.map((path) => path.dataset.renderPointCount)).toEqual(["3", "3"]);
     const bPath = view.querySelector<SVGPathElement>('[data-series-id="b-values"]')!;
     expect(bPath.getAttribute("data-render-point-count")).toBe("5");
     const bXs = pathXs(bPath.getAttribute("d") ?? "");
@@ -483,6 +487,11 @@ describe("CV kinetics page", () => {
     expect(dunnRows).toHaveLength(0);
     expect(view.querySelector('[data-table-id="cv-contribution-table"]')).toBeNull();
     expect(view.querySelector('[aria-live="polite"]')?.textContent).not.toContain("No b-value fit");
+    expect([...view.querySelectorAll<HTMLSelectElement>('select[name="selectedRate"] option')].map((item) => item.value)).toEqual(["1", "4", "9"]);
+    expect(view.querySelector('[data-series-id="original"]')?.getAttribute("data-render-point-count")).toBe("3");
+    expect(view.querySelector('[data-area-series-id="excluded-area"]')).not.toBeNull();
+    expect(view.querySelector('[data-dunn-coverage="true"]')?.textContent).toContain("0 / 3 points (0%)");
+    expect(button(view, "Export SVG — cv-dunn-chart.svg").disabled).toBe(false);
 
     await click(view, "中文");
     expect(view.querySelector('[data-quality-summary="true"]')?.textContent).toContain("3 个排除");
@@ -821,8 +830,11 @@ describe("CV kinetics page", () => {
     expect(csvButtons.every((item) => !item.disabled)).toBe(true);
     expect(button(view, "Export SVG — cv-b-chart.svg").disabled).toBe(false);
     expect(button(view, "Export SVG — cv-fit-chart.svg").disabled).toBe(false);
-    expect(button(view, "Export SVG — cv-dunn-chart.svg").disabled).toBe(true);
+    expect(button(view, "Export SVG — cv-dunn-chart.svg").disabled).toBe(false);
     expect(button(view, "Export SVG — cv-contribution-chart.svg").disabled).toBe(true);
+    expect([...view.querySelectorAll<HTMLSelectElement>('select[name="selectedRate"] option')].map((item) => item.value)).toEqual(["1", "4", "9"]);
+    expect(view.querySelector('[data-series-id="original"]')?.getAttribute("data-render-point-count")).toBe("3");
+    expect(view.querySelector('[data-dunn-coverage="true"]')?.textContent).toContain("2 / 3 points (66.66667%)");
 
     const blobs: Blob[] = [];
     vi.stubGlobal("URL", { createObjectURL: vi.fn((blob: Blob) => { blobs.push(blob); return "blob:no-contribution"; }), revokeObjectURL: vi.fn() });
@@ -972,19 +984,28 @@ describe("CV kinetics page", () => {
       else Reflect.deleteProperty(navigator, "clipboard");
     };
     const view = await renderPage();
-    const sourceRowCount = 2_501;
+    const sourceRowCount = 4_501;
     const contents = ["Potential,Current 1 mV/s,Current 4 mV/s,Current 9 mV/s", ...Array.from({ length: sourceRowCount }, (_, index) => `${index},${index + 1},${4 * (index + 1)},${9 * (index + 1)}`)].join("\n");
     await upload(view, contents);
     await click(view, "Run analysis");
     expect(view.querySelector('select[name="selectedPotential"]')).toBeNull();
     expect(view.querySelectorAll('datalist[name="selectedPotential"] option')).toHaveLength(0);
-    await setPotential(view, "2500");
-    expect(view.querySelector('[data-table-id="cv-selected-b-record-table"] tbody tr')?.firstElementChild?.textContent).toBe("2500");
+    await setPotential(view, String(sourceRowCount - 1));
+    expect(view.querySelector('[data-table-id="cv-selected-b-record-table"] tbody tr')?.firstElementChild?.textContent).toBe(String(sourceRowCount - 1));
     expect(button(view, "Previous potential").disabled).toBe(false);
     expect(button(view, "Next potential").disabled).toBe(true);
     expect(Number(view.querySelector('[data-series-id="b-values"]')?.getAttribute("data-render-point-count"))).toBeLessThanOrEqual(2_000);
+    const dunnAreaPaths = [...view.querySelectorAll<SVGPathElement>('[data-export-id="cv-dunn-chart"] [data-area-series-id]')];
+    expect(dunnAreaPaths.length).toBeGreaterThan(0);
+    expect(dunnAreaPaths.every((path) => path.hasAttribute("data-render-point-count"))).toBe(true);
+    for (const areaId of new Set(dunnAreaPaths.map((path) => path.dataset.areaSeriesId))) {
+      const renderedPointCount = dunnAreaPaths
+        .filter((path) => path.dataset.areaSeriesId === areaId)
+        .reduce((total, path) => total + Number(path.dataset.renderPointCount), 0);
+      expect(renderedPointCount).toBeLessThanOrEqual(MAX_CHART_OUTPUT_POINTS);
+    }
     expect(view.querySelectorAll('[data-table-id="cv-dunn-current-table"] tbody tr').length).toBeLessThanOrEqual(500);
-    expect(view.textContent).toContain("Showing 500 of 2501 rows");
+    expect(view.textContent).toContain(`Showing 500 of ${sourceRowCount} rows`);
     const longFrame = view.querySelector('[data-table-id="cv-dunn-current-table"]')
       ?.closest('.cv-result-table-frame');
     expect(longFrame?.classList.contains('cv-result-table-frame-scroll')).toBe(true);

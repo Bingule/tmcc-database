@@ -198,7 +198,7 @@ export function CvKineticsPage() {
       });
       setSelectedBSequenceIndex(firstValidB?.sequenceIndex);
       setPotentialInput(firstValidB ? String(firstValidB.potential) : "");
-      setSelectedRate([...result.contributions].sort((left, right) => left.scanRate - right.scanRate)[0]?.scanRate);
+      setSelectedRate([...result.analysisGrid.scanRates].sort((left, right) => left - right)[0]);
     } catch (error) {
       if (error instanceof CvParseError) setErrorCode(error.code);
       else if (error instanceof PageAnalysisError) setErrorCode(error.code);
@@ -217,6 +217,8 @@ export function CvKineticsPage() {
   const selectedSeriesIndex = analysis?.analysisGrid.scanRates.findIndex((rate) => rate === selectedRate) ?? -1;
   const selectedOriginalSeries = analysis?.series.find((item) => item.scanRate === selectedRate);
   const sortedContributions = [...contributions].sort((left, right) => left.scanRate - right.scanRate);
+  const sortedDunnRates = [...(analysis?.analysisGrid.scanRates ?? [])].sort((left, right) => left - right);
+  const dunnCoverage = analysis ? makeDunnCoverage(analysis) : undefined;
   const selectedBRecordIndex = validBResultRecords.findIndex((record) => record.sequenceIndex === selectedBSequenceIndex);
   const bChart = useMemo<ChartSeries[]>(() => {
     if (!analysis) return [];
@@ -236,7 +238,7 @@ export function CvKineticsPage() {
   }, [analysis, t]);
   const fitChart = sampleChartSeries(makeFitChart(selectedB, t("cv.b.fitData")));
   const dunnChart = sampleChartSeries(makeDunnChart(selectedOriginalSeries, t));
-  const dunnAreas = makeDunnAreas(analysis, selectedContribution, selectedSeriesIndex, t);
+  const dunnAreas = sampleChartAreas(makeDunnAreas(analysis, selectedRate, selectedSeriesIndex, t));
   const contributionChart = sampleChartSeries(makeContributionChart(sortedContributions, t));
   const sampledBChart = useMemo(() => sampleChartSeries(bChart), [bChart]);
   const bGapRunCount = useMemo(() => countNullRuns(bChart[0]?.points ?? []), [bChart]);
@@ -263,10 +265,10 @@ export function CvKineticsPage() {
     ? [
       ...chartMetadata,
       t("cv.chart.selectedRate", { rate: serializeScientificNumber(selectedRate) }),
-      ...(selectedContribution ? [t("cv.dunn.coverageNotice", {
-        valid: selectedContribution.validPointCount,
-        total: selectedContribution.sampledPointCount,
-        coverage: format(selectedContribution.coveragePercent)
+      ...(dunnCoverage ? [t("cv.dunn.coverageNotice", {
+        valid: dunnCoverage.validPointCount,
+        total: dunnCoverage.sampledPointCount,
+        coverage: format(dunnCoverage.coveragePercent)
       })] : [])
     ]
     : chartMetadata;
@@ -374,13 +376,13 @@ export function CvKineticsPage() {
       <section className="tool-section cv-dunn-analysis">
         <h2>{t("cv.dunn.title")}</h2><p>{t("cv.dunn.help")}</p>
         <label>{t("cv.results.rate")} (mV/s)<select name="selectedRate" value={selectedRate ?? ""} onChange={(event) => setSelectedRate(Number(event.target.value))}>
-          {sortedContributions.map((item) => <option key={item.scanRate} value={item.scanRate}>{item.scanRate}</option>)}
+          {sortedDunnRates.map((rate) => <option key={rate} value={rate}>{rate}</option>)}
         </select></label>
-        {selectedContribution && <>
+        {dunnCoverage && <>
           <p className="cv-dunn-coverage" data-dunn-coverage="true">{t("cv.dunn.coverageNotice", {
-            valid: selectedContribution.validPointCount,
-            total: selectedContribution.sampledPointCount,
-            coverage: format(selectedContribution.coveragePercent)
+            valid: dunnCoverage.validPointCount,
+            total: dunnCoverage.sampledPointCount,
+            coverage: format(dunnCoverage.coveragePercent)
           })}</p>
           <p className="cv-dunn-coverage-help">{t("cv.dunn.coverageHelp")}</p>
         </>}
@@ -613,16 +615,21 @@ function makeDunnChart(original: CvSeries | undefined, t: ReturnType<typeof useI
 
 function makeDunnAreas(
   analysis: AnalysisState | null,
-  contribution: DunnContribution | undefined,
+  scanRate: number | undefined,
   seriesIndex: number,
   t: ReturnType<typeof useI18n>["t"]
 ): ChartAreaSeries[] {
-  if (!analysis || !contribution || seriesIndex < 0) return [];
+  if (!analysis || scanRate === undefined || seriesIndex < 0) return [];
   const records = new Map(analysis.dunnRecords.map((record) => [record.sequenceIndex, record]));
   const branches = resolveGridBranches(analysis.analysisGrid);
-  const isValid = (index: number) => records.get(index)?.status === "valid"
-    && contribution.capacitiveCurrent[index] !== null
-    && contribution.diffusionCurrent[index] !== null;
+  const components = (index: number) => {
+    const record = records.get(index);
+    if (record?.status !== "valid" || !record.fit) return null;
+    return {
+      capacitive: record.fit.k1 * scanRate,
+      diffusion: record.fit.k2 * Math.sqrt(scanRate)
+    };
+  };
   const segments = (makePoint: (index: number) => ChartAreaPoint | null) => branches.flatMap((branch) =>
     collectAreaSegments(branch.startIndex, branch.endIndex, makePoint));
 
@@ -632,11 +639,12 @@ function makeDunnAreas(
     color: "#7656a8",
     opacity: 0.72,
     segments: segments((index) => {
-      if (!isValid(index)) return null;
+      const component = components(index);
+      if (!component) return null;
       return {
         x: analysis.analysisGrid.potentials[index],
         lower: 0,
-        upper: contribution.capacitiveCurrent[index]!
+        upper: component.capacitive
       };
     })
   }, {
@@ -645,12 +653,12 @@ function makeDunnAreas(
     color: "#6fb7a7",
     opacity: 0.72,
     segments: segments((index) => {
-      if (!isValid(index)) return null;
-      const capacitive = contribution.capacitiveCurrent[index]!;
+      const component = components(index);
+      if (!component) return null;
       return {
         x: analysis.analysisGrid.potentials[index],
-        lower: capacitive,
-        upper: capacitive + contribution.diffusionCurrent[index]!
+        lower: component.capacitive,
+        upper: component.capacitive + component.diffusion
       };
     })
   }, {
@@ -658,12 +666,22 @@ function makeDunnAreas(
     label: t("cv.dunn.excludedArea"),
     color: "#7d858b",
     pattern: "diagonalHatch",
-    segments: segments((index) => isValid(index) ? null : {
+    segments: segments((index) => components(index) ? null : {
       x: analysis.analysisGrid.potentials[index],
       lower: 0,
       upper: analysis.analysisGrid.currents[seriesIndex][index]
     })
   }];
+}
+
+function makeDunnCoverage(analysis: AnalysisState) {
+  const validPointCount = analysis.dunnRecords.filter((record) => record.status === "valid" && record.fit).length;
+  const sampledPointCount = analysis.dunnRecords.length;
+  return {
+    validPointCount,
+    sampledPointCount,
+    coveragePercent: sampledPointCount === 0 ? 0 : 100 * validPointCount / sampledPointCount
+  };
 }
 
 function collectAreaSegments(
@@ -703,6 +721,72 @@ function sampleChartSeries(series: ChartSeries[]): ChartSeries[] {
     }
     return { ...item, points: downsamplePoints(item.points, MAX_CHART_POINTS) };
   });
+}
+
+function sampleChartAreas(areas: ChartAreaSeries[]): ChartAreaSeries[] {
+  return areas.map((area) => ({
+    ...area,
+    segments: downsampleAreaSegments(area.segments, MAX_CHART_OUTPUT_POINTS)
+  }));
+}
+
+function downsampleAreaSegments(segments: ChartAreaPoint[][], limit: number): ChartAreaPoint[][] {
+  const drawable = segments.filter((segment) => segment.length >= 2);
+  const totalPointCount = drawable.reduce((total, segment) => total + segment.length, 0);
+  if (totalPointCount <= limit) return drawable;
+
+  const maximumSegmentCount = Math.max(1, Math.floor(limit / 2));
+  const selected = drawable.length <= maximumSegmentCount
+    ? drawable
+    : selectEvenlySpacedSegments(drawable, maximumSegmentCount);
+  const allocations = selected.map(() => 2);
+  let remaining = limit - allocations.length * 2;
+  const extraCapacity = selected.map((segment) => segment.length - 2);
+  const totalExtraCapacity = extraCapacity.reduce((total, count) => total + count, 0);
+
+  if (remaining > 0 && totalExtraCapacity > 0) {
+    for (let index = 0; index < selected.length; index += 1) {
+      const extra = Math.min(extraCapacity[index], Math.floor(remaining * extraCapacity[index] / totalExtraCapacity));
+      allocations[index] += extra;
+    }
+    remaining = limit - allocations.reduce((total, count) => total + count, 0);
+    for (let index = 0; remaining > 0; index = (index + 1) % selected.length) {
+      if (allocations[index] >= selected[index].length) continue;
+      allocations[index] += 1;
+      remaining -= 1;
+    }
+  }
+
+  return selected.map((segment, index) => downsampleAreaSegment(segment, allocations[index]));
+}
+
+function selectEvenlySpacedSegments<T>(segments: T[], limit: number): T[] {
+  if (segments.length <= limit) return segments;
+  if (limit <= 1) return [segments[0]];
+  return Array.from({ length: limit }, (_, index) =>
+    segments[Math.round(index * (segments.length - 1) / (limit - 1))]);
+}
+
+function downsampleAreaSegment(points: ChartAreaPoint[], limit: number): ChartAreaPoint[] {
+  if (points.length <= limit) return points;
+  if (limit <= 2) return [points[0], points[points.length - 1]];
+  const interiorCount = points.length - 2;
+  const interiorTarget = limit - 2;
+  const sampled = [points[0]];
+  for (let bucket = 0; bucket < interiorTarget; bucket += 1) {
+    const start = 1 + Math.floor(bucket * interiorCount / interiorTarget);
+    const end = 1 + Math.max(start, Math.floor((bucket + 1) * interiorCount / interiorTarget));
+    const group = points.slice(start, Math.min(points.length - 1, end));
+    sampled.push(group.reduce((extreme, point) => areaPointMagnitude(point) > areaPointMagnitude(extreme) ? point : extreme));
+  }
+  sampled.push(points[points.length - 1]);
+  return sampled;
+}
+
+function areaPointMagnitude(point: ChartAreaPoint) {
+  const lower = typeof point.lower === "number" ? point.lower : 0;
+  const upper = typeof point.upper === "number" ? point.upper : 0;
+  return Math.max(Math.abs(lower), Math.abs(upper), Math.abs(upper - lower));
 }
 
 function downsamplePoints<T extends { x: number; y: number | null }>(points: T[], limit: number): T[] {
