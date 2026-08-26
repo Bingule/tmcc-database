@@ -53,6 +53,22 @@ export interface InterpolatedCvData {
   branches?: CvGridBranch[];
 }
 
+export type PotentialIntervalSetting =
+  | { mode: "auto" }
+  | { mode: "manual"; millivolts: number };
+
+export interface CvAlignedBranchGrid {
+  potentials: number[];
+  scanRates: number[];
+  forwardCurrents: number[][];
+  reverseCurrents: number[][];
+  commonMinimum: number;
+  commonMaximum: number;
+  nativePotentialInterval: number;
+  resolvedPotentialInterval: number;
+  cycles: NormalizedCvCycle[];
+}
+
 export interface BValuePoint {
   potential: number;
   b: number;
