@@ -2468,7 +2468,7 @@ td button {
   grid-column: 1 / -1;
 }
 
-.cv-import > :is(h2, p, .cv-format-choices, .cv-analysis-settings, .cv-preview, .cv-analysis-actions) {
+.cv-import > :is(h2, p, .cv-format-choices, .cv-data-input, .cv-analysis-settings, .cv-preview, .cv-analysis-actions) {
   grid-column: 1 / -1;
 }
 
@@ -2521,6 +2521,41 @@ td button {
 
 .cv-source-controls {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.cv-data-input {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.85fr) minmax(0, 1.15fr);
+  gap: 10px 14px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #aac5be;
+  border-radius: 8px;
+  background: #f6faf8;
+  box-shadow: inset 4px 0 0 #2e746d;
+}
+
+.cv-data-input > h3 {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #183f49;
+}
+
+.cv-data-input .cv-source-controls {
+  padding: 10px 12px;
+  background: #fff;
+}
+
+.cv-data-input > :is(.cv-file-source, .cv-paste-source) {
+  align-self: stretch;
+  padding: 10px 12px;
+  border: 1px solid #d6e2de;
+  border-radius: 7px;
+  background: #fff;
+}
+
+.cv-data-input > .cv-file-source {
+  align-content: center;
 }
 
 .cv-analysis-settings {
@@ -2822,6 +2857,22 @@ td button {
   background: #fbfcfb;
 }
 
+.cv-dunn-coverage {
+  margin: 8px 0 0;
+  padding: 9px 12px;
+  border-left: 4px solid #2f6f7f;
+  border-radius: 5px;
+  color: #284b57;
+  background: #edf5f3;
+  font-weight: 750;
+}
+
+.cv-dunn-coverage-help {
+  margin: 6px 0 0;
+  color: #607078;
+  font-size: 0.88rem;
+}
+
 .scientific-chart-svg {
   display: block;
   width: 100%;
@@ -2990,8 +3041,13 @@ sub {
 
   .cv-format-choices,
   .cv-source-controls,
+  .cv-data-input,
   .cv-analysis-settings {
     grid-template-columns: 1fr;
+  }
+
+  .cv-data-input > h3 {
+    grid-column: auto;
   }
 
   .cv-format-choices > :is(legend, p) {

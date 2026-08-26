@@ -75,6 +75,30 @@ async function setValue(input: HTMLInputElement | HTMLTextAreaElement | HTMLSele
 }
 
 describe("CvImportPanel", () => {
+  it("places the complete data-input block immediately after the format selector and preserves the selected file", async () => {
+    const view = await renderPanel();
+    const format = view.querySelector<HTMLElement>(".cv-format-choices")!;
+    const dataInput = view.querySelector<HTMLElement>(".cv-data-input")!;
+    const header = view.querySelector<HTMLElement>('[aria-label="First-row handling"]')!;
+
+    expect(format.nextElementSibling).toBe(dataInput);
+    expect(dataInput.nextElementSibling).toBe(header);
+    expect(dataInput.querySelector('input[name="cv-source"]')).not.toBeNull();
+    expect(dataInput.querySelector('input[type="file"]')).not.toBeNull();
+
+    const fileInput = dataInput.querySelector<HTMLInputElement>('input[type="file"]')!;
+    const file = new File(["E,I1,I2,I3"], "retained.csv", { type: "text/csv" });
+    Object.defineProperty(fileInput, "files", { configurable: true, value: [file] });
+    await act(async () => fileInput.dispatchEvent(new Event("change", { bubbles: true })));
+
+    await act(async () => view.querySelector<HTMLInputElement>('input[name="cv-source"][value="paste"]')!.click());
+    await act(async () => view.querySelector<HTMLInputElement>('input[name="cv-header-mode"][value="data"]')!.click());
+    await act(async () => view.querySelector<HTMLInputElement>('input[name="cv-layout"][value="sharedPotential"]')!.click());
+    await act(async () => view.querySelector<HTMLInputElement>('input[name="cv-source"][value="file"]')!.click());
+
+    expect(view.querySelector(".cv-file-name")?.textContent).toBe("retained.csv");
+  });
+
   it("requires an explicit layout and exposes the documented English defaults", async () => {
     const view = await renderPanel();
     const layout = view.querySelector('[role="radiogroup"][aria-required="true"]')!;

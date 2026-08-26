@@ -385,14 +385,15 @@ describe("CV kinetics page", () => {
       ["0", "Branch 1"], ["1", "Branch 1"], ["2", "Branch 1"], ["1", "Branch 2"], ["0", "Branch 2"]
     ]);
 
-    for (const seriesId of ["original", "reconstructed-total", "capacitive", "diffusion"]) {
-      const path = view.querySelector<SVGPathElement>(`[data-series-id="${seriesId}"]`)!;
-      expect(path.getAttribute("data-render-point-count")).toBe("5");
-      const xs = pathXs(path.getAttribute("d") ?? "");
-      expect(xs).toHaveLength(5);
-      expect(xs[3]).toBeLessThan(xs[2]);
-      expect(xs[4]).toBeLessThan(xs[3]);
-    }
+    const originalPath = view.querySelector<SVGPathElement>('[data-series-id="original"]')!;
+    expect(originalPath.getAttribute("data-render-point-count")).toBe("5");
+    const originalXs = pathXs(originalPath.getAttribute("d") ?? "");
+    expect(originalXs).toHaveLength(5);
+    expect(originalXs[3]).toBeLessThan(originalXs[2]);
+    expect(originalXs[4]).toBeLessThan(originalXs[3]);
+    expect(view.querySelector('[data-series-id="reconstructed-total"]')).toBeNull();
+    expect(view.querySelectorAll('[data-area-series-id="capacitive-area"]').length).toBeGreaterThan(0);
+    expect(view.querySelectorAll('[data-area-series-id="diffusion-area"]').length).toBeGreaterThan(0);
     const bPath = view.querySelector<SVGPathElement>('[data-series-id="b-values"]')!;
     expect(bPath.getAttribute("data-render-point-count")).toBe("5");
     const bXs = pathXs(bPath.getAttribute("d") ?? "");
@@ -559,7 +560,7 @@ describe("CV kinetics page", () => {
     expect(view.querySelector('[data-export-id="cv-b-chart"] [data-selected-x="0.123456789"]')).not.toBeNull();
   });
 
-  it("maps exact potential and rate selections to the signed Dunn curves", async () => {
+  it("maps exact potential and rate selections to signed publication-style Dunn areas", async () => {
     const view = await renderPage();
     await upload(view, "Potential,Current 1 mV/s,Current 4 mV/s,Current 9 mV/s\n0,1,6,15\n1,-1,-4,-9");
     await click(view, "Run analysis");
@@ -571,7 +572,45 @@ describe("CV kinetics page", () => {
     const rows = [...view.querySelectorAll<HTMLTableRowElement>('[data-table-id="cv-dunn-current-table"] tbody tr')];
     const selected = rows.find((row) => row.cells[0].textContent === "1")!;
     expect([...selected.cells].map((cell) => cell.textContent)).toEqual(["1", "-9", "-9", "-9", "0"]);
-    expect(view.querySelectorAll('[data-export-id="cv-dunn-chart"] [data-series-id]')).toHaveLength(4);
+    const chart = view.querySelector('[data-export-id="cv-dunn-chart"]')!;
+    expect(chart.querySelectorAll('[data-series-id]')).toHaveLength(1);
+    expect(chart.querySelector('[data-series-id="original"]')?.getAttribute("data-render-point-count")).toBe("2");
+    expect(chart.querySelector('[data-series-id="reconstructed-total"]')).toBeNull();
+    expect(chart.querySelector('[data-series-id="capacitive"]')).toBeNull();
+    expect(chart.querySelector('[data-series-id="diffusion"]')).toBeNull();
+    expect(chart.querySelectorAll('[data-area-series-id="capacitive-area"]')).toHaveLength(1);
+    expect(chart.querySelectorAll('[data-area-series-id="diffusion-area"]')).toHaveLength(1);
+    expect(chart.querySelector('[data-area-series-id="excluded-area"]')).toBeNull();
+    expect(view.querySelector('[data-dunn-coverage="true"]')?.textContent).toContain("2 / 2 points (100%)");
+  });
+
+  it("keeps the full measured loop while hatching contiguous R-squared exclusions", async () => {
+    const view = await renderPage();
+    await upload(view, [
+      "Potential,Current 1 mV/s,Current 4 mV/s,Current 9 mV/s",
+      "0,1,4,9",
+      "1,2,8,18",
+      "2,1,8,2",
+      "3,2,16,4",
+      "4,5,20,45"
+    ].join("\n"));
+    await click(view, "Run analysis");
+
+    const chart = view.querySelector('[data-export-id="cv-dunn-chart"]')!;
+    expect(chart.querySelector('[data-series-id="original"]')?.getAttribute("data-render-point-count")).toBe("5");
+    expect(chart.querySelectorAll('[data-area-series-id="capacitive-area"]')).toHaveLength(1);
+    expect(chart.querySelectorAll('[data-area-series-id="diffusion-area"]')).toHaveLength(1);
+    const excluded = chart.querySelector<SVGPathElement>('[data-area-series-id="excluded-area"]');
+    expect(excluded?.getAttribute("fill")).toMatch(/^url\(#/);
+    expect(view.querySelector('[data-dunn-coverage="true"]')?.textContent).toContain("3 / 5 points (60%)");
+    expect(view.textContent).toContain("hatched regions are excluded from percentages, tables, and exports");
+    expect(view.querySelectorAll('[data-table-id="cv-dunn-records-table"] tbody tr')).toHaveLength(3);
+    expect([...view.querySelectorAll<HTMLButtonElement>('.cv-export button')].filter((item) => item.textContent?.endsWith(".csv"))).toHaveLength(6);
+
+    await click(view, "中文");
+    expect(view.querySelector('[data-dunn-coverage="true"]')?.textContent).toContain("3 / 5 个点（60%）");
+    expect(chart.querySelector('[data-chart-legend="true"]')?.textContent).toContain("低于 R² 阈值／不可用");
+    expect(view.textContent).toContain("斜线区域不计入百分比、结果表和导出");
   });
 
   it("clears stale validation on edit and ignores an older import finishing last", async () => {
@@ -913,7 +952,9 @@ describe("CV kinetics page", () => {
     expect(view.textContent).toContain("Original CV curve");
     expect(view.textContent).toContain("Reconstructed total current");
     expect(view.querySelector('[data-series-id="original"]')?.getAttribute("data-render-point-count")).toBe("2");
-    expect(view.querySelector('[data-series-id="reconstructed-total"]')?.getAttribute("data-render-point-count")).toBe("3");
+    expect(view.querySelector('[data-series-id="reconstructed-total"]')).toBeNull();
+    expect(view.querySelectorAll('[data-area-series-id="capacitive-area"]').length).toBeGreaterThan(0);
+    expect(view.querySelectorAll('[data-area-series-id="diffusion-area"]').length).toBeGreaterThan(0);
     expect(view.querySelectorAll('[data-table-id="cv-original-current-table"] tbody tr')).toHaveLength(2);
     expect(view.querySelectorAll('[data-table-id="cv-dunn-current-table"] tbody tr')).toHaveLength(3);
     expect(view.querySelector('[data-table-id="cv-dunn-current-table"]')?.textContent).toContain("Interpolated input current");

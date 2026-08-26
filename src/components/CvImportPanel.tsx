@@ -103,6 +103,73 @@ export function CvImportPanel({
       </div>
     </fieldset>
 
+    <section className="cv-data-input" aria-labelledby="cv-data-input-title">
+      <h3 id="cv-data-input-title">{t("cv.upload")}</h3>
+      <fieldset className="cv-import-fieldset cv-source-controls" role="radiogroup" aria-label={t("cv.aria.source")}>
+        <legend>{t("cv.import.source")}</legend>
+        <p>{t("cv.import.source.help")}</p>
+        <label>
+          <input
+            type="radio"
+            name="cv-source"
+            value="file"
+            checked={draft.source === "file"}
+            onChange={() => update({ source: "file" })}
+          />
+          {t("cv.import.source.file")}
+        </label>
+        <label>
+          <input
+            type="radio"
+            name="cv-source"
+            value="paste"
+            checked={draft.source === "paste"}
+            onChange={() => update({ source: "paste" })}
+          />
+          {t("cv.import.source.paste")}
+        </label>
+      </fieldset>
+
+      {draft.source === "file" ? <div className="cv-file-source">
+        <div className="cv-file-picker">
+          <input
+            className="cv-file-input"
+            id="cv-file-input"
+            aria-label={t("cv.aria.file")}
+            type="file"
+            accept=".csv,.txt,.xlsx"
+            disabled={busy}
+            onChange={(event) => {
+              const file = event.currentTarget.files?.[0];
+              if (!file) return;
+              onFile(file);
+              event.currentTarget.value = "";
+            }}
+          />
+          <label className="cv-file-button" htmlFor="cv-file-input" aria-disabled={busy}>
+            {t("cv.import.file.choose")}
+          </label>
+          <span className="cv-file-name" role="status">
+            {selectedFileName ?? t("cv.import.file.none")}
+          </span>
+        </div>
+      </div> : <div className="cv-paste-source">
+        <label htmlFor="cv-paste-text">{t("cv.import.paste.label")}</label>
+        <textarea
+          id="cv-paste-text"
+          name="cv-paste-text"
+          aria-label={t("cv.aria.paste")}
+          disabled={busy}
+          placeholder={t("cv.import.paste.placeholder")}
+          value={draft.pasteText}
+          onChange={(event) => update({ pasteText: event.target.value })}
+        />
+        <button type="button" disabled={busy || draft.pasteText.trim() === ""} onClick={onParsePaste}>
+          {busy ? t("cv.import.parsing") : t("cv.import.paste.parse")}
+        </button>
+      </div>}
+    </section>
+
     <fieldset className="cv-import-fieldset" role="radiogroup" aria-label={t("cv.aria.headerMode")}>
       <legend>{t("cv.import.headerMode")}</legend>
       <p>{t("cv.import.headerMode.help")}</p>
@@ -127,71 +194,6 @@ export function CvImportPanel({
         {t("cv.import.headerMode.data")}
       </label>
     </fieldset>
-
-    <fieldset className="cv-import-fieldset cv-source-controls" role="radiogroup" aria-label={t("cv.aria.source")}>
-      <legend>{t("cv.import.source")}</legend>
-      <p>{t("cv.import.source.help")}</p>
-      <label>
-        <input
-          type="radio"
-          name="cv-source"
-          value="file"
-          checked={draft.source === "file"}
-          onChange={() => update({ source: "file" })}
-        />
-        {t("cv.import.source.file")}
-      </label>
-      <label>
-        <input
-          type="radio"
-          name="cv-source"
-          value="paste"
-          checked={draft.source === "paste"}
-          onChange={() => update({ source: "paste" })}
-        />
-        {t("cv.import.source.paste")}
-      </label>
-    </fieldset>
-
-    {draft.source === "file" ? <div className="cv-file-source">
-      <span className="cv-file-label">{t("cv.upload")}</span>
-      <div className="cv-file-picker">
-        <input
-          className="cv-file-input"
-          id="cv-file-input"
-          aria-label={t("cv.aria.file")}
-          type="file"
-          accept=".csv,.txt,.xlsx"
-          disabled={busy}
-          onChange={(event) => {
-            const file = event.currentTarget.files?.[0];
-            if (!file) return;
-            onFile(file);
-            event.currentTarget.value = "";
-          }}
-        />
-        <label className="cv-file-button" htmlFor="cv-file-input" aria-disabled={busy}>
-          {t("cv.import.file.choose")}
-        </label>
-        <span className="cv-file-name" role="status">
-          {selectedFileName ?? t("cv.import.file.none")}
-        </span>
-      </div>
-    </div> : <div className="cv-paste-source">
-      <label htmlFor="cv-paste-text">{t("cv.import.paste.label")}</label>
-      <textarea
-        id="cv-paste-text"
-        name="cv-paste-text"
-        aria-label={t("cv.aria.paste")}
-        disabled={busy}
-        placeholder={t("cv.import.paste.placeholder")}
-        value={draft.pasteText}
-        onChange={(event) => update({ pasteText: event.target.value })}
-      />
-      <button type="button" disabled={busy || draft.pasteText.trim() === ""} onClick={onParsePaste}>
-        {busy ? t("cv.import.parsing") : t("cv.import.paste.parse")}
-      </button>
-    </div>}
 
     <div className="cv-scan-rate-group">
       <label className="cv-scan-rate-control" htmlFor="cv-scan-rates">

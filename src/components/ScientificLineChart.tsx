@@ -167,10 +167,10 @@ export function ScientificLineChart({
             return (
               <g key={item.id} className="scientific-chart-legend-item" transform={`translate(${x} ${y})`}>
                 {entry.kind === "area"
-                  ? <rect x={1} y={-6} width={24} height={12} rx={2} fill={item.pattern === "diagonalHatch" ? `url(#${patternId(item)})` : item.color} fillOpacity={item.pattern ? 1 : item.opacity ?? 0.68} />
-                  : item.mode === "points"
-                    ? <circle cx={13} cy={0} r={3.5} fill={item.color} />
-                    : <line x1={0} y1={0} x2={26} y2={0} stroke={item.color} strokeWidth={2.25} strokeDasharray={item.dash} />}
+                  ? <rect x={1} y={-6} width={24} height={12} rx={2} fill={entry.item.pattern === "diagonalHatch" ? `url(#${patternId(entry.item)})` : entry.item.color} fillOpacity={entry.item.pattern ? 1 : entry.item.opacity ?? 0.68} />
+                  : entry.item.mode === "points"
+                    ? <circle cx={13} cy={0} r={3.5} fill={entry.item.color} />
+                    : <line x1={0} y1={0} x2={26} y2={0} stroke={entry.item.color} strokeWidth={2.25} strokeDasharray={entry.item.dash} />}
                 <text x={32} y={4} fill="#263238" fontSize={11}>{item.label}</text>
               </g>
             );

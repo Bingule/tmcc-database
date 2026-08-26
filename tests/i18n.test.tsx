@@ -141,6 +141,17 @@ describe("I18nProvider", () => {
     expect(zh["cv.import.pointInterval.help"]).toContain("各分支内");
   });
 
+  it("defines bilingual publication-style Dunn area and coverage resources", () => {
+    expect(en["cv.dunn.excludedArea"]).toBe("Excluded by R² threshold / unavailable");
+    expect(en["cv.dunn.coverageNotice"]).toContain("{{valid}} / {{total}} points");
+    expect(en["cv.dunn.coverageHelp"]).toContain("hatched regions");
+    expect(en["cv.dunn.help"]).toContain("publication-style filled areas");
+    expect(zh["cv.dunn.excludedArea"]).toBe("低于 R² 阈值／不可用");
+    expect(zh["cv.dunn.coverageNotice"]).toContain("{{valid}} / {{total}} 个点");
+    expect(zh["cv.dunn.coverageHelp"]).toContain("斜线区域");
+    expect(zh["cv.dunn.help"]).toContain("文献式填色");
+  });
+
   it("keeps Angstrom units untranslated in Chinese resources", () => {
     expect(zh["xrd.wavelength"]).toBe("波长（Angstrom）");
   });
