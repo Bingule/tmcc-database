@@ -131,6 +131,20 @@ export interface DunnFitGrid {
   resolvedTurningPointTrim: number;
 }
 
+export type DunnConfidenceMode = "threshold" | "weighted";
+
+export interface DunnFractionPoint {
+  fraction: number | null;
+  confidence: number;
+  rSquared: number | null;
+  trustedAnchor: boolean;
+}
+
+export interface DunnFractionGrid {
+  forward: DunnFractionPoint[];
+  reverse: DunnFractionPoint[];
+}
+
 export interface CvAnalysisSettings {
   pointInterval: number;
   rSquaredThreshold: number;
