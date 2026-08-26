@@ -164,6 +164,8 @@ describe("CvImportPanel", () => {
 
     await click(view, "中文");
     expect(view.textContent).toContain("数据格式");
+    expect(view.textContent).toContain("上传伏安数据");
+    expect(view.textContent).not.toContain("上传循环伏安数据");
     expect(view.textContent).toContain("首行为表头");
     expect(view.textContent).toContain("从 Excel 粘贴");
     expect(view.textContent).toContain("电位间隔");

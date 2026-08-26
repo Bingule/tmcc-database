@@ -318,7 +318,7 @@ export const zh = {
   "tools.capacity.description": "根据化学式和电子转移数计算理论比容量。",
   "tools.molecularWeight.title": "分子量计算器",
   "tools.molecularWeight.description": "根据化学式计算摩尔质量和各元素质量贡献。",
-  "cv.upload": "上传循环伏安数据",
+  "cv.upload": "上传伏安数据",
   "cv.title": "CV 动力学分析",
   "cv.subtitle": "使用同一份已确认的 CV 数据集分析 b 值和 Dunn 贡献。",
   "cv.import.title": "导入数据",

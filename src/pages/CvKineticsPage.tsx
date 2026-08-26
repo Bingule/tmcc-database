@@ -254,7 +254,7 @@ export function CvKineticsPage() {
       }),
       t("cv.chart.analysisSettings", {
         rates: resultMetadata.orderedScanRates.map(serializeScientificNumber).join(", "),
-        interval: potentialIntervalLabel(analysis),
+        interval: potentialIntervalLabel(analysis, t),
         threshold: serializeScientificNumber(analysis.settings.rSquaredThreshold)
       })
     ]
@@ -513,9 +513,9 @@ function QualitySummary({ analysis, metadata }: { analysis: AnalysisState; metad
         retained: analysis.summary.retainedPointCount
       })}</li>
       <li>{t("cv.quality.settings", {
-        interval: potentialIntervalLabel(analysis),
+        interval: potentialIntervalLabel(analysis, t),
         method: dunnMethodLabel(analysis.settings.dunnConfidenceMode, t),
-        trim: turningPointTrimLabel(analysis),
+        trim: turningPointTrimLabel(analysis, t),
         smoothing: t("cv.quality.smoothing.auto"),
         threshold: format(analysis.settings.rSquaredThreshold)
       })}</li>
@@ -623,16 +623,16 @@ function flattenDunnRecords(analysis: AnalysisState | null): DunnBranchFitRecord
   return analysis ? [...analysis.dunnRecords.forward, ...analysis.dunnRecords.reverse] : [];
 }
 
-function potentialIntervalLabel(analysis: AnalysisState): string {
+function potentialIntervalLabel(analysis: AnalysisState, t: ReturnType<typeof useI18n>["t"]): string {
   return analysis.settings.potentialInterval.mode === "manual"
     ? `${serializeScientificNumber(analysis.settings.potentialInterval.millivolts)} mV`
-    : "auto";
+    : t("cv.import.mode.auto");
 }
 
-function turningPointTrimLabel(analysis: AnalysisState): string {
+function turningPointTrimLabel(analysis: AnalysisState, t: ReturnType<typeof useI18n>["t"]): string {
   return analysis.settings.turningPointTrim.mode === "manual"
     ? `${serializeScientificNumber(analysis.settings.turningPointTrim.millivolts)} mV`
-    : "auto";
+    : t("cv.import.mode.auto");
 }
 
 function dunnMethodLabel(mode: CvAnalysisSettings["dunnConfidenceMode"], t: ReturnType<typeof useI18n>["t"]): string {
@@ -924,7 +924,7 @@ function exportCsv(
   const metadataValues = [
     layoutIdentifier(metadata.layout),
     t(sourceKey(metadata.source)),
-    potentialIntervalLabel(analysis),
+    potentialIntervalLabel(analysis, t),
     analysis.settings.rSquaredThreshold,
     t(headerModeKey(metadata.headerMode)),
     metadata.orderedScanRates.map(serializeScientificNumber).join(" ")
@@ -995,7 +995,7 @@ function withWideMetadata(
     `${t("cv.export.dataSource")}: ${t(sourceKey(metadata.source))}`,
     `${t("cv.export.headerMode")}: ${t(headerModeKey(metadata.headerMode))}`,
     `${t("cv.export.orderedScanRates")}: ${metadata.orderedScanRates.map(serializeScientificNumber).join(" ")}`,
-    `${t("cv.export.pointInterval")}: ${potentialIntervalLabel(analysis)}`,
+    `${t("cv.export.pointInterval")}: ${potentialIntervalLabel(analysis, t)}`,
     `${t("cv.export.rSquaredThreshold")}: ${serializeScientificNumber(analysis.settings.rSquaredThreshold)}`
   ].join("; ");
   return headers.map((header, index) => index === headers.length - 1 ? `${header} [${suffix}]` : header);

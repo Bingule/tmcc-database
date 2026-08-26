@@ -361,6 +361,13 @@ describe("CV kinetics page", () => {
     expect(view.textContent).toContain("R² 加权");
     expect(view.textContent).toContain("转折点裁剪");
     expect(view.textContent).toContain("平滑：自动");
+    const zhSummary = view.querySelector('[data-quality-summary="true"]')?.textContent ?? "";
+    expect(zhSummary).toContain("电位间隔 自动");
+    expect(zhSummary).toContain("裁剪 自动");
+    expect(zhSummary).not.toMatch(/(?:电位间隔|裁剪)\s*auto/i);
+    const zhChartMetadata = view.querySelector('[data-export-id="cv-b-chart"] [data-chart-metadata="true"]')?.textContent ?? "";
+    expect(zhChartMetadata).toContain("取点间隔 = 自动");
+    expect(zhChartMetadata).not.toMatch(/取点间隔\s*=\s*auto/i);
     expect(view.textContent).toContain(`目标为每个序列最多 ${MAX_CHART_POINTS} 个点`);
     expect(view.textContent).toContain(`最多可增加到每个序列 ${MAX_CHART_OUTPUT_POINTS} 个点`);
     expect(view.querySelectorAll("svg")).toHaveLength(4);
