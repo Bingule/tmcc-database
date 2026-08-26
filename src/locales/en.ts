@@ -447,6 +447,7 @@ export const en = {
   "cv.status.insufficientData": "Insufficient data",
   "cv.status.zeroCurrentLogUnavailable": "Zero-current logarithm unavailable",
   "cv.status.regressionFailed": "Regression failed",
+  "cv.status.trimmed": "Trimmed",
   "cv.export.title": "Export",
   "cv.export.csv": "CSV exports",
   "cv.export.figures": "Figure exports",

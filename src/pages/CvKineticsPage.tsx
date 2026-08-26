@@ -592,13 +592,13 @@ function dunnRecordRow(record: DunnBranchFitRecord, t: ReturnType<typeof useI18n
 }
 
 function fitStatusLabel(status: CvFitStatus | DunnFitStatus, t: ReturnType<typeof useI18n>["t"]): string {
-  if (status === "trimmed") return "Trimmed";
   const keys = {
     valid: "cv.status.valid",
     belowRSquaredThreshold: "cv.status.belowRSquaredThreshold",
     insufficientData: "cv.status.insufficientData",
     zeroCurrentLogUnavailable: "cv.status.zeroCurrentLogUnavailable",
-    regressionFailed: "cv.status.regressionFailed"
+    regressionFailed: "cv.status.regressionFailed",
+    trimmed: "cv.status.trimmed"
   } as const;
   return t(keys[status]);
 }

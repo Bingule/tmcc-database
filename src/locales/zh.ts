@@ -449,6 +449,7 @@ export const zh = {
   "cv.status.insufficientData": "数据不足",
   "cv.status.zeroCurrentLogUnavailable": "零电流对数不可用",
   "cv.status.regressionFailed": "回归失败",
+  "cv.status.trimmed": "已裁剪",
   "cv.export.title": "导出",
   "cv.export.csv": "CSV 导出",
   "cv.export.figures": "图形导出",

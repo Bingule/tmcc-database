@@ -368,6 +368,9 @@ describe("CV kinetics page", () => {
     const zhChartMetadata = view.querySelector('[data-export-id="cv-b-chart"] [data-chart-metadata="true"]')?.textContent ?? "";
     expect(zhChartMetadata).toContain("取点间隔 = 自动");
     expect(zhChartMetadata).not.toMatch(/取点间隔\s*=\s*auto/i);
+    const zhDunnRecords = view.querySelector('[data-table-id="cv-dunn-records-table"]')?.textContent ?? "";
+    expect(zhDunnRecords).toContain("已裁剪");
+    expect(zhDunnRecords).not.toContain("Trimmed");
     expect(view.textContent).toContain(`目标为每个序列最多 ${MAX_CHART_POINTS} 个点`);
     expect(view.textContent).toContain(`最多可增加到每个序列 ${MAX_CHART_OUTPUT_POINTS} 个点`);
     expect(view.querySelectorAll("svg")).toHaveLength(4);
