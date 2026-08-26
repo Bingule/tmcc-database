@@ -249,20 +249,18 @@ function selectFirstClosedLoop(
   }
   const tolerance = closureTolerance(nativePotentialInterval, span);
   const startPotential = points[0].potential;
-  const minimum = Math.min(...points.map((point) => point.potential));
-  const maximum = Math.max(...points.map((point) => point.potential));
-  const startsAtExtremum = closeTo(startPotential, minimum, tolerance) || closeTo(startPotential, maximum, tolerance);
   const initialDirection = runs[0]?.direction;
   if (initialDirection === undefined) {
     throw new CvCycleStructureError("branchPointCount", { reason: "noSweepDirection" });
   }
+  const reverseRun = runs[1];
+  const startsAtExtremum = reverseRun !== undefined
+    && closeTo(startPotential, runDirectionalExtremum(points, reverseRun), tolerance);
 
   if (startsAtExtremum) {
-    const reverseRun = runs[1];
-    const oppositeExtremum = initialDirection === 1 ? maximum : minimum;
+    const oppositeExtremum = runDirectionalExtremum(points, runs[0]);
     if (
-      reverseRun === undefined
-      || reverseRun.direction !== -initialDirection
+      reverseRun.direction !== -initialDirection
       || !runReachesPotential(points, runs[0], oppositeExtremum, tolerance)
     ) {
       throw new CvCycleStructureError("branchPointCount", { reason: "incompleteCycle" });
@@ -280,16 +278,16 @@ function selectFirstClosedLoop(
     return { startIndex: 0, endIndex };
   }
 
-  const reverseRun = runs[1];
   const returnRun = runs[2];
-  const firstExtremum = initialDirection === 1 ? maximum : minimum;
-  const secondExtremum = initialDirection === 1 ? minimum : maximum;
+  const firstExtremum = runDirectionalExtremum(points, runs[0]);
+  const secondExtremum = reverseRun === undefined ? undefined : runDirectionalExtremum(points, reverseRun);
   if (
     reverseRun === undefined
     || returnRun === undefined
     || reverseRun.direction !== -initialDirection
     || returnRun.direction !== initialDirection
     || !runReachesPotential(points, runs[0], firstExtremum, tolerance)
+    || secondExtremum === undefined
     || !runReachesPotential(points, reverseRun, secondExtremum, tolerance)
   ) {
     throw new CvCycleStructureError("branchPointCount", { reason: "incompleteCycle" });
@@ -305,6 +303,11 @@ function selectFirstClosedLoop(
     throw new CvCycleStructureError("branchPointCount", { reason: "incompleteCycle" });
   }
   return { startIndex: 0, endIndex };
+}
+
+function runDirectionalExtremum(points: CvSeries["points"], run: DirectionRun): number {
+  const potentials = points.slice(run.startIndex, run.endIndex + 1).map((point) => point.potential);
+  return run.direction === 1 ? Math.max(...potentials) : Math.min(...potentials);
 }
 
 function runReachesPotential(

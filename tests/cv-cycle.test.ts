@@ -147,6 +147,13 @@ describe("normalizeCvCycle", () => {
     expect(cycle.ignoredPointCount).toBe(2);
   });
 
+  it("ignores a tail that extends beyond an already closed endpoint-started loop", () => {
+    const cycle = normalizeCvCycle(points([-1, 0, -1, -0.5, 0.5]));
+
+    expect(cycle.selectedEndIndex).toBe(2);
+    expect(cycle.ignoredPointCount).toBe(2);
+  });
+
   it("does not treat a later return after another reversal as an endpoint-started closure", () => {
     expect(() => normalizeCvCycle(points([-1, 0, -0.5, 0, -1]))).toThrow("branchPointCount");
   });
