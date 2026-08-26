@@ -257,7 +257,7 @@ function joinSeamRuns(first: CvSweepPoint[], last: CvSweepPoint[]) {
 }
 ```
 
-`selectFirstClosedLoop` must require both directions, accept one or two reversals, and choose the earliest post-reversal endpoint within `closureTolerance` of the start. `normalizeRunsAtCyclicSeam` must assign duplicated turning samples to their incoming/outgoing branches and sort the derived forward branch by increasing potential and reverse branch by decreasing potential without changing `sourceIndex`.
+`selectFirstClosedLoop` must not treat the first return through the starting potential as closure when the file starts in the middle of a sweep. First determine whether the starting potential is within `closureTolerance` of a measured potential extremum. If it starts at an extremum, require one reversal, traversal to the opposite extremum, and return to the starting extremum. If it starts away from both extrema, require two reversals, traversal through both extrema, return to the initial sweep direction, and then closure near the starting potential. Choose the earliest endpoint satisfying the applicable rule. This makes BP150’s reverse crossing near -1.0 V an interior event and retains its later -1.10315 V turn plus return branch. `normalizeRunsAtCyclicSeam` must assign duplicated turning samples to their incoming/outgoing branches and sort the derived forward branch by increasing potential and reverse branch by decreasing potential without changing `sourceIndex`.
 
 - [ ] **Step 4: Run cycle and existing cycle-related tests**
 
