@@ -90,10 +90,36 @@ export interface DunnPoint {
   pointCount: number;
 }
 
+export interface DunnDiagnostics {
+  mode: DunnConfidenceMode;
+  threshold: number;
+  resolvedPotentialInterval: number;
+  resolvedTurningPointTrim: number;
+  commonMinimum: number;
+  commonMaximum: number;
+  medianForwardRSquared: number | null;
+  medianReverseRSquared: number | null;
+  forwardAboveThresholdPercent: number;
+  reverseAboveThresholdPercent: number;
+  lowFitQuality: boolean;
+  scanRateWarning: boolean;
+  qualityPassed: boolean;
+}
+
 export interface DunnContribution {
   scanRate: number;
+  potentialGrid?: number[];
+  g?: number[];
+  originalForward?: number[];
+  originalReverse?: number[];
+  capacitiveForward?: number[];
+  capacitiveReverse?: number[];
+  diffusionForward?: number[];
+  diffusionReverse?: number[];
+  plotPath?: Array<{ potential: number; current: number; branch: CvBranchKind }>;
   capacitivePercent: number;
   diffusionPercent: number;
+  diagnostics?: DunnDiagnostics;
   validPointCount: number;
   sampledPointCount: number;
   coveragePercent: number;
@@ -156,6 +182,18 @@ export interface DunnRegularizationDiagnostics {
 export interface DunnSharedFractionResult {
   g: number[];
   diagnostics: DunnRegularizationDiagnostics;
+}
+
+export interface DunnContributionInput {
+  alignedGrid: CvAlignedBranchGrid;
+  dunnRecords: DunnFitGrid;
+  optimized: DunnSharedFractionResult;
+  fractions: DunnFractionGrid;
+  scanRate: number;
+  seriesIndex: number;
+  mode: DunnConfidenceMode;
+  threshold: number;
+  resolvedTurningPointTrim: number;
 }
 
 export interface CvAnalysisSettings {
