@@ -123,6 +123,15 @@ describe("I18nProvider", () => {
     expect(Object.keys(zh).sort()).toEqual(Object.keys(en).sort());
   });
 
+  it("defines bilingual CV branch and complete-cycle error resources", () => {
+    expect(en["cv.table.sweepBranch"]).toBe("Sweep branch");
+    expect(en["cv.table.branchValue"]).toBe("Branch {{branch}}");
+    expect(en["cv.error.invalidCycleStructure"]).toContain("complete CV cycle");
+    expect(zh["cv.table.sweepBranch"]).toBe("扫描分支");
+    expect(zh["cv.table.branchValue"]).toBe("分支 {{branch}}");
+    expect(zh["cv.error.invalidCycleStructure"]).toContain("完整 CV 周期");
+  });
+
   it("keeps Angstrom units untranslated in Chinese resources", () => {
     expect(zh["xrd.wavelength"]).toBe("波长（Angstrom）");
   });

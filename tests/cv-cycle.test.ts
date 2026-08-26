@@ -6,7 +6,7 @@ import {
 } from "../src/lib/cvCycle";
 import type { CvSeries } from "../src/lib/cvTypes";
 
-function points(potentials: number[]) {
+function points(potentials: readonly number[]) {
   return potentials.map((potential, index) => ({ potential, current: index + 1 }));
 }
 

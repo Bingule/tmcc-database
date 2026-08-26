@@ -1,7 +1,7 @@
 import { act, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it } from "vitest";
-import { CvImportPanel, type CvImportDraft } from "../src/components/CvImportPanel";
+import { CvImportPanel, type CvImportDraft, type CvUiError } from "../src/components/CvImportPanel";
 import { I18nProvider, useI18n } from "../src/i18n/I18nProvider";
 import { parseDelimitedCv, type ParsedCvTable } from "../src/lib/cvParsing";
 
@@ -25,7 +25,7 @@ const initialDraft: CvImportDraft = {
   rSquaredThreshold: 0.95
 };
 
-function PanelHarness({ table = null, initial = initialDraft }: { table?: ParsedCvTable | null; initial?: CvImportDraft }) {
+function PanelHarness({ table = null, initial = initialDraft, error = null }: { table?: ParsedCvTable | null; initial?: CvImportDraft; error?: CvUiError | null }) {
   const [draft, setDraft] = useState(initial);
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const { setLanguage, t } = useI18n();
@@ -37,7 +37,7 @@ function PanelHarness({ table = null, initial = initialDraft }: { table?: Parsed
       table={table}
       selectedFileName={selectedFileName}
       busy={false}
-      error={null}
+      error={error}
       onDraftChange={setDraft}
       onFile={(file) => setSelectedFileName(file.name)}
       onParsePaste={() => undefined}
@@ -186,5 +186,12 @@ describe("CvImportPanel", () => {
     expect(analyze.disabled).toBe(true);
     expect(threshold.value).toBe("");
     expect(view.textContent).toContain("R² threshold must be a finite number from 0 to 1");
+  });
+
+  it("localizes invalid complete-cycle structure errors in both languages", async () => {
+    const view = await renderPanel({ error: "invalidCycleStructure" });
+    expect(view.textContent).toContain("Each dataset must be one complete CV cycle");
+    await click(view, "中文");
+    expect(view.textContent).toContain("每组数据必须是一个完整 CV 周期");
   });
 });

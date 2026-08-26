@@ -51,7 +51,7 @@ export function CvKineticsPage() {
   const [busy, setBusy] = useState(false);
   const [analysis, setAnalysis] = useState<AnalysisState | null>(null);
   const [analysisMetadata, setAnalysisMetadata] = useState<ResultMetadata | null>(null);
-  const [selectedPotential, setSelectedPotential] = useState<number | undefined>();
+  const [selectedBSequenceIndex, setSelectedBSequenceIndex] = useState<number | undefined>();
   const [potentialInput, setPotentialInput] = useState("");
   const [selectedRate, setSelectedRate] = useState<number | undefined>();
   const [errorCode, setErrorCode] = useState<CvUiError | null>(null);
@@ -65,7 +65,7 @@ export function CvKineticsPage() {
   function invalidateAnalysis() {
     setAnalysis(null);
     setAnalysisMetadata(null);
-    setSelectedPotential(undefined);
+    setSelectedBSequenceIndex(undefined);
     setPotentialInput("");
     setSelectedRate(undefined);
     setErrorCode(null);
@@ -187,7 +187,7 @@ export function CvKineticsPage() {
       });
       const firstAvailableB = result.bRecords.find((record) => record.fit)?.fit;
       if (!firstAvailableB) throw new PageAnalysisError("noBFit");
-      const firstValidB = result.bRecords.find((record) => record.status === "valid" && record.fit)?.fit;
+      const firstValidB = result.bRecords.find((record) => record.status === "valid" && record.fit);
       setAnalysis(result);
       setAnalysisMetadata({
         layout: table.layout,
@@ -195,33 +195,39 @@ export function CvKineticsPage() {
         source: draft.source,
         orderedScanRates: [...parsedRates]
       });
-      setSelectedPotential(firstValidB?.potential);
+      setSelectedBSequenceIndex(firstValidB?.sequenceIndex);
       setPotentialInput(firstValidB ? String(firstValidB.potential) : "");
       setSelectedRate([...result.contributions].sort((left, right) => left.scanRate - right.scanRate)[0]?.scanRate);
     } catch (error) {
       if (error instanceof CvParseError) setErrorCode(error.code);
       else if (error instanceof PageAnalysisError) setErrorCode(error.code);
       else if (error instanceof CvAnalysisError && error.code === "noCommonPotentialRange") setErrorCode("noOverlap");
+      else if (error instanceof CvAnalysisError && error.code === "invalidCycleStructure") setErrorCode("invalidCycleStructure");
       else if (error instanceof CvAnalysisError && error.code === "invalidPointInterval") setErrorCode("invalidPointInterval");
       else if (error instanceof CvAnalysisError && error.code === "invalidRSquaredThreshold") setErrorCode("invalidRSquaredThreshold");
       else setErrorCode("analysis");
     }
   }
 
-  const selectedBRecord = validBResultRecords.find((record) => record.potential === selectedPotential);
+  const selectedBRecord = validBResultRecords.find((record) => record.sequenceIndex === selectedBSequenceIndex);
   const selectedB = selectedBRecord?.fit ?? undefined;
+  const selectedPotential = selectedBRecord?.potential;
   const selectedContribution = contributions.find((item) => item.scanRate === selectedRate);
   const selectedSeriesIndex = analysis?.analysisGrid.scanRates.findIndex((rate) => rate === selectedRate) ?? -1;
   const selectedOriginalSeries = analysis?.series.find((item) => item.scanRate === selectedRate);
   const sortedContributions = [...contributions].sort((left, right) => left.scanRate - right.scanRate);
-  const selectedPotentialIndex = validBResultRecords.findIndex((record) => record.potential === selectedPotential);
-  const bChart = useMemo<ChartSeries[]>(() => analysis ? [{
-    id: "b-values", label: t("cv.b.value"), color: "#16697a",
-    points: analysis.bRecords.map((record) => ({
-      x: record.potential,
-      y: record.status === "valid" && record.fit ? record.fit.b : null
-    }))
-  }] : [], [analysis, t]);
+  const selectedBRecordIndex = validBResultRecords.findIndex((record) => record.sequenceIndex === selectedBSequenceIndex);
+  const bChart = useMemo<ChartSeries[]>(() => {
+    if (!analysis) return [];
+    const bRecordBySequence = new Map(analysis.bRecords.map((record) => [record.sequenceIndex, record]));
+    return [{
+      id: "b-values", label: t("cv.b.value"), color: "#16697a",
+      points: analysis.analysisGrid.potentials.map((potential, sequenceIndex) => {
+        const record = bRecordBySequence.get(sequenceIndex);
+        return { x: potential, y: record?.status === "valid" && record.fit ? record.fit.b : null };
+      })
+    }];
+  }, [analysis, t]);
   const fitChart = sampleChartSeries(makeFitChart(selectedB, t("cv.b.fitData")));
   const dunnChart = sampleChartSeries(makeDunnChart(analysis, selectedOriginalSeries, selectedContribution, selectedSeriesIndex, t));
   const contributionChart = sampleChartSeries(makeContributionChart(sortedContributions, t));
@@ -257,8 +263,9 @@ export function CvKineticsPage() {
   } as const;
 
   function choosePotential(potential: number) {
-    setSelectedPotential(potential);
-    setPotentialInput(String(potential));
+    const record = validBResultRecords.find((item) => item.potential === potential);
+    setSelectedBSequenceIndex(record?.sequenceIndex);
+    setPotentialInput(record ? String(record.potential) : String(potential));
   }
 
   function handlePotentialInput(value: string) {
@@ -267,13 +274,15 @@ export function CvKineticsPage() {
     const record = Number.isFinite(potential)
       ? validBResultRecords.find((item) => item.potential === potential)
       : undefined;
-    setSelectedPotential(record?.potential);
+    setSelectedBSequenceIndex(record?.sequenceIndex);
   }
 
   function movePotential(offset: -1 | 1) {
-    if (!analysis || selectedPotentialIndex < 0) return;
-    const record = validBResultRecords[selectedPotentialIndex + offset];
-    if (record) choosePotential(record.potential);
+    if (!analysis || selectedBRecordIndex < 0) return;
+    const record = validBResultRecords[selectedBRecordIndex + offset];
+    if (!record) return;
+    setSelectedBSequenceIndex(record.sequenceIndex);
+    setPotentialInput(String(record.potential));
   }
 
   return (
@@ -317,15 +326,15 @@ export function CvKineticsPage() {
           value={potentialInput}
           onChange={(event) => handlePotentialInput(event.target.value)}
         />
-        <button type="button" disabled={selectedPotentialIndex <= 0} onClick={() => movePotential(-1)}>{t("cv.results.previousPotential")}</button>
-        <button type="button" disabled={!analysis || selectedPotentialIndex < 0 || selectedPotentialIndex >= validBResultRecords.length - 1} onClick={() => movePotential(1)}>{t("cv.results.nextPotential")}</button>
+        <button type="button" disabled={selectedBRecordIndex <= 0} onClick={() => movePotential(-1)}>{t("cv.results.previousPotential")}</button>
+        <button type="button" disabled={!analysis || selectedBRecordIndex < 0 || selectedBRecordIndex >= validBResultRecords.length - 1} onClick={() => movePotential(1)}>{t("cv.results.nextPotential")}</button>
         <p>{t("cv.results.potentialHelp")}</p>
         {potentialInput !== "" && selectedPotential === undefined && <p role="status">{t("cv.results.potentialUnavailable")}</p>}
         {analysis && missingBFitCount > 0 && <p role="status">{t("cv.b.missingFits", { count: missingBFitCount, total: analysis.analysisGrid.potentials.length })}</p>}
         {bGapRunCount > MAX_CHART_GAP_RUNS && <p role="status">{t("cv.chart.tooManyGaps")}</p>}
         <ScientificLineChart title={t("cv.b.chart")} xLabel={`${t("cv.table.potential")} (V)`} yLabel={t("cv.b.value")}
           emptyLabel={t("cv.chart.empty")} legendLabel={t("cv.chart.legend")} series={sampledBChart} selectedX={selectedPotential} onSelectX={choosePotential} exportId="cv-b-chart" metadata={chartMetadata} />
-        <DataTable tableId="cv-b-records-table" headers={[`${t("cv.table.potential")} (V)`, t("cv.b.value"), t("cv.b.intercept"), t("cv.results.rSquared"), t("cv.table.pointCount"), t("cv.results.fitStatus")]}
+        <DataTable tableId="cv-b-records-table" headers={[`${t("cv.table.potential")} (V)`, t("cv.table.sweepBranch"), t("cv.b.value"), t("cv.b.intercept"), t("cv.results.rSquared"), t("cv.table.pointCount"), t("cv.results.fitStatus")]}
           rows={bResultRecords.map((record) => bRecordRow(record, t))} />
         <ScientificLineChart title={t("cv.b.fitChart")} xLabel={t("cv.b.logRate")} yLabel={t("cv.b.logCurrent")}
           emptyLabel={t("cv.results.noFit")} legendLabel={t("cv.chart.legend")} series={fitChart} exportId="cv-fit-chart" metadata={fitChartMetadata} />
@@ -334,7 +343,7 @@ export function CvKineticsPage() {
           rSquared: selectedBRecord.fit ? format(selectedBRecord.fit.rSquared) : "—",
           points: selectedBRecord.fit ? selectedBRecord.fit.pointCount : "—"
         })}</p>}
-        <DataTable tableId="cv-selected-b-record-table" headers={[t("cv.results.potential"), t("cv.b.value"), t("cv.b.intercept"), t("cv.results.rSquared"), t("cv.results.points"), t("cv.results.fitStatus")]}
+        <DataTable tableId="cv-selected-b-record-table" headers={[t("cv.results.potential"), t("cv.table.sweepBranch"), t("cv.b.value"), t("cv.b.intercept"), t("cv.results.rSquared"), t("cv.results.points"), t("cv.results.fitStatus")]}
           rows={selectedBRecord ? [bRecordRow(selectedBRecord, t)] : []} />
       </section>
 
@@ -358,7 +367,7 @@ export function CvKineticsPage() {
         <DataTable tableId="cv-contribution-table" headers={[`${t("cv.table.scanRate")} (mV/s)`, t("cv.dunn.capacitive") + " (%)", t("cv.dunn.diffusion") + " (%)", t("cv.results.validSampledPoints"), `${t("cv.results.coverage")} (%)`]}
           rows={sortedContributions.map((item) => [item.scanRate, item.capacitivePercent, item.diffusionPercent, `${item.validPointCount} / ${item.sampledPointCount}`, item.coveragePercent])} />
         <p>{t("cv.results.contributionUnavailable")}</p>
-        <DataTable tableId="cv-dunn-records-table" headers={[`${t("cv.table.potential")} (V)`, t("cv.dunn.k1"), t("cv.dunn.k2"), t("cv.results.rSquared"), t("cv.table.pointCount"), t("cv.results.fitStatus")]}
+        <DataTable tableId="cv-dunn-records-table" headers={[`${t("cv.table.potential")} (V)`, t("cv.table.sweepBranch"), t("cv.dunn.k1"), t("cv.dunn.k2"), t("cv.results.rSquared"), t("cv.table.pointCount"), t("cv.results.fitStatus")]}
           rows={dunnResultRecords.map((record) => dunnRecordRow(record, t))} />
       </section>
 
@@ -487,6 +496,7 @@ function QualitySummary({ analysis, metadata }: { analysis: AnalysisState; metad
 function bRecordRow(record: CvWorkflowResult["bRecords"][number], t: ReturnType<typeof useI18n>["t"]): Array<string | number | null> {
   return [
     record.potential,
+    t("cv.table.branchValue", { branch: record.branchIndex + 1 }),
     record.fit?.b ?? null,
     record.fit?.intercept ?? null,
     record.fit?.rSquared ?? null,
@@ -502,6 +512,7 @@ function isResultOutputRecord<T>(record: CvFitRecord<T>) {
 function dunnRecordRow(record: CvWorkflowResult["dunnRecords"][number], t: ReturnType<typeof useI18n>["t"]): Array<string | number | null> {
   return [
     record.potential,
+    t("cv.table.branchValue", { branch: record.branchIndex + 1 }),
     record.fit?.k1 ?? null,
     record.fit?.k2 ?? null,
     record.fit?.rSquared ?? null,
@@ -669,11 +680,11 @@ function exportCsv(
     );
   }
   else if (filename === csvFiles[1]) csv = rowsToCsv(
-    [potentialHeader, t("cv.b.value"), t("cv.b.intercept"), t("cv.results.rSquared"), t("cv.table.pointCount"), t("cv.results.fitStatus"), ...metadataHeaders],
+    [potentialHeader, t("cv.table.sweepBranch"), t("cv.b.value"), t("cv.b.intercept"), t("cv.results.rSquared"), t("cv.table.pointCount"), t("cv.results.fitStatus"), ...metadataHeaders],
     analysis.bRecords.filter(isResultOutputRecord).map((record) => [...bRecordRow(record, t), ...metadataValues])
   );
   else if (filename === csvFiles[2]) csv = rowsToCsv(
-    [potentialHeader, t("cv.dunn.k1"), t("cv.dunn.k2"), t("cv.results.rSquared"), t("cv.table.pointCount"), t("cv.results.fitStatus"), ...metadataHeaders],
+    [potentialHeader, t("cv.table.sweepBranch"), t("cv.dunn.k1"), t("cv.dunn.k2"), t("cv.results.rSquared"), t("cv.table.pointCount"), t("cv.results.fitStatus"), ...metadataHeaders],
     analysis.dunnRecords.filter(isResultOutputRecord).map((record) => [...dunnRecordRow(record, t), ...metadataValues])
   );
   else if (filename === csvFiles[5]) {

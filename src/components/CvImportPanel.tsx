@@ -342,6 +342,7 @@ function errorMessage(
     resourceLimitExceeded: "cv.error.resourceLimitExceeded",
     invalidPointInterval: "cv.error.invalidPointInterval",
     invalidRSquaredThreshold: "cv.error.invalidRSquaredThreshold",
+    invalidCycleStructure: "cv.error.invalidCycleStructure",
     noOverlap: "cv.error.noOverlap",
     noBFit: "cv.error.noBFit",
     analysis: "cv.error.analysis",

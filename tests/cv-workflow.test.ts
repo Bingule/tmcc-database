@@ -232,6 +232,11 @@ describe("analyzeCvWorkflow Dunn mask and integration", () => {
       { sequenceIndex: 1, branchIndex: 0, status: "belowRSquaredThreshold" },
       { sequenceIndex: 3, branchIndex: 1, status: "valid" }
     ]);
+    expect(result.bRecords.filter((record) => record.potential === 1)
+      .map(({ sequenceIndex, branchIndex, status }) => ({ sequenceIndex, branchIndex, status }))).toEqual([
+      { sequenceIndex: 1, branchIndex: 0, status: "belowRSquaredThreshold" },
+      { sequenceIndex: 3, branchIndex: 1, status: "valid" }
+    ]);
     expect(contribution.capacitiveCurrent).toEqual([1, null, 1, 3, 3]);
     expect(contribution.diffusionCurrent).toEqual([4, null, 4, 1, 1]);
     expect(contribution.capacitivePercent).toBeCloseTo(5 / 8.5 * 100, 10);
