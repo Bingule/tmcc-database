@@ -5,7 +5,7 @@
 - Base SHA audited: `576b0334` (`fix: select CV b fits by branch identity`)
 - Documentation/test commit SHA: `332ef07b` (`docs: describe complete CV cycle workflow`)
 - Branch: `cv-result-table-usability`
-- Changed for this task: `README.md`, `tests/cv-parsing.test.ts`, and `tests/cv-page.test.tsx`.
+- Product documentation/tests changed for this task: `README.md`, `tests/cv-parsing.test.ts`, and `tests/cv-page.test.tsx`.
 
 ## Coverage audit
 
@@ -46,6 +46,8 @@ git status --short --branch
 ```
 
 Result before commit: no whitespace errors; only the three task files above were modified. Git emitted CRLF-normalization warnings for those tracked files, not whitespace errors.
+
+Post-commit `git diff main...HEAD --check`, `git diff main...HEAD --stat`, and `git status --short --branch` also passed: no whitespace errors, 27 complete-cycle branch files in the aggregate diff, and a clean `cv-result-table-usability` branch. The aggregate diff intentionally includes the prior Cycle Tasks 1–4 implementation, tests, plans, and this report.
 
 ## Remaining concern
 
