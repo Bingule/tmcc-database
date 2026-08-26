@@ -132,6 +132,15 @@ describe("I18nProvider", () => {
     expect(zh["cv.error.invalidCycleStructure"]).toContain("完整 CV 周期");
   });
 
+  it("describes complete-cycle branch processing accurately in both languages", () => {
+    expect(en["cv.analysis.notice"].toLowerCase()).toContain("each monotonic branch");
+    expect(en["cv.analysis.notice"]).not.toContain("first monotonic sweep");
+    expect(en["cv.import.pointInterval.help"]).toContain("within each monotonic branch");
+    expect(zh["cv.analysis.notice"]).toContain("每个单调分支");
+    expect(zh["cv.analysis.notice"]).not.toContain("第一个单调扫描分支");
+    expect(zh["cv.import.pointInterval.help"]).toContain("各分支内");
+  });
+
   it("keeps Angstrom units untranslated in Chinese resources", () => {
     expect(zh["xrd.wavelength"]).toBe("波长（Angstrom）");
   });

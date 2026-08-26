@@ -348,6 +348,7 @@ describe("CV kinetics page", () => {
 
     const originalRows = [...view.querySelectorAll<HTMLTableRowElement>('[data-table-id="cv-original-current-table"] tbody tr')];
     expect(originalRows.map((row) => row.cells[0].textContent)).toEqual(["0", "1", "2", "1", "0"]);
+    expect(view.querySelector('[data-quality-summary="true"]')?.textContent).toContain("0–2 V");
 
     const bTable = view.querySelector('[data-table-id="cv-b-records-table"]')!;
     const dunnTable = view.querySelector('[data-table-id="cv-dunn-records-table"]')!;

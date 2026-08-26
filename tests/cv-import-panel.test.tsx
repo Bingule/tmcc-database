@@ -104,7 +104,7 @@ describe("CvImportPanel", () => {
 
     const threshold = view.querySelector<HTMLInputElement>('input[name="cv-r-squared-threshold"]')!;
     expect(threshold).toMatchObject({ min: "0", max: "1", step: "0.01", value: "0.95" });
-    expect(view.textContent).toContain("subsamples the common potential grid; it does not smooth or average currents");
+    expect(view.textContent).toContain("Sampling is performed within each monotonic branch; it does not smooth or average currents");
     expect(view.textContent).toContain("Choose a data format before importing data");
     expect(view.textContent).toContain("Recommended threshold: 0.95 (only fits with R² ≥ 0.95 are treated as valid).");
     expect(view.textContent).toContain("XYYYYY");
@@ -140,7 +140,7 @@ describe("CvImportPanel", () => {
     expect(view.textContent).toContain("数据格式");
     expect(view.textContent).toContain("首行为表头");
     expect(view.textContent).toContain("从 Excel 粘贴");
-    expect(view.textContent).toContain("仅对共同电位网格进行抽样；不会平滑或平均电流");
+    expect(view.textContent).toContain("取点在各分支内独立进行；不会平滑或平均电流");
     expect(view.textContent).toContain("建议阈值：0.95（仅将 R² ≥ 0.95 的拟合视为有效）。");
     expect(view.textContent).toContain("导入数据前请选择数据格式");
     expect(view.querySelector("textarea")?.getAttribute("aria-label")).toBe("粘贴 Excel 兼容的 CV 数据");

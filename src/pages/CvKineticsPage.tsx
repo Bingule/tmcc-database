@@ -467,8 +467,12 @@ function DataTable({ headers, rows, tableId }: { headers: string[]; rows: Array<
 
 function QualitySummary({ analysis, metadata }: { analysis: AnalysisState; metadata: ResultMetadata }) {
   const { t } = useI18n();
-  const minimum = analysis.fullGrid.potentials[0];
-  const maximum = analysis.fullGrid.potentials.at(-1)!;
+  let minimum = Number.POSITIVE_INFINITY;
+  let maximum = Number.NEGATIVE_INFINITY;
+  for (const potential of analysis.fullGrid.potentials) {
+    minimum = Math.min(minimum, potential);
+    maximum = Math.max(maximum, potential);
+  }
   const coverage = analysis.summary.retainedPointCount === 0
     ? 0
     : analysis.summary.validDunnCount / analysis.summary.retainedPointCount * 100;

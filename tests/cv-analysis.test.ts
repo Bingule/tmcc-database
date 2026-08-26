@@ -121,6 +121,33 @@ describe("interpolateCommonGrid", () => {
     ]), "noCommonPotentialRange");
   });
 
+  it("rejects a branch whose common range contains only one distinct potential", () => {
+    expectCvError(() => interpolateCommonGrid([
+      {
+        label: "low-range",
+        scanRate: 1,
+        points: [
+          { potential: 0, current: 1 },
+          { potential: 1, current: 2 },
+          { potential: 2, current: 3 },
+          { potential: 1, current: 20 },
+          { potential: 0, current: 10 }
+        ]
+      },
+      {
+        label: "high-range",
+        scanRate: 2,
+        points: [
+          { potential: 2, current: 4 },
+          { potential: 3, current: 5 },
+          { potential: 4, current: 6 },
+          { potential: 3, current: 50 },
+          { potential: 2, current: 40 }
+        ]
+      }
+    ]), "noCommonPotentialRange");
+  });
+
   it("rejects structurally invalid duplicate potentials with a stable typed error", () => {
     expectCvError(() => interpolateCommonGrid([
       {

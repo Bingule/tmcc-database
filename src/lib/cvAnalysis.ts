@@ -206,7 +206,7 @@ function interpolateAlignedBranch(branches: CvSweepBranch[], scanRates: number[]
     .map((point) => point.potential)
     .filter((potential) => potential >= commonMinimum && potential <= commonMaximum)))]
     .sort((left, right) => left - right);
-  if (ascendingPotentials.length === 0) throw new CvAnalysisError("noCommonPotentialRange");
+  if (ascendingPotentials.length < 2) throw new CvAnalysisError("noCommonPotentialRange");
 
   const direction = branches[0].direction;
   const potentials = direction === -1 ? [...ascendingPotentials].reverse() : ascendingPotentials;
