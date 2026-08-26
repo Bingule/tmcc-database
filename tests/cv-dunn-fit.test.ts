@@ -97,11 +97,11 @@ describe("resolveTurningPointTrim", () => {
 
   it("rejects a manual trim equal to half the common potential span", () => {
     expect(() => resolveTurningPointTrim(makeGrid(), { mode: "manual", millivolts: 500 }))
-      .toThrow("invalidDataShape");
+      .toThrow("invalidTurningPointTrim");
   });
 
   it("rejects a manual trim greater than half the common potential span", () => {
     expect(() => resolveTurningPointTrim(makeGrid(), { mode: "manual", millivolts: 600 }))
-      .toThrow("invalidDataShape");
+      .toThrow("invalidTurningPointTrim");
   });
 });

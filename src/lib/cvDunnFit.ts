@@ -30,7 +30,16 @@ export function resolveTurningPointTrim(
     lower,
     Math.min(10 * grid.nativePotentialInterval, 0.02 * span)
   );
-  return Math.min(Math.max(raw, lower), upper);
+  const bounded = Math.min(Math.max(raw, lower), upper);
+  const deepestInteriorDistance = maximumInteriorTurningDistance(
+    grid.potentials,
+    grid.commonMinimum,
+    grid.commonMaximum
+  );
+  if (deepestInteriorDistance === null || bounded + trimTolerance(grid) < deepestInteriorDistance) {
+    return bounded;
+  }
+  return Math.max(0, deepestInteriorDistance - 2 * trimTolerance(grid));
 }
 
 export function fitDunnBranches(
@@ -108,15 +117,37 @@ function validateTrimInputs(grid: CvAlignedBranchGrid, setting: TurningPointTrim
   }
   if (setting.mode === "manual"
     && (!Number.isFinite(setting.millivolts) || setting.millivolts < 0)) {
-    throw new CvAnalysisError("invalidDataShape");
+    throw new CvAnalysisError("invalidTurningPointTrim");
   }
   if (setting.mode === "manual") {
     const trim = setting.millivolts / 1000;
     const span = grid.commonMaximum - grid.commonMinimum;
     if (!(2 * trim < span)) {
-      throw new CvAnalysisError("invalidDataShape");
+      throw new CvAnalysisError("invalidTurningPointTrim");
     }
   }
+}
+
+function maximumInteriorTurningDistance(
+  potentials: number[],
+  commonMinimum: number,
+  commonMaximum: number
+): number | null {
+  const distances = potentials
+    .filter((potential) => potential > commonMinimum && potential < commonMaximum)
+    .map((potential) => Math.min(
+      Math.abs(potential - commonMinimum),
+      Math.abs(commonMaximum - potential)
+    ));
+  return distances.length === 0 ? null : Math.max(...distances);
+}
+
+function trimTolerance(grid: CvAlignedBranchGrid): number {
+  return Number.EPSILON * Math.max(
+    1,
+    Math.abs(grid.commonMinimum),
+    Math.abs(grid.commonMaximum)
+  ) * 16;
 }
 
 function validateGrid(grid: CvAlignedBranchGrid) {

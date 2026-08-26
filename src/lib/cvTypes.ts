@@ -203,8 +203,10 @@ export interface DunnContributionInput {
 }
 
 export interface CvAnalysisSettings {
-  pointInterval: number;
+  potentialInterval: PotentialIntervalSetting;
   rSquaredThreshold: number;
+  dunnConfidenceMode: DunnConfidenceMode;
+  turningPointTrim: TurningPointTrimSetting;
 }
 
 export interface CvFitRecord<T> {
@@ -228,11 +230,11 @@ export interface CvQualitySummary {
 
 export interface CvWorkflowResult {
   series: CvSeries[];
-  fullGrid: InterpolatedCvData;
+  alignedGrid: CvAlignedBranchGrid;
   analysisGrid: InterpolatedCvData;
   bRecords: Array<CvFitRecord<BValuePoint>>;
-  dunnRecords: Array<CvFitRecord<DunnPoint>>;
-  contributions: LegacyDunnContribution[];
+  dunnRecords: DunnFitGrid;
+  contributions: DunnContribution[];
   summary: CvQualitySummary;
   settings: CvAnalysisSettings;
 }
@@ -248,6 +250,8 @@ export type CvAnalysisErrorCode =
   | "noCommonPotentialRange"
   | "invalidDataShape"
   | "invalidPointInterval"
+  | "invalidPotentialInterval"
+  | "invalidTurningPointTrim"
   | "invalidRSquaredThreshold"
   | "reconstructionFailed";
 

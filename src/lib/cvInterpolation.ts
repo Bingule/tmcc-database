@@ -213,7 +213,7 @@ function resolvePotentialInterval(
   if (setting.mode === "manual") {
     const requestedVolts = setting.millivolts / 1000;
     if (!Number.isFinite(setting.millivolts) || setting.millivolts <= 0 || !Number.isFinite(requestedVolts) || requestedVolts <= 0) {
-      throw new CvAnalysisError("invalidPointInterval");
+      throw new CvAnalysisError("invalidPotentialInterval");
     }
     const intervalCount = Math.max(1, Math.ceil(span / requestedVolts));
     return { intervalCount, resolvedPotentialInterval: span / intervalCount };

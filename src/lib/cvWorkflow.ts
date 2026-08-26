@@ -1,11 +1,10 @@
-import {
-  attemptBValueFits,
-  attemptDunnFits,
-  integrateDunnContributions,
-  interpolateCommonGrid,
-  resolveGridBranches,
-  validateInterpolatedCvData
-} from "./cvAnalysis";
+import { attemptBValueFits, validateInterpolatedCvData } from "./cvAnalysis";
+import { CvCycleStructureError, normalizeAlignedCvCycles } from "./cvCycle";
+import { makeDunnFractionGrid } from "./cvDunnConfidence";
+import { fitDunnBranches } from "./cvDunnFit";
+import { reconstructDunnContribution } from "./cvDunnQuality";
+import { optimizeSharedFraction } from "./cvDunnReconstruction";
+import { alignCvBranches, toSequentialGrid } from "./cvInterpolation";
 import {
   CvAnalysisError,
   type BValuePoint,
@@ -15,59 +14,54 @@ import {
   type CvQualitySummary,
   type CvSeries,
   type CvWorkflowResult,
-  type DunnPoint,
-  type InterpolatedCvData
+  type DunnFitGrid
 } from "./cvTypes";
 
-export function selectPointInterval(data: InterpolatedCvData, interval: number): InterpolatedCvData {
-  validatePointInterval(interval);
-  validateInterpolatedCvData(data);
-  const sourceBranches = resolveGridBranches(data);
-  const selectedIndices = new Set<number>();
-  for (const branch of sourceBranches) {
-    for (let index = branch.startIndex; index <= branch.endIndex; index += interval) {
-      selectedIndices.add(index);
-    }
-    selectedIndices.add(branch.endIndex);
-  }
-  const indices = [...selectedIndices].sort((left, right) => left - right);
-  const rebasedIndices = new Map(indices.map((sourceIndex, outputIndex) => [sourceIndex, outputIndex]));
-
-  return {
-    potentials: indices.map((index) => data.potentials[index]),
-    scanRates: [...data.scanRates],
-    currents: data.currents.map((row) => indices.map((index) => row[index])),
-    branches: sourceBranches.map((branch) => ({
-      branchIndex: branch.branchIndex,
-      direction: branch.direction,
-      startIndex: rebasedIndices.get(branch.startIndex)!,
-      endIndex: rebasedIndices.get(branch.endIndex)!
-    }))
-  };
-}
-
 export function analyzeCvWorkflow(series: CvSeries[], settings: CvAnalysisSettings): CvWorkflowResult {
-  validatePointInterval(settings.pointInterval);
+  validateSeriesInputs(series);
   validateRSquaredThreshold(settings.rSquaredThreshold);
-  const fullGrid = interpolateCommonGrid(series);
-  const analysisGrid = selectPointInterval(fullGrid, settings.pointInterval);
-  const bRecords = classifyRecords(attemptBValueFits(analysisGrid), settings.rSquaredThreshold);
-  const dunnRecords = classifyRecords(attemptDunnFits(analysisGrid), settings.rSquaredThreshold);
-  const coefficients = dunnRecords.map((record) => record.status === "valid" && record.fit
-    ? { k1: record.fit.k1, k2: record.fit.k2 }
-    : null);
-  const contributions = integrateDunnContributions(analysisGrid, coefficients);
 
-  return {
-    series: cloneSeries(series),
-    fullGrid,
-    analysisGrid,
-    bRecords,
-    dunnRecords,
-    contributions,
-    summary: makeSummary(fullGrid, analysisGrid, bRecords, dunnRecords),
-    settings: { ...settings }
-  };
+  try {
+    const cycles = normalizeAlignedCvCycles(series);
+    const alignedGrid = alignCvBranches(series, cycles, settings.potentialInterval);
+    const analysisGrid = toSequentialGrid(alignedGrid);
+    validateInterpolatedCvData(analysisGrid);
+    const bRecords = classifyRecords(attemptBValueFits(analysisGrid), settings.rSquaredThreshold);
+    const dunnRecords = fitDunnBranches(alignedGrid, settings.turningPointTrim);
+    const contributions = alignedGrid.scanRates.map((scanRate, seriesIndex) => {
+      const fractions = makeDunnFractionGrid(
+        dunnRecords,
+        scanRate,
+        settings.dunnConfidenceMode,
+        settings.rSquaredThreshold
+      );
+      const optimized = optimizeSharedFraction(fractions, alignedGrid.potentials);
+      return reconstructDunnContribution({
+        alignedGrid,
+        dunnRecords,
+        optimized,
+        fractions,
+        scanRate,
+        seriesIndex,
+        mode: settings.dunnConfidenceMode,
+        threshold: settings.rSquaredThreshold,
+        resolvedTurningPointTrim: dunnRecords.resolvedTurningPointTrim
+      });
+    });
+
+    return {
+      series: cloneSeries(series),
+      alignedGrid,
+      analysisGrid,
+      bRecords,
+      dunnRecords,
+      contributions,
+      summary: makeSummary(alignedGrid.potentials.length, analysisGrid, bRecords, dunnRecords),
+      settings: cloneSettings(settings)
+    };
+  } catch (error) {
+    throw mapWorkflowError(error);
+  }
 }
 
 function classifyRecords<T extends { rSquared: number }>(
@@ -86,20 +80,22 @@ function classifyRecords<T extends { rSquared: number }>(
 }
 
 function makeSummary(
-  fullGrid: InterpolatedCvData,
-  analysisGrid: InterpolatedCvData,
+  commonPointCount: number,
+  analysisGrid: { potentials: number[] },
   bRecords: Array<CvFitRecord<BValuePoint>>,
-  dunnRecords: Array<CvFitRecord<DunnPoint>>
+  dunnRecords: DunnFitGrid
 ): CvQualitySummary {
+  const dunnBranchRecords = [...dunnRecords.forward, ...dunnRecords.reverse];
   return {
-    commonPointCount: fullGrid.potentials.length,
+    commonPointCount,
     retainedPointCount: analysisGrid.potentials.length,
     validBCount: countStatus(bRecords, "valid"),
     excludedBCount: countStatus(bRecords, "belowRSquaredThreshold"),
     unavailableBCount: countUnavailable(bRecords),
-    validDunnCount: countStatus(dunnRecords, "valid"),
-    excludedDunnCount: countStatus(dunnRecords, "belowRSquaredThreshold"),
-    unavailableDunnCount: countUnavailable(dunnRecords)
+    validDunnCount: dunnBranchRecords.filter((record) => record.status === "valid").length,
+    excludedDunnCount: dunnBranchRecords.filter((record) => record.status === "belowRSquaredThreshold").length,
+    unavailableDunnCount: dunnBranchRecords.filter((record) =>
+      record.status !== "valid" && record.status !== "belowRSquaredThreshold").length
   };
 }
 
@@ -112,9 +108,15 @@ function countUnavailable<T>(records: Array<CvFitRecord<T>>) {
     record.status !== "valid" && record.status !== "belowRSquaredThreshold").length;
 }
 
-function validatePointInterval(interval: number) {
-  if (!Number.isInteger(interval) || interval < 1 || interval > 30) {
-    throw new CvAnalysisError("invalidPointInterval");
+function validateSeriesInputs(series: CvSeries[]) {
+  if (series.length === 0) throw new CvAnalysisError("noSeries");
+  for (const item of series) {
+    if (!Number.isFinite(item.scanRate) || item.scanRate <= 0) throw new CvAnalysisError("invalidScanRate");
+    if (item.points.length === 0) throw new CvAnalysisError("noPoints");
+    for (const point of item.points) {
+      if (!Number.isFinite(point.potential)) throw new CvAnalysisError("invalidPotential");
+      if (!Number.isFinite(point.current)) throw new CvAnalysisError("invalidCurrent");
+    }
   }
 }
 
@@ -129,4 +131,24 @@ function cloneSeries(series: CvSeries[]): CvSeries[] {
     ...item,
     points: item.points.map((point) => ({ ...point }))
   }));
+}
+
+function cloneSettings(settings: CvAnalysisSettings): CvAnalysisSettings {
+  return {
+    potentialInterval: { ...settings.potentialInterval },
+    rSquaredThreshold: settings.rSquaredThreshold,
+    dunnConfidenceMode: settings.dunnConfidenceMode,
+    turningPointTrim: { ...settings.turningPointTrim }
+  };
+}
+
+function mapWorkflowError(error: unknown): Error {
+  if (error instanceof CvCycleStructureError) {
+    return new CvAnalysisError("invalidCycleStructure");
+  }
+  if (error instanceof CvAnalysisError) {
+    if (error.code === "invalidPointInterval") return new CvAnalysisError("invalidPotentialInterval");
+    return error;
+  }
+  return error instanceof Error ? error : new Error(String(error));
 }
