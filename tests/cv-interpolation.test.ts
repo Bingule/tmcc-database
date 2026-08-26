@@ -70,6 +70,30 @@ describe("alignCvBranches", () => {
     expect(grid.reverseCurrents[0]).toEqual([13, 12, 3]);
   });
 
+  it("aligns Task 1 platform branches while preserving their original samples", () => {
+    const series = [1, 2, 4].map((scanRate) => ({
+      label: String(scanRate),
+      scanRate,
+      points: [
+        { potential: -1, current: scanRate },
+        { potential: -0.5, current: scanRate + 1 },
+        { potential: -0.5, current: scanRate + 2 },
+        { potential: 0, current: scanRate + 3 },
+        { potential: -0.5, current: scanRate + 13 },
+        { potential: -1, current: scanRate + 14 }
+      ]
+    }));
+    const cycles = normalizeAlignedCvCycles(series);
+
+    expect(cycles[0].forward.points.filter((point) => point.potential === -0.5)).toHaveLength(2);
+
+    const grid = alignCvBranches(series, cycles, { mode: "auto" });
+
+    expect(grid.forwardCurrents[0]).toEqual([1, 3, 4]);
+    expect(grid.reverseCurrents[0]).toEqual([15, 14, 4]);
+    expect(cycles[0].forward.points.filter((point) => point.potential === -0.5)).toHaveLength(2);
+  });
+
   it("converts independently aligned branches into a sequential CV grid", () => {
     const series = [1, 2, 4].map((scanRate) => ({
       label: String(scanRate),

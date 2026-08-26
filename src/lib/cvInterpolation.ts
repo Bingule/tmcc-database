@@ -49,6 +49,7 @@ export function alignCvBranches(
   if (cycles.length !== series.length) throw new CvAnalysisError("invalidDataShape");
 
   const branches = cycles.flatMap((cycle) => [cycle.forward, cycle.reverse]).map(asAscendingBranch);
+  branches.forEach((branch) => validatePchipInput(branch.x, branch.y));
   const commonMinimum = Math.max(...branches.map((branch) => branch.x[0]!));
   const commonMaximum = Math.min(...branches.map((branch) => branch.x.at(-1)!));
   if (commonMinimum > commonMaximum) throw new CvAnalysisError("noCommonPotentialRange");
@@ -109,11 +110,34 @@ export function toSequentialGrid(grid: CvAlignedBranchGrid): InterpolatedCvData 
 type AscendingBranch = { x: number[]; y: number[] };
 
 function asAscendingBranch(branch: NormalizedCvBranch): AscendingBranch {
-  const points: CvSweepPoint[] = branch.direction === 1 ? branch.points : [...branch.points].reverse();
+  const collapsed = collapseConsecutivePlatformPoints(branch);
+  const points: CvSweepPoint[] = branch.direction === 1 ? collapsed : [...collapsed].reverse();
   return {
     x: points.map((point) => point.potential),
     y: points.map((point) => point.current)
   };
+}
+
+function collapseConsecutivePlatformPoints(branch: NormalizedCvBranch): CvSweepPoint[] {
+  const points: CvSweepPoint[] = [];
+  let previous: CvSweepPoint | undefined;
+  for (const point of branch.points) {
+    if (previous !== undefined) {
+      const potentialDifference = point.potential - previous.potential;
+      if (potentialDifference === 0) {
+        points[points.length - 1] = point;
+        previous = point;
+        continue;
+      }
+      if ((branch.direction === 1 && potentialDifference < 0)
+        || (branch.direction === -1 && potentialDifference > 0)) {
+        throw new CvAnalysisError("invalidDataShape");
+      }
+    }
+    points.push(point);
+    previous = point;
+  }
+  return points;
 }
 
 function validatePchipInput(x: number[], y: number[]): void {
