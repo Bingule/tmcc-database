@@ -69,6 +69,10 @@ export interface CvAlignedBranchGrid {
   cycles: NormalizedCvCycle[];
 }
 
+export type TurningPointTrimSetting =
+  | { mode: "auto" }
+  | { mode: "manual"; millivolts: number };
+
 export interface BValuePoint {
   potential: number;
   b: number;
@@ -110,6 +114,22 @@ export type CvFitStatus =
   | "insufficientData"
   | "zeroCurrentLogUnavailable"
   | "regressionFailed";
+
+export type DunnFitStatus = CvFitStatus | "trimmed";
+
+export interface DunnBranchFitRecord {
+  branch: CvBranchKind;
+  potential: number;
+  fit: DunnPoint | null;
+  status: DunnFitStatus;
+  trimmed: boolean;
+}
+
+export interface DunnFitGrid {
+  forward: DunnBranchFitRecord[];
+  reverse: DunnBranchFitRecord[];
+  resolvedTurningPointTrim: number;
+}
 
 export interface CvAnalysisSettings {
   pointInterval: number;
