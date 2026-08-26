@@ -9,6 +9,7 @@ import { ScientificLineChart, type ChartAreaPoint, type ChartAreaSeries, type Ch
 import { useI18n } from "../i18n/I18nProvider";
 import { parseScanRateList, type CvDataLayout, type CvHeaderMode } from "../lib/cvImport";
 import { confirmCvSeries, CvParseError, parseCvFile, parseDelimitedCv, type ParsedCvTable } from "../lib/cvParsing";
+import { localCapacitiveFraction, rSquaredConfidence } from "../lib/cvDunnConfidence";
 import { analyzeCvWorkflow } from "../lib/cvWorkflow";
 import { CvAnalysisError, type BValuePoint, type CvAnalysisSettings, type CvFitRecord, type CvFitStatus, type CvSeries, type CvWorkflowResult, type DunnBranchFitRecord, type DunnContribution, type DunnFitStatus } from "../lib/cvTypes";
 import { downloadCsv, downloadPng, downloadSvg, rowsToCsv } from "../lib/toolExport";
@@ -214,7 +215,9 @@ export function CvKineticsPage() {
   const selectedBRecord = validBResultRecords.find((record) => record.sequenceIndex === selectedBSequenceIndex);
   const selectedB = selectedBRecord?.fit ?? undefined;
   const selectedPotential = selectedBRecord?.potential;
+  const requestedPotential = potentialInput.trim() === "" ? Number.NaN : Number(potentialInput);
   const selectedContribution = contributions.find((item) => item.scanRate === selectedRate);
+  const selectedDunnPotential = Number.isFinite(requestedPotential) ? requestedPotential : undefined;
   const selectedSeriesIndex = analysis?.analysisGrid.scanRates.findIndex((rate) => rate === selectedRate) ?? -1;
   const selectedOriginalSeries = analysis?.series.find((item) => item.scanRate === selectedRate);
   const sortedContributions = [...contributions].sort((left, right) => left.scanRate - right.scanRate);
@@ -238,7 +241,7 @@ export function CvKineticsPage() {
     }];
   }, [analysis, t]);
   const fitChart = sampleChartSeries(makeFitChart(selectedB, t("cv.b.fitData")));
-  const dunnChart = sampleChartSeries(makeDunnChart(selectedOriginalSeries, t));
+  const dunnChart = sampleChartSeries(makeDunnChart(selectedOriginalSeries, selectedContribution, t));
   const dunnAreas = sampleChartAreas(makeDunnAreas(analysis, selectedRate, selectedSeriesIndex, t));
   const contributionChart = sampleChartSeries(makeContributionChart(sortedContributions, t));
   const sampledBChart = useMemo(() => sampleChartSeries(bChart), [bChart]);
@@ -388,7 +391,7 @@ export function CvKineticsPage() {
           <p className="cv-dunn-coverage-help">{t("cv.dunn.coverageHelp")}</p>
         </>}
         <ScientificLineChart title={t("cv.dunn.chart")} xLabel={`${t("cv.table.potential")} (V)`} yLabel={t("cv.table.currentArbitrary")}
-          emptyLabel={t("cv.chart.empty")} legendLabel={t("cv.chart.legend")} series={dunnChart} areas={dunnAreas} selectedX={selectedPotential} exportId="cv-dunn-chart" metadata={dunnChartMetadata} />
+          emptyLabel={t("cv.chart.empty")} legendLabel={t("cv.chart.legend")} series={dunnChart} areas={dunnAreas} selectedX={selectedDunnPotential} exportId="cv-dunn-chart" metadata={dunnChartMetadata} />
         <DataTable tableId="cv-original-current-table" headers={[`${t("cv.table.potential")} (V)`, t("cv.dunn.originalMeasured")]}
           rows={(selectedOriginalSeries?.points ?? []).map((point) => [point.potential, point.current])} />
         <DataTable tableId="cv-dunn-current-table" headers={[`${t("cv.table.potential")} (V)`, t("cv.dunn.interpolatedInput"), t("cv.dunn.reconstructedTotalUnits"), t("cv.dunn.capacitive") + " (arb. units)", t("cv.dunn.diffusion") + " (arb. units)"]}
@@ -497,9 +500,7 @@ function QualitySummary({ analysis, metadata }: { analysis: AnalysisState; metad
   const minimum = analysis.alignedGrid.commonMinimum;
   const maximum = analysis.alignedGrid.commonMaximum;
   const diagnostics = analysis.contributions[0]?.diagnostics;
-  const coverage = analysis.summary.retainedPointCount === 0
-    ? 0
-    : analysis.summary.validDunnCount / analysis.summary.retainedPointCount * 100;
+  const dunnCoverage = makeDunnCoverage(analysis);
   return <section className="tool-section tool-section-wide cv-quality" data-quality-summary="true">
     <h2>{t("cv.quality.title")}</h2>
     <ul>
@@ -530,9 +531,9 @@ function QualitySummary({ analysis, metadata }: { analysis: AnalysisState; metad
         unavailable: analysis.summary.unavailableDunnCount
       })}</li>
       <li>{t("cv.quality.coverage", {
-        valid: analysis.summary.validDunnCount,
-        total: analysis.summary.retainedPointCount,
-        coverage: format(coverage)
+        valid: dunnCoverage.validPointCount,
+        total: dunnCoverage.sampledPointCount,
+        coverage: format(dunnCoverage.coveragePercent)
       })}</li>
     </ul>
     {diagnostics && <div className="cv-diagnostics" data-dunn-diagnostics="true">
@@ -629,6 +630,10 @@ function potentialIntervalLabel(analysis: AnalysisState, t: ReturnType<typeof us
     : t("cv.import.mode.auto");
 }
 
+function resolvedPotentialIntervalLabel(analysis: AnalysisState): string {
+  return `${serializeScientificNumber(analysis.alignedGrid.resolvedPotentialInterval * 1000)} mV`;
+}
+
 function turningPointTrimLabel(analysis: AnalysisState, t: ReturnType<typeof useI18n>["t"]): string {
   return analysis.settings.turningPointTrim.mode === "manual"
     ? `${serializeScientificNumber(analysis.settings.turningPointTrim.millivolts)} mV`
@@ -669,14 +674,44 @@ function makeContributionChart(contributions: DunnContribution[], t: ReturnType<
   ];
 }
 
-function makeDunnChart(original: CvSeries | undefined, t: ReturnType<typeof useI18n>["t"]): ChartSeries[] {
+function makeDunnChart(
+  original: CvSeries | undefined,
+  contribution: DunnContribution | undefined,
+  t: ReturnType<typeof useI18n>["t"]
+): ChartSeries[] {
   if (!original) return [];
-  return [{
+  const series: ChartSeries[] = [{
     id: "original",
     label: t("cv.dunn.originalCurve"),
     color: "#16697a",
     points: original.points.map((point) => ({ x: point.potential, y: point.current }))
   }];
+  if (!contribution) return series;
+
+  const capacitivePath = contribution.plotPath.map((point) => ({
+    x: point.potential,
+    y: point.current,
+    branch: point.branch
+  }));
+  series.push({
+    id: "capacitive-forward",
+    label: `${t("cv.dunn.capacitive")} ${t("cv.table.branchValue", { branch: 1 })}`,
+    color: "#7656a8",
+    dash: "4 3",
+    points: capacitivePath
+      .filter((point) => point.branch === "forward")
+      .map((point) => ({ x: point.x, y: point.y }))
+  });
+  series.push({
+    id: "capacitive-reverse",
+    label: `${t("cv.dunn.capacitive")} ${t("cv.table.branchValue", { branch: 2 })}`,
+    color: "#9a78cf",
+    dash: "4 3",
+    points: capacitivePath
+      .filter((point) => point.branch === "reverse")
+      .map((point) => ({ x: point.x, y: point.y }))
+  });
+  return series;
 }
 
 function makeDunnAreas(
@@ -688,49 +723,30 @@ function makeDunnAreas(
   if (!analysis || scanRate === undefined || seriesIndex < 0) return [];
   const contribution = analysis.contributions.find((item) => item.scanRate === scanRate);
   if (!contribution) return [];
-  const segments = (currents: number[], makePoint: (index: number) => ChartAreaPoint | null) =>
-    collectAreaSegments(0, currents.length - 1, makePoint);
+  const toAreaPoint = (x: number, first: number, second: number): ChartAreaPoint => ({
+    x,
+    lower: Math.min(first, second),
+    upper: Math.max(first, second)
+  });
 
   return [{
     id: "capacitive-area",
     label: t("cv.dunn.capacitive"),
     color: "#7656a8",
     opacity: 0.72,
-    segments: [
-      ...segments(contribution.capacitiveForward, (index) => ({
-        x: contribution.potentialGrid[index],
-        lower: 0,
-        upper: contribution.capacitiveForward[index]
-      })),
-      ...segments(contribution.capacitiveReverse, (index) => ({
-        x: contribution.potentialGrid[index],
-        lower: 0,
-        upper: contribution.capacitiveReverse[index]
-      }))
-    ]
+    segments: [contribution.potentialGrid.map((potential, index) =>
+      toAreaPoint(potential, contribution.capacitiveForward[index]!, contribution.capacitiveReverse[index]!))]
   }, {
     id: "diffusion-area",
     label: t("cv.dunn.diffusion"),
     color: "#6fb7a7",
     opacity: 0.72,
     segments: [
-      ...segments(contribution.diffusionForward, (index) => ({
-        x: contribution.potentialGrid[index],
-        lower: contribution.capacitiveForward[index],
-        upper: contribution.capacitiveForward[index] + contribution.diffusionForward[index]
-      })),
-      ...segments(contribution.diffusionReverse, (index) => ({
-        x: contribution.potentialGrid[index],
-        lower: contribution.capacitiveReverse[index],
-        upper: contribution.capacitiveReverse[index] + contribution.diffusionReverse[index]
-      }))
+      contribution.potentialGrid.map((potential, index) =>
+        toAreaPoint(potential, contribution.originalForward[index]!, contribution.capacitiveForward[index]!)),
+      contribution.potentialGrid.map((potential, index) =>
+        toAreaPoint(potential, contribution.originalReverse[index]!, contribution.capacitiveReverse[index]!))
     ]
-  }, {
-    id: "excluded-area",
-    label: t("cv.dunn.excludedArea"),
-    color: "#7d858b",
-    pattern: "diagonalHatch",
-    segments: []
   }];
 }
 
@@ -913,22 +929,8 @@ function exportCsv(
   const grid = analysis.analysisGrid;
   const contributionByRate = new Map(analysis.contributions.map((item) => [item.scanRate, item]));
   const sortedRates = [...grid.scanRates].sort((left, right) => left - right);
-  const metadataHeaders = [
-    t("cv.export.dataLayout"),
-    t("cv.export.dataSource"),
-    t("cv.export.pointInterval"),
-    t("cv.export.rSquaredThreshold"),
-    t("cv.export.headerMode"),
-    t("cv.export.orderedScanRates")
-  ];
-  const metadataValues = [
-    layoutIdentifier(metadata.layout),
-    t(sourceKey(metadata.source)),
-    potentialIntervalLabel(analysis, t),
-    analysis.settings.rSquaredThreshold,
-    t(headerModeKey(metadata.headerMode)),
-    metadata.orderedScanRates.map(serializeScientificNumber).join(" ")
-  ];
+  const metadataHeaders = exportMetadataHeaders(t);
+  const metadataValues = exportMetadataValues(analysis, metadata, t);
   let csv: string;
   const potentialHeader = `${t("cv.table.potential")} (V)`;
   const scanRateHeader = `${t("cv.table.scanRate")} (mV/s)`;
@@ -944,13 +946,23 @@ function exportCsv(
     analysis.bRecords.filter(isResultOutputRecord).map((record) => [...bRecordRow(record, t), ...metadataValues])
   );
   else if (filename === csvFiles[2]) csv = rowsToCsv(
-    [potentialHeader, t("cv.table.sweepBranch"), t("cv.dunn.k1"), t("cv.dunn.k2"), t("cv.results.rSquared"), t("cv.table.pointCount"), t("cv.results.fitStatus"), ...metadataHeaders],
-    flattenDunnRecords(analysis).filter(isDunnResultOutputRecord).map((record) => [...dunnRecordRow(record, t), ...metadataValues])
+    [
+      scanRateHeader,
+      potentialHeader,
+      t("cv.table.sweepBranch"),
+      t("cv.dunn.k1"),
+      t("cv.dunn.k2"),
+      t("cv.results.rSquared"),
+      t("cv.table.pointCount"),
+      t("cv.results.fitStatus"),
+      t("cv.export.localCapacitiveFraction"),
+      t("cv.export.localConfidence"),
+      ...metadataHeaders
+    ],
+    dunnExportRows(analysis, sortedRates, t).map((row) => [...row, ...metadataValues])
   );
   else if (filename === csvFiles[5]) {
-    const validPointCount = analysis.summary.validDunnCount;
-    const sampledPointCount = analysis.summary.retainedPointCount;
-    const coverage = sampledPointCount === 0 ? 0 : validPointCount / sampledPointCount * 100;
+    const dunnCoverage = makeDunnCoverage(analysis);
     csv = rowsToCsv(
       [scanRateHeader, `${t("cv.dunn.capacitive")} (%)`, `${t("cv.dunn.diffusion")} (%)`, t("cv.export.validPoints"), t("cv.export.sampledPoints"), `${t("cv.results.coverage")} (%)`, t("cv.export.contributionStatus"), ...metadataHeaders],
       sortedRates.map((scanRate) => {
@@ -959,9 +971,9 @@ function exportCsv(
           scanRate,
           item?.capacitivePercent ?? null,
           item?.diffusionPercent ?? null,
-          validPointCount,
-          sampledPointCount,
-          coverage,
+          dunnCoverage.validPointCount,
+          dunnCoverage.sampledPointCount,
+          dunnCoverage.coveragePercent,
           item ? t("cv.export.available") : t("cv.export.unavailable"),
           ...metadataValues
         ];
@@ -971,16 +983,90 @@ function exportCsv(
   else {
     const capacitive = filename === csvFiles[3];
     const headerKey = capacitive ? "cv.export.capacitiveCurrentAt" : "cv.export.diffusionCurrentAt";
-    const currentHeaders = sortedRates.map((rate) => t(headerKey, { rate: serializeScientificNumber(rate) }));
+    const currentHeaders = sortedRates.flatMap((rate) => [
+      t("cv.export.gAt", { rate: serializeScientificNumber(rate) }),
+      t(headerKey, { rate: serializeScientificNumber(rate) })
+    ]);
     csv = rowsToCsv(
       [potentialHeader, ...withWideMetadata(currentHeaders, analysis, metadata, t)],
       analysis.alignedGrid.potentials.map((potential, index) => [potential, ...sortedRates.map((rate) => {
         const item = contributionByRate.get(rate);
-        return item ? (capacitive ? item.capacitiveForward : item.diffusionForward)[index] : null;
-      })])
+        const current = item ? (capacitive ? item.capacitiveForward : item.diffusionForward)[index] : null;
+        return [item?.g[index] ?? null, current];
+      }).flat()])
     );
   }
   downloadCsv(filename, csv);
+}
+
+function exportMetadataHeaders(t: ReturnType<typeof useI18n>["t"]) {
+  return [
+    t("cv.export.dataLayout"),
+    t("cv.export.dataSource"),
+    t("cv.export.resolvedInterval"),
+    t("cv.export.dunnMethod"),
+    t("cv.export.rSquaredThreshold"),
+    t("cv.export.turningTrim"),
+    t("cv.export.smoothing"),
+    t("cv.export.commonRange"),
+    t("cv.export.forwardMedianRSquared"),
+    t("cv.export.reverseMedianRSquared"),
+    t("cv.export.dunnCoverage"),
+    t("cv.export.headerMode"),
+    t("cv.export.orderedScanRates")
+  ];
+}
+
+function exportMetadataValues(
+  analysis: AnalysisState,
+  metadata: ResultMetadata,
+  t: ReturnType<typeof useI18n>["t"]
+) {
+  const diagnostics = analysis.contributions[0]?.diagnostics;
+  const dunnCoverage = makeDunnCoverage(analysis);
+  return [
+    layoutIdentifier(metadata.layout),
+    t(sourceKey(metadata.source)),
+    resolvedPotentialIntervalLabel(analysis),
+    dunnMethodLabel(analysis.settings.dunnConfidenceMode, t),
+    analysis.settings.rSquaredThreshold,
+    turningPointTrimLabel(analysis, t),
+    t("cv.quality.smoothing.auto"),
+    `${serializeScientificNumber(analysis.alignedGrid.commonMinimum)}-${serializeScientificNumber(analysis.alignedGrid.commonMaximum)}`,
+    diagnostics?.medianForwardRSquared ?? null,
+    diagnostics?.medianReverseRSquared ?? null,
+    dunnCoverage.coveragePercent,
+    t(headerModeKey(metadata.headerMode)),
+    metadata.orderedScanRates.map(serializeScientificNumber).join(" ")
+  ];
+}
+
+function dunnExportRows(
+  analysis: AnalysisState,
+  sortedRates: number[],
+  t: ReturnType<typeof useI18n>["t"]
+): Array<Array<string | number | null>> {
+  return sortedRates.flatMap((scanRate) =>
+    flattenDunnRecords(analysis).map((record) => {
+      const localFraction = record.fit
+        ? localCapacitiveFraction(record.fit.k1, record.fit.k2, scanRate)
+        : null;
+      const localConfidence = record.fit
+        ? rSquaredConfidence(record.fit.rSquared, analysis.settings.dunnConfidenceMode, analysis.settings.rSquaredThreshold)
+        : null;
+      return [
+        scanRate,
+        record.potential,
+        t("cv.table.branchValue", { branch: record.branch === "forward" ? 1 : 2 }),
+        record.fit?.k1 ?? null,
+        record.fit?.k2 ?? null,
+        record.fit?.rSquared ?? null,
+        record.fit?.pointCount ?? null,
+        fitStatusLabel(record.status, t),
+        localFraction,
+        localConfidence
+      ];
+    }));
 }
 
 function withWideMetadata(
@@ -990,14 +1076,12 @@ function withWideMetadata(
   t: ReturnType<typeof useI18n>["t"]
 ) {
   if (headers.length === 0) return headers;
-  const suffix = [
-    `${t("cv.export.dataLayout")}: ${layoutIdentifier(metadata.layout)}`,
-    `${t("cv.export.dataSource")}: ${t(sourceKey(metadata.source))}`,
-    `${t("cv.export.headerMode")}: ${t(headerModeKey(metadata.headerMode))}`,
-    `${t("cv.export.orderedScanRates")}: ${metadata.orderedScanRates.map(serializeScientificNumber).join(" ")}`,
-    `${t("cv.export.pointInterval")}: ${potentialIntervalLabel(analysis, t)}`,
-    `${t("cv.export.rSquaredThreshold")}: ${serializeScientificNumber(analysis.settings.rSquaredThreshold)}`
-  ].join("; ");
+  const suffix = exportMetadataHeaders(t)
+    .map((header, index) => {
+      const value = exportMetadataValues(analysis, metadata, t)[index] ?? null;
+      return `${header}: ${typeof value === "number" ? serializeScientificNumber(value) : format(value)}`;
+    })
+    .join("; ");
   return headers.map((header, index) => index === headers.length - 1 ? `${header} [${suffix}]` : header);
 }
 

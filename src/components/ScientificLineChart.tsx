@@ -114,7 +114,9 @@ export function ScientificLineChart({
   const selectedPoint = selectedPointId !== undefined
     ? allPoints.find((point) => point.id === selectedPointId) ?? null
     : Number.isFinite(selectedX)
-      ? allPoints.find((point) => point.x === selectedX) ?? null
+      ? allPoints.find((point) => point.x === selectedX)
+        ?? areaBounds.find((point) => point.x === selectedX)
+        ?? null
       : null;
   const supportsPointSelection = Boolean(onSelectX || onSelectPointId);
   const patternId = (item: ChartAreaSeries) => `${patternPrefix}-${item.id.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
@@ -293,7 +295,7 @@ export function ScientificLineChart({
             />
             <circle
               data-selected-x={String(selectedPoint.x)}
-              data-selected-point-id={selectedPoint.id}
+              data-selected-point-id={"id" in selectedPoint ? selectedPoint.id : undefined}
               cx={projectX(selectedPoint.x)}
               cy={projectY(selectedPoint.y)}
               r={4.5}

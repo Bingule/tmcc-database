@@ -28,26 +28,28 @@ export function analyzeCvWorkflow(series: CvSeries[], settings: CvAnalysisSettin
     validateInterpolatedCvData(analysisGrid);
     const bRecords = classifyRecords(attemptBValueFits(analysisGrid), settings.rSquaredThreshold);
     const dunnRecords = fitDunnBranches(alignedGrid, settings.turningPointTrim);
-    const contributions = alignedGrid.scanRates.map((scanRate, seriesIndex) => {
-      const fractions = makeDunnFractionGrid(
-        dunnRecords,
-        scanRate,
-        settings.dunnConfidenceMode,
-        settings.rSquaredThreshold
-      );
-      const optimized = optimizeSharedFraction(fractions, alignedGrid.potentials);
-      return reconstructDunnContribution({
-        alignedGrid,
-        dunnRecords,
-        optimized,
-        fractions,
-        scanRate,
-        seriesIndex,
-        mode: settings.dunnConfidenceMode,
-        threshold: settings.rSquaredThreshold,
-        resolvedTurningPointTrim: dunnRecords.resolvedTurningPointTrim
-      });
-    });
+    const contributions = bRecords.some((record) => record.fit)
+      ? alignedGrid.scanRates.map((scanRate, seriesIndex) => {
+        const fractions = makeDunnFractionGrid(
+          dunnRecords,
+          scanRate,
+          settings.dunnConfidenceMode,
+          settings.rSquaredThreshold
+        );
+        const optimized = optimizeSharedFraction(fractions, alignedGrid.potentials);
+        return reconstructDunnContribution({
+          alignedGrid,
+          dunnRecords,
+          optimized,
+          fractions,
+          scanRate,
+          seriesIndex,
+          mode: settings.dunnConfidenceMode,
+          threshold: settings.rSquaredThreshold,
+          resolvedTurningPointTrim: dunnRecords.resolvedTurningPointTrim
+        });
+      })
+      : [];
 
     return {
       series: cloneSeries(series),

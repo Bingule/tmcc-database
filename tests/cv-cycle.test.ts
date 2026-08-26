@@ -147,6 +147,16 @@ describe("normalizeCvCycle", () => {
     expect(cycle.ignoredPointCount).toBe(2);
   });
 
+  it("keeps the true endpoint instead of closing at the first point inside tolerance", () => {
+    const ascending = Array.from({ length: 301 }, (_, index) => index);
+    const descending = Array.from({ length: 300 }, (_, index) => 299 - index);
+    const cycle = normalizeCvCycle(points([...ascending, ...descending]));
+
+    expect(cycle.selectedEndIndex).toBe(600);
+    expect(cycle.originalPoints.at(-1)?.potential).toBe(0);
+    expect(cycle.ignoredPointCount).toBe(0);
+  });
+
   it("ignores a tail that extends beyond an already closed endpoint-started loop", () => {
     const cycle = normalizeCvCycle(points([-1, 0, -1, -0.5, 0.5]));
 

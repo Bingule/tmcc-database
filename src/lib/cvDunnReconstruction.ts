@@ -51,14 +51,19 @@ export function optimizeSharedFraction(
   const combined = combineBranchTargets(fractions);
   const initializedTarget = initializeMissingTargets(combined.target, combined.weight);
   const candidates = LAMBDA_CANDIDATES.map((lambda) => {
-    const solution = solveProjected(initializedTarget, combined.weight, lambda, operator);
-    return {
-      lambda,
-      solution,
-      meanFidelity: normalizedFidelity(solution.g, initializedTarget, combined.weight),
-      meanRoughness: normalizedRoughness(solution.g, operator)
-    };
-  }).filter((candidate) => (
+    try {
+      const solution = solveProjected(initializedTarget, combined.weight, lambda, operator);
+      return {
+        lambda,
+        solution,
+        meanFidelity: normalizedFidelity(solution.g, initializedTarget, combined.weight),
+        meanRoughness: normalizedRoughness(solution.g, operator)
+      };
+    } catch (error) {
+      if (error instanceof CvAnalysisError && error.code === "reconstructionFailed") return null;
+      throw error;
+    }
+  }).filter((candidate): candidate is NonNullable<typeof candidate> => candidate !== null && (
     Number.isFinite(candidate.meanFidelity)
     && Number.isFinite(candidate.meanRoughness)
     && candidate.meanFidelity >= 0

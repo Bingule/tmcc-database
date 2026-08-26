@@ -258,7 +258,7 @@ function branchFromDelta(delta: number | null): CvBranchKind | null {
 }
 
 function validatePlotPath(plotPath: DunnContribution["plotPath"]) {
-  if (plotPath.length < 4) throw new CvAnalysisError("invalidDataShape");
+  if (plotPath.length < 3) throw new CvAnalysisError("invalidDataShape");
 
   const runs: Array<{ branch: CvBranchKind; potentials: number[] }> = [];
   for (const point of plotPath) {

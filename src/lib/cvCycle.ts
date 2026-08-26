@@ -303,7 +303,7 @@ function selectFirstClosedLoop(
     ) {
       throw new CvCycleStructureError("branchPointCount", { reason: "incompleteCycle" });
     }
-    const endIndex = firstIndexNearPotential(
+    const endIndex = closestIndexNearPotential(
       points,
       reverseRun.startIndex,
       reverseRun.endIndex,
@@ -330,7 +330,7 @@ function selectFirstClosedLoop(
   ) {
     throw new CvCycleStructureError("branchPointCount", { reason: "incompleteCycle" });
   }
-  const endIndex = firstIndexNearPotential(
+  const endIndex = closestIndexNearPotential(
     points,
     returnRun.startIndex,
     returnRun.endIndex,
@@ -358,17 +358,23 @@ function runReachesPotential(
     .some((point) => closeTo(point.potential, potential, tolerance));
 }
 
-function firstIndexNearPotential(
+function closestIndexNearPotential(
   points: CvSeries["points"],
   startIndex: number,
   endIndex: number,
   potential: number,
   tolerance: number
 ): number | undefined {
+  let closestIndex: number | undefined;
+  let closestDistance = Number.POSITIVE_INFINITY;
   for (let index = startIndex; index <= endIndex; index += 1) {
-    if (closeTo(points[index].potential, potential, tolerance)) return index;
+    const distance = Math.abs(points[index].potential - potential);
+    if (distance <= tolerance && distance < closestDistance) {
+      closestIndex = index;
+      closestDistance = distance;
+    }
   }
-  return undefined;
+  return closestIndex;
 }
 
 function closeTo(left: number, right: number, tolerance: number): boolean {
