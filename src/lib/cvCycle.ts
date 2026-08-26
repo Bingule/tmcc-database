@@ -391,7 +391,7 @@ function normalizeRunsAtCyclicSeam(
     const openingPoint = runPoints[0]?.[0];
     const closingRun = runPoints.at(-1);
     const closingPoint = closingRun?.at(-1);
-    if (openingPoint !== undefined && closingPoint !== undefined && closeTo(openingPoint.potential, closingPoint.potential, tolerance)) {
+    if (openingPoint !== undefined && closingRun !== undefined && closingPoint !== undefined && closeTo(openingPoint.potential, closingPoint.potential, tolerance)) {
       closingRun.pop();
     }
   }
