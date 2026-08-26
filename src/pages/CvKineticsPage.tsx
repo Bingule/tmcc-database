@@ -11,7 +11,7 @@ import { resolveGridBranches } from "../lib/cvAnalysis";
 import { parseScanRateList, type CvDataLayout, type CvHeaderMode } from "../lib/cvImport";
 import { confirmCvSeries, CvParseError, parseCvFile, parseDelimitedCv, type ParsedCvTable } from "../lib/cvParsing";
 import { analyzeCvWorkflow } from "../lib/cvWorkflow";
-import { CvAnalysisError, type BValuePoint, type CvFitRecord, type CvFitStatus, type CvSeries, type CvWorkflowResult, type DunnContribution } from "../lib/cvTypes";
+import { CvAnalysisError, type BValuePoint, type CvFitRecord, type CvFitStatus, type CvSeries, type CvWorkflowResult, type LegacyDunnContribution } from "../lib/cvTypes";
 import { downloadCsv, downloadPng, downloadSvg, rowsToCsv } from "../lib/toolExport";
 
 type AnalysisState = CvWorkflowResult;
@@ -596,7 +596,7 @@ function makeFitChart(point: BValuePoint | undefined, measuredLabel: string): Ch
   ];
 }
 
-function makeContributionChart(contributions: DunnContribution[], t: ReturnType<typeof useI18n>["t"]): ChartSeries[] {
+function makeContributionChart(contributions: LegacyDunnContribution[], t: ReturnType<typeof useI18n>["t"]): ChartSeries[] {
   return [
     { id: "capacitive-percent", label: t("cv.dunn.capacitive"), color: "#e07a5f", points: contributions.map((item) => ({ x: item.scanRate, y: item.capacitivePercent })) },
     { id: "diffusion-percent", label: t("cv.dunn.diffusion"), color: "#3d405b", dash: "5 3", points: contributions.map((item) => ({ x: item.scanRate, y: item.diffusionPercent })) }
@@ -704,7 +704,7 @@ function collectAreaSegments(
   return segments;
 }
 
-function dunnRows(analysis: AnalysisState | null, contribution: DunnContribution | undefined, seriesIndex: number) {
+function dunnRows(analysis: AnalysisState | null, contribution: LegacyDunnContribution | undefined, seriesIndex: number) {
   if (!analysis || !contribution || seriesIndex < 0) return [];
   return analysis.analysisGrid.potentials.map((potential, index) => {
     const capacitive = contribution.capacitiveCurrent[index];

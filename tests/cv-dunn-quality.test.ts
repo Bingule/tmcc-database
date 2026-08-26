@@ -3,9 +3,11 @@ import {
   integrateMagnitude,
   isLowFitQuality,
   reconstructBranchCurrents,
-  reconstructDunnContribution
+  reconstructDunnContribution,
+  validateDunnContribution
 } from "../src/lib/cvDunnQuality";
-import type { CvAlignedBranchGrid, DunnFitGrid, DunnFractionGrid } from "../src/lib/cvTypes";
+import { normalizeCvCycle } from "../src/lib/cvCycle";
+import type { CvAlignedBranchGrid, DunnContribution, DunnFitGrid, DunnFractionGrid } from "../src/lib/cvTypes";
 
 it("reconstructs signed bounded currents from the same g", () => {
   const g = [0.25, 0.5, 0.75];
@@ -36,6 +38,55 @@ it("flags low fit quality below 50% coverage without deleting the result", () =>
 });
 
 describe("reconstructDunnContribution", () => {
+  it("keeps a seam-started closing sample in original plot order", () => {
+    const cycle = normalizeCvCycle([
+      { potential: -0.5, current: 1 },
+      { potential: 0, current: 2 },
+      { potential: -0.5, current: 3 },
+      { potential: -1, current: 4 },
+      { potential: -0.75, current: 5 },
+      { potential: -0.5, current: 6 }
+    ]);
+    const alignedGrid = makeAlignedGrid(cycle);
+
+    const contribution = reconstructDunnContribution({
+      alignedGrid,
+      dunnRecords: makeDunnRecords(alignedGrid.potentials),
+      optimized: {
+        g: [0.25, 0.5, 0.75],
+        diagnostics: { lambda: 0.1, iterations: 12, converged: true, fidelity: 0, roughness: 0 }
+      },
+      fractions: makeFractions(alignedGrid.potentials),
+      scanRate: 1,
+      seriesIndex: 0,
+      mode: "threshold",
+      threshold: 0.95,
+      resolvedTurningPointTrim: 0.05
+    });
+
+    expect(contribution.plotPath).toHaveLength(cycle.originalPoints.length);
+    expect(contribution.plotPath.map((point) => point.potential)).toEqual([-0.5, 0, -0.5, -1, -0.75, -0.5]);
+    expect(contribution.plotPath.map((point) => point.current)).toEqual([0.5, 1.5, 1.5, 1, 1.875, 3]);
+    expect(contribution.plotPath.map((point) => point.branch)).toEqual([
+      "forward",
+      "forward",
+      "reverse",
+      "reverse",
+      "forward",
+      "forward"
+    ]);
+  });
+
+  it("rejects plot paths that do not preserve original order", () => {
+    const contribution = makeCompleteContribution();
+    contribution.plotPath = [
+      { potential: 0, current: 1, branch: "forward" },
+      { potential: -1, current: -1, branch: "reverse" }
+    ];
+
+    expect(() => validateDunnContribution(contribution)).toThrow("invalidDataShape");
+  });
+
   it("reconnects capacitive current in original CV order while keeping branch currents separate", () => {
     const cycle = {
       originalPoints: [
@@ -147,3 +198,81 @@ describe("reconstructDunnContribution", () => {
     expect(contribution.diagnostics!.forwardAboveThresholdPercent).toBeCloseTo(200 / 3, 12);
   });
 });
+
+function makeAlignedGrid(cycle: CvAlignedBranchGrid["cycles"][number]): CvAlignedBranchGrid {
+  return {
+    potentials: [-1, -0.5, 0],
+    scanRates: [1, 2, 4],
+    forwardCurrents: [[4, 1, 2], [8, 2, 4], [16, 4, 8]],
+    reverseCurrents: [[4, 3, 2], [8, 6, 4], [16, 12, 8]],
+    commonMinimum: -1,
+    commonMaximum: 0,
+    nativePotentialInterval: 0.25,
+    resolvedPotentialInterval: 0.5,
+    cycles: [cycle, cycle, cycle]
+  };
+}
+
+function makeDunnRecords(potentials: number[]): DunnFitGrid {
+  return {
+    forward: potentials.map((potential) => ({
+      branch: "forward",
+      potential,
+      fit: { potential, k1: 1, k2: 1, rSquared: 0.98, pointCount: 3 },
+      status: "valid",
+      trimmed: false
+    })),
+    reverse: potentials.map((potential) => ({
+      branch: "reverse",
+      potential,
+      fit: { potential, k1: 1, k2: 1, rSquared: 0.98, pointCount: 3 },
+      status: "valid",
+      trimmed: false
+    })),
+    resolvedTurningPointTrim: 0.05
+  };
+}
+
+function makeFractions(potentials: number[]): DunnFractionGrid {
+  return {
+    forward: potentials.map(() => ({ fraction: 0.5, confidence: 1, rSquared: 0.98, trustedAnchor: true })),
+    reverse: potentials.map(() => ({ fraction: 0.5, confidence: 1, rSquared: 0.98, trustedAnchor: true }))
+  };
+}
+
+function makeCompleteContribution(): DunnContribution {
+  return {
+    scanRate: 1,
+    potentialGrid: [-1, 0],
+    g: [0.5, 0.5],
+    originalForward: [2, 2],
+    originalReverse: [-2, -2],
+    capacitiveForward: [1, 1],
+    capacitiveReverse: [-1, -1],
+    diffusionForward: [1, 1],
+    diffusionReverse: [-1, -1],
+    plotPath: [
+      { potential: -1, current: 1, branch: "forward" },
+      { potential: 0, current: 1, branch: "forward" },
+      { potential: 0, current: -1, branch: "reverse" },
+      { potential: -1, current: -1, branch: "reverse" }
+    ],
+    capacitivePercent: 50,
+    diffusionPercent: 50,
+    diagnostics: {
+      mode: "threshold",
+      threshold: 0.95,
+      resolvedPotentialInterval: 1,
+      resolvedTurningPointTrim: 0,
+      commonMinimum: -1,
+      commonMaximum: 0,
+      medianForwardRSquared: 0.98,
+      medianReverseRSquared: 0.98,
+      forwardAboveThresholdPercent: 100,
+      reverseAboveThresholdPercent: 100,
+      lowFitQuality: false,
+      scanRateWarning: true,
+      qualityPassed: false
+    }
+  };
+}

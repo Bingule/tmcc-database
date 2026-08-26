@@ -108,18 +108,24 @@ export interface DunnDiagnostics {
 
 export interface DunnContribution {
   scanRate: number;
-  potentialGrid?: number[];
-  g?: number[];
-  originalForward?: number[];
-  originalReverse?: number[];
-  capacitiveForward?: number[];
-  capacitiveReverse?: number[];
-  diffusionForward?: number[];
-  diffusionReverse?: number[];
-  plotPath?: Array<{ potential: number; current: number; branch: CvBranchKind }>;
+  potentialGrid: number[];
+  g: number[];
+  originalForward: number[];
+  originalReverse: number[];
+  capacitiveForward: number[];
+  capacitiveReverse: number[];
+  diffusionForward: number[];
+  diffusionReverse: number[];
+  plotPath: Array<{ potential: number; current: number; branch: CvBranchKind }>;
   capacitivePercent: number;
   diffusionPercent: number;
-  diagnostics?: DunnDiagnostics;
+  diagnostics: DunnDiagnostics;
+}
+
+export interface LegacyDunnContribution {
+  scanRate: number;
+  capacitivePercent: number;
+  diffusionPercent: number;
   validPointCount: number;
   sampledPointCount: number;
   coveragePercent: number;
@@ -131,7 +137,7 @@ export interface DunnContribution {
 export interface DunnAnalysisResult {
   points: DunnPoint[];
   /** Valid summaries only: at least one jointly valid interval and a non-zero total magnitude area. */
-  contributions: DunnContribution[];
+  contributions: LegacyDunnContribution[];
 }
 
 export type CvFitStatus =
@@ -226,7 +232,7 @@ export interface CvWorkflowResult {
   analysisGrid: InterpolatedCvData;
   bRecords: Array<CvFitRecord<BValuePoint>>;
   dunnRecords: Array<CvFitRecord<DunnPoint>>;
-  contributions: DunnContribution[];
+  contributions: LegacyDunnContribution[];
   summary: CvQualitySummary;
   settings: CvAnalysisSettings;
 }

@@ -8,9 +8,9 @@ import {
   type CvSeries,
   type CvSweepBranch,
   type DunnAnalysisResult,
-  type DunnContribution,
   type DunnPoint,
   type InterpolatedCvData,
+  type LegacyDunnContribution,
   type SweepDirection
 } from "./cvTypes";
 
@@ -162,7 +162,7 @@ export function attemptDunnFits(data: InterpolatedCvData): Array<CvFitRecord<Dun
 export function integrateDunnContributions(
   data: InterpolatedCvData,
   coefficients: Array<{ k1: number; k2: number } | null>
-): DunnContribution[] {
+): LegacyDunnContribution[] {
   validateInterpolatedCvData(data);
   if (coefficients.length !== data.potentials.length) throw new CvAnalysisError("invalidDataShape");
   return data.scanRates.flatMap((scanRate) => {
@@ -361,7 +361,7 @@ function makeContribution(
   scanRate: number,
   data: InterpolatedCvData,
   coefficients: Array<{ k1: number; k2: number } | null>
-): DunnContribution | null {
+): LegacyDunnContribution | null {
   const squareRootRate = Math.sqrt(scanRate);
   const reconstructed = coefficients.map((coefficient) => {
     const capacitive = finiteOrNull(coefficient?.k1, scanRate);

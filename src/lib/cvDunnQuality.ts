@@ -5,7 +5,8 @@ import {
   type DunnBranchFitRecord,
   type DunnContribution,
   type DunnContributionInput,
-  type DunnDiagnostics
+  type DunnDiagnostics,
+  type NormalizedCvCycle
 } from "./cvTypes";
 
 export type {
@@ -93,12 +94,7 @@ export function reconstructDunnContribution(input: DunnContributionInput): DunnC
     plotPath: reconstructOriginalOrderPath(input),
     capacitivePercent: 100 * capacitiveArea / totalArea,
     diffusionPercent: 100 * diffusionArea / totalArea,
-    diagnostics: makeDiagnostics(input),
-    validPointCount: potentialGrid.length * 2,
-    sampledPointCount: potentialGrid.length * 2,
-    coveragePercent: 100,
-    capacitiveCurrent: [...forward.capacitive, ...reverse.capacitive.slice(0, -1).reverse()],
-    diffusionCurrent: [...forward.diffusion, ...reverse.diffusion.slice(0, -1).reverse()]
+    diagnostics: makeDiagnostics(input)
   };
 
   validateDunnContribution(contribution);
@@ -121,12 +117,6 @@ export function validateDunnContribution(contribution: DunnContribution): void {
     plotPath,
     diagnostics
   } = contribution;
-  if (!potentialGrid || !g || !originalForward || !originalReverse
-    || !capacitiveForward || !capacitiveReverse || !diffusionForward || !diffusionReverse
-    || !plotPath || !diagnostics) {
-    throw new CvAnalysisError("invalidDataShape");
-  }
-
   validateAlignedArrays(potentialGrid, g, originalForward, originalReverse, capacitiveForward, capacitiveReverse, diffusionForward, diffusionReverse);
   originalForward.forEach((current, index) => {
     validateReconstructedPoint(current, capacitiveForward[index]!, diffusionForward[index]!);
@@ -134,13 +124,8 @@ export function validateDunnContribution(contribution: DunnContribution): void {
   originalReverse.forEach((current, index) => {
     validateReconstructedPoint(current, capacitiveReverse[index]!, diffusionReverse[index]!);
   });
-  for (const point of plotPath) {
-    if (!Number.isFinite(point.potential)
-      || !Number.isFinite(point.current)
-      || (point.branch !== "forward" && point.branch !== "reverse")) {
-      throw new CvAnalysisError("invalidDataShape");
-    }
-  }
+  validatePlotPath(plotPath);
+  validateDiagnostics(diagnostics);
   if (!Number.isFinite(contribution.capacitivePercent)
     || !Number.isFinite(contribution.diffusionPercent)
     || Math.abs(contribution.capacitivePercent + contribution.diffusionPercent - 100) > 1e-8) {
@@ -195,11 +180,7 @@ function validateAlignedArrays(reference: number[], ...arrays: number[][]) {
 
 function reconstructOriginalOrderPath(input: DunnContributionInput): DunnContribution["plotPath"] {
   const cycle = input.alignedGrid.cycles[input.seriesIndex]!;
-  const branchBySourceIndex = new Map<number, CvBranchKind>();
-  for (const point of cycle.forward.points) branchBySourceIndex.set(point.sourceIndex, "forward");
-  for (const point of cycle.reverse.points) {
-    if (!branchBySourceIndex.has(point.sourceIndex)) branchBySourceIndex.set(point.sourceIndex, "reverse");
-  }
+  const branchBySourceIndex = branchOwnershipBySourceIndex(cycle);
 
   return cycle.originalPoints.map((point, sourceIndex) => {
     const branch = branchBySourceIndex.get(sourceIndex);
@@ -212,6 +193,97 @@ function reconstructOriginalOrderPath(input: DunnContributionInput): DunnContrib
       branch
     };
   });
+}
+
+function branchOwnershipBySourceIndex(cycle: NormalizedCvCycle): Map<number, CvBranchKind> {
+  const normalizedBranchBySourceIndex = new Map<number, CvBranchKind>();
+  for (const point of cycle.forward.points) normalizedBranchBySourceIndex.set(point.sourceIndex, "forward");
+  for (const point of cycle.reverse.points) {
+    if (!normalizedBranchBySourceIndex.has(point.sourceIndex)) {
+      normalizedBranchBySourceIndex.set(point.sourceIndex, "reverse");
+    }
+  }
+
+  const branchBySourceIndex = new Map<number, CvBranchKind>();
+  for (let sourceIndex = 0; sourceIndex < cycle.originalPoints.length; sourceIndex += 1) {
+    const branch = inferBranchFromOriginalPath(cycle, sourceIndex)
+      ?? normalizedBranchBySourceIndex.get(sourceIndex);
+    if (branch === undefined) throw new CvAnalysisError("invalidDataShape");
+    branchBySourceIndex.set(sourceIndex, branch);
+  }
+  return branchBySourceIndex;
+}
+
+function inferBranchFromOriginalPath(cycle: NormalizedCvCycle, sourceIndex: number): CvBranchKind | null {
+  const points = cycle.originalPoints;
+  const previous = points[sourceIndex - 1];
+  const current = points[sourceIndex];
+  const next = points[sourceIndex + 1];
+  if (current === undefined) throw new CvAnalysisError("invalidDataShape");
+
+  if (previous !== undefined) {
+    const branch = branchFromDelta(current.potential - previous.potential);
+    if (branch) return branch;
+  }
+  if (next !== undefined) {
+    const branch = branchFromDelta(next.potential - current.potential);
+    if (branch) return branch;
+  }
+  return null;
+}
+
+function branchFromDelta(delta: number): CvBranchKind | null {
+  if (!Number.isFinite(delta)) throw new CvAnalysisError("invalidPotential");
+  if (delta > 0) return "forward";
+  if (delta < 0) return "reverse";
+  return null;
+}
+
+function validatePlotPath(plotPath: DunnContribution["plotPath"]) {
+  if (plotPath.length < 4) throw new CvAnalysisError("invalidDataShape");
+
+  const runs: Array<{ branch: CvBranchKind; potentials: number[] }> = [];
+  for (const point of plotPath) {
+    if (!Number.isFinite(point.potential)
+      || !Number.isFinite(point.current)
+      || (point.branch !== "forward" && point.branch !== "reverse")) {
+      throw new CvAnalysisError("invalidDataShape");
+    }
+    const currentRun = runs.at(-1);
+    if (currentRun?.branch === point.branch) {
+      currentRun.potentials.push(point.potential);
+    } else {
+      runs.push({ branch: point.branch, potentials: [point.potential] });
+    }
+  }
+
+  if (runs.length < 2 || runs.length > 3) throw new CvAnalysisError("invalidDataShape");
+  for (const run of runs) {
+    if (run.potentials.length < 2) throw new CvAnalysisError("invalidDataShape");
+    for (let index = 1; index < run.potentials.length; index += 1) {
+      const delta = run.potentials[index]! - run.potentials[index - 1]!;
+      if (run.branch === "forward" && delta < 0) throw new CvAnalysisError("invalidDataShape");
+      if (run.branch === "reverse" && delta > 0) throw new CvAnalysisError("invalidDataShape");
+    }
+  }
+}
+
+function validateDiagnostics(diagnostics: DunnDiagnostics) {
+  const finiteValues = [
+    diagnostics.threshold,
+    diagnostics.resolvedPotentialInterval,
+    diagnostics.resolvedTurningPointTrim,
+    diagnostics.commonMinimum,
+    diagnostics.commonMaximum,
+    diagnostics.forwardAboveThresholdPercent,
+    diagnostics.reverseAboveThresholdPercent
+  ];
+  if (finiteValues.some((value) => !Number.isFinite(value))
+    || (diagnostics.medianForwardRSquared !== null && !Number.isFinite(diagnostics.medianForwardRSquared))
+    || (diagnostics.medianReverseRSquared !== null && !Number.isFinite(diagnostics.medianReverseRSquared))
+    || (diagnostics.mode !== "threshold" && diagnostics.mode !== "weighted")) {
+    throw new CvAnalysisError("invalidDataShape");
+  }
 }
 
 function evaluateSharedFraction(potentials: number[], g: number[], potential: number): number {
