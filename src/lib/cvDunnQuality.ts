@@ -216,24 +216,42 @@ function branchOwnershipBySourceIndex(cycle: NormalizedCvCycle): Map<number, CvB
 
 function inferBranchFromOriginalPath(cycle: NormalizedCvCycle, sourceIndex: number): CvBranchKind | null {
   const points = cycle.originalPoints;
-  const previous = points[sourceIndex - 1];
   const current = points[sourceIndex];
-  const next = points[sourceIndex + 1];
   if (current === undefined) throw new CvAnalysisError("invalidDataShape");
 
-  if (previous !== undefined) {
-    const branch = branchFromDelta(current.potential - previous.potential);
-    if (branch) return branch;
-  }
-  if (next !== undefined) {
-    const branch = branchFromDelta(next.potential - current.potential);
-    if (branch) return branch;
+  return branchFromDelta(edgeDelta(points, sourceIndex - 1))
+    ?? branchFromDelta(edgeDelta(points, sourceIndex))
+    ?? branchFromDelta(previousNonZeroDelta(points, sourceIndex))
+    ?? branchFromDelta(nextNonZeroDelta(points, sourceIndex));
+}
+
+function nextNonZeroDelta(points: NormalizedCvCycle["originalPoints"], sourceIndex: number): number | null {
+  for (let index = sourceIndex; index < points.length - 1; index += 1) {
+    const delta = points[index + 1]!.potential - points[index]!.potential;
+    if (!Number.isFinite(delta)) throw new CvAnalysisError("invalidPotential");
+    if (delta !== 0) return delta;
   }
   return null;
 }
 
-function branchFromDelta(delta: number): CvBranchKind | null {
+function previousNonZeroDelta(points: NormalizedCvCycle["originalPoints"], sourceIndex: number): number | null {
+  for (let index = sourceIndex - 1; index >= 0; index -= 1) {
+    const delta = points[index + 1]!.potential - points[index]!.potential;
+    if (!Number.isFinite(delta)) throw new CvAnalysisError("invalidPotential");
+    if (delta !== 0) return delta;
+  }
+  return null;
+}
+
+function edgeDelta(points: NormalizedCvCycle["originalPoints"], edgeIndex: number): number | null {
+  if (edgeIndex < 0 || edgeIndex >= points.length - 1) return null;
+  const delta = points[edgeIndex + 1]!.potential - points[edgeIndex]!.potential;
   if (!Number.isFinite(delta)) throw new CvAnalysisError("invalidPotential");
+  return delta === 0 ? null : delta;
+}
+
+function branchFromDelta(delta: number | null): CvBranchKind | null {
+  if (delta === null) return null;
   if (delta > 0) return "forward";
   if (delta < 0) return "reverse";
   return null;
@@ -259,7 +277,6 @@ function validatePlotPath(plotPath: DunnContribution["plotPath"]) {
 
   if (runs.length < 2 || runs.length > 3) throw new CvAnalysisError("invalidDataShape");
   for (const run of runs) {
-    if (run.potentials.length < 2) throw new CvAnalysisError("invalidDataShape");
     for (let index = 1; index < run.potentials.length; index += 1) {
       const delta = run.potentials[index]! - run.potentials[index - 1]!;
       if (run.branch === "forward" && delta < 0) throw new CvAnalysisError("invalidDataShape");

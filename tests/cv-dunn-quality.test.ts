@@ -38,6 +38,47 @@ it("flags low fit quality below 50% coverage without deleting the result", () =>
 });
 
 describe("reconstructDunnContribution", () => {
+  it("keeps every point from a multi-sample turning plateau in original plot order", () => {
+    const cycle = normalizeCvCycle([
+      { potential: 0, current: 1 },
+      { potential: 1, current: 2 },
+      { potential: 1, current: 3 },
+      { potential: 1, current: 4 },
+      { potential: 0, current: 5 },
+      { potential: -1, current: 6 },
+      { potential: 0, current: 7 }
+    ]);
+    const alignedGrid = makeWideAlignedGrid(cycle);
+
+    const contribution = reconstructDunnContribution({
+      alignedGrid,
+      dunnRecords: makeDunnRecords(alignedGrid.potentials),
+      optimized: {
+        g: [0.25, 0.5, 0.75],
+        diagnostics: { lambda: 0.1, iterations: 12, converged: true, fidelity: 0, roughness: 0 }
+      },
+      fractions: makeFractions(alignedGrid.potentials),
+      scanRate: 1,
+      seriesIndex: 0,
+      mode: "threshold",
+      threshold: 0.95,
+      resolvedTurningPointTrim: 0.05
+    });
+
+    expect(contribution.plotPath).toHaveLength(cycle.originalPoints.length);
+    expect(contribution.plotPath.map((point) => point.potential)).toEqual([0, 1, 1, 1, 0, -1, 0]);
+    expect(contribution.plotPath.map((point) => point.current)).toEqual([0.5, 1.5, 2.25, 3, 2.5, 1.5, 3.5]);
+    expect(contribution.plotPath.map((point) => point.branch)).toEqual([
+      "forward",
+      "forward",
+      "forward",
+      "reverse",
+      "reverse",
+      "reverse",
+      "forward"
+    ]);
+  });
+
   it("keeps a seam-started closing sample in original plot order", () => {
     const cycle = normalizeCvCycle([
       { potential: -0.5, current: 1 },
@@ -209,6 +250,20 @@ function makeAlignedGrid(cycle: CvAlignedBranchGrid["cycles"][number]): CvAligne
     commonMaximum: 0,
     nativePotentialInterval: 0.25,
     resolvedPotentialInterval: 0.5,
+    cycles: [cycle, cycle, cycle]
+  };
+}
+
+function makeWideAlignedGrid(cycle: CvAlignedBranchGrid["cycles"][number]): CvAlignedBranchGrid {
+  return {
+    potentials: [-1, 0, 1],
+    scanRates: [1, 2, 4],
+    forwardCurrents: [[6, 1, 2], [12, 2, 4], [24, 4, 8]],
+    reverseCurrents: [[6, 5, 2], [12, 10, 4], [24, 20, 8]],
+    commonMinimum: -1,
+    commonMaximum: 1,
+    nativePotentialInterval: 1,
+    resolvedPotentialInterval: 1,
     cycles: [cycle, cycle, cycle]
   };
 }
