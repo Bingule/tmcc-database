@@ -145,6 +145,19 @@ export interface DunnFractionGrid {
   reverse: DunnFractionPoint[];
 }
 
+export interface DunnRegularizationDiagnostics {
+  lambda: number;
+  iterations: number;
+  converged: boolean;
+  fidelity: number;
+  roughness: number;
+}
+
+export interface DunnSharedFractionResult {
+  g: number[];
+  diagnostics: DunnRegularizationDiagnostics;
+}
+
 export interface CvAnalysisSettings {
   pointInterval: number;
   rSquaredThreshold: number;
@@ -191,7 +204,8 @@ export type CvAnalysisErrorCode =
   | "noCommonPotentialRange"
   | "invalidDataShape"
   | "invalidPointInterval"
-  | "invalidRSquaredThreshold";
+  | "invalidRSquaredThreshold"
+  | "reconstructionFailed";
 
 export class CvAnalysisError extends Error {
   readonly code: CvAnalysisErrorCode;
