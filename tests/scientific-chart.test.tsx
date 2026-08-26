@@ -212,4 +212,67 @@ describe("ScientificLineChart", () => {
     expect(description?.id).toBe(descriptionId);
     expect(description?.textContent).toBe(metadata.join(". "));
   });
+
+  it("renders solid and hatched area bands beneath line series in source traversal order", async () => {
+    const view = await renderChart({
+      ...baseProps,
+      areas: [{
+        id: "capacitive-area",
+        label: "Capacitive contribution",
+        color: "#6fb7a7",
+        opacity: 0.72,
+        segments: [[
+          { x: 0, lower: 0, upper: 1 },
+          { x: 1, lower: 0, upper: 2 },
+          { x: 0.5, lower: 0, upper: 1.5 }
+        ]]
+      }, {
+        id: "excluded-area",
+        label: "Excluded",
+        color: "#7d858b",
+        pattern: "diagonalHatch" as const,
+        segments: [[
+          { x: 0, lower: -4, upper: 5 },
+          { x: 1, lower: -3, upper: 6 }
+        ]]
+      }]
+    });
+    const capacitive = view.querySelector<SVGPathElement>('[data-area-series-id="capacitive-area"]');
+    const excluded = view.querySelector<SVGPathElement>('[data-area-series-id="excluded-area"]');
+    const areas = view.querySelector(".scientific-chart-areas")!;
+    const lines = view.querySelector(".scientific-chart-series")!;
+
+    expect(capacitive?.getAttribute("d")?.trim()).toMatch(/Z$/);
+    expect(capacitive?.getAttribute("d")?.match(/\bM\b/g)).toHaveLength(1);
+    expect(excluded?.getAttribute("fill")).toMatch(/^url\(#/);
+    expect(view.querySelector("defs pattern line")).not.toBeNull();
+    expect(view.querySelector('[data-chart-legend="true"]')?.textContent).toContain("Capacitive contribution");
+    expect(view.querySelector('[data-chart-legend="true"]')?.textContent).toContain("Excluded");
+    expect(areas.compareDocumentPosition(lines) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("keeps area segments separate, omits singletons, and includes band bounds in the domain", async () => {
+    const view = await renderChart({
+      ...baseProps,
+      series: [{ id: "measured", label: "Measured", color: "#1155cc", points: [{ x: 0, y: 1 }, { x: 2, y: 3 }] }],
+      areas: [{
+        id: "segmented-area",
+        label: "Segmented",
+        color: "#6fb7a7",
+        segments: [
+          [{ x: 0, lower: -20, upper: 10 }, { x: 1, lower: -10, upper: 30 }],
+          [{ x: 1.5, lower: -5, upper: 8 }],
+          [{ x: 2, lower: -2, upper: 5 }, { x: 1.8, lower: -3, upper: 6 }]
+        ]
+      }]
+    });
+    const paths = [...view.querySelectorAll<SVGPathElement>('[data-area-series-id="segmented-area"]')];
+    const markup = view.querySelector("svg")?.outerHTML ?? "";
+
+    expect(paths).toHaveLength(2);
+    expect(paths.every((path) => path.getAttribute("d")?.trim().endsWith("Z"))).toBe(true);
+    expect(markup).not.toMatch(/(?:NaN|Infinity)/);
+    expect(view.querySelector(".scientific-chart-axes")?.textContent).toContain("-20");
+    expect(view.querySelector(".scientific-chart-axes")?.textContent).toContain("30");
+  });
 });

@@ -16,6 +16,21 @@ export interface ChartSeries {
   mode?: "line" | "points";
 }
 
+export interface ChartAreaPoint {
+  x: number;
+  lower: number;
+  upper: number;
+}
+
+export interface ChartAreaSeries {
+  id: string;
+  label: string;
+  color: string;
+  opacity?: number;
+  pattern?: "diagonalHatch";
+  segments: ChartAreaPoint[][];
+}
+
 interface ScientificLineChartProps {
   title: string;
   xLabel: string;
@@ -23,6 +38,7 @@ interface ScientificLineChartProps {
   emptyLabel: string;
   legendLabel: string;
   series: ChartSeries[];
+  areas?: ChartAreaSeries[];
   selectedX?: number;
   onSelectX?: (x: number) => void;
   selectedPointId?: string;
@@ -42,6 +58,7 @@ export function ScientificLineChart({
   emptyLabel,
   legendLabel,
   series,
+  areas = [],
   selectedX,
   onSelectX,
   selectedPointId,
@@ -51,20 +68,32 @@ export function ScientificLineChart({
 }: ScientificLineChartProps): React.ReactElement {
   const titleId = useId();
   const descriptionId = useId();
+  const patternPrefix = `chart-pattern-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
   const finiteSeries = series.map((item) => ({
     ...item,
     points: item.points.filter((point) => Number.isFinite(point.x) && (point.y === null || Number.isFinite(point.y)))
   }));
+  const finiteAreas = areas.map((item) => ({
+    ...item,
+    segments: item.segments.map((segment) => segment.filter((point) =>
+      Number.isFinite(point.x) && Number.isFinite(point.lower) && Number.isFinite(point.upper)))
+      .filter((segment) => segment.length >= 2)
+  }));
   const allPoints = finiteSeries.flatMap((item) => item.points.flatMap((point) => point.y === null ? [] : [{ ...point, y: point.y }]));
+  const areaBounds = finiteAreas.flatMap((item) => item.segments.flatMap((segment) => segment.flatMap((point) => [
+    { x: point.x, y: point.lower },
+    { x: point.x, y: point.upper }
+  ])));
+  const domainPoints = [...allPoints, ...areaBounds];
 
-  if (allPoints.length === 0) {
+  if (domainPoints.length === 0) {
     return <div className="scientific-chart-empty" role="status">{emptyLabel}</div>;
   }
 
-  const xDomain = expandedDomain(allPoints, "x");
-  const yDomain = expandedDomain(allPoints, "y");
+  const xDomain = expandedDomain(domainPoints, "x");
+  const yDomain = expandedDomain(domainPoints, "y");
   const legendColumns = 4;
-  const legendRows = Math.ceil(finiteSeries.length / legendColumns);
+  const legendRows = Math.ceil((finiteAreas.length + finiteSeries.length) / legendColumns);
   const metadataSourceLines = typeof metadata === "string" ? [metadata] : metadata ?? [];
   const metadataLines = metadataSourceLines.flatMap((line) => wrapMetadataLine(line));
   const legendTop = metadataLines.length > 0 ? 17 + metadataLines.length * 18 + 4 : 17;
@@ -81,6 +110,7 @@ export function ScientificLineChart({
       ? allPoints.find((point) => point.x === selectedX) ?? null
       : null;
   const supportsPointSelection = Boolean(onSelectX || onSelectPointId);
+  const patternId = (item: ChartAreaSeries) => `${patternPrefix}-${item.id.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
 
   function selectPoint(point: ChartPoint) {
     if (onSelectPointId && point.id !== undefined) onSelectPointId(point.id);
@@ -101,6 +131,18 @@ export function ScientificLineChart({
       >
         <title id={titleId}>{title}</title>
         {metadataSourceLines.length > 0 && <desc id={descriptionId}>{metadataSourceLines.join(". ")}</desc>}
+        {finiteAreas.some((item) => item.pattern === "diagonalHatch") && <defs>
+          {finiteAreas.filter((item) => item.pattern === "diagonalHatch").map((item) => <pattern
+            key={item.id}
+            id={patternId(item)}
+            width={8}
+            height={8}
+            patternUnits="userSpaceOnUse"
+          >
+            <rect width={8} height={8} fill="#f0f2f1" />
+            <line x1={0} y1={8} x2={8} y2={0} stroke={item.color} strokeWidth={1.5} />
+          </pattern>)}
+        </defs>}
         {metadataLines.length > 0 && <g data-chart-metadata="true">
           {metadataLines.map((line, index) => <text
             key={`${index}-${line}`}
@@ -116,14 +158,19 @@ export function ScientificLineChart({
           role="group"
           aria-label={legendLabel}
         >
-          {finiteSeries.map((item, index) => {
+          {[...finiteAreas.map((item) => ({ kind: "area" as const, item })), ...finiteSeries.map((item) => ({ kind: "line" as const, item }))].map((entry, index) => {
             const column = index % legendColumns;
             const row = Math.floor(index / legendColumns);
             const x = chartMargin.left + column * (plotWidth / legendColumns);
             const y = legendTop + row * 22;
+            const { item } = entry;
             return (
               <g key={item.id} className="scientific-chart-legend-item" transform={`translate(${x} ${y})`}>
-                {item.mode === "points" ? <circle cx={13} cy={0} r={3.5} fill={item.color} /> : <line x1={0} y1={0} x2={26} y2={0} stroke={item.color} strokeWidth={2.25} strokeDasharray={item.dash} />}
+                {entry.kind === "area"
+                  ? <rect x={1} y={-6} width={24} height={12} rx={2} fill={item.pattern === "diagonalHatch" ? `url(#${patternId(item)})` : item.color} fillOpacity={item.pattern ? 1 : item.opacity ?? 0.68} />
+                  : item.mode === "points"
+                    ? <circle cx={13} cy={0} r={3.5} fill={item.color} />
+                    : <line x1={0} y1={0} x2={26} y2={0} stroke={item.color} strokeWidth={2.25} strokeDasharray={item.dash} />}
                 <text x={32} y={4} fill="#263238" fontSize={11}>{item.label}</text>
               </g>
             );
@@ -141,6 +188,19 @@ export function ScientificLineChart({
               strokeWidth={1}
             />
           ))}
+        </g>
+        <g className="scientific-chart-areas" aria-hidden="true">
+          {finiteAreas.flatMap((item) => item.segments.map((segment, segmentIndex) => (
+            <path
+              key={`${item.id}-${segmentIndex}`}
+              data-area-series-id={item.id}
+              data-area-segment-index={segmentIndex}
+              d={areaPath(segment, projectX, projectY)}
+              fill={item.pattern === "diagonalHatch" ? `url(#${patternId(item)})` : item.color}
+              fillOpacity={item.pattern ? 1 : item.opacity ?? 0.68}
+              stroke="none"
+            />
+          )))}
         </g>
         <g className="scientific-chart-axes" aria-hidden="true">
           <line x1={chartMargin.left} y1={chartMargin.top} x2={chartMargin.left} y2={dimensions.height - chartMargin.bottom} stroke="#607d8b" strokeWidth={1.25} />
@@ -285,6 +345,18 @@ function linePath(
     move = false;
   }
   return commands.join(" ");
+}
+
+function areaPath(
+  segment: ChartAreaPoint[],
+  projectX: (value: number) => number,
+  projectY: (value: number) => number
+): string {
+  const upper = segment.map((point, index) =>
+    `${index === 0 ? "M" : "L"} ${projectX(point.x)} ${projectY(point.upper)}`);
+  const lower = [...segment].reverse().map((point) =>
+    `L ${projectX(point.x)} ${projectY(point.lower)}`);
+  return [...upper, ...lower, "Z"].join(" ");
 }
 
 function countNullRuns(points: Array<{ y: number | null }>) {
