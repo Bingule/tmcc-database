@@ -12,6 +12,25 @@ export interface CvSweepPoint {
   sourceIndex: number;
 }
 
+export type CvBranchKind = "forward" | "reverse";
+
+export interface NormalizedCvBranch {
+  kind: CvBranchKind;
+  direction: 1 | -1;
+  points: CvSweepPoint[];
+}
+
+export interface NormalizedCvCycle {
+  originalPoints: CvSeries["points"];
+  selectedStartIndex: number;
+  selectedEndIndex: number;
+  ignoredPointCount: number;
+  nativePotentialInterval: number;
+  forward: NormalizedCvBranch;
+  reverse: NormalizedCvBranch;
+  turningPotentials: number[];
+}
+
 export interface CvSweepBranch {
   branchIndex: number;
   direction: SweepDirection;

@@ -1,4 +1,11 @@
-import type { CvSeries, CvSweepBranch, SweepDirection } from "./cvTypes";
+import type {
+  CvSeries,
+  CvSweepBranch,
+  CvSweepPoint,
+  NormalizedCvBranch,
+  NormalizedCvCycle,
+  SweepDirection
+} from "./cvTypes";
 
 export type CvCycleStructureReason =
   | "tooManyTurningPoints"
@@ -107,6 +114,273 @@ export function splitAlignedCvCycles(series: CvSeries[]): CvSweepBranch[][] {
     }
   }
   return split;
+}
+
+type DirectionRun = {
+  direction: SweepDirection;
+  startIndex: number;
+  endIndex: number;
+};
+
+export function normalizeCvCycle(points: CvSeries["points"]): NormalizedCvCycle {
+  validateFinitePoints(points);
+  const nativePotentialInterval = robustNativeInterval(points);
+  const span = potentialSpan(points);
+  const directionTolerance = Math.max(
+    Number.EPSILON * Math.max(1, span) * 32,
+    nativePotentialInterval * 1e-6
+  );
+  const runs = directionRuns(points, directionTolerance);
+  const selection = selectFirstClosedLoop(points, runs, nativePotentialInterval, span);
+  const selected = points.slice(selection.startIndex, selection.endIndex + 1);
+  const selectedRuns = directionRuns(selected, directionTolerance);
+  const normalized = normalizeRunsAtCyclicSeam(
+    selected.map((point, index) => ({
+      ...point,
+      sourceIndex: selection.startIndex + index
+    })),
+    selectedRuns,
+    directionTolerance
+  );
+
+  return {
+    originalPoints: selected.map((point) => ({ ...point })),
+    selectedStartIndex: selection.startIndex,
+    selectedEndIndex: selection.endIndex,
+    ignoredPointCount: points.length - selection.endIndex - 1,
+    nativePotentialInterval,
+    forward: normalized.forward,
+    reverse: normalized.reverse,
+    turningPotentials: normalized.turningPotentials
+  };
+}
+
+export function normalizeAlignedCvCycles(series: CvSeries[]): NormalizedCvCycle[] {
+  return series.map((item) => normalizeCvCycle(item.points));
+}
+
+function validateFinitePoints(points: CvSeries["points"]): void {
+  if (points.length < 2) {
+    throw new CvCycleStructureError("branchPointCount", { reason: "tooFewPoints" });
+  }
+  for (let sourceIndex = 0; sourceIndex < points.length; sourceIndex += 1) {
+    const point = points[sourceIndex];
+    if (!Number.isFinite(point.potential) || !Number.isFinite(point.current)) {
+      throw new CvCycleStructureError("branchPointCount", { reason: "nonFinitePoint", sourceIndex });
+    }
+  }
+}
+
+function robustNativeInterval(points: CvSeries["points"]): number {
+  const intervals = points
+    .slice(1)
+    .map((point, index) => Math.abs(point.potential - points[index].potential))
+    .filter((interval) => interval > Number.EPSILON)
+    .sort((left, right) => left - right);
+  if (intervals.length === 0) {
+    throw new CvCycleStructureError("branchPointCount", { reason: "constantPotential" });
+  }
+  const middle = Math.floor(intervals.length / 2);
+  return intervals.length % 2 === 1
+    ? intervals[middle]
+    : (intervals[middle - 1] + intervals[middle]) / 2;
+}
+
+function potentialSpan(points: CvSeries["points"]): number {
+  const potentials = points.map((point) => point.potential);
+  return Math.max(...potentials) - Math.min(...potentials);
+}
+
+function directionRuns(points: CvSeries["points"], tolerance: number): DirectionRun[] {
+  const runs: DirectionRun[] = [];
+  let direction: SweepDirection | null = null;
+  let startIndex = 0;
+  let lastNonZeroEdge = -1;
+  let sawPlateau = false;
+
+  for (let edgeIndex = 0; edgeIndex < points.length - 1; edgeIndex += 1) {
+    const delta = points[edgeIndex + 1].potential - points[edgeIndex].potential;
+    const nextDirection = Math.abs(delta) <= tolerance ? null : (delta > 0 ? 1 : -1) as SweepDirection;
+    if (nextDirection === null) {
+      if (direction !== null) sawPlateau = true;
+      continue;
+    }
+    if (direction === null) {
+      direction = nextDirection;
+      lastNonZeroEdge = edgeIndex;
+      continue;
+    }
+    if (direction === nextDirection) {
+      lastNonZeroEdge = edgeIndex;
+      sawPlateau = false;
+      continue;
+    }
+
+    runs.push({
+      direction,
+      startIndex,
+      endIndex: sawPlateau ? lastNonZeroEdge + 1 : edgeIndex
+    });
+    direction = nextDirection;
+    startIndex = edgeIndex;
+    lastNonZeroEdge = edgeIndex;
+    sawPlateau = false;
+  }
+
+  if (direction === null) {
+    throw new CvCycleStructureError("branchPointCount", { reason: "constantPotential" });
+  }
+  runs.push({ direction, startIndex, endIndex: points.length - 1 });
+  return runs;
+}
+
+function closureTolerance(native: number, span: number): number {
+  return Math.min(Math.max(2.5 * native, 0.001 * span), 0.01 * span);
+}
+
+function selectFirstClosedLoop(
+  points: CvSeries["points"],
+  runs: DirectionRun[],
+  nativePotentialInterval: number,
+  span: number
+): { startIndex: number; endIndex: number } {
+  if (span <= 0) {
+    throw new CvCycleStructureError("branchPointCount", { reason: "constantPotential" });
+  }
+  const tolerance = closureTolerance(nativePotentialInterval, span);
+  const startPotential = points[0].potential;
+  const minimum = Math.min(...points.map((point) => point.potential));
+  const maximum = Math.max(...points.map((point) => point.potential));
+  const startsAtExtremum = closeTo(startPotential, minimum, tolerance) || closeTo(startPotential, maximum, tolerance);
+  const initialDirection = runs[0]?.direction;
+  if (initialDirection === undefined) {
+    throw new CvCycleStructureError("branchPointCount", { reason: "noSweepDirection" });
+  }
+
+  if (startsAtExtremum) {
+    const reverseRun = runs[1];
+    const oppositeExtremum = initialDirection === 1 ? maximum : minimum;
+    if (
+      reverseRun === undefined
+      || reverseRun.direction !== -initialDirection
+      || !runReachesPotential(points, runs[0], oppositeExtremum, tolerance)
+    ) {
+      throw new CvCycleStructureError("branchPointCount", { reason: "incompleteCycle" });
+    }
+    const endIndex = firstIndexNearPotential(
+      points,
+      reverseRun.startIndex,
+      reverseRun.endIndex,
+      startPotential,
+      tolerance
+    );
+    if (endIndex === undefined) {
+      throw new CvCycleStructureError("branchPointCount", { reason: "incompleteCycle" });
+    }
+    return { startIndex: 0, endIndex };
+  }
+
+  const reverseRun = runs[1];
+  const returnRun = runs[2];
+  const firstExtremum = initialDirection === 1 ? maximum : minimum;
+  const secondExtremum = initialDirection === 1 ? minimum : maximum;
+  if (
+    reverseRun === undefined
+    || returnRun === undefined
+    || reverseRun.direction !== -initialDirection
+    || returnRun.direction !== initialDirection
+    || !runReachesPotential(points, runs[0], firstExtremum, tolerance)
+    || !runReachesPotential(points, reverseRun, secondExtremum, tolerance)
+  ) {
+    throw new CvCycleStructureError("branchPointCount", { reason: "incompleteCycle" });
+  }
+  const endIndex = firstIndexNearPotential(
+    points,
+    returnRun.startIndex,
+    returnRun.endIndex,
+    startPotential,
+    tolerance
+  );
+  if (endIndex === undefined) {
+    throw new CvCycleStructureError("branchPointCount", { reason: "incompleteCycle" });
+  }
+  return { startIndex: 0, endIndex };
+}
+
+function runReachesPotential(
+  points: CvSeries["points"],
+  run: DirectionRun,
+  potential: number,
+  tolerance: number
+): boolean {
+  return points.slice(run.startIndex, run.endIndex + 1)
+    .some((point) => closeTo(point.potential, potential, tolerance));
+}
+
+function firstIndexNearPotential(
+  points: CvSeries["points"],
+  startIndex: number,
+  endIndex: number,
+  potential: number,
+  tolerance: number
+): number | undefined {
+  for (let index = startIndex; index <= endIndex; index += 1) {
+    if (closeTo(points[index].potential, potential, tolerance)) return index;
+  }
+  return undefined;
+}
+
+function closeTo(left: number, right: number, tolerance: number): boolean {
+  return Math.abs(left - right) <= tolerance;
+}
+
+function normalizeRunsAtCyclicSeam(
+  points: CvSweepPoint[],
+  runs: DirectionRun[],
+  tolerance: number
+): { forward: NormalizedCvBranch; reverse: NormalizedCvBranch; turningPotentials: number[] } {
+  const runPoints = runs.map((run) => points.slice(run.startIndex, run.endIndex + 1));
+  const first = runs[0];
+  const last = runs.at(-1);
+  if (first === undefined || last === undefined) {
+    throw new CvCycleStructureError("branchPointCount", { reason: "noSweepDirection" });
+  }
+
+  if (first.direction === last.direction && runs.length >= 3) {
+    const openingPoint = runPoints[0]?.[0];
+    const closingRun = runPoints.at(-1);
+    const closingPoint = closingRun?.at(-1);
+    if (openingPoint !== undefined && closingPoint !== undefined && closeTo(openingPoint.potential, closingPoint.potential, tolerance)) {
+      closingRun.pop();
+    }
+  }
+
+  const branches = new Map<SweepDirection, CvSweepPoint[]>();
+  for (let index = 0; index < runs.length; index += 1) {
+    const run = runs[index];
+    const branch = runPoints[index];
+    const existing = branches.get(run.direction);
+    branches.set(run.direction, existing === undefined ? branch : joinSeamRuns(existing, branch));
+  }
+
+  const forwardPoints = branches.get(1);
+  const reversePoints = branches.get(-1);
+  if (forwardPoints === undefined || reversePoints === undefined) {
+    throw new CvCycleStructureError("branchPointCount", { reason: "incompleteCycle" });
+  }
+  forwardPoints.sort((left, right) => left.potential - right.potential);
+  reversePoints.sort((left, right) => right.potential - left.potential);
+
+  return {
+    forward: { kind: "forward", direction: 1, points: forwardPoints },
+    reverse: { kind: "reverse", direction: -1, points: reversePoints },
+    turningPotentials: [forwardPoints.at(-1)!.potential, reversePoints.at(-1)!.potential]
+  };
+}
+
+function joinSeamRuns(first: CvSweepPoint[], last: CvSweepPoint[]): CvSweepPoint[] {
+  const joined = [...last, ...first];
+  return joined.filter((point, index) => index === 0 || point.sourceIndex !== joined[index - 1].sourceIndex);
 }
 
 function alignCyclicSeams(cycles: CvSweepBranch[][]): CvSweepBranch[][] {
