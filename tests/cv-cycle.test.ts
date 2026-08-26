@@ -154,6 +154,20 @@ describe("normalizeCvCycle", () => {
     expect(cycle.ignoredPointCount).toBe(2);
   });
 
+  it("ignores an extreme tail after an already closed endpoint-started loop", () => {
+    const cycle = normalizeCvCycle(points([-1, 0, -1, 100]));
+
+    expect(cycle.selectedEndIndex).toBe(2);
+    expect(cycle.ignoredPointCount).toBe(1);
+  });
+
+  it("does not let an extreme tail turn a mid-sweep start into an endpoint start", () => {
+    const cycle = normalizeCvCycle(points([-1, 0, -1, -1.1, -1, 100]));
+
+    expect(cycle.selectedEndIndex).toBe(4);
+    expect(cycle.ignoredPointCount).toBe(1);
+  });
+
   it("does not treat a later return after another reversal as an endpoint-started closure", () => {
     expect(() => normalizeCvCycle(points([-1, 0, -0.5, 0, -1]))).toThrow("branchPointCount");
   });

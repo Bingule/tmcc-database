@@ -124,23 +124,30 @@ type DirectionRun = {
 
 export function normalizeCvCycle(points: CvSeries["points"]): NormalizedCvCycle {
   validateFinitePoints(points);
-  const nativePotentialInterval = robustNativeInterval(points);
-  const span = potentialSpan(points);
+  const coarseRuns = directionRuns(points, Number.EPSILON * 32);
+  const initialScale = selectionScale(points, coarseRuns);
   const directionTolerance = Math.max(
-    Number.EPSILON * Math.max(1, span) * 32,
-    nativePotentialInterval * 1e-6
+    Number.EPSILON * Math.max(1, initialScale.span) * 32,
+    initialScale.nativePotentialInterval * 1e-6
   );
   const runs = directionRuns(points, directionTolerance);
-  const selection = selectFirstClosedLoop(points, runs, nativePotentialInterval, span);
+  const scale = selectionScale(points, runs);
+  const selection = selectFirstClosedLoop(points, runs, scale.nativePotentialInterval, scale.span);
   const selected = points.slice(selection.startIndex, selection.endIndex + 1);
-  const selectedRuns = directionRuns(selected, directionTolerance);
+  const nativePotentialInterval = robustNativeInterval(selected);
+  const selectedSpan = potentialSpan(selected);
+  const selectedDirectionTolerance = Math.max(
+    Number.EPSILON * Math.max(1, selectedSpan) * 32,
+    nativePotentialInterval * 1e-6
+  );
+  const selectedRuns = directionRuns(selected, selectedDirectionTolerance);
   const normalized = normalizeRunsAtCyclicSeam(
     selected.map((point, index) => ({
       ...point,
       sourceIndex: selection.startIndex + index
     })),
     selectedRuns,
-    directionTolerance
+    selectedDirectionTolerance
   );
 
   return {
@@ -152,6 +159,37 @@ export function normalizeCvCycle(points: CvSeries["points"]): NormalizedCvCycle 
     forward: normalized.forward,
     reverse: normalized.reverse,
     turningPotentials: normalized.turningPotentials
+  };
+}
+
+function selectionScale(
+  points: CvSeries["points"],
+  runs: DirectionRun[]
+): { nativePotentialInterval: number; span: number } {
+  const firstRun = runs[0];
+  const reverseRun = runs[1];
+  if (firstRun === undefined || reverseRun === undefined) {
+    const prefixEndIndex = firstRun === undefined ? 0 : firstRun.endIndex + 1;
+    const prefix = points.slice(0, Math.max(2, prefixEndIndex));
+    return {
+      nativePotentialInterval: robustNativeInterval(prefix),
+      span: potentialSpan(prefix)
+    };
+  }
+
+  const twoTurnPrefix = points.slice(0, reverseRun.endIndex + 1);
+  const twoTurnNativeInterval = robustNativeInterval(twoTurnPrefix);
+  const twoTurnSpan = potentialSpan(twoTurnPrefix);
+  const startsAtEndpoint = closeTo(
+    points[0].potential,
+    runDirectionalExtremum(points, reverseRun),
+    closureTolerance(twoTurnNativeInterval, twoTurnSpan)
+  );
+  const scaleEndIndex = startsAtEndpoint ? firstRun.endIndex : reverseRun.endIndex;
+  const prefix = points.slice(0, scaleEndIndex + 1);
+  return {
+    nativePotentialInterval: robustNativeInterval(prefix),
+    span: potentialSpan(prefix)
   };
 }
 
