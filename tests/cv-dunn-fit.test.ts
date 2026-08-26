@@ -90,4 +90,18 @@ describe("resolveTurningPointTrim", () => {
     expect(resolveTurningPointTrim(makeGrid(), { mode: "manual", millivolts: 125 }))
       .toBeCloseTo(0.125, 12);
   });
+
+  it("allows a zero manual trim", () => {
+    expect(resolveTurningPointTrim(makeGrid(), { mode: "manual", millivolts: 0 })).toBe(0);
+  });
+
+  it("rejects a manual trim equal to half the common potential span", () => {
+    expect(() => resolveTurningPointTrim(makeGrid(), { mode: "manual", millivolts: 500 }))
+      .toThrow("invalidDataShape");
+  });
+
+  it("rejects a manual trim greater than half the common potential span", () => {
+    expect(() => resolveTurningPointTrim(makeGrid(), { mode: "manual", millivolts: 600 }))
+      .toThrow("invalidDataShape");
+  });
 });

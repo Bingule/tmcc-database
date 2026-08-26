@@ -110,6 +110,13 @@ function validateTrimInputs(grid: CvAlignedBranchGrid, setting: TurningPointTrim
     && (!Number.isFinite(setting.millivolts) || setting.millivolts < 0)) {
     throw new CvAnalysisError("invalidDataShape");
   }
+  if (setting.mode === "manual") {
+    const trim = setting.millivolts / 1000;
+    const span = grid.commonMaximum - grid.commonMinimum;
+    if (!(2 * trim < span)) {
+      throw new CvAnalysisError("invalidDataShape");
+    }
+  }
 }
 
 function validateGrid(grid: CvAlignedBranchGrid) {
