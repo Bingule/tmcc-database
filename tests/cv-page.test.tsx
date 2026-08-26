@@ -122,7 +122,7 @@ const completeCycleRows = [
   [0, 1, 0, 2, 0, 3],
   [1, 2, 1, 4, 1, 6],
   [2, 3, 2, 6, 2, 9],
-  [1, 20, 1, 40, 1, 60],
+  [1, 10, 1, 40, 1, 90],
   [0, 10, 0, 20, 0, 30]
 ] as const;
 
@@ -132,6 +132,10 @@ function completeCycleDelimited(delimiter: string) {
 
 function pathXs(path: string) {
   return [...path.matchAll(/[ML]\s+([^\s]+)/g)].map((match) => Number(match[1]));
+}
+
+function pathYs(path: string) {
+  return [...path.matchAll(/[ML]\s+[^\s]+\s+([^\s]+)/g)].map((match) => Number(match[1]));
 }
 
 function qualityCsv() {
@@ -364,13 +368,36 @@ describe("CV kinetics page", () => {
       expect(xs[3]).toBeLessThan(xs[2]);
       expect(xs[4]).toBeLessThan(xs[3]);
     }
+    const bPath = view.querySelector<SVGPathElement>('[data-series-id="b-values"]')!;
+    expect(bPath.getAttribute("data-render-point-count")).toBe("5");
+    const bXs = pathXs(bPath.getAttribute("d") ?? "");
+    const bYs = pathYs(bPath.getAttribute("d") ?? "");
+    expect(bXs).toHaveLength(5);
+    expect(bXs[3]).toBeLessThan(bXs[2]);
+    expect(bXs[4]).toBeLessThan(bXs[3]);
+    expect(bYs[3]).not.toBe(bYs[1]);
 
     await setPotential(view, "1");
     expect(view.querySelector<HTMLTableRowElement>('[data-table-id="cv-selected-b-record-table"] tbody tr')?.cells[1].textContent).toBe("Branch 1");
+    expect(view.querySelector<HTMLTableRowElement>('[data-table-id="cv-selected-b-record-table"] tbody tr')?.cells[2].textContent).toBe("0.5");
     await click(view, "Next potential");
     expect(view.querySelector<HTMLInputElement>('input[name="selectedPotential"]')?.value).toBe("2");
     await click(view, "Next potential");
     expect(view.querySelector<HTMLInputElement>('input[name="selectedPotential"]')?.value).toBe("1");
+    expect(view.querySelector<HTMLTableRowElement>('[data-table-id="cv-selected-b-record-table"] tbody tr')?.cells[1].textContent).toBe("Branch 2");
+    expect(view.querySelector<HTMLTableRowElement>('[data-table-id="cv-selected-b-record-table"] tbody tr')?.cells[2].textContent).toBe("1");
+
+    const bBranchOne = view.querySelector<SVGCircleElement>('[data-export-id="cv-b-chart"] [data-point-id="1"]')!;
+    const bBranchTwo = view.querySelector<SVGCircleElement>('[data-export-id="cv-b-chart"] [data-point-id="3"]')!;
+    expect(bBranchOne.getAttribute("aria-label")).toContain("Branch 1");
+    expect(bBranchTwo.getAttribute("aria-label")).toContain("Branch 2");
+    expect(bBranchTwo.getAttribute("aria-label")).not.toBe(bBranchOne.getAttribute("aria-label"));
+    await act(async () => bBranchTwo.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })));
+    expect(view.querySelector('[data-export-id="cv-b-chart"] [data-selected-point-id="3"]')).not.toBeNull();
+    expect(view.querySelector<HTMLTableRowElement>('[data-table-id="cv-selected-b-record-table"] tbody tr')?.cells[1].textContent).toBe("Branch 2");
+    await setPotential(view, "1");
+    await act(async () => bBranchTwo.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    expect(view.querySelector('[data-export-id="cv-b-chart"] [data-selected-point-id="3"]')).not.toBeNull();
     expect(view.querySelector<HTMLTableRowElement>('[data-table-id="cv-selected-b-record-table"] tbody tr')?.cells[1].textContent).toBe("Branch 2");
 
     const writeText = vi.fn().mockResolvedValue(undefined);
@@ -392,7 +419,11 @@ describe("CV kinetics page", () => {
     await click(view, "cv-dunn-k1-k2.csv");
     for (const exported of await Promise.all(blobs.map(readBlob))) {
       expect(exported).toContain("Potential (V),Sweep branch,");
-      expect(exported.indexOf("1,Branch 1,")).toBeLessThan(exported.indexOf("1,Branch 2,"));
+      const rows = exported.split("\r\n");
+      expect(rows).toHaveLength(6);
+      expect(rows.slice(1).map((row) => row.split(",").slice(0, 2))).toEqual([
+        ["0", "Branch 1"], ["1", "Branch 1"], ["2", "Branch 1"], ["1", "Branch 2"], ["0", "Branch 2"]
+      ]);
     }
     expect(view.querySelector('[aria-live="polite"]')?.textContent).toBe("");
   });
@@ -631,6 +662,15 @@ describe("CV kinetics page", () => {
     expect(view.querySelectorAll('[data-table-id="cv-dunn-records-table"] tbody tr')).toHaveLength(5);
     expect([...view.querySelectorAll<HTMLTableRowElement>('[data-table-id="cv-b-records-table"] tbody tr')]
       .find((row) => row.cells[0].textContent === "5")?.cells[2].textContent).not.toBe("—");
+  });
+
+  it("localizes complete-cycle structure errors from a real upload and analysis run", async () => {
+    const view = await renderPage();
+    await upload(view, "Potential,Current 1 mV/s,Current 4 mV/s,Current 9 mV/s\n0,1,2,3\n1,2,4,6\n0,1,2,3\n1,2,4,6\n0,1,2,3");
+    await click(view, "Run analysis");
+    expect(view.querySelector('[aria-live="polite"]')?.textContent).toContain("Each dataset must be one complete CV cycle");
+    await click(view, "中文");
+    expect(view.querySelector('[aria-live="polite"]')?.textContent).toContain("每组数据必须是一个完整 CV 周期");
   });
 
   it("exports exactly six bilingual audit-ready CSVs and embeds current settings in SVG and PNG", async () => {

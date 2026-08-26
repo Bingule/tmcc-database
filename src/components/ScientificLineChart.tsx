@@ -1,9 +1,16 @@
 import { useId } from "react";
 
+export interface ChartPoint {
+  id?: string;
+  x: number;
+  y: number | null;
+  accessibilityLabel?: string;
+}
+
 export interface ChartSeries {
   id: string;
   label: string;
-  points: Array<{ x: number; y: number | null }>;
+  points: ChartPoint[];
   color: string;
   dash?: string;
   mode?: "line" | "points";
@@ -18,6 +25,8 @@ interface ScientificLineChartProps {
   series: ChartSeries[];
   selectedX?: number;
   onSelectX?: (x: number) => void;
+  selectedPointId?: string;
+  onSelectPointId?: (id: string) => void;
   exportId?: string;
   metadata?: string | string[];
 }
@@ -35,6 +44,8 @@ export function ScientificLineChart({
   series,
   selectedX,
   onSelectX,
+  selectedPointId,
+  onSelectPointId,
   exportId,
   metadata
 }: ScientificLineChartProps): React.ReactElement {
@@ -44,7 +55,7 @@ export function ScientificLineChart({
     ...item,
     points: item.points.filter((point) => Number.isFinite(point.x) && (point.y === null || Number.isFinite(point.y)))
   }));
-  const allPoints = finiteSeries.flatMap((item) => item.points.flatMap((point) => point.y === null ? [] : [{ x: point.x, y: point.y }]));
+  const allPoints = finiteSeries.flatMap((item) => item.points.flatMap((point) => point.y === null ? [] : [{ ...point, y: point.y }]));
 
   if (allPoints.length === 0) {
     return <div className="scientific-chart-empty" role="status">{emptyLabel}</div>;
@@ -64,9 +75,17 @@ export function ScientificLineChart({
   const projectY = (value: number) => dimensions.height - chartMargin.bottom - normalized(value, yDomain) * plotHeight;
   const xTicks = ticks(xDomain);
   const yTicks = ticks(yDomain);
-  const selectedPoint = Number.isFinite(selectedX)
-    ? allPoints.find((point) => point.x === selectedX) ?? null
-    : null;
+  const selectedPoint = selectedPointId !== undefined
+    ? allPoints.find((point) => point.id === selectedPointId) ?? null
+    : Number.isFinite(selectedX)
+      ? allPoints.find((point) => point.x === selectedX) ?? null
+      : null;
+  const supportsPointSelection = Boolean(onSelectX || onSelectPointId);
+
+  function selectPoint(point: ChartPoint) {
+    if (onSelectPointId && point.id !== undefined) onSelectPointId(point.id);
+    else onSelectX?.(point.x);
+  }
 
   return (
     <div className="scientific-chart-shell">
@@ -167,11 +186,12 @@ export function ScientificLineChart({
               {item.mode === "points" && item.points.flatMap((point, index) => point.y === null ? [] : [(
                 <circle key={`${item.id}-visible-${point.x}-${index}`} data-point-series-id={item.id} data-point-x={String(point.x)} cx={projectX(point.x)} cy={projectY(point.y)} r={3.5} fill={item.color} />
               )])}
-              {onSelectX && item.points.flatMap((point, index) => point.y === null ? [] : [(
+              {supportsPointSelection && item.points.flatMap((point, index) => point.y === null ? [] : [(
                 <circle
-                  key={`${item.id}-${point.x}-${index}`}
+                  key={`${item.id}-${point.id ?? point.x}-${index}`}
                   className="scientific-chart-point"
                   data-point-x={String(point.x)}
+                  data-point-id={point.id}
                   cx={projectX(point.x)}
                   cy={projectY(point.y)}
                   r={7}
@@ -179,12 +199,12 @@ export function ScientificLineChart({
                   stroke="none"
                   tabIndex={0}
                   role="button"
-                  aria-label={`${item.label}: ${xLabel} ${formatTick(point.x)}, ${yLabel} ${formatTick(point.y)}`}
-                  onClick={() => onSelectX(point.x)}
+                  aria-label={point.accessibilityLabel ?? `${item.label}: ${xLabel} ${formatTick(point.x)}, ${yLabel} ${formatTick(point.y)}`}
+                  onClick={() => selectPoint(point)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" || event.key === " ") {
                       event.preventDefault();
-                      onSelectX(point.x);
+                      selectPoint(point);
                     }
                   }}
                 />
@@ -203,7 +223,8 @@ export function ScientificLineChart({
               strokeDasharray="3 3"
             />
             <circle
-              data-selected-x={String(selectedX)}
+              data-selected-x={String(selectedPoint.x)}
+              data-selected-point-id={selectedPoint.id}
               cx={projectX(selectedPoint.x)}
               cy={projectY(selectedPoint.y)}
               r={4.5}

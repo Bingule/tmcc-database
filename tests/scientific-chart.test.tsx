@@ -103,6 +103,35 @@ describe("ScientificLineChart", () => {
     expect(view.querySelector('circle[data-selected-x="1"]')).not.toBeNull();
   });
 
+  it("selects repeated coordinates by stable point identity with distinct accessible labels", async () => {
+    const onSelectPointId = vi.fn();
+    const view = await renderChart({
+      ...baseProps,
+      selectedPointId: "return-1",
+      onSelectPointId,
+      series: [{
+        id: "loop",
+        label: "b value",
+        color: "#1155cc",
+        points: [
+          { id: "forward-1", x: 1, y: 0.5, accessibilityLabel: "b value: Potential 1 V, Branch 1" },
+          { id: "return-1", x: 1, y: 0.5, accessibilityLabel: "b value: Potential 1 V, Branch 2" }
+        ]
+      }]
+    });
+    const forward = view.querySelector<SVGCircleElement>('circle[data-point-id="forward-1"]')!;
+    const returned = view.querySelector<SVGCircleElement>('circle[data-point-id="return-1"]')!;
+
+    expect(forward.getAttribute("aria-label")).toContain("Branch 1");
+    expect(returned.getAttribute("aria-label")).toContain("Branch 2");
+    expect(returned.getAttribute("aria-label")).not.toBe(forward.getAttribute("aria-label"));
+    expect(view.querySelector('circle[data-selected-point-id="return-1"]')).not.toBeNull();
+    await act(async () => returned.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    await act(async () => returned.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })));
+    expect(onSelectPointId).toHaveBeenNthCalledWith(1, "return-1");
+    expect(onSelectPointId).toHaveBeenNthCalledWith(2, "return-1");
+  });
+
   it("marks keyboard-selectable SVG points with the focus-visible styling hook", async () => {
     const view = await renderChart({ ...baseProps, onSelectX: vi.fn() });
     const target = view.querySelector<SVGCircleElement>('circle[role="button"]');

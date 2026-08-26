@@ -224,7 +224,12 @@ export function CvKineticsPage() {
       id: "b-values", label: t("cv.b.value"), color: "#16697a",
       points: analysis.analysisGrid.potentials.map((potential, sequenceIndex) => {
         const record = bRecordBySequence.get(sequenceIndex);
-        return { x: potential, y: record?.status === "valid" && record.fit ? record.fit.b : null };
+        return {
+          id: String(sequenceIndex),
+          x: potential,
+          y: record?.status === "valid" && record.fit ? record.fit.b : null,
+          accessibilityLabel: `${t("cv.b.value")}: ${t("cv.table.potential")} ${serializeScientificNumber(potential)} V, ${t("cv.table.branchValue", { branch: (record?.branchIndex ?? 0) + 1 })}`
+        };
       })
     }];
   }, [analysis, t]);
@@ -266,6 +271,13 @@ export function CvKineticsPage() {
     const record = validBResultRecords.find((item) => item.potential === potential);
     setSelectedBSequenceIndex(record?.sequenceIndex);
     setPotentialInput(record ? String(record.potential) : String(potential));
+  }
+
+  function chooseBSequenceIndex(pointId: string) {
+    const record = validBResultRecords.find((item) => String(item.sequenceIndex) === pointId);
+    if (!record) return;
+    setSelectedBSequenceIndex(record.sequenceIndex);
+    setPotentialInput(String(record.potential));
   }
 
   function handlePotentialInput(value: string) {
@@ -333,7 +345,9 @@ export function CvKineticsPage() {
         {analysis && missingBFitCount > 0 && <p role="status">{t("cv.b.missingFits", { count: missingBFitCount, total: analysis.analysisGrid.potentials.length })}</p>}
         {bGapRunCount > MAX_CHART_GAP_RUNS && <p role="status">{t("cv.chart.tooManyGaps")}</p>}
         <ScientificLineChart title={t("cv.b.chart")} xLabel={`${t("cv.table.potential")} (V)`} yLabel={t("cv.b.value")}
-          emptyLabel={t("cv.chart.empty")} legendLabel={t("cv.chart.legend")} series={sampledBChart} selectedX={selectedPotential} onSelectX={choosePotential} exportId="cv-b-chart" metadata={chartMetadata} />
+          emptyLabel={t("cv.chart.empty")} legendLabel={t("cv.chart.legend")} series={sampledBChart}
+          selectedPointId={selectedBSequenceIndex === undefined ? undefined : String(selectedBSequenceIndex)} onSelectPointId={chooseBSequenceIndex}
+          exportId="cv-b-chart" metadata={chartMetadata} />
         <DataTable tableId="cv-b-records-table" headers={[`${t("cv.table.potential")} (V)`, t("cv.table.sweepBranch"), t("cv.b.value"), t("cv.b.intercept"), t("cv.results.rSquared"), t("cv.table.pointCount"), t("cv.results.fitStatus")]}
           rows={bResultRecords.map((record) => bRecordRow(record, t))} />
         <ScientificLineChart title={t("cv.b.fitChart")} xLabel={t("cv.b.logRate")} yLabel={t("cv.b.logCurrent")}
