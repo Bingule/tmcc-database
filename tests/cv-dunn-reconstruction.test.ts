@@ -29,6 +29,21 @@ it("explicit second-difference regularization suppresses an isolated spike", () 
   expect(result.diagnostics.lambda).toBeGreaterThan(0);
 });
 
+it("calculates roughness in normalized-potential units", () => {
+  expect(secondDifferenceRoughness([0, 0.25, 1], [0, 0.25, 1])).toBeCloseTo(0, 12);
+  expect(secondDifferenceRoughness([0, 0.25, 1])).toBeGreaterThan(0);
+});
+
+it("preserves a linear normalized-potential ramp on a nonuniform grid", () => {
+  const potentials = [0, 0.25, 1];
+  const result = optimizeSharedFraction({
+    forward: potentials.map((value) => point(value, 0.4)),
+    reverse: potentials.map((value) => point(value, 0.4))
+  }, potentials);
+  expect(result.g[1]).toBeCloseTo(0.25, 8);
+  expect(result.diagnostics.roughness).toBeCloseTo(0, 10);
+});
+
 it("bridges zero-confidence regions without holes", () => {
   const missing = { fraction: null, confidence: 0, rSquared: null, trustedAnchor: false };
   const result = optimizeSharedFraction({
@@ -43,4 +58,19 @@ it("bridges zero-confidence regions without holes", () => {
 it("is deterministic", () => {
   const input = { forward: [point(0.1), point(0.9)], reverse: [point(0.2), point(0.8)] };
   expect(optimizeSharedFraction(input, [0, 0.01])).toEqual(optimizeSharedFraction(input, [0, 0.01]));
+});
+
+it("rejects invalid reconstruction inputs", () => {
+  expect(() => optimizeSharedFraction({
+    forward: [point(Number.NaN)],
+    reverse: [point(0.2)]
+  }, [0])).toThrow("invalidDataShape");
+  expect(() => optimizeSharedFraction({
+    forward: [point(0.2, Number.NaN)],
+    reverse: [point(0.2)]
+  }, [0])).toThrow("invalidDataShape");
+  expect(() => optimizeSharedFraction({
+    forward: [point(0.2), point(0.3)],
+    reverse: [point(0.2), point(0.3)]
+  }, [0, Number.NaN])).toThrow("invalidDataShape");
 });

@@ -15,12 +15,28 @@ const LAMBDA_CANDIDATES = [1e-4, 1e-3, 1e-2, 1e-1, 1, 10, 100] as const;
 const MAX_ITERATIONS = 10_000;
 const CONVERGENCE_TOLERANCE = 1e-9;
 
-export function secondDifferenceRoughness(values: number[]): number {
-  if (values.length < 3) return 0;
+interface SecondDifferenceRow {
+  indices: [number, number, number];
+  coefficients: [number, number, number];
+}
 
+interface SecondDifferenceOperator {
+  rows: SecondDifferenceRow[];
+  lipschitzBound: number;
+}
+
+export function secondDifferenceRoughness(values: number[], potentials?: number[]): number {
+  const normalizedPotentials = potentials
+    ? normalizePotentialGrid(potentials)
+    : normalizedIndexGrid(values.length);
+  validateValueLength(values, normalizedPotentials);
+  return operatorRoughness(values, makeSecondDifferenceOperator(normalizedPotentials));
+}
+
+function operatorRoughness(values: number[], operator: SecondDifferenceOperator): number {
   let roughness = 0;
-  for (let index = 1; index < values.length - 1; index += 1) {
-    const secondDifference = values[index - 1] - 2 * values[index] + values[index + 1];
+  for (const row of operator.rows) {
+    const secondDifference = applySecondDifferenceRow(values, row);
     roughness += secondDifference * secondDifference;
   }
   return roughness;
@@ -31,15 +47,16 @@ export function optimizeSharedFraction(
   potentials: number[]
 ): DunnSharedFractionResult {
   const normalizedPotentials = validateInputs(fractions, potentials);
+  const operator = makeSecondDifferenceOperator(normalizedPotentials);
   const combined = combineBranchTargets(fractions);
   const initializedTarget = initializeMissingTargets(combined.target, combined.weight);
   const candidates = LAMBDA_CANDIDATES.map((lambda) => {
-    const solution = solveProjected(initializedTarget, combined.weight, lambda);
+    const solution = solveProjected(initializedTarget, combined.weight, lambda, operator);
     return {
       lambda,
       solution,
       meanFidelity: normalizedFidelity(solution.g, initializedTarget, combined.weight),
-      meanRoughness: normalizedRoughness(solution.g, normalizedPotentials)
+      meanRoughness: normalizedRoughness(solution.g, operator)
     };
   }).filter((candidate) => (
     Number.isFinite(candidate.meanFidelity)
@@ -56,12 +73,18 @@ export function optimizeSharedFraction(
   };
 }
 
-function objective(g: number[], target: number[], weight: number[], lambda: number) {
+function objective(
+  g: number[],
+  target: number[],
+  weight: number[],
+  lambda: number,
+  operator: SecondDifferenceOperator
+) {
   let fidelity = 0;
   for (let index = 0; index < g.length; index += 1) {
     fidelity += weight[index] * (g[index] - target[index]) ** 2;
   }
-  return fidelity + lambda * secondDifferenceRoughness(g);
+  return fidelity + lambda * operatorRoughness(g, operator);
 }
 
 function validateInputs(fractions: DunnFractionGrid, potentials: number[]): number[] {
@@ -71,18 +94,6 @@ function validateInputs(fractions: DunnFractionGrid, potentials: number[]): numb
     || fractions.reverse.length !== pointCount
     || potentials.some((potential) => !Number.isFinite(potential))) {
     throw new CvAnalysisError("invalidDataShape");
-  }
-
-  if (pointCount > 1) {
-    const step = potentials[1] - potentials[0];
-    const tolerance = Math.max(Number.EPSILON * Math.max(1, Math.abs(potentials.at(-1)! - potentials[0])) * 64, Math.abs(step) * 1e-9);
-    if (!Number.isFinite(step) || step <= 0) throw new CvAnalysisError("invalidDataShape");
-    for (let index = 1; index < pointCount; index += 1) {
-      if (potentials[index] <= potentials[index - 1]) throw new CvAnalysisError("invalidDataShape");
-      if (Math.abs((potentials[index] - potentials[index - 1]) - step) > tolerance) {
-        throw new CvAnalysisError("invalidDataShape");
-      }
-    }
   }
 
   for (const point of [...fractions.forward, ...fractions.reverse]) {
@@ -98,11 +109,75 @@ function validateInputs(fractions: DunnFractionGrid, potentials: number[]): numb
 }
 
 function normalizePotentialGrid(potentials: number[]): number[] {
+  if (potentials.length === 0 || potentials.some((potential) => !Number.isFinite(potential))) {
+    throw new CvAnalysisError("invalidDataShape");
+  }
   if (potentials.length === 1) return [0];
   const minimum = potentials[0];
   const span = potentials[potentials.length - 1] - minimum;
   if (!Number.isFinite(span) || span <= 0) throw new CvAnalysisError("invalidDataShape");
-  return potentials.map((potential) => (potential - minimum) / span);
+  const normalized = potentials.map((potential) => (potential - minimum) / span);
+  for (let index = 1; index < normalized.length; index += 1) {
+    if (normalized[index] <= normalized[index - 1]) throw new CvAnalysisError("invalidDataShape");
+  }
+  return normalized;
+}
+
+function normalizedIndexGrid(length: number): number[] {
+  if (length <= 0) return [];
+  if (length === 1) return [0];
+  return Array.from({ length }, (_value, index) => index / (length - 1));
+}
+
+function validateValueLength(values: number[], normalizedPotentials: number[]) {
+  if (values.length !== normalizedPotentials.length
+    || values.some((value) => !Number.isFinite(value))) {
+    throw new CvAnalysisError("invalidDataShape");
+  }
+}
+
+function makeSecondDifferenceOperator(normalizedPotentials: number[]): SecondDifferenceOperator {
+  if (normalizedPotentials.length < 3) return { rows: [], lipschitzBound: 0 };
+
+  const rows: SecondDifferenceRow[] = [];
+  const absoluteRowSums = new Array<number>(normalizedPotentials.length).fill(0);
+  for (let index = 1; index < normalizedPotentials.length - 1; index += 1) {
+    const leftSpacing = normalizedPotentials[index] - normalizedPotentials[index - 1];
+    const rightSpacing = normalizedPotentials[index + 1] - normalizedPotentials[index];
+    if (!Number.isFinite(leftSpacing)
+      || !Number.isFinite(rightSpacing)
+      || leftSpacing <= 0
+      || rightSpacing <= 0) {
+      throw new CvAnalysisError("invalidDataShape");
+    }
+
+    const coefficients: [number, number, number] = [
+      2 / (leftSpacing * (leftSpacing + rightSpacing)),
+      -2 / (leftSpacing * rightSpacing),
+      2 / (rightSpacing * (leftSpacing + rightSpacing))
+    ];
+    const indices: [number, number, number] = [index - 1, index, index + 1];
+    rows.push({ indices, coefficients });
+
+    for (let rowPosition = 0; rowPosition < indices.length; rowPosition += 1) {
+      for (let columnPosition = 0; columnPosition < indices.length; columnPosition += 1) {
+        absoluteRowSums[indices[rowPosition]] += Math.abs(
+          coefficients[rowPosition] * coefficients[columnPosition]
+        );
+      }
+    }
+  }
+
+  return {
+    rows,
+    lipschitzBound: 2 * Math.max(...absoluteRowSums)
+  };
+}
+
+function applySecondDifferenceRow(values: number[], row: SecondDifferenceRow): number {
+  return row.coefficients[0] * values[row.indices[0]]
+    + row.coefficients[1] * values[row.indices[1]]
+    + row.coefficients[2] * values[row.indices[2]];
 }
 
 function combineBranchTargets(fractions: DunnFractionGrid): { target: number[]; weight: number[] } {
@@ -167,10 +242,11 @@ function initializeMissingTargets(target: number[], weight: number[]): number[] 
 function solveProjected(
   target: number[],
   weight: number[],
-  lambda: number
+  lambda: number,
+  operator: SecondDifferenceOperator
 ): DunnSharedFractionResult {
   const maxWeight = weight.reduce((max, value) => Math.max(max, value), 0);
-  const step = 1 / (2 * maxWeight + 32 * lambda + Number.EPSILON);
+  const step = 1 / (2 * maxWeight + lambda * operator.lipschitzBound + Number.EPSILON);
   const g = target.map((value) => Math.min(1, Math.max(0, value)));
   const gradient = new Array<number>(g.length).fill(0);
   let converged = false;
@@ -179,7 +255,7 @@ function solveProjected(
   for (iterations = 1; iterations <= MAX_ITERATIONS; iterations += 1) {
     gradient.fill(0);
     addFidelityGradient(g, target, weight, gradient);
-    addRoughnessGradient(g, lambda, gradient);
+    addRoughnessGradient(g, lambda, operator, gradient);
 
     let maxUpdate = 0;
     for (let index = 0; index < g.length; index += 1) {
@@ -189,7 +265,7 @@ function solveProjected(
       g[index] = next;
     }
 
-    const currentObjective = objective(g, target, weight, lambda);
+    const currentObjective = objective(g, target, weight, lambda, operator);
     if (!Number.isFinite(currentObjective)) throw new CvAnalysisError("reconstructionFailed");
     if (maxUpdate < CONVERGENCE_TOLERANCE) {
       converged = true;
@@ -198,7 +274,7 @@ function solveProjected(
   }
 
   if (!converged) throw new CvAnalysisError("reconstructionFailed");
-  const diagnostics = makeDiagnostics(g, target, weight, lambda, iterations, converged);
+  const diagnostics = makeDiagnostics(g, target, weight, lambda, operator, iterations, converged);
   return { g, diagnostics };
 }
 
@@ -213,15 +289,20 @@ function addFidelityGradient(
   }
 }
 
-function addRoughnessGradient(g: number[], lambda: number, gradient: number[]) {
-  if (g.length < 3 || lambda === 0) return;
+function addRoughnessGradient(
+  g: number[],
+  lambda: number,
+  operator: SecondDifferenceOperator,
+  gradient: number[]
+) {
+  if (operator.rows.length === 0 || lambda === 0) return;
 
-  for (let index = 1; index < g.length - 1; index += 1) {
-    const secondDifference = g[index - 1] - 2 * g[index] + g[index + 1];
+  for (const row of operator.rows) {
+    const secondDifference = applySecondDifferenceRow(g, row);
     const scaled = 2 * lambda * secondDifference;
-    gradient[index - 1] += scaled;
-    gradient[index] -= 2 * scaled;
-    gradient[index + 1] += scaled;
+    for (let rowPosition = 0; rowPosition < row.indices.length; rowPosition += 1) {
+      gradient[row.indices[rowPosition]] += scaled * row.coefficients[rowPosition];
+    }
   }
 }
 
@@ -230,6 +311,7 @@ function makeDiagnostics(
   target: number[],
   weight: number[],
   lambda: number,
+  operator: SecondDifferenceOperator,
   iterations: number,
   converged: boolean
 ): DunnRegularizationDiagnostics {
@@ -237,7 +319,7 @@ function makeDiagnostics(
   for (let index = 0; index < g.length; index += 1) {
     fidelity += weight[index] * (g[index] - target[index]) ** 2;
   }
-  const roughness = secondDifferenceRoughness(g);
+  const roughness = operatorRoughness(g, operator);
   return {
     lambda,
     iterations,
@@ -258,10 +340,8 @@ function normalizedFidelity(g: number[], target: number[], weight: number[]) {
   return fidelity / totalWeight;
 }
 
-function normalizedRoughness(g: number[], normalizedPotentials: number[]) {
-  if (g.length < 3) return 0;
-  const step = normalizedPotentials[1] - normalizedPotentials[0];
-  return secondDifferenceRoughness(g) / Math.max(step * step, Number.EPSILON) / Math.max(1, g.length - 2);
+function normalizedRoughness(g: number[], operator: SecondDifferenceOperator) {
+  return operatorRoughness(g, operator) / Math.max(1, operator.rows.length);
 }
 
 function selectLCurveIndex(
