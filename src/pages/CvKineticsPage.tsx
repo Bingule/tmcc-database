@@ -10,7 +10,7 @@ import { useI18n } from "../i18n/I18nProvider";
 import { parseScanRateList, type CvDataLayout, type CvHeaderMode } from "../lib/cvImport";
 import { confirmCvSeries, CvParseError, parseCvFile, parseDelimitedCv, type ParsedCvTable } from "../lib/cvParsing";
 import { analyzeCvWorkflow } from "../lib/cvWorkflow";
-import { CvAnalysisError, type BValuePoint, type CvFitRecord, type CvFitStatus, type CvSeries, type CvWorkflowResult, type DunnBranchFitRecord, type DunnContribution, type DunnFitStatus } from "../lib/cvTypes";
+import { CvAnalysisError, type BValuePoint, type CvAnalysisSettings, type CvFitRecord, type CvFitStatus, type CvSeries, type CvWorkflowResult, type DunnBranchFitRecord, type DunnContribution, type DunnFitStatus } from "../lib/cvTypes";
 import { downloadCsv, downloadPng, downloadSvg, rowsToCsv } from "../lib/toolExport";
 
 type AnalysisState = CvWorkflowResult;
@@ -39,8 +39,12 @@ const initialDraft: CvImportDraft = {
   source: "file",
   pasteText: "",
   scanRateText: "",
-  pointInterval: 1,
-  rSquaredThreshold: 0.95
+  potentialIntervalMode: "auto",
+  potentialIntervalMillivolts: 5,
+  rSquaredThreshold: 0.95,
+  dunnConfidenceMode: "threshold",
+  turningPointTrimMode: "auto",
+  turningPointTrimMillivolts: 0
 };
 
 export function CvKineticsPage() {
@@ -181,12 +185,7 @@ export function CvKineticsPage() {
     try {
       const parsedRates = parseScanRateList(draft.scanRateText);
       const series = confirmCvSeries(table, parsedRates);
-      const result = analyzeCvWorkflow(series, {
-        potentialInterval: { mode: "auto" },
-        rSquaredThreshold: draft.rSquaredThreshold,
-        dunnConfidenceMode: "threshold",
-        turningPointTrim: { mode: "auto" }
-      });
+      const result = analyzeCvWorkflow(series, analysisSettingsFromDraft(draft));
       const firstAvailableB = result.bRecords.find((record) => record.fit)?.fit;
       if (!firstAvailableB) throw new PageAnalysisError("noBFit");
       const firstValidB = result.bRecords.find((record) => record.status === "valid" && record.fit);
@@ -205,7 +204,8 @@ export function CvKineticsPage() {
       else if (error instanceof PageAnalysisError) setErrorCode(error.code);
       else if (error instanceof CvAnalysisError && error.code === "noCommonPotentialRange") setErrorCode("noOverlap");
       else if (error instanceof CvAnalysisError && error.code === "invalidCycleStructure") setErrorCode("invalidCycleStructure");
-      else if (error instanceof CvAnalysisError && error.code === "invalidPotentialInterval") setErrorCode("invalidPointInterval");
+      else if (error instanceof CvAnalysisError && error.code === "invalidPotentialInterval") setErrorCode("invalidPotentialInterval");
+      else if (error instanceof CvAnalysisError && error.code === "invalidTurningPointTrim") setErrorCode("invalidTurningPointTrim");
       else if (error instanceof CvAnalysisError && error.code === "invalidRSquaredThreshold") setErrorCode("invalidRSquaredThreshold");
       else setErrorCode("analysis");
     }
@@ -496,6 +496,7 @@ function QualitySummary({ analysis, metadata }: { analysis: AnalysisState; metad
   const { t } = useI18n();
   const minimum = analysis.alignedGrid.commonMinimum;
   const maximum = analysis.alignedGrid.commonMaximum;
+  const diagnostics = analysis.contributions[0]?.diagnostics;
   const coverage = analysis.summary.retainedPointCount === 0
     ? 0
     : analysis.summary.validDunnCount / analysis.summary.retainedPointCount * 100;
@@ -513,6 +514,9 @@ function QualitySummary({ analysis, metadata }: { analysis: AnalysisState; metad
       })}</li>
       <li>{t("cv.quality.settings", {
         interval: potentialIntervalLabel(analysis),
+        method: dunnMethodLabel(analysis.settings.dunnConfidenceMode, t),
+        trim: turningPointTrimLabel(analysis),
+        smoothing: t("cv.quality.smoothing.auto"),
         threshold: format(analysis.settings.rSquaredThreshold)
       })}</li>
       <li>{t("cv.quality.bCounts", {
@@ -531,6 +535,27 @@ function QualitySummary({ analysis, metadata }: { analysis: AnalysisState; metad
         coverage: format(coverage)
       })}</li>
     </ul>
+    {diagnostics && <div className="cv-diagnostics" data-dunn-diagnostics="true">
+      <h3>{t("cv.diagnostics.title")}</h3>
+      <dl className="cv-diagnostics-list">
+        <dt>{t("cv.diagnostics.mode")}</dt>
+        <dd>{dunnMethodLabel(diagnostics.mode, t)}</dd>
+        <dt>{t("cv.diagnostics.interval")}</dt>
+        <dd>{format(diagnostics.resolvedPotentialInterval * 1000)} mV</dd>
+        <dt>{t("cv.diagnostics.trim")}</dt>
+        <dd>{format(diagnostics.resolvedTurningPointTrim * 1000)} mV</dd>
+        <dt>{t("cv.diagnostics.forwardMedian")}</dt>
+        <dd>{format(diagnostics.medianForwardRSquared)}</dd>
+        <dt>{t("cv.diagnostics.reverseMedian")}</dt>
+        <dd>{format(diagnostics.medianReverseRSquared)}</dd>
+        <dt>{t("cv.diagnostics.forwardAbove")}</dt>
+        <dd>{format(diagnostics.forwardAboveThresholdPercent)}%</dd>
+        <dt>{t("cv.diagnostics.reverseAbove")}</dt>
+        <dd>{format(diagnostics.reverseAboveThresholdPercent)}%</dd>
+      </dl>
+      {diagnostics.lowFitQuality && <p className="cv-diagnostic-warning" role="status">{t("cv.warning.lowFitQuality")}</p>}
+      {diagnostics.scanRateWarning && <p className="cv-diagnostic-warning" role="status">{t("cv.warning.scanRateCount")}</p>}
+    </div>}
   </section>;
 }
 
@@ -602,6 +627,29 @@ function potentialIntervalLabel(analysis: AnalysisState): string {
   return analysis.settings.potentialInterval.mode === "manual"
     ? `${serializeScientificNumber(analysis.settings.potentialInterval.millivolts)} mV`
     : "auto";
+}
+
+function turningPointTrimLabel(analysis: AnalysisState): string {
+  return analysis.settings.turningPointTrim.mode === "manual"
+    ? `${serializeScientificNumber(analysis.settings.turningPointTrim.millivolts)} mV`
+    : "auto";
+}
+
+function dunnMethodLabel(mode: CvAnalysisSettings["dunnConfidenceMode"], t: ReturnType<typeof useI18n>["t"]): string {
+  return mode === "weighted" ? t("cv.import.dunnMethod.weighted") : t("cv.import.dunnMethod.threshold");
+}
+
+function analysisSettingsFromDraft(draft: CvImportDraft): CvAnalysisSettings {
+  return {
+    potentialInterval: draft.potentialIntervalMode === "manual"
+      ? { mode: "manual", millivolts: draft.potentialIntervalMillivolts }
+      : { mode: "auto" },
+    rSquaredThreshold: draft.rSquaredThreshold,
+    dunnConfidenceMode: draft.dunnConfidenceMode,
+    turningPointTrim: draft.turningPointTrimMode === "manual"
+      ? { mode: "manual", millivolts: draft.turningPointTrimMillivolts }
+      : { mode: "auto" }
+  };
 }
 
 function makeFitChart(point: BValuePoint | undefined, measuredLabel: string): ChartSeries[] {

@@ -83,6 +83,11 @@ async function setSelect(select: HTMLSelectElement, value: string) {
   });
 }
 
+async function setManualPotentialInterval(view: HTMLElement, millivolts: string) {
+  await setSelect(view.querySelector<HTMLSelectElement>('select[name="cv-potential-interval-mode"]')!, "manual");
+  await setValue(view.querySelector<HTMLInputElement>('input[name="cv-potential-interval-mv"]')!, millivolts);
+}
+
 async function setPotential(view: HTMLElement, value: string) {
   const input = view.querySelector<HTMLInputElement>('input[name="selectedPotential"]');
   if (!input) throw new Error("Missing exact potential input");
@@ -114,7 +119,14 @@ function expectAnalysisInvalidated(view: HTMLElement) {
   expect(view.querySelectorAll<HTMLButtonElement>(".cv-export button:not(:disabled)")).toHaveLength(0);
 }
 
-const csv = `Potential,Current 1 mV/s,Current 4 mV/s,Current 9 mV/s\n0,3,8,15\n0.5,4.5,18,40.5\n1,6,32,90`;
+const csv = [
+  "Potential,Current 1 mV/s,Current 4 mV/s,Current 9 mV/s",
+  "0,3,8,15",
+  "0.5,4.5,18,40.5",
+  "1,6,32,90",
+  "0.5,5.5,22,49.5",
+  "0,7,28,63"
+].join("\n");
 const csvFilenames = ["cv-interpolated-data.csv", "cv-b-value-results.csv", "cv-dunn-k1-k2.csv", "cv-capacitive-current.csv", "cv-diffusion-current.csv", "cv-contribution-summary.csv"];
 
 const completeCycleRows = [
@@ -167,12 +179,29 @@ function qualityCsv() {
     [5, [1, 8, 2]],
     [10, [0, 4, 9]]
   ]);
+  const potentials = [
+    ...Array.from({ length: 21 }, (_, potential) => potential),
+    ...Array.from({ length: 20 }, (_, index) => 19 - index)
+  ];
   return [
     "Potential,Current 1 mV/s,Current 4 mV/s,Current 9 mV/s",
-    ...Array.from({ length: 21 }, (_, potential) => {
+    ...potentials.map((potential) => {
       const currents = special.get(potential) ?? [potential + 1, 4 * (potential + 1), 9 * (potential + 1)];
       return `${potential},${currents.join(",")}`;
     })
+  ].join("\n");
+}
+
+function lowQualityWorkflowCsv() {
+  const scanRates = [1, 4, 9, 16];
+  const amplitudes = [1, 10, 2, 20];
+  const potentials = [-1, -0.5, 0, -0.5, -1];
+  return [
+    "Potential,Current 1 mV/s,Current 4 mV/s,Current 9 mV/s,Current 16 mV/s",
+    ...potentials.map((potential, pointIndex) => [
+      potential,
+      ...scanRates.map((_, seriesIndex) => amplitudes[seriesIndex]! * (1.5 + potential) + 0.1 * pointIndex)
+    ].join(","))
   ].join("\n");
 }
 
@@ -236,7 +265,9 @@ describe("CV kinetics page", () => {
     ["layout", async (view: HTMLElement) => chooseRadio(view, "cv-layout", "pairedPotentialCurrent")],
     ["header mode", async (view: HTMLElement) => chooseRadio(view, "cv-header-mode", "data")],
     ["scan rates", async (view: HTMLElement) => setValue(view.querySelector<HTMLInputElement>('input[name="cv-scan-rates"]')!, "1, 4, 16")],
-    ["point interval", async (view: HTMLElement) => setSelect(view.querySelector<HTMLSelectElement>('select[name="cv-point-interval"]')!, "2")],
+    ["potential interval", async (view: HTMLElement) => setManualPotentialInterval(view, "2")],
+    ["Dunn confidence mode", async (view: HTMLElement) => chooseRadio(view, "cv-dunn-method", "weighted")],
+    ["turning-point trim", async (view: HTMLElement) => setSelect(view.querySelector<HTMLSelectElement>('select[name="cv-turning-trim-mode"]')!, "manual")],
     ["R-squared threshold", async (view: HTMLElement) => setValue(view.querySelector<HTMLInputElement>('input[name="cv-r-squared-threshold"]')!, "0.9")]
   ])("invalidates completed results immediately when %s changes", async (_field, change) => {
     const view = await renderPage();
@@ -300,6 +331,12 @@ describe("CV kinetics page", () => {
     const view = await renderPage();
     expect(view.textContent).toContain("CV Kinetics Analysis");
     expect(view.textContent).toContain("Import Data");
+    expect(view.querySelector("#cv-point-interval")).toBeNull();
+    expect(view.querySelector("#cv-potential-interval-mode")).not.toBeNull();
+    expect(view.querySelector("#cv-dunn-method-threshold")).not.toBeNull();
+    expect(view.querySelector("#cv-dunn-method-weighted")).not.toBeNull();
+    expect(view.querySelector("#cv-turning-trim-mode")).not.toBeNull();
+    expect(view.textContent).toContain("Smoothing: Auto");
     expect(view.textContent).toContain(`target up to ${MAX_CHART_POINTS} points per series`);
     expect(view.textContent).toContain(`up to ${MAX_CHART_OUTPUT_POINTS} points per series`);
     await upload(view, csv);
@@ -320,6 +357,10 @@ describe("CV kinetics page", () => {
     await click(view, "中文");
     expect(view.textContent).toContain("CV 动力学分析");
     expect(view.textContent).toContain("Dunn 分析");
+    expect(view.textContent).toContain("电位间隔");
+    expect(view.textContent).toContain("R² 加权");
+    expect(view.textContent).toContain("转折点裁剪");
+    expect(view.textContent).toContain("平滑：自动");
     expect(view.textContent).toContain(`目标为每个序列最多 ${MAX_CHART_POINTS} 个点`);
     expect(view.textContent).toContain(`最多可增加到每个序列 ${MAX_CHART_OUTPUT_POINTS} 个点`);
     expect(view.querySelectorAll("svg")).toHaveLength(4);
@@ -352,7 +393,7 @@ describe("CV kinetics page", () => {
     await uploadFile(view, makeFile());
 
     expect(view.querySelector<HTMLInputElement>('input[name="cv-scan-rates"]')?.value).toBe("1, 4, 9");
-    expect(view.querySelectorAll(".cv-preview tbody tr")).toHaveLength(3);
+    expect(view.querySelectorAll(".cv-preview tbody tr")).toHaveLength(5);
     await click(view, "Run analysis");
     expect(view.querySelectorAll('[data-table-id="cv-b-records-table"] tbody tr').length).toBeGreaterThan(0);
     expect(view.querySelectorAll('[data-table-id="cv-dunn-records-table"] tbody tr').length).toBeGreaterThan(0);
@@ -687,7 +728,7 @@ describe("CV kinetics page", () => {
     };
     const view = await renderPage();
     await upload(view, qualityCsv());
-    await setSelect(view.querySelector<HTMLSelectElement>('select[name="cv-point-interval"]')!, "5");
+    await setManualPotentialInterval(view, "5000");
     await click(view, "Run analysis");
 
     const summary = view.querySelector('[data-quality-summary="true"]')?.textContent ?? "";
@@ -698,12 +739,13 @@ describe("CV kinetics page", () => {
     expect(summary).toContain("0–20 V");
     expect(summary).toContain("21");
     expect(summary).toContain("5 retained");
-    expect(summary).toContain("interval 5");
+    expect(summary).toContain("interval 5000 mV");
     expect(summary).toContain("R² ≥ 0.95");
     expect(summary).toContain("3 valid / 1 excluded / 1 unavailable");
     expect(summary).toContain("4 valid / 1 excluded / 0 unavailable");
     expect(summary).toContain("4 / 5");
     expect(summary).toContain("80%");
+    expect(view.querySelector('[data-dunn-diagnostics="true"]')?.textContent).toContain("Low fit quality");
 
     const bTable = view.querySelector('[data-table-id="cv-b-records-table"]')!;
     const dunnTable = view.querySelector('[data-table-id="cv-dunn-records-table"]')!;
@@ -755,6 +797,33 @@ describe("CV kinetics page", () => {
       .find((row) => row.cells[0].textContent === "5")?.cells[2].textContent).not.toBe("—");
   });
 
+  it("keeps the threshold editable in weighted mode and preserves b-value filtering", async () => {
+    const view = await renderPage();
+    await upload(view, lowQualityWorkflowCsv());
+    await click(view, "Run analysis");
+
+    const thresholdInput = view.querySelector<HTMLInputElement>('input[name="cv-r-squared-threshold"]')!;
+    const thresholdStatuses = [...view.querySelectorAll<HTMLTableRowElement>('[data-table-id="cv-b-records-table"] tbody tr')]
+      .map((row) => row.cells[6].textContent);
+    expect(thresholdInput.value).toBe("0.95");
+    expect(view.querySelector<HTMLInputElement>('input[name="cv-dunn-method"][value="threshold"]')?.checked).toBe(true);
+
+    await chooseRadio(view, "cv-dunn-method", "weighted");
+    expect(thresholdInput.disabled).toBe(false);
+    expect(thresholdInput.value).toBe("0.95");
+    await click(view, "Run analysis");
+
+    const weightedStatuses = [...view.querySelectorAll<HTMLTableRowElement>('[data-table-id="cv-b-records-table"] tbody tr')]
+      .map((row) => row.cells[6].textContent);
+    expect(weightedStatuses).toEqual(thresholdStatuses);
+    expect(view.querySelector('[data-quality-summary="true"]')?.textContent).toContain("R² weighted");
+    expect(view.querySelector('[data-dunn-diagnostics="true"]')?.textContent).toContain("Low fit quality");
+
+    await click(view, "中文");
+    expect(view.textContent).toContain("R² 加权");
+    expect(view.textContent).toContain("拟合质量偏低");
+  });
+
   it("localizes complete-cycle structure errors from a real upload and analysis run", async () => {
     const view = await renderPage();
     await upload(view, "Potential,Current 1 mV/s,Current 4 mV/s,Current 9 mV/s\n0,1,2,3\n1,2,4,6\n0,1,2,3\n1,2,4,6\n0,1,2,3");
@@ -767,7 +836,7 @@ describe("CV kinetics page", () => {
   it("exports exactly six bilingual audit-ready CSVs and embeds current settings in SVG and PNG", async () => {
     const view = await renderPage();
     await upload(view, qualityCsv());
-    await setSelect(view.querySelector<HTMLSelectElement>('select[name="cv-point-interval"]')!, "5");
+    await setManualPotentialInterval(view, "5000");
     await click(view, "Run analysis");
     const blobs: Blob[] = [];
     const downloaded: string[] = [];
@@ -779,7 +848,7 @@ describe("CV kinetics page", () => {
     expect([...view.querySelectorAll<HTMLButtonElement>('.cv-export button')].filter((button) => button.textContent?.endsWith(".csv"))).toHaveLength(6);
     const exported = await Promise.all(blobs.map(readBlob));
     expect(exported[0].split("\r\n")[0]).toContain("Data layout: XYYYYY");
-    expect(exported[0].split("\r\n")[0]).toContain("Point interval: 5");
+    expect(exported[0].split("\r\n")[0]).toContain("Point interval: 5000 mV");
     expect(exported[1]).toContain("Fit status,Data layout,Data source,Point interval,R² threshold");
     expect(exported[1]).not.toMatch(/(?:^|\r\n)5,/);
     expect(exported[1]).toContain("10,Branch 1,,,,,Zero-current logarithm unavailable");
@@ -787,7 +856,7 @@ describe("CV kinetics page", () => {
     expect(exported[3].split("\r\n")[0]).toContain("R² threshold: 0.95");
     expect(exported[4].split("\r\n")[0]).toContain("R² threshold: 0.95");
     expect(exported[5]).toContain("Valid points,Sampled points,Coverage (%),Contribution status,Data layout,Data source,Point interval,R² threshold");
-    expect(exported[5]).toContain(",4,5,80,Available,XYYYYY,File upload,5,0.95");
+    expect(exported[5]).toContain(",4,5,80,Available,XYYYYY,File upload,5000 mV,0.95");
 
     await click(view, "中文");
     await click(view, "cv-b-value-results.csv");
@@ -798,7 +867,7 @@ describe("CV kinetics page", () => {
     await click(view, "EN");
     await click(view, "Export SVG — cv-b-chart.svg");
     const svg = await readBlob(blobs[7]);
-    expect(svg).toContain("interval = 5");
+    expect(svg).toContain("interval = 5000 mV");
     expect(svg).toContain("R² ≥ 0.95");
     expect(svg).toContain("XYYYYY");
     expect(svg).toContain("First row contains headers");
@@ -811,7 +880,7 @@ describe("CV kinetics page", () => {
     vi.stubGlobal("Image", LoadingImage);
     await click(view, "Export PNG — cv-b-chart.png");
     const pngSourceSvg = await readBlob(blobs[8]);
-    expect(pngSourceSvg).toContain("interval = 5");
+    expect(pngSourceSvg).toContain("interval = 5000 mV");
     expect(pngSourceSvg).toContain("R² ≥ 0.95");
   });
 
@@ -868,7 +937,7 @@ describe("CV kinetics page", () => {
     }).join("\n");
     await uploadFile(view, new File([headerless], "headerless.csv"));
     await setValue(view.querySelector<HTMLInputElement>('input[name="cv-scan-rates"]')!, "9, 1, 4");
-    await setSelect(view.querySelector<HTMLSelectElement>('select[name="cv-point-interval"]')!, "5");
+    await setManualPotentialInterval(view, "5000");
     await click(view, "Run analysis");
     await setPotential(view, "5");
     await setSelect(view.querySelector<HTMLSelectElement>('select[name="selectedRate"]')!, "9");
@@ -878,7 +947,7 @@ describe("CV kinetics page", () => {
     expect(common).toContain("File upload");
     expect(common).toContain("First row is numeric data");
     expect(common).toContain("rates = 9, 1, 4 mV/s");
-    expect(common).toContain("interval = 5");
+    expect(common).toContain("interval = 5000 mV");
     expect(common).toContain("R² ≥ 0.95");
     expect(view.querySelector('[data-export-id="cv-fit-chart"] [data-chart-metadata="true"]')?.textContent).toContain("potential = 5 V");
     expect(view.querySelector('[data-export-id="cv-dunn-chart"] [data-chart-metadata="true"]')?.textContent).toContain("scan rate = 9 mV/s");

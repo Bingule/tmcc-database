@@ -2468,7 +2468,7 @@ td button {
   grid-column: 1 / -1;
 }
 
-.cv-import > :is(h2, p, .cv-format-choices, .cv-data-input, .cv-analysis-settings, .cv-preview, .cv-analysis-actions) {
+.cv-import > :is(h2, p, .cv-format-choices, .cv-data-input, .cv-settings-diagnostics, .cv-preview, .cv-analysis-actions) {
   grid-column: 1 / -1;
 }
 
@@ -2562,6 +2562,51 @@ td button {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
+}
+
+.cv-settings-diagnostics {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.8fr);
+  gap: 14px;
+  align-items: start;
+  min-width: 0;
+}
+
+.cv-settings-diagnostics .cv-analysis-settings {
+  min-width: 0;
+}
+
+.cv-method-notes {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #d6e2de;
+  border-radius: 7px;
+  background: #f8fbfa;
+}
+
+.cv-method-notes h3,
+.cv-method-notes p,
+.cv-method-notes ul {
+  margin: 0;
+}
+
+.cv-method-notes [role="status"] {
+  width: fit-content;
+  padding: 5px 8px;
+  border: 1px solid #cbded8;
+  border-radius: 6px;
+  color: #1f5660;
+  background: #eef6f3;
+  font-weight: 800;
+}
+
+.cv-method-notes ul {
+  display: grid;
+  gap: 7px;
+  padding-left: 18px;
+  color: #52666e;
 }
 
 .cv-format-choices > :is(legend, p) {
@@ -2873,6 +2918,46 @@ td button {
   font-size: 0.88rem;
 }
 
+.cv-diagnostics {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #e3eae7;
+}
+
+.cv-diagnostics h3 {
+  margin: 0;
+}
+
+.cv-diagnostics-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 14px;
+  margin: 0;
+}
+
+.cv-diagnostics-list dt {
+  color: #607078;
+}
+
+.cv-diagnostics-list dd {
+  margin: 0;
+  color: #17242a;
+  font-weight: 750;
+  text-align: right;
+}
+
+.cv-diagnostic-warning {
+  margin: 0;
+  padding: 9px 12px;
+  border-left: 4px solid #a66a2d;
+  border-radius: 5px;
+  color: #684214;
+  background: #fff7e8;
+  font-weight: 750;
+}
+
 .scientific-chart-svg {
   display: block;
   width: 100%;
@@ -3042,6 +3127,7 @@ sub {
   .cv-format-choices,
   .cv-source-controls,
   .cv-data-input,
+  .cv-settings-diagnostics,
   .cv-analysis-settings {
     grid-template-columns: 1fr;
   }

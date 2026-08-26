@@ -7,18 +7,24 @@ import {
   type CvParseErrorCode
 } from "../lib/cvImport";
 import type { ParsedCvTable } from "../lib/cvParsing";
+import type { DunnConfidenceMode } from "../lib/cvTypes";
 
 export interface CvImportDraft {
   options: { layout: CvDataLayout | ""; headerMode: CvHeaderMode };
   source: "file" | "paste";
   pasteText: string;
   scanRateText: string;
-  pointInterval: number;
+  potentialIntervalMode: "auto" | "manual";
+  potentialIntervalMillivolts: number;
   rSquaredThreshold: number;
+  dunnConfidenceMode: DunnConfidenceMode;
+  turningPointTrimMode: "auto" | "manual";
+  turningPointTrimMillivolts: number;
 }
 
 export type CvUiError = CvParseErrorCode
-  | "invalidPointInterval"
+  | "invalidPotentialInterval"
+  | "invalidTurningPointTrim"
   | "invalidRSquaredThreshold"
   | "noOverlap"
   | "noBFit"
@@ -36,8 +42,6 @@ export interface CvImportPanelProps {
   onParsePaste(): void;
   onAnalyze(): void;
 }
-
-const intervalOptions = Array.from({ length: 30 }, (_, index) => index + 1);
 
 export function CvImportPanel({
   draft,
@@ -170,88 +174,179 @@ export function CvImportPanel({
       </div>}
     </section>
 
-    <fieldset className="cv-import-fieldset" role="radiogroup" aria-label={t("cv.aria.headerMode")}>
-      <legend>{t("cv.import.headerMode")}</legend>
-      <p>{t("cv.import.headerMode.help")}</p>
-      <label>
-        <input
-          type="radio"
-          name="cv-header-mode"
-          value="header"
-          checked={draft.options.headerMode === "header"}
-          onChange={() => updateOptions({ headerMode: "header" })}
-        />
-        {t("cv.import.headerMode.header")}
-      </label>
-      <label>
-        <input
-          type="radio"
-          name="cv-header-mode"
-          value="data"
-          checked={draft.options.headerMode === "data"}
-          onChange={() => updateOptions({ headerMode: "data" })}
-        />
-        {t("cv.import.headerMode.data")}
-      </label>
-    </fieldset>
+    <section className="cv-settings-diagnostics" aria-label={t("cv.import.settings")}>
+      <div className="cv-analysis-settings">
+        <fieldset className="cv-import-fieldset" role="radiogroup" aria-label={t("cv.aria.headerMode")}>
+          <legend>{t("cv.import.headerMode")}</legend>
+          <p>{t("cv.import.headerMode.help")}</p>
+          <label>
+            <input
+              type="radio"
+              name="cv-header-mode"
+              value="header"
+              checked={draft.options.headerMode === "header"}
+              onChange={() => updateOptions({ headerMode: "header" })}
+            />
+            {t("cv.import.headerMode.header")}
+          </label>
+          <label>
+            <input
+              type="radio"
+              name="cv-header-mode"
+              value="data"
+              checked={draft.options.headerMode === "data"}
+              onChange={() => updateOptions({ headerMode: "data" })}
+            />
+            {t("cv.import.headerMode.data")}
+          </label>
+        </fieldset>
 
-    <div className="cv-scan-rate-group">
-      <label className="cv-scan-rate-control" htmlFor="cv-scan-rates">
-        {t("cv.import.scanRates")} (mV/s)
-        <input
-          id="cv-scan-rates"
-          name="cv-scan-rates"
-          type="text"
-          inputMode="decimal"
-          aria-invalid={displayedError === "missingScanRate" || displayedError === "duplicateScanRate" || displayedError === "invalidScanRate" || displayedError === "insufficientSeries" || displayedError === "tooManySeries" || displayedError === "scanRateCountMismatch"}
-          aria-label={t("cv.aria.scanRates")}
-          placeholder="0.2, 0.4, 0.6, 0.8, 1"
-          value={draft.scanRateText}
-          onChange={(event) => update({ scanRateText: event.target.value })}
-        />
-      </label>
-      <p className="cv-field-help">{t("cv.import.scanRates.help")}</p>
-    </div>
+        <div className="cv-scan-rate-group">
+          <label className="cv-scan-rate-control" htmlFor="cv-scan-rates">
+            {t("cv.import.scanRates")} (mV/s)
+            <input
+              id="cv-scan-rates"
+              name="cv-scan-rates"
+              type="text"
+              inputMode="decimal"
+              aria-invalid={displayedError === "missingScanRate" || displayedError === "duplicateScanRate" || displayedError === "invalidScanRate" || displayedError === "insufficientSeries" || displayedError === "tooManySeries" || displayedError === "scanRateCountMismatch"}
+              aria-label={t("cv.aria.scanRates")}
+              placeholder="0.2, 0.4, 0.6, 0.8, 1"
+              value={draft.scanRateText}
+              onChange={(event) => update({ scanRateText: event.target.value })}
+            />
+          </label>
+          <p className="cv-field-help">{t("cv.import.scanRates.help")}</p>
+        </div>
 
-    <div className="cv-analysis-settings">
-      <div className="cv-control-with-help">
-        <label htmlFor="cv-point-interval">
-          {t("cv.import.pointInterval")}
-          <select
-            id="cv-point-interval"
-            name="cv-point-interval"
-            aria-invalid={displayedError === "invalidPointInterval"}
-            aria-label={t("cv.aria.pointInterval")}
-            value={draft.pointInterval}
-            onChange={(event) => update({ pointInterval: Number(event.target.value) })}
-          >
-            {intervalOptions.map((interval) => <option key={interval} value={interval}>{interval}</option>)}
-          </select>
-        </label>
-        <p className="cv-field-help">{t("cv.import.pointInterval.help")}</p>
+        <div className="cv-control-with-help">
+          <label htmlFor="cv-potential-interval-mode">
+            {t("cv.import.potentialInterval")}
+            <select
+              id="cv-potential-interval-mode"
+              name="cv-potential-interval-mode"
+              aria-invalid={displayedError === "invalidPotentialInterval"}
+              aria-label={t("cv.aria.potentialIntervalMode")}
+              value={draft.potentialIntervalMode}
+              onChange={(event) => update({ potentialIntervalMode: event.target.value as CvImportDraft["potentialIntervalMode"] })}
+            >
+              <option value="auto">{t("cv.import.mode.auto")}</option>
+              <option value="manual">{t("cv.import.mode.manual")}</option>
+            </select>
+          </label>
+          <label htmlFor="cv-potential-interval-mv">
+            {t("cv.import.potentialIntervalMv")}
+            <input
+              id="cv-potential-interval-mv"
+              name="cv-potential-interval-mv"
+              type="number"
+              min="0"
+              step="any"
+              aria-invalid={displayedError === "invalidPotentialInterval"}
+              aria-label={t("cv.aria.potentialIntervalMv")}
+              value={Number.isFinite(draft.potentialIntervalMillivolts) ? draft.potentialIntervalMillivolts : ""}
+              onChange={(event) => update({
+                potentialIntervalMillivolts: event.target.value === "" ? Number.NaN : Number(event.target.value)
+              })}
+            />
+          </label>
+          <p className="cv-field-help">{t("cv.import.potentialInterval.help")}</p>
+        </div>
+
+        <fieldset className="cv-import-fieldset cv-dunn-method" role="radiogroup" aria-label={t("cv.aria.dunnMethod")}>
+          <legend>{t("cv.import.dunnMethod")}</legend>
+          <p>{t("cv.import.dunnMethod.help")}</p>
+          <label>
+            <input
+              id="cv-dunn-method-threshold"
+              name="cv-dunn-method"
+              type="radio"
+              value="threshold"
+              checked={draft.dunnConfidenceMode === "threshold"}
+              onChange={() => update({ dunnConfidenceMode: "threshold" })}
+            />
+            {t("cv.import.dunnMethod.threshold")}
+          </label>
+          <label>
+            <input
+              id="cv-dunn-method-weighted"
+              name="cv-dunn-method"
+              type="radio"
+              value="weighted"
+              checked={draft.dunnConfidenceMode === "weighted"}
+              onChange={() => update({ dunnConfidenceMode: "weighted" })}
+            />
+            {t("cv.import.dunnMethod.weighted")}
+          </label>
+        </fieldset>
+
+        <div className="cv-control-with-help">
+          <label htmlFor="cv-r-squared-threshold">
+            {t("cv.import.rSquaredThreshold")}
+            <input
+              id="cv-r-squared-threshold"
+              name="cv-r-squared-threshold"
+              type="number"
+              min="0"
+              max="1"
+              step="any"
+              aria-invalid={displayedError === "invalidRSquaredThreshold"}
+              aria-label={t("cv.aria.rSquaredThreshold")}
+              value={Number.isFinite(draft.rSquaredThreshold) ? draft.rSquaredThreshold : ""}
+              onChange={(event) => update({
+                rSquaredThreshold: event.target.value === "" ? Number.NaN : Number(event.target.value)
+              })}
+            />
+          </label>
+          <p className="cv-field-help">{t("cv.import.rSquaredThreshold.help")}</p>
+        </div>
+
+        <div className="cv-control-with-help">
+          <label htmlFor="cv-turning-trim-mode">
+            {t("cv.import.turningTrim")}
+            <select
+              id="cv-turning-trim-mode"
+              name="cv-turning-trim-mode"
+              aria-invalid={displayedError === "invalidTurningPointTrim"}
+              aria-label={t("cv.aria.turningTrimMode")}
+              value={draft.turningPointTrimMode}
+              onChange={(event) => update({ turningPointTrimMode: event.target.value as CvImportDraft["turningPointTrimMode"] })}
+            >
+              <option value="auto">{t("cv.import.mode.auto")}</option>
+              <option value="manual">{t("cv.import.mode.manual")}</option>
+            </select>
+          </label>
+          <label htmlFor="cv-turning-trim-mv">
+            {t("cv.import.turningTrimMv")}
+            <input
+              id="cv-turning-trim-mv"
+              name="cv-turning-trim-mv"
+              type="number"
+              min="0"
+              step="any"
+              aria-invalid={displayedError === "invalidTurningPointTrim"}
+              aria-label={t("cv.aria.turningTrimMv")}
+              value={Number.isFinite(draft.turningPointTrimMillivolts) ? draft.turningPointTrimMillivolts : ""}
+              onChange={(event) => update({
+                turningPointTrimMillivolts: event.target.value === "" ? Number.NaN : Number(event.target.value)
+              })}
+            />
+          </label>
+          <p className="cv-field-help">{t("cv.import.turningTrim.help")}</p>
+        </div>
       </div>
 
-      <div className="cv-control-with-help">
-        <label htmlFor="cv-r-squared-threshold">
-          {t("cv.import.rSquaredThreshold")}
-          <input
-            id="cv-r-squared-threshold"
-            name="cv-r-squared-threshold"
-            type="number"
-            min="0"
-            max="1"
-            step="0.01"
-            aria-invalid={displayedError === "invalidRSquaredThreshold"}
-            aria-label={t("cv.aria.rSquaredThreshold")}
-            value={Number.isFinite(draft.rSquaredThreshold) ? draft.rSquaredThreshold : ""}
-            onChange={(event) => update({
-              rSquaredThreshold: event.target.value === "" ? Number.NaN : Number(event.target.value)
-            })}
-          />
-        </label>
-        <p className="cv-field-help">{t("cv.import.rSquaredThreshold.help")}</p>
-      </div>
-    </div>
+      <aside className="cv-method-notes">
+        <h3>{t("cv.import.method.title")}</h3>
+        <p>{t("cv.import.method.explanation")}</p>
+        <p role="status">{t("cv.import.smoothingAuto")}</p>
+        <ul>
+          <li>{t("cv.import.method.benefit.interval")}</li>
+          <li>{t("cv.import.method.benefit.weighted")}</li>
+          <li>{t("cv.import.method.benefit.trim")}</li>
+        </ul>
+      </aside>
+    </section>
 
     <section className="cv-preview" aria-label={t("cv.aria.preview")}>
       <h3>{t("cv.preview.title")}</h3>
@@ -312,13 +407,18 @@ function validateDraft(draft: CvImportDraft, table: ParsedCvTable | null) {
   if (rates.length !== table.pairs.length) {
     return { ready: false, visibleCode: "scanRateCountMismatch" as const, rates };
   }
-  if (!Number.isInteger(draft.pointInterval) || draft.pointInterval < 1 || draft.pointInterval > 30) {
-    return { ready: false, visibleCode: "invalidPointInterval" as const, rates };
+  if (draft.potentialIntervalMode === "manual"
+    && (!Number.isFinite(draft.potentialIntervalMillivolts) || draft.potentialIntervalMillivolts <= 0)) {
+    return { ready: false, visibleCode: "invalidPotentialInterval" as const, rates };
   }
   if (!Number.isFinite(draft.rSquaredThreshold)
     || draft.rSquaredThreshold < 0
     || draft.rSquaredThreshold > 1) {
     return { ready: false, visibleCode: "invalidRSquaredThreshold" as const, rates };
+  }
+  if (draft.turningPointTrimMode === "manual"
+    && (!Number.isFinite(draft.turningPointTrimMillivolts) || draft.turningPointTrimMillivolts < 0)) {
+    return { ready: false, visibleCode: "invalidTurningPointTrim" as const, rates };
   }
   return { ready: true, visibleCode: null, rates };
 }
@@ -342,7 +442,8 @@ function errorMessage(
     tooManySeries: "cv.error.tooManySeries",
     scanRateCountMismatch: "cv.error.scanRateCountMismatch",
     resourceLimitExceeded: "cv.error.resourceLimitExceeded",
-    invalidPointInterval: "cv.error.invalidPointInterval",
+    invalidPotentialInterval: "cv.error.invalidPotentialInterval",
+    invalidTurningPointTrim: "cv.error.invalidTurningPointTrim",
     invalidRSquaredThreshold: "cv.error.invalidRSquaredThreshold",
     invalidCycleStructure: "cv.error.invalidCycleStructure",
     noOverlap: "cv.error.noOverlap",

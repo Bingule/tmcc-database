@@ -21,8 +21,12 @@ const initialDraft: CvImportDraft = {
   source: "file",
   pasteText: "",
   scanRateText: "",
-  pointInterval: 1,
-  rSquaredThreshold: 0.95
+  potentialIntervalMode: "auto",
+  potentialIntervalMillivolts: 5,
+  rSquaredThreshold: 0.95,
+  dunnConfidenceMode: "threshold",
+  turningPointTrimMode: "auto",
+  turningPointTrimMillivolts: 0
 };
 
 function PanelHarness({ table = null, initial = initialDraft, error = null }: { table?: ParsedCvTable | null; initial?: CvImportDraft; error?: CvUiError | null }) {
@@ -79,10 +83,10 @@ describe("CvImportPanel", () => {
     const view = await renderPanel();
     const format = view.querySelector<HTMLElement>(".cv-format-choices")!;
     const dataInput = view.querySelector<HTMLElement>(".cv-data-input")!;
-    const header = view.querySelector<HTMLElement>('[aria-label="First-row handling"]')!;
+    const settings = view.querySelector<HTMLElement>('[aria-label="CV analysis settings"]')!;
 
     expect(format.nextElementSibling).toBe(dataInput);
-    expect(dataInput.nextElementSibling).toBe(header);
+    expect(dataInput.nextElementSibling).toBe(settings);
     expect(dataInput.querySelector('input[name="cv-source"]')).not.toBeNull();
     expect(dataInput.querySelector('input[type="file"]')).not.toBeNull();
 
@@ -120,15 +124,13 @@ describe("CvImportPanel", () => {
 
     const rates = view.querySelector<HTMLInputElement>('input[name="cv-scan-rates"]')!;
     expect(rates.placeholder).toBe("0.2, 0.4, 0.6, 0.8, 1");
-    const interval = view.querySelector<HTMLSelectElement>('select[name="cv-point-interval"]')!;
-    expect([...interval.options].map((option) => option.value)).toEqual(
-      Array.from({ length: 30 }, (_, index) => String(index + 1))
-    );
-    expect(interval.value).toBe("1");
+    const interval = view.querySelector<HTMLSelectElement>('select[name="cv-potential-interval-mode"]')!;
+    expect([...interval.options].map((option) => option.value)).toEqual(["auto", "manual"]);
+    expect(interval.value).toBe("auto");
 
     const threshold = view.querySelector<HTMLInputElement>('input[name="cv-r-squared-threshold"]')!;
-    expect(threshold).toMatchObject({ min: "0", max: "1", step: "0.01", value: "0.95" });
-    expect(view.textContent).toContain("Sampling is performed within each monotonic branch; it does not smooth or average currents");
+    expect(threshold).toMatchObject({ min: "0", max: "1", step: "any", value: "0.95" });
+    expect(view.textContent).toContain("Smoothing: Auto");
     expect(view.textContent).toContain("Choose a data format before importing data");
     expect(view.textContent).toContain("Recommended threshold: 0.95 (only fits with R² ≥ 0.95 are treated as valid).");
     expect(view.textContent).toContain("XYYYYY");
@@ -164,7 +166,8 @@ describe("CvImportPanel", () => {
     expect(view.textContent).toContain("数据格式");
     expect(view.textContent).toContain("首行为表头");
     expect(view.textContent).toContain("从 Excel 粘贴");
-    expect(view.textContent).toContain("取点在各分支内独立进行；不会平滑或平均电流");
+    expect(view.textContent).toContain("电位间隔");
+    expect(view.textContent).toContain("平滑：自动");
     expect(view.textContent).toContain("建议阈值：0.95（仅将 R² ≥ 0.95 的拟合视为有效）。");
     expect(view.textContent).toContain("导入数据前请选择数据格式");
     expect(view.querySelector("textarea")?.getAttribute("aria-label")).toBe("粘贴 Excel 兼容的 CV 数据");
