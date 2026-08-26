@@ -528,6 +528,32 @@ describe("parseCvFile", () => {
     ]);
   });
 
+  it("confirms the same complete CV cycle from CSV, UTF-16 TXT, and XLSX", async () => {
+    const rows = [
+      ["E1", "I1", "E2", "I2", "E3", "I3"],
+      [0, 1, 0, 2, 0, 3],
+      [1, 2, 1, 4, 1, 6],
+      [2, 3, 2, 6, 2, 9],
+      [1, 10, 1, 40, 1, 90],
+      [0, 10, 0, 20, 0, 30]
+    ] as const;
+    const options = { layout: "pairedPotentialCurrent", headerMode: "header" } as const;
+    const expected = [
+      { label: "I1", scanRate: 1, points: [{ potential: 0, current: 1 }, { potential: 1, current: 2 }, { potential: 2, current: 3 }, { potential: 1, current: 10 }, { potential: 0, current: 10 }] },
+      { label: "I2", scanRate: 4, points: [{ potential: 0, current: 2 }, { potential: 1, current: 4 }, { potential: 2, current: 6 }, { potential: 1, current: 40 }, { potential: 0, current: 20 }] },
+      { label: "I3", scanRate: 9, points: [{ potential: 0, current: 3 }, { potential: 1, current: 6 }, { potential: 2, current: 9 }, { potential: 1, current: 90 }, { potential: 0, current: 30 }] }
+    ];
+    const csv = rows.map((row) => row.join(",")).join("\n");
+    const txt = rows.map((row) => row.join("\t")).join("\n");
+    const tables = await Promise.all([
+      parseCvFile(new File([csv], "complete-cycle.csv", { type: "text/csv" }), options),
+      parseCvFile(new File([encodeUtf16(txt, "le")], "complete-cycle.txt", { type: "text/plain" }), options),
+      parseCvFile(makeWorkbookFile([{ name: "CV", rows: rows.map((row) => [...row]) }], "complete-cycle.xlsx"), options)
+    ]);
+
+    expect(tables.map((table) => confirmCvSeries(table, [1, 4, 9]))).toEqual([expected, expected, expected]);
+  });
+
   it("ignores a false EOCD signature inside a legal ZIP comment and finds the real EOCD", async () => {
     const base = makeMinimalXlsxFile();
     const archive = await readFileBuffer(base);

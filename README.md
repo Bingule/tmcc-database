@@ -72,7 +72,9 @@ XYXYXY: Potential 1 | Current 1 | Potential 2 | Current 2
 
 Enter one ordered list of 3–20 distinct positive scan rates in `mV/s`, separated by commas, semicolons, spaces, tabs, or newlines. The list maps positionally to current columns or XY pairs and must match their count. Series are interpolated only within their overlapping potential range; the workflow never extrapolates.
 
-The point interval is an integer from 1 to 30. It subsamples the common potential grid for both b-value and Dunn analysis, always retaining the last point. It is not smoothing: the workflow never averages, filters, or mutates original CV potential/current values. A larger interval lowers regression density and can hide narrow potential-dependent features.
+Each imported dataset is retained as one sequential CV cycle, with zero to two turning points. The workflow splits the cycle into monotonic sweep branches only internally for interpolation, fitting, point selection, and integration, then recombines the branches in the original traversal order. Forward and return currents recorded at the same potential remain distinct observations and are never averaged. More than two turning points, repeated non-turning potentials, too-short branches, or inconsistent branch directions between scan-rate series produce a visible cycle-structure error instead of a truncated or silently altered result.
+
+The point interval is an integer from 1 to 30. It subsamples the common potential grid independently within every sweep branch for both b-value and Dunn analysis, always retaining each branch endpoint. It is not smoothing: the workflow never averages, filters, or mutates original CV potential/current values. A larger interval lowers regression density and can hide narrow potential-dependent features.
 
 The shared R² threshold ranges from 0 to 1 in 0.01 UI steps and defaults to 0.95; `0` disables quality exclusion while still reporting R². The threshold applies independently to both b-value and Dunn regressions. Fits below it are excluded from fitted result tables, copied table data, b-value potential navigation, and b-value/Dunn fit-record CSV exports; unavailable fits remain reported. Internal workflow records retain every status so quality counts and the grid-aligned Dunn mask remain correct. Original CV data, interpolated data, and scientific formulas remain unchanged. Valid-only figures preserve gaps, and Dunn integration uses the same valid-potential mask, reporting valid/sample coverage rather than silently including excluded fits.
 
@@ -92,7 +94,7 @@ i_cap = k1 v
 i_diff = k2 sqrt(v)
 ```
 
-Capacitive and diffusion-controlled percentages use trapezoidal integration of `|i_cap|` and `|i_diff|`, so anodic and cathodic signs do not cancel. Failed fits remain unavailable rather than being replaced with zero.
+Capacitive and diffusion-controlled percentages use trapezoidal integration of `|i_cap|` and `|i_diff|`, summing branch-local intervals with `|ΔE|`; no interval is created across a branch boundary. Thus anodic and cathodic signs do not cancel. Failed fits remain unavailable rather than being replaced with zero.
 
 Completed analyses enable six CSV downloads:
 
@@ -105,7 +107,7 @@ cv-diffusion-current.csv
 cv-contribution-summary.csv
 ```
 
-The six CSV exports include applicable layout, source, interval, R² threshold, fit-status, and Dunn-coverage metadata. The b-value and Dunn fit-record exports omit only fits below the configured R² threshold; raw and interpolated-data exports remain unchanged. They, together with every b-value/Dunn fit and integration, use the interval-selected analysis grid. Original CV series are retained independently and are not changed by point-interval analysis sampling. Their chart rendering may use the display-only sampling described below for performance; that never changes the retained original series, fitting/integration inputs, or CSV data. Four figures—b-value, selected-potential fit, Dunn current components, and contribution percentage—can each be exported as SVG or PNG. Figures and their SVG/PNG exports identify the analysis settings and use deterministic display sampling with a target of at most 2,000 points per series; preserving unavailable-gap boundaries may increase display output to at most 4,000 points per series. Tables and charts use horizontally scrollable wide containers and responsive one-column layouts on narrow screens.
+The six CSV exports include applicable layout, source, interval, R² threshold, fit-status, and Dunn-coverage metadata. The b-value and Dunn fit-record exports omit only fits below the configured R² threshold; raw and interpolated-data exports remain unchanged. They, together with every b-value/Dunn fit and integration, use the interval-selected analysis grid. Original CV series are retained independently and are not changed by point-interval analysis sampling. Original-data, interpolated-data, b-value, and Dunn exports, and all four plots, represent the complete recombined loop in traversal order rather than a first sweep. Chart rendering may use the display-only sampling described below for performance; that never changes the retained original series, fitting/integration inputs, or CSV data. Four figures—b-value, selected-potential fit, Dunn current components, and contribution percentage—can each be exported as SVG or PNG. Figures and their SVG/PNG exports identify the analysis settings and use deterministic display sampling with a target of at most 2,000 points per series; preserving unavailable-gap boundaries may increase display output to at most 4,000 points per series. Tables and charts use horizontally scrollable wide containers and responsive one-column layouts on narrow screens.
 
 ### Theoretical Capacity Calculator
 

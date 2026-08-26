@@ -337,9 +337,9 @@ describe("CV kinetics page", () => {
 
   it.each([
     ["CSV", () => new File([completeCycleDelimited(",")], "complete-cycle.csv", { type: "text/csv" })],
-    ["TXT", () => new File([completeCycleDelimited("\t")], "complete-cycle.txt", { type: "text/plain" })],
+    ["UTF-16 TXT", () => new File([encodeUtf16Le(completeCycleDelimited("\t"))], "complete-cycle.txt", { type: "text/plain" })],
     ["XLSX", () => makeXlsxFile(completeCycleRows.map((row) => [...row]), "complete-cycle.xlsx")]
-  ])("presents a complete forward/reverse CV cycle from %s in branch traversal order", async (_format, makeFile) => {
+  ])("presents equivalent complete forward/reverse CV results from %s in branch traversal order", async (_format, makeFile) => {
     const view = await renderPage();
     await chooseRadio(view, "cv-layout", "pairedPotentialCurrent");
     await uploadFile(view, makeFile());
