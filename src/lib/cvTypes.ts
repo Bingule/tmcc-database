@@ -290,6 +290,52 @@ export interface CvAnalysisSettings {
   turningPointTrim: TurningPointTrimSetting;
 }
 
+export type CvPeakKind = "oxidation" | "reduction";
+export type CvPeakPointStatus = "auto" | "confirmed" | "adjusted" | "missing" | "excluded" | "nearZeroCurrentUnstable";
+export type CvPeakCoverageStatus = "complete" | "partial";
+export type CvPeakFitStatus = "valid" | "belowRSquaredThreshold" | "insufficientData" | "nearZeroCurrentUnstable" | "regressionFailed";
+
+export interface CvPeakCandidate {
+  seriesIndex: number;
+  scanRate: number;
+  branch: CvBranchKind;
+  kind: CvPeakKind;
+  sourceIndex: number;
+  potential: number;
+  current: number;
+  prominence: number;
+  normalizedProminence: number;
+  confidence: number;
+}
+
+export interface CvPeakRatePoint {
+  seriesIndex: number;
+  scanRate: number;
+  candidate: CvPeakCandidate | null;
+  status: CvPeakPointStatus;
+}
+
+export interface CvPeakFit {
+  peakId: string;
+  labelIndex: number;
+  branch: CvBranchKind;
+  kind: CvPeakKind;
+  points: CvPeakRatePoint[];
+  b: number | null;
+  intercept: number | null;
+  rSquared: number | null;
+  pointCount: number;
+  coverageCount: number;
+  coverageStatus: CvPeakCoverageStatus;
+  fitStatus: CvPeakFitStatus;
+}
+
+export interface CvPeakAnalysisResult {
+  candidates: CvPeakCandidate[];
+  fits: CvPeakFit[];
+  maximumPeakCount: 10;
+}
+
 export interface CvFitRecord<T> {
   sequenceIndex: number;
   branchIndex: number;
