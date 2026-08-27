@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   containCapacitiveCurrent,
+  integrateOrderedMagnitude,
   integrateMagnitude,
   isLowFitQuality,
   measureBranchOvershoot,
@@ -11,7 +12,7 @@ import {
   validateDunnContribution
 } from "../src/lib/cvDunnQuality";
 import { normalizeCvCycle } from "../src/lib/cvCycle";
-import type { CvAlignedBranchGrid, DunnContribution, DunnFitGrid, DunnFractionGrid } from "../src/lib/cvTypes";
+import type { CvAlignedBranchGrid, DunnContribution, DunnContributionInput, DunnFitGrid, DunnFractionGrid } from "../src/lib/cvTypes";
 
 it("reconstructs signed bounded currents from the same g", () => {
   const g = [0.25, 0.5, 0.75];
@@ -101,6 +102,57 @@ it("flags low fit quality below 50% coverage without deleting the result", () =>
 });
 
 describe("reconstructDunnContribution", () => {
+  it("uses the local opposite branch to constrain every canonical ordered record", () => {
+    const cycle = normalizeCvCycle([
+      { potential: -1, current: 2 },
+      { potential: 0, current: 4 },
+      { potential: 1, current: 6 },
+      { potential: 0, current: 3 },
+      { potential: -1, current: 1 }
+    ]);
+    const alignedGrid = makeWideAlignedGrid(cycle);
+    const contribution = reconstructDunnContribution(makeContributionInput(alignedGrid, [0.25, 0.25, 0.25]));
+
+    for (const record of contribution.plotPath) {
+      expect(record.capacitiveCurrent).toBeGreaterThanOrEqual(record.envelopeLower - 1e-12);
+      expect(record.capacitiveCurrent).toBeLessThanOrEqual(record.envelopeUpper + 1e-12);
+      expect(record.capacitiveCurrent + record.diffusionCurrent).toBeCloseTo(record.originalCurrent, 12);
+    }
+    expect(contribution.plotPath.some((record) => record.correctionMagnitude > 0)).toBe(true);
+  });
+
+  it("calculates contribution areas from the same canonical ordered records", () => {
+    const contribution = reconstructDunnContribution(makeContributionInputFromPoints([
+      { potential: -1, current: 2 },
+      { potential: 0, current: 4 },
+      { potential: 1, current: 6 },
+      { potential: 0, current: 3 },
+      { potential: -1, current: 1 }
+    ], [0.25, 0.25, 0.25]));
+    const total = integrateOrderedMagnitude(contribution.plotPath, "originalCurrent");
+    const capacitive = integrateOrderedMagnitude(contribution.plotPath, "capacitiveCurrent");
+    expect(contribution.capacitivePercent).toBeCloseTo(100 * capacitive / total, 10);
+  });
+
+  it("keeps synchronized zero-crossing records complete", () => {
+    const contribution = reconstructDunnContribution(makeContributionInputFromPoints([
+      { potential: -1, current: -2 },
+      { potential: 0, current: 2 },
+      { potential: 1, current: 4 },
+      { potential: 0, current: -2 },
+      { potential: -1, current: -4 }
+    ], [0.5, 0.5, 0.5]));
+    const synthetic = contribution.plotPath.find((record) => record.synthetic)!;
+    expect(synthetic).toMatchObject({
+      originalCurrent: 0,
+      oppositeCurrent: expect.any(Number),
+      targetCapacitiveCurrent: 0,
+      capacitiveCurrent: 0,
+      diffusionCurrent: 0,
+      correctionMagnitude: 0
+    });
+  });
+
   it("inserts one shared zero record when a measured branch crosses zero", () => {
     const cycle = normalizeCvCycle([
       { potential: -1, current: -2 },
@@ -167,9 +219,9 @@ describe("reconstructDunnContribution", () => {
 
     expect(contribution.plotPath).toHaveLength(cycle.originalPoints.length);
     expect(contribution.plotPath.map((point) => point.potential)).toEqual([0, 1, 1, 1, 0, -1, 0]);
-    expect(contribution.plotPath.map((point) => point.current)).toEqual([0.5, 1.5, 2.25, 3, 2.5, 1.5, 3.5]);
+    expect(contribution.plotPath.map((point) => point.current)).toEqual([1, 2, 3, 3, 2.5, 6, 5]);
     expect(contribution.plotPath.map((point) => point.originalCurrent)).toEqual([1, 2, 3, 4, 5, 6, 7]);
-    expect(contribution.plotPath.map((point) => point.diffusionCurrent)).toEqual([0.5, 0.5, 0.75, 1, 2.5, 4.5, 3.5]);
+    expect(contribution.plotPath.map((point) => point.diffusionCurrent)).toEqual([0, 0, 0, 1, 2.5, 0, 2]);
     expect(contribution.plotPath.every((point) => point.capacitiveCurrent === point.current)).toBe(true);
     expect(contribution.plotPath.map((point) => point.branch)).toEqual([
       "forward",
@@ -211,7 +263,7 @@ describe("reconstructDunnContribution", () => {
 
     expect(contribution.plotPath).toHaveLength(cycle.originalPoints.length);
     expect(contribution.plotPath.map((point) => point.potential)).toEqual([-0.5, 0, -0.5, -1, -0.75, -0.5]);
-    expect(contribution.plotPath.map((point) => point.current)).toEqual([0.5, 1.5, 1.5, 1, 1.875, 3]);
+    expect(contribution.plotPath.map((point) => point.current)).toEqual([1, 2, 1.5, 4, 3.5, 3]);
     expect(contribution.plotPath.map((point) => point.branch)).toEqual([
       "forward",
       "forward",
@@ -235,29 +287,29 @@ describe("reconstructDunnContribution", () => {
   it("reconnects capacitive current in original CV order while keeping branch currents separate", () => {
     const cycle = {
       originalPoints: [
-        { potential: -0.25, current: 4 },
-        { potential: 1.1, current: 10 },
-        { potential: 0.25, current: -8 },
-        { potential: -1.1, current: -10 }
+        { potential: -1, current: 4 },
+        { potential: 1, current: 10 },
+        { potential: 1, current: -8 },
+        { potential: -1, current: -10 }
       ],
       selectedStartIndex: 0,
       selectedEndIndex: 3,
       ignoredPointCount: 0,
-      nativePotentialInterval: 0.5,
+      nativePotentialInterval: 1,
       forward: {
         kind: "forward" as const,
         direction: 1 as const,
         points: [
-          { potential: -0.25, current: 4, sourceIndex: 0 },
-          { potential: 1.1, current: 10, sourceIndex: 1 }
+          { potential: -1, current: 4, sourceIndex: 0 },
+          { potential: 1, current: 10, sourceIndex: 1 }
         ]
       },
       reverse: {
         kind: "reverse" as const,
         direction: -1 as const,
         points: [
-          { potential: 0.25, current: -8, sourceIndex: 2 },
-          { potential: -1.1, current: -10, sourceIndex: 3 }
+          { potential: 1, current: -8, sourceIndex: 2 },
+          { potential: -1, current: -10, sourceIndex: 3 }
         ]
       },
       turningPotentials: [1, -1]
@@ -314,17 +366,17 @@ describe("reconstructDunnContribution", () => {
 
     expect(contribution.originalForward).toEqual([-4, 2, 8]);
     expect(contribution.originalReverse).toEqual([-8, -2, 4]);
-    expect(contribution.capacitiveForward).toEqual([-1, 1, 6]);
-    expect(contribution.capacitiveReverse).toEqual([-2, -1, 3]);
-    expect(contribution.diffusionForward).toEqual([-3, 1, 2]);
-    expect(contribution.diffusionReverse).toEqual([-6, -1, 1]);
-    expect(contribution.capacitivePercent).toBeCloseTo(50, 12);
-    expect(contribution.diffusionPercent).toBeCloseTo(50, 12);
+    expect(contribution.capacitiveForward).toEqual([-4, 1, 6]);
+    expect(contribution.capacitiveReverse).toEqual([-4, -1, 4]);
+    expect(contribution.diffusionForward).toEqual([0, 1, 2]);
+    expect(contribution.diffusionReverse).toEqual([-4, -1, 0]);
+    expect(contribution.capacitivePercent).toBeCloseTo(53.125, 12);
+    expect(contribution.diffusionPercent).toBeCloseTo(46.875, 12);
     expect(contribution.plotPath.map(({ potential, current, branch }) => ({ potential, current, branch }))).toEqual([
-      { potential: -0.25, current: 1.75, branch: "forward" },
-      { potential: 1.1, current: 7.5, branch: "forward" },
-      { potential: 0.25, current: -4.5, branch: "reverse" },
-      { potential: -1.1, current: -2.5, branch: "reverse" }
+      { potential: -1, current: 1, branch: "forward" },
+      { potential: 1, current: 7.5, branch: "forward" },
+      { potential: 1, current: -6, branch: "reverse" },
+      { potential: -1, current: -2.5, branch: "reverse" }
     ]);
     expect(contribution.diagnostics).toBeDefined();
     expect(contribution.diagnostics).toMatchObject({
@@ -351,7 +403,16 @@ describe("reconstructDunnContribution", () => {
       effectiveLambda: 0.1,
       maximumPositiveOvershoot: 0,
       maximumNegativeOvershoot: 0,
-      maximumAbsoluteOvershoot: 0
+      maximumAbsoluteOvershoot: 0,
+      maximumEnvelopeCorrection: 0,
+      maximumUpperEnvelopeViolation: 0,
+      maximumLowerEnvelopeViolation: 0,
+      maximumAbsoluteEnvelopeViolation: 0,
+      correctedPointCount: 0,
+      correctedPointPercent: 0,
+      maximumEffectiveFractionDeparture: 0,
+      maximumAdjacentGJump: 0.25,
+      gSmoothnessWarning: false
     });
     expect(contribution.diagnostics!.forwardAboveThresholdPercent).toBeCloseTo(200 / 3, 12);
   });
@@ -447,6 +508,31 @@ function makeStabilizationDiagnostics() {
   };
 }
 
+function makeContributionInput(alignedGrid: CvAlignedBranchGrid, g: number[]): DunnContributionInput {
+  return {
+    alignedGrid,
+    dunnRecords: makeDunnRecords(alignedGrid.potentials),
+    optimized: {
+      g,
+      diagnostics: { baseLambda: 0.1, lambda: 0.1, smoothingMultiplier: 1, iterations: 12, converged: true, optimalityResidual: 0, fidelity: 0, roughness: 0 }
+    },
+    stabilization: makeStabilizationDiagnostics(),
+    fractions: makeFractions(alignedGrid.potentials),
+    scanRate: 1,
+    seriesIndex: 0,
+    mode: "threshold",
+    threshold: 0.95,
+    resolvedTurningPointTrim: 0.05
+  };
+}
+
+function makeContributionInputFromPoints(
+  points: Array<{ potential: number; current: number }>,
+  g: number[]
+): DunnContributionInput {
+  return makeContributionInput(makeWideAlignedGrid(normalizeCvCycle(points)), g);
+}
+
 function makeCompleteContribution(): DunnContribution {
   return {
     scanRate: 1,
@@ -491,7 +577,16 @@ function makeCompleteContribution(): DunnContribution {
       effectiveLambda: 0.1,
       maximumPositiveOvershoot: 0,
       maximumNegativeOvershoot: 0,
-      maximumAbsoluteOvershoot: 0
+      maximumAbsoluteOvershoot: 0,
+      maximumEnvelopeCorrection: 0,
+      maximumUpperEnvelopeViolation: 0,
+      maximumLowerEnvelopeViolation: 0,
+      maximumAbsoluteEnvelopeViolation: 0,
+      correctedPointCount: 0,
+      correctedPointPercent: 0,
+      maximumEffectiveFractionDeparture: 0,
+      maximumAdjacentGJump: 0,
+      gSmoothnessWarning: false
     }
   };
 }
@@ -507,9 +602,15 @@ function orderedRecord(
     potential,
     current: capacitiveCurrent,
     originalCurrent,
+    oppositeCurrent: -originalCurrent,
+    envelopeLower: Math.min(originalCurrent, -originalCurrent),
+    envelopeUpper: Math.max(originalCurrent, -originalCurrent),
+    targetCapacitiveCurrent: capacitiveCurrent,
     capacitiveCurrent,
     diffusionCurrent: originalCurrent - capacitiveCurrent,
     g: originalCurrent === 0 ? 0 : capacitiveCurrent / originalCurrent,
+    effectiveFraction: originalCurrent === 0 ? 0 : capacitiveCurrent / originalCurrent,
+    correctionMagnitude: 0,
     branch,
     sourceIndex,
     synthetic: false
