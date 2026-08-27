@@ -156,6 +156,32 @@ describe("MaterialDetail", () => {
     expect(markup).not.toContain("<h3>Mechanical / Elastic Properties</h3>");
   });
 
+  it("renders a shareable phonon-properties section when a result is available", () => {
+    const material = {
+      ...materials[0],
+      phonons: {
+        phonon_calculated: true,
+        dynamically_stable: true
+      },
+      files: {
+        ...materials[0].files,
+        phonon: "/figures/TMCC-0001/phonon-dispersion.png"
+      }
+    };
+    const markup = renderWithI18n(<MaterialDetail material={material} />);
+
+    expect(markup).toContain('<article id="phonon-properties" class="panel"><h3>Phonon / Dynamical Properties</h3>');
+    expect(markup).toContain("Dynamically stable");
+    expect(markup).toContain("Stable");
+    expect(markup).toContain('href="/figures/TMCC-0001/phonon-dispersion.png"');
+  });
+
+  it("does not render an empty phonon-properties section", () => {
+    const markup = renderWithI18n(<MaterialDetail material={materials[0]} />);
+
+    expect(markup).not.toContain('id="phonon-properties"');
+  });
+
   it("shows the rhombohedral setting note for R-3m materials", () => {
     const material = materials.find((item) => item.material_id === "TMCC-0002") ?? materials[1];
     const markup = renderWithI18n(<MaterialDetail material={material} />);

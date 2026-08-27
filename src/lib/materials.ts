@@ -161,7 +161,7 @@ export function getPhononStabilityLabel(material: MaterialRecord) {
   const dynamicallyStable = material.phonons?.dynamically_stable;
   if (dynamicallyStable === true) return "Stable";
   if (dynamicallyStable === false) return "Unstable";
-  return "-";
+  return "Pending";
 }
 
 function inferSubclass(material: MaterialRecord) {

@@ -98,6 +98,99 @@ describe("MaterialExplorer", () => {
     container.remove();
   });
 
+  it("filters to mechanically stable materials when the stability checkbox is selected", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    const materials = [
+      { ...baseMaterial, material_id: "TMCC-0001", slug: "stable", formula: "Nb2S2C", mechanical: { mechanically_stable: true } },
+      { ...baseMaterial, material_id: "TMCC-0002", slug: "unstable", formula: "Ta2S2C", mechanical: { mechanically_stable: false } },
+      { ...baseMaterial, material_id: "TMCC-0003", slug: "pending", formula: "V2S2C", mechanical: {} }
+    ] as MaterialRecord[];
+
+    await act(async () => {
+      root.render(withI18n(
+        <MaterialExplorer
+          materials={materials}
+          selectedId="TMCC-0001"
+          onSelect={() => undefined}
+          elementSearch={{ elements: [], mode: "only" }}
+        />
+      ));
+    });
+
+    const checkbox = container.querySelector<HTMLInputElement>('input[name="mechanically-stable-only"]');
+    expect(checkbox).not.toBeNull();
+    await act(async () => {
+      checkbox?.click();
+    });
+
+    expect(container.textContent).toContain("TMCC-0001");
+    expect(container.textContent).not.toContain("TMCC-0002");
+    expect(container.textContent).not.toContain("TMCC-0003");
+
+    await act(async () => root.unmount());
+    container.remove();
+  });
+
+  it("filters to dynamically stable materials and combines both stability filters", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    const materials = [
+      {
+        ...baseMaterial,
+        material_id: "TMCC-0001",
+        slug: "both-stable",
+        formula: "Nb2S2C",
+        mechanical: { mechanically_stable: true },
+        phonons: { dynamically_stable: true }
+      },
+      {
+        ...baseMaterial,
+        material_id: "TMCC-0002",
+        slug: "phonon-only",
+        formula: "Ta2S2C",
+        mechanical: { mechanically_stable: false },
+        phonons: { dynamically_stable: true }
+      },
+      {
+        ...baseMaterial,
+        material_id: "TMCC-0003",
+        slug: "phonon-pending",
+        formula: "V2S2C",
+        mechanical: { mechanically_stable: true },
+        phonons: {}
+      }
+    ] as MaterialRecord[];
+
+    await act(async () => {
+      root.render(withI18n(
+        <MaterialExplorer
+          materials={materials}
+          selectedId="TMCC-0001"
+          onSelect={() => undefined}
+          elementSearch={{ elements: [], mode: "only" }}
+        />
+      ));
+    });
+
+    const phononCheckbox = container.querySelector<HTMLInputElement>('input[name="dynamically-stable-only"]');
+    const mechanicalCheckbox = container.querySelector<HTMLInputElement>('input[name="mechanically-stable-only"]');
+    expect(phononCheckbox).not.toBeNull();
+    await act(async () => phononCheckbox?.click());
+    expect(container.textContent).toContain("TMCC-0001");
+    expect(container.textContent).toContain("TMCC-0002");
+    expect(container.textContent).not.toContain("TMCC-0003");
+
+    await act(async () => mechanicalCheckbox?.click());
+    expect(container.textContent).toContain("TMCC-0001");
+    expect(container.textContent).not.toContain("TMCC-0002");
+
+    await act(async () => root.unmount());
+    container.remove();
+  });
+
   it("sorts table rows by a clicked column header and toggles direction", async () => {
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -198,7 +291,7 @@ describe("MaterialExplorer", () => {
     expect(markup).toContain("<span class=\"column-heading-text\"><span>E_form</span><small class=\"column-unit\">eV/atom</small></span>");
     expect(markup).toContain("<span>Mech. Stab.</span>");
     expect(markup).not.toContain("<span>E_hull</span>");
-    expect(markup).not.toContain("<span>Phonon</span>");
+    expect(markup).toContain("<span>Phonon Stab.</span>");
     expect(markup).toContain("<span class=\"column-heading-text\"><span>Band Gap</span><small class=\"column-unit\">eV</small></span>");
   });
 
@@ -229,6 +322,35 @@ describe("MaterialExplorer", () => {
     expect(markup).toContain('href="/?material=nb2s2c-p-3m1#mechanical-properties">Stable</a>');
     expect(markup).toContain("<td>Pending</td>");
     expect(markup).not.toContain('href="/?material=nb2s2c-r-3m#mechanical-properties"');
+  });
+
+  it("links calculated phonon stability and leaves pending results as text", () => {
+    const stableMaterial = {
+      ...baseMaterial,
+      material_id: "TMCC-0001",
+      slug: "nb2s2c-p-3m1",
+      formula: "Nb2S2C",
+      phonons: { dynamically_stable: true }
+    } as MaterialRecord;
+    const pendingMaterial = {
+      ...baseMaterial,
+      material_id: "TMCC-0002",
+      slug: "nb2s2c-r-3m",
+      formula: "Nb2S2C",
+      phonons: {}
+    } as MaterialRecord;
+    const markup = renderWithI18n(
+      <MaterialExplorer
+        materials={[stableMaterial, pendingMaterial]}
+        selectedId="TMCC-0001"
+        onSelect={() => undefined}
+        elementSearch={{ elements: [], mode: "only" }}
+      />
+    );
+
+    expect(markup).toContain('href="/?material=nb2s2c-p-3m1#phonon-properties">Stable</a>');
+    expect(markup).toContain("<td>Pending</td>");
+    expect(markup).not.toContain('href="/?material=nb2s2c-r-3m#phonon-properties"');
   });
 
   it("shows DFT energy per formula unit and dashes for missing table values", () => {
@@ -274,7 +396,7 @@ describe("MaterialExplorer", () => {
       />
     );
 
-    expect(markup).toContain("<span>Sites/cell</span>");
+    expect(markup).toContain("<span>Sites / cell</span>");
   });
 
   it("shows structure type and TMCC subclass columns", () => {
