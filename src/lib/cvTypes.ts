@@ -177,6 +177,21 @@ export interface DunnFractionGrid {
   reverse: DunnFractionPoint[];
 }
 
+export interface DunnStabilizationDiagnostics {
+  forwardAnchorCoverage: number;
+  reverseAnchorCoverage: number;
+  effectiveAnchorCoverage: number;
+  lowerMedianRSquared: number;
+  rawFractionNoise: number;
+  confidenceBlend: number;
+  smoothingMultiplier: number;
+}
+
+export interface DunnStabilizationResult {
+  fractions: DunnFractionGrid;
+  diagnostics: DunnStabilizationDiagnostics;
+}
+
 export interface DunnRegularizationDiagnostics {
   lambda: number;
   iterations: number;
