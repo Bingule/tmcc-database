@@ -104,6 +104,15 @@ export interface DunnDiagnostics {
   lowFitQuality: boolean;
   scanRateWarning: boolean;
   qualityPassed: boolean;
+  forwardAnchorCoverage: number;
+  reverseAnchorCoverage: number;
+  effectiveAnchorCoverage: number;
+  lowerMedianRSquared: number;
+  rawFractionNoise: number;
+  confidenceBlend: number;
+  smoothingMultiplier: number;
+  baseLambda: number;
+  effectiveLambda: number;
 }
 
 export interface DunnContribution {
@@ -213,6 +222,7 @@ export interface DunnContributionInput {
   dunnRecords: DunnFitGrid;
   optimized: DunnSharedFractionResult;
   fractions: DunnFractionGrid;
+  stabilization: DunnStabilizationDiagnostics;
   scanRate: number;
   seriesIndex: number;
   mode: DunnConfidenceMode;

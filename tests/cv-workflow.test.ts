@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
+import { makeDunnFractionGrid } from "../src/lib/cvDunnConfidence";
+import { secondDifferenceRoughness } from "../src/lib/cvDunnReconstruction";
+import { pchipInterpolate } from "../src/lib/cvInterpolation";
 import { analyzeCvWorkflow } from "../src/lib/cvWorkflow";
-import { CvAnalysisError, type CvAnalysisSettings, type CvSeries } from "../src/lib/cvTypes";
+import { CvAnalysisError, type CvAnalysisSettings, type CvSeries, type DunnFractionGrid } from "../src/lib/cvTypes";
 import {
   makeBp150RegressionSeries,
   makeNcpRegressionSeries,
   makeResolutionStabilitySeries,
-  makeSyntheticConstrainedDunnSeries
+  makeSyntheticConstrainedDunnSeries,
+  makeTurningPointRecoverySeries
 } from "./fixtures/cvRegressionData";
 
 function expectCvError(action: () => unknown, code: CvAnalysisError["code"]) {
@@ -21,7 +25,7 @@ function expectCvError(action: () => unknown, code: CvAnalysisError["code"]) {
 function makeLowQualitySeries(): CvSeries[] {
   const scanRates = [1, 4, 9, 16];
   const amplitudes = [1, 10, 2, 20];
-  const potentials = [-1, -0.5, 0, -0.5, -1];
+  const potentials = makeWorkflowLoopPotentials();
   return scanRates.map((scanRate, seriesIndex) => ({
     label: String(scanRate),
     scanRate,
@@ -38,15 +42,15 @@ function makePowerLawLoop(options: {
   distortReverseMiddle?: boolean;
 } = {}): CvSeries[] {
   const scanRates = options.scanRates ?? [1, 4, 9, 16];
-  const potentials = [-1, -0.5, 0, -0.5, -1];
+  const potentials = makeWorkflowLoopPotentials();
   return scanRates.map((scanRate, seriesIndex) => ({
     label: String(scanRate),
     scanRate,
     points: potentials.map((potential, pointIndex) => {
-      if (options.distortForwardMiddle && pointIndex === 1) {
+      if (options.distortForwardMiddle && pointIndex === 10) {
         return { potential, current: [1, 100, 2, 50][seriesIndex]! };
       }
-      if (options.distortReverseMiddle && pointIndex === 3) {
+      if (options.distortReverseMiddle && pointIndex === 30) {
         return { potential, current: [1, 100, 2, 50][seriesIndex]! };
       }
       return {
@@ -55,6 +59,11 @@ function makePowerLawLoop(options: {
       };
     })
   }));
+}
+
+function makeWorkflowLoopPotentials(): number[] {
+  const forward = Array.from({ length: 21 }, (_, index) => -1 + index / 20);
+  return [...forward, ...forward.slice(0, -1).reverse()];
 }
 
 const settings: CvAnalysisSettings = {
@@ -91,8 +100,8 @@ describe("analyzeCvWorkflow quality records", () => {
     )).toBe(true);
     expect(strict.bRecords.filter((record) => record.potential === -0.5)
       .map(({ sequenceIndex, branchIndex, status }) => ({ sequenceIndex, branchIndex, status }))).toEqual([
-      { sequenceIndex: 1, branchIndex: 0, status: "belowRSquaredThreshold" },
-      { sequenceIndex: 3, branchIndex: 1, status: "valid" }
+      { sequenceIndex: 10, branchIndex: 0, status: "belowRSquaredThreshold" },
+      { sequenceIndex: 30, branchIndex: 1, status: "valid" }
     ]);
     expect(strict.bRecords.find((record) => record.status === "belowRSquaredThreshold")?.fit).not.toBeNull();
     expect(strict.summary.excludedBCount).toBeGreaterThan(0);
@@ -155,14 +164,45 @@ describe("constrained Dunn regression datasets", () => {
       const result = analyzeCvWorkflow(series, { ...settings, dunnConfidenceMode });
       expect(result.contributions).toHaveLength(series.length);
       for (const contribution of result.contributions) {
-        expect(contribution.g.every((value) => value >= 0 && value <= 1)).toBe(true);
+        expect(contribution.g.every((value) => Number.isFinite(value) && value >= 0 && value <= 1)).toBe(true);
+        contribution.capacitiveForward.forEach((value, index) => {
+          expect(value).toBeCloseTo(contribution.g[index]! * contribution.originalForward[index]!, 12);
+        });
+        contribution.capacitiveReverse.forEach((value, index) => {
+          expect(value).toBeCloseTo(contribution.g[index]! * contribution.originalReverse[index]!, 12);
+        });
         expect(contribution.capacitiveForward.every(Number.isFinite)).toBe(true);
         expect(contribution.capacitiveReverse.every(Number.isFinite)).toBe(true);
         expect(contribution.diffusionForward.every(Number.isFinite)).toBe(true);
         expect(contribution.diffusionReverse.every(Number.isFinite)).toBe(true);
         expect(contribution.capacitivePercent).toBeGreaterThanOrEqual(0);
         expect(contribution.capacitivePercent).toBeLessThanOrEqual(100);
+        expect(contribution.capacitivePercent + contribution.diffusionPercent).toBeCloseTo(100, 10);
       }
+    }
+  });
+
+  it.each([
+    ["NCP", makeNcpRegressionSeries],
+    ["BP150", makeBp150RegressionSeries]
+  ] as const)("stabilizes sparse threshold evidence for %s before shared-g optimization", (_name, makeSeries) => {
+    const result = analyzeCvWorkflow(makeSeries(), settings);
+
+    for (const contribution of result.contributions) {
+      const rawTarget = fillLinearGaps(combineContinuousWeightedTarget(makeDunnFractionGrid(
+        result.dunnRecords,
+        contribution.scanRate,
+        "weighted",
+        settings.rSquaredThreshold
+      )));
+      expect(contribution.diagnostics.confidenceBlend).toBeGreaterThan(0);
+      expect(contribution.diagnostics.effectiveLambda).toBeCloseTo(
+        contribution.diagnostics.baseLambda * contribution.diagnostics.smoothingMultiplier,
+        12
+      );
+      expect(secondDifferenceRoughness(contribution.g, contribution.potentialGrid)).toBeLessThan(
+        secondDifferenceRoughness(rawTarget, contribution.potentialGrid)
+      );
     }
   });
 
@@ -174,17 +214,84 @@ describe("constrained Dunn regression datasets", () => {
   it("keeps one continuous model stable when only grid density changes tenfold", () => {
     const baseline = analyzeCvWorkflow(makeResolutionStabilitySeries(51), settings);
     const dense = analyzeCvWorkflow(makeResolutionStabilitySeries(501), settings);
+    for (const contribution of [...baseline.contributions, ...dense.contributions]) {
+      expect(contribution.diagnostics.effectiveAnchorCoverage).toBeLessThan(0.01);
+      expect(contribution.diagnostics.confidenceBlend).toBeGreaterThan(0);
+      expect(contribution.diagnostics.smoothingMultiplier).toBeGreaterThan(1);
+      expect(Math.abs(
+        contribution.diagnostics.forwardAnchorCoverage
+        - contribution.diagnostics.reverseAnchorCoverage
+      )).toBeLessThan(0.02);
+    }
     const maximumPercentageDifference = Math.max(...dense.contributions.map((item, index) =>
       Math.abs(item.capacitivePercent - baseline.contributions[index]!.capacitivePercent)));
-    expect(maximumPercentageDifference).toBeLessThan(0.5);
-
-    dense.contributions.forEach((item, seriesIndex) => {
+    const maximumFixedPotentialDifference = Math.max(...dense.contributions.flatMap((item, seriesIndex) => {
       const coarse = baseline.contributions[seriesIndex]!;
-      for (const fraction of [0, 0.25, 0.5, 0.75, 1]) {
-        const coarseIndex = Math.round(fraction * (coarse.g.length - 1));
-        const denseIndex = Math.round(fraction * (item.g.length - 1));
-        expect(Math.abs(item.g[denseIndex]! - coarse.g[coarseIndex]!)).toBeLessThan(0.02);
-      }
-    });
+      return [0, 0.25, 0.5, 0.75, 1].map((fraction) => {
+        const potential = item.potentialGrid[0]!
+          + fraction * (item.potentialGrid.at(-1)! - item.potentialGrid[0]!);
+        return Math.abs(
+          evaluateG(item.potentialGrid, item.g, potential)
+          - evaluateG(coarse.potentialGrid, coarse.g, potential)
+        );
+      });
+    }));
+    expect(maximumPercentageDifference).toBeLessThan(0.5);
+    expect(maximumFixedPotentialDifference).toBeLessThan(0.02);
+  });
+
+  it("restores every singly and doubly recorded turning-point sample in the final path", () => {
+    for (const recording of ["single", "double"] as const) {
+      const result = analyzeCvWorkflow(makeTurningPointRecoverySeries(recording), settings);
+
+      result.alignedGrid.cycles.forEach((cycle, seriesIndex) => {
+        const contribution = result.contributions[seriesIndex]!;
+        const turningRecords = cycle.originalPoints.flatMap((original, sourceIndex) =>
+          cycle.turningPotentials.includes(original.potential) ? [{ original, sourceIndex }] : []);
+        const expectedBranches = recording === "single"
+          ? ["forward", "forward", "reverse"] as const
+          : ["forward", "forward", "reverse", "reverse"] as const;
+        expect(turningRecords).toHaveLength(expectedBranches.length);
+        turningRecords.forEach(({ original, sourceIndex }, turningIndex) => {
+          const reconstructed = contribution.plotPath[sourceIndex]!;
+          expect(reconstructed.potential).toBe(original.potential);
+          expect(reconstructed.branch).toBe(expectedBranches[turningIndex]);
+          expect(reconstructed.current).toBeCloseTo(
+            original.current * evaluateG(contribution.potentialGrid, contribution.g, original.potential),
+            12
+          );
+        });
+      });
+    }
   });
 });
+
+function combineContinuousWeightedTarget(fractions: DunnFractionGrid): Array<number | null> {
+  return fractions.forward.map((forward, index) => {
+    const reverse = fractions.reverse[index]!;
+    const evidence = [forward, reverse].filter((point) => point.fraction !== null && point.confidence > 0);
+    const totalConfidence = evidence.reduce((sum, point) => sum + point.confidence, 0);
+    if (totalConfidence === 0) return null;
+    return evidence.reduce((sum, point) => sum + point.fraction! * point.confidence, 0) / totalConfidence;
+  });
+}
+
+function fillLinearGaps(values: Array<number | null>): number[] {
+  const anchors = values.flatMap((value, index) => value === null ? [] : [index]);
+  if (anchors.length === 0) throw new Error("expected raw Dunn evidence");
+  return values.map((value, index) => {
+    if (value !== null) return value;
+    const left = anchors.filter((anchor) => anchor < index).at(-1);
+    const right = anchors.find((anchor) => anchor > index);
+    if (left === undefined) return values[right!]!;
+    if (right === undefined) return values[left]!;
+    const blend = (index - left) / (right - left);
+    return values[left]! + blend * (values[right]! - values[left]!);
+  });
+}
+
+function evaluateG(potentials: number[], g: number[], potential: number): number {
+  if (potential <= potentials[0]!) return g[0]!;
+  if (potential >= potentials.at(-1)!) return g.at(-1)!;
+  return pchipInterpolate(potentials, g, [potential])[0]!;
+}

@@ -47,7 +47,10 @@ export function makeNcpRegressionSeries(): CvSeries[] {
         const k1 = sign * (0.08 + 0.22 * peak);
         const k2 = sign * (0.45 + 0.35 * Math.cos((potential - 0.2) * Math.PI));
         const deterministicRipple = 0.0005 * Math.sin((pointIndex + 1) * (index + 2));
-        return k1 * rate + k2 * Math.sqrt(rate) + deterministicRipple;
+        const sparseEvidenceDistortion = potential > 0.32 && potential < 0.88
+          ? sign * [0.8, -0.65, 0.75, -0.7, 0.85][index]!
+          : 0;
+        return k1 * rate + k2 * Math.sqrt(rate) + deterministicRipple + sparseEvidenceDistortion;
       })
     };
   });
@@ -83,6 +86,7 @@ export function makeSyntheticConstrainedDunnSeries(seed = 11): CvSeries[] {
 
 export function makeResolutionStabilitySeries(pointCount: number): CvSeries[] {
   const scanRates = [0.7, 1.9, 4.3, 8.8];
+  const regressionResiduals = orthogonalDunnResiduals(scanRates);
   return scanRates.map((scanRate, seriesIndex) => {
     const grid = fixedCountGrid(-0.8, 0.6, pointCount);
     const potentials = endpointStartedLoop(grid);
@@ -94,7 +98,58 @@ export function makeResolutionStabilitySeries(pointCount: number): CvSeries[] {
         const sign = branch === "forward" ? 1 : -1;
         const gTrue = 0.25 + 0.45 * Math.pow(Math.sin(Math.PI * normalized), 2);
         const totalShape = sign * (0.8 + 0.5 * Math.cos(2 * Math.PI * normalized));
-        return totalShape * gTrue * rate + totalShape * (1 - gTrue) * Math.sqrt(rate);
+        // Test-only residual design: orthogonality to [1, sqrt(rate)] lowers R²
+        // without biasing the theoretical Dunn k1/k2 coefficients or fraction.
+        const regressionResidual = Math.sqrt(rate) * regressionResiduals[seriesIndex]!;
+        const deterministicNoise = 0.0015 * Math.sin(9 * potential) * regressionResidual;
+        const gapEnvelope = 0.95 + 0.05 * smoothBand(normalized, 0.35, 0.65, 0.05);
+        const lowConfidenceGap = 0.6 * gapEnvelope * regressionResidual;
+        return totalShape * gTrue * rate
+          + totalShape * (1 - gTrue) * Math.sqrt(rate)
+          + sign * (deterministicNoise + lowConfidenceGap);
+      })
+    };
+  });
+}
+
+function orthogonalDunnResiduals(scanRates: number[]): number[] {
+  const x = scanRates.map(Math.sqrt);
+  const pattern = [1, -1, 1, -1];
+  const meanX = x.reduce((sum, value) => sum + value, 0) / x.length;
+  const meanPattern = pattern.reduce((sum, value) => sum + value, 0) / pattern.length;
+  const centeredX = x.map((value) => value - meanX);
+  const centeredPattern = pattern.map((value) => value - meanPattern);
+  const projection = centeredX.reduce((sum, value, index) =>
+    sum + value * centeredPattern[index]!, 0)
+    / centeredX.reduce((sum, value) => sum + value * value, 0);
+  const residuals = centeredPattern.map((value, index) => value - projection * centeredX[index]!);
+  const scale = Math.max(...residuals.map(Math.abs));
+  return residuals.map((value) => value / scale);
+}
+
+function smoothBand(value: number, left: number, right: number, rampWidth: number): number {
+  const leftRamp = Math.min(1, Math.max(0, (value - left) / rampWidth));
+  const rightRamp = Math.min(1, Math.max(0, (right - value) / rampWidth));
+  const smoothLeft = leftRamp ** 2 * (3 - 2 * leftRamp);
+  const smoothRight = rightRamp ** 2 * (3 - 2 * rightRamp);
+  return smoothLeft * smoothRight;
+}
+
+export function makeTurningPointRecoverySeries(recording: "single" | "double"): CvSeries[] {
+  const scanRates = [1, 4, 9, 16];
+  return scanRates.map((scanRate, seriesIndex) => {
+    const grid = fixedCountGrid(-1, 1, 21);
+    const potentials = recording === "single"
+      ? endpointStartedLoop(grid)
+      : [...grid, 1, ...grid.slice(0, -1).reverse()];
+    return {
+      label: `${scanRate} mV/s`,
+      scanRate,
+      points: makePoints(potentials, scanRate, seriesIndex, (potential, branch, rate) => {
+        const sign = branch === "forward" ? 1 : -1;
+        const k1 = sign * (0.35 + 0.08 * potential);
+        const k2 = sign * (0.7 - 0.12 * potential);
+        return k1 * rate + k2 * Math.sqrt(rate);
       })
     };
   });

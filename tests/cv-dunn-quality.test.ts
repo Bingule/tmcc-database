@@ -57,6 +57,7 @@ describe("reconstructDunnContribution", () => {
         g: [0.25, 0.5, 0.75],
         diagnostics: { baseLambda: 0.1, lambda: 0.1, smoothingMultiplier: 1, iterations: 12, converged: true, optimalityResidual: 0, fidelity: 0, roughness: 0 }
       },
+      stabilization: makeStabilizationDiagnostics(),
       fractions: makeFractions(alignedGrid.potentials),
       scanRate: 1,
       seriesIndex: 0,
@@ -97,6 +98,7 @@ describe("reconstructDunnContribution", () => {
         g: [0.25, 0.5, 0.75],
         diagnostics: { baseLambda: 0.1, lambda: 0.1, smoothingMultiplier: 1, iterations: 12, converged: true, optimalityResidual: 0, fidelity: 0, roughness: 0 }
       },
+      stabilization: makeStabilizationDiagnostics(),
       fractions: makeFractions(alignedGrid.potentials),
       scanRate: 1,
       seriesIndex: 0,
@@ -199,6 +201,7 @@ describe("reconstructDunnContribution", () => {
       alignedGrid,
       dunnRecords,
       optimized: { g: [0.25, 0.5, 0.75], diagnostics: { baseLambda: 0.1, lambda: 0.1, smoothingMultiplier: 1, iterations: 12, converged: true, optimalityResidual: 0, fidelity: 0, roughness: 0 } },
+      stabilization: makeStabilizationDiagnostics(),
       fractions,
       scanRate: 1,
       seriesIndex: 0,
@@ -234,9 +237,34 @@ describe("reconstructDunnContribution", () => {
       reverseAboveThresholdPercent: 100,
       lowFitQuality: false,
       scanRateWarning: true,
-      qualityPassed: false
+      qualityPassed: false,
+      forwardAnchorCoverage: 0.8,
+      reverseAnchorCoverage: 0.7,
+      effectiveAnchorCoverage: Math.sqrt(0.8 * 0.7),
+      lowerMedianRSquared: 0.96,
+      rawFractionNoise: 0.2,
+      confidenceBlend: 0.1,
+      smoothingMultiplier: 1,
+      baseLambda: 0.1,
+      effectiveLambda: 0.1
     });
     expect(contribution.diagnostics!.forwardAboveThresholdPercent).toBeCloseTo(200 / 3, 12);
+  });
+
+  it.each([
+    ["forwardAnchorCoverage", -0.01],
+    ["reverseAnchorCoverage", 1.01],
+    ["effectiveAnchorCoverage", Number.NaN],
+    ["lowerMedianRSquared", 1.01],
+    ["rawFractionNoise", -0.01],
+    ["confidenceBlend", 1.01],
+    ["smoothingMultiplier", 30.01],
+    ["baseLambda", 0],
+    ["effectiveLambda", Number.POSITIVE_INFINITY]
+  ] as const)("rejects invalid %s diagnostics", (field, value) => {
+    const contribution = makeCompleteContribution();
+    contribution.diagnostics[field] = value;
+    expect(() => validateDunnContribution(contribution)).toThrow("invalidDataShape");
   });
 });
 
@@ -295,6 +323,18 @@ function makeFractions(potentials: number[]): DunnFractionGrid {
   };
 }
 
+function makeStabilizationDiagnostics() {
+  return {
+    forwardAnchorCoverage: 0.8,
+    reverseAnchorCoverage: 0.7,
+    effectiveAnchorCoverage: Math.sqrt(0.8 * 0.7),
+    lowerMedianRSquared: 0.96,
+    rawFractionNoise: 0.2,
+    confidenceBlend: 0.1,
+    smoothingMultiplier: 1
+  };
+}
+
 function makeCompleteContribution(): DunnContribution {
   return {
     scanRate: 1,
@@ -327,7 +367,16 @@ function makeCompleteContribution(): DunnContribution {
       reverseAboveThresholdPercent: 100,
       lowFitQuality: false,
       scanRateWarning: true,
-      qualityPassed: false
+      qualityPassed: false,
+      forwardAnchorCoverage: 0.8,
+      reverseAnchorCoverage: 0.7,
+      effectiveAnchorCoverage: Math.sqrt(0.8 * 0.7),
+      lowerMedianRSquared: 0.96,
+      rawFractionNoise: 0.2,
+      confidenceBlend: 0.1,
+      smoothingMultiplier: 1,
+      baseLambda: 0.1,
+      effectiveLambda: 0.1
     }
   };
 }

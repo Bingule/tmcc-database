@@ -1,9 +1,9 @@
 import { attemptBValueFits, validateInterpolatedCvData } from "./cvAnalysis";
 import { CvCycleStructureError, normalizeAlignedCvCycles } from "./cvCycle";
-import { makeDunnFractionGrid } from "./cvDunnConfidence";
 import { fitDunnBranches } from "./cvDunnFit";
 import { reconstructDunnContribution } from "./cvDunnQuality";
 import { optimizeSharedFraction } from "./cvDunnReconstruction";
+import { stabilizeDunnFractions } from "./cvDunnStabilization";
 import { alignCvBranches, toSequentialGrid } from "./cvInterpolation";
 import {
   CvAnalysisError,
@@ -30,18 +30,23 @@ export function analyzeCvWorkflow(series: CvSeries[], settings: CvAnalysisSettin
     const dunnRecords = fitDunnBranches(alignedGrid, settings.turningPointTrim);
     const contributions = bRecords.some((record) => record.fit)
       ? alignedGrid.scanRates.map((scanRate, seriesIndex) => {
-        const fractions = makeDunnFractionGrid(
+        const stabilized = stabilizeDunnFractions(
           dunnRecords,
           scanRate,
           settings.dunnConfidenceMode,
           settings.rSquaredThreshold
         );
-        const optimized = optimizeSharedFraction(fractions, alignedGrid.potentials);
+        const optimized = optimizeSharedFraction(
+          stabilized.fractions,
+          alignedGrid.potentials,
+          stabilized.diagnostics.smoothingMultiplier
+        );
         return reconstructDunnContribution({
           alignedGrid,
           dunnRecords,
           optimized,
-          fractions,
+          fractions: stabilized.fractions,
+          stabilization: stabilized.diagnostics,
           scanRate,
           seriesIndex,
           mode: settings.dunnConfidenceMode,

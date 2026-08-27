@@ -293,9 +293,31 @@ function validateDiagnostics(diagnostics: DunnDiagnostics) {
     diagnostics.commonMinimum,
     diagnostics.commonMaximum,
     diagnostics.forwardAboveThresholdPercent,
-    diagnostics.reverseAboveThresholdPercent
+    diagnostics.reverseAboveThresholdPercent,
+    diagnostics.forwardAnchorCoverage,
+    diagnostics.reverseAnchorCoverage,
+    diagnostics.effectiveAnchorCoverage,
+    diagnostics.lowerMedianRSquared,
+    diagnostics.rawFractionNoise,
+    diagnostics.confidenceBlend,
+    diagnostics.smoothingMultiplier,
+    diagnostics.baseLambda,
+    diagnostics.effectiveLambda
+  ];
+  const unitIntervalValues = [
+    diagnostics.forwardAnchorCoverage,
+    diagnostics.reverseAnchorCoverage,
+    diagnostics.effectiveAnchorCoverage,
+    diagnostics.lowerMedianRSquared,
+    diagnostics.rawFractionNoise,
+    diagnostics.confidenceBlend
   ];
   if (finiteValues.some((value) => !Number.isFinite(value))
+    || unitIntervalValues.some((value) => value < 0 || value > 1)
+    || diagnostics.smoothingMultiplier < 1
+    || diagnostics.smoothingMultiplier > 30
+    || diagnostics.baseLambda <= 0
+    || diagnostics.effectiveLambda <= 0
     || (diagnostics.medianForwardRSquared !== null && !Number.isFinite(diagnostics.medianForwardRSquared))
     || (diagnostics.medianReverseRSquared !== null && !Number.isFinite(diagnostics.medianReverseRSquared))
     || (diagnostics.mode !== "threshold" && diagnostics.mode !== "weighted")) {
@@ -329,7 +351,10 @@ function makeDiagnostics(input: DunnContributionInput): DunnDiagnostics {
     reverseAboveThresholdPercent: 100 * branchAboveThresholdFraction(reverseRSquared, input.threshold),
     lowFitQuality,
     scanRateWarning,
-    qualityPassed: !lowFitQuality && !scanRateWarning
+    qualityPassed: !lowFitQuality && !scanRateWarning,
+    ...input.stabilization,
+    baseLambda: input.optimized.diagnostics.baseLambda,
+    effectiveLambda: input.optimized.diagnostics.lambda
   };
 }
 
