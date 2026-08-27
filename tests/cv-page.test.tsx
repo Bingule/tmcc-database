@@ -717,7 +717,7 @@ describe("CV kinetics page", () => {
 
   it("maps exact potential and rate selections to signed publication-style Dunn areas", async () => {
     const view = await renderPage();
-    await upload(view, "Potential,Current 1 mV/s,Current 4 mV/s,Current 9 mV/s\n0,1,6,15\n1,-1,-4,-9\n0,1,6,15");
+    await upload(view, "Potential,Current 1 mV/s,Current 4 mV/s,Current 9 mV/s\n0,1,6,15\n0.5,4,10,18\n1,-1,-4,-9\n0.5,4,10,18\n0,1,6,15");
     await click(view, "Run analysis");
     const rate = view.querySelector<HTMLSelectElement>('select[name="selectedRate"]')!;
     await setPotential(view, "1");
@@ -729,7 +729,7 @@ describe("CV kinetics page", () => {
     expect([...selected.cells].map((cell) => cell.textContent)).toEqual(["1", "-9", "-9", "-4.5", "-4.5"]);
     const chart = view.querySelector('[data-export-id="cv-dunn-chart"]')!;
     expect(chart.querySelectorAll('[data-series-id]')).toHaveLength(3);
-    expect(chart.querySelector('[data-series-id="original"]')?.getAttribute("data-render-point-count")).toBe("3");
+    expect(chart.querySelector('[data-series-id="original"]')?.getAttribute("data-render-point-count")).toBe("5");
     expect(chart.querySelector('[data-series-id="reconstructed-total"]')).toBeNull();
     expect(chart.querySelectorAll('[data-series-id="capacitive-forward"], [data-series-id="capacitive-reverse"]')).toHaveLength(2);
     expect(chart.querySelector('[data-series-id="capacitive"]')).toBeNull();
@@ -737,7 +737,7 @@ describe("CV kinetics page", () => {
     expect(chart.querySelectorAll('[data-area-series-id="capacitive-area"]')).toHaveLength(1);
     expect(chart.querySelectorAll('[data-area-series-id="diffusion-area"]')).toHaveLength(2);
     expect(chart.querySelector('[data-area-series-id="excluded-area"]')).toBeNull();
-    expect(view.querySelector('[data-dunn-coverage="true"]')?.textContent).toContain("0 / 4 points (0%)");
+    expect(view.querySelector('[data-dunn-coverage="true"]')?.textContent).toContain("2 / 6 points (33.33333%)");
   });
 
   it("keeps the full measured loop and continuous Dunn areas when interior R-squared is low", async () => {
@@ -967,7 +967,7 @@ describe("CV kinetics page", () => {
     expect(exported[4].split("\r\n")[0]).toContain("Forward diffusion-controlled current (arb. units) at 1 mV/s");
     expect(exported[4].split("\r\n")[0]).toContain("Reverse diffusion-controlled current (arb. units) at 1 mV/s");
     expect(exported[5]).toContain("Valid points,Sampled points,Coverage (%),Contribution status,Data layout,Data source,Requested interval,Resolved interval,Dunn method,R² threshold,Requested turning point trim,Resolved turning point trim,Smoothing,Common potential range (V),Forward median R²,Reverse median R²,Dunn coverage (%)");
-    expect(exported[5]).toContain(",6,10,60,Available,XYYYYY,File upload,5000 mV,5000 mV,R² threshold,0.95,Auto,2000 mV");
+    expect(exported[5]).toContain(",6,10,60,Available,XYYYYY,File upload,5000 mV,5000 mV,R² threshold,0.95,Auto,100 mV");
 
     await click(view, "中文");
     await click(view, "cv-b-value-results.csv");
@@ -1131,7 +1131,7 @@ describe("CV kinetics page", () => {
 
   it("sorts scan-rate displays, uses point-only b observations, and breaks b curves across unavailable potentials", async () => {
     const view = await renderPage();
-    await upload(view, "Potential,Current 9 mV/s,Current 1 mV/s,Current 4 mV/s\n0,9,1,4\n1,0,0,0\n2,27,3,12\n1,0,0,0\n0,9,1,4");
+    await upload(view, "Potential,Current 9 mV/s,Current 1 mV/s,Current 4 mV/s\n0,9,1,4\n1,0,4,10\n2,27,3,12\n1,0,4,10\n0,9,1,4");
     await click(view, "Run analysis");
     const rate = view.querySelector<HTMLSelectElement>('select[name="selectedRate"]')!;
     expect([...rate.options].map((option) => option.value)).toEqual(["1", "4", "9"]);
