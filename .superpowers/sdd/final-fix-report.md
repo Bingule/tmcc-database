@@ -1,0 +1,175 @@
+# Final branch review fix report
+
+Date: 2026-08-27
+
+Worktree: `D:\codex_communication\tmcc-database\.worktrees\fix-dunn-literature-plot`
+
+Baseline: `bd8a7054`
+
+## Scope
+
+Implemented the accepted findings in `final-fix-brief.md` as one integrated TDD wave:
+
+1. target-rate-aware strict peak-family matching;
+2. normalized complete-cycle validation during import confirmation;
+3. a true pending Add-peak interaction backed by original extrema;
+4. strict detected-center mapping to defensible original local extrema;
+5. the common-range equality guard, stable manual labels, and scoped near-zero regression eligibility cleanup;
+6. stronger regression evidence for the deliberately unchanged branch-only endpoint-tail behavior.
+
+No homepage, shared Dunn `g(V)` reconstruction, contribution algorithm, threshold/weighted confidence mode, full-cycle ordering, or deployment workflow code was changed.
+
+## TDD evidence
+
+### 1. Target-rate matching and strict original-extremum mapping
+
+RED tests added in `tests/cv-peak-analysis.test.ts`:
+
+- A non-uniform `[0.01, 9, 10, 11, 1000]` mV/s fixture seeded from the richest middle rate initially mapped only the middle three rates instead of both lower and higher sides.
+- Permuting input order exposed the same target-rate-independent matching defect.
+- A rising-background fixture initially mapped a smoothed center to a raw non-extremum.
+- An isolated raw spike initially displaced the selected source point from the defensible clean peak (`0.025 V` instead of `0 V`).
+
+GREEN implementation:
+
+- `extendGroups` now passes the target scan rate through `monotoneAssignments` and `matchCost`.
+- `predictPeakPotentialAtRate` performs a stable potential-versus-`log(scanRate)` linear fit, with one-point and invalid-rate fallbacks.
+- Trend residual is evaluated at the actual target rate; raw displacement/prominence comparison uses the nearest already-matched rate.
+- Strict detected centers are mapped only through `findOriginalPeakExtrema`, then filtered by local prominence, distance, and smoothing residual.
+- The permutation test now produces identical rate-to-potential mappings and `b = 0.7`.
+
+Focused GREEN: `tests/cv-peak-analysis.test.ts` — 12/12 passed.
+
+### 2. Normalized import confirmation
+
+RED page tests added in `tests/cv-page.test.tsx`:
+
+- CSV, UTF-16 TXT, and XLSX fixtures contain a valid first 161-point loop followed by unequal one-direction tails with a tiny plateau/jitter step.
+- Before the production change, all three were rejected at confirmation with the complete-cycle structure error.
+
+GREEN implementation:
+
+- `confirmCvSeries` now validates through `normalizeAlignedCvCycles`, matching analysis-time first-loop selection.
+- A post-loop tail is accepted while it remains one-directional (including native-scale jitter); a tail that performs another genuine turn remains a structural error.
+- The legacy one-sweep confirmation fallback is retained only to preserve existing parser behavior for inputs that analysis can reject later with its established analysis error.
+- Existing finite-value, scan-rate, row/column, and localized error-code behavior remains intact.
+
+Integration RED/GREEN note: an initial branch-resolution guard was too broad and rejected five legitimate sparse-cycle/analysis-error tests. The failing focused run was 191/196. Root-cause isolation showed that the guard conflated sparse-but-structural input with a second completed traversal. Replacing it with ignored-tail direction-change detection restored those five tests while preserving the existing localized repeated-cycle error.
+
+Focused GREEN: parsing/import/page coverage included all three formats; final consolidated focused run passed 196/196.
+
+### 3. True pending Add peak and stable labels
+
+RED tests added in `tests/cv-peak-overrides.test.ts` and `tests/cv-page.test.tsx`:
+
+- A weak manually anchored family could not extend because the old implementation searched only automatic candidates.
+- Add immediately mutated/cloned the selected family, and the button exposed no pending accessible state (`aria-pressed` was absent).
+- Removing and adding again reused `manual-1`/its label instead of allocating a stable next identity.
+
+GREEN implementation:
+
+- Add toggles pending mode without changing any family; the next overview click supplies the nearest original `(seriesIndex, sourceIndex)` point.
+- The clicked source must be an unambiguous branch-local original extremum and must not already be occupied by an active family.
+- Manual extension proceeds independently above and below the anchor scan rate, predicts at each target rate, considers same-branch original extrema, and excludes occupied source indices.
+- `nextManualPeakNumber` and `nextLabelIndex` are monotonic state counters. Add/remove/add produces `manual-1`, then `manual-2`, and unique UI/CSV labels.
+- Add exposes `aria-pressed`; pressing it again cancels pending mode. No new translation key was required.
+
+Focused GREEN: overrides 6/6; pending-add page regression 1/1; peak chart/analysis/override focused coverage passed.
+
+### 4. Minor correctness fixes
+
+Common range:
+
+- RED: touching-only branch ranges did not throw.
+- GREEN: `commonMinimum >= commonMaximum` now throws `noCommonPotentialRange` before interval construction.
+
+Near-zero status versus eligibility:
+
+- RED: a high-R2 but negligible-current group still produced `rSquared = 1`, and a confirmed near-zero point remained plotted (5 points instead of 4).
+- GREEN: `CvPeakRatePoint.regressionEligible` is computed independently of user operation status. Fits and regression charts exclude ineligible near-zero points even after Confirm/Adjust status changes.
+
+Branch-only endpoint tail (deliberate non-change):
+
+- No production code changed.
+- The NCP endpoint regression now explicitly asserts `oppositeCurrent = 0`, `capacitiveCurrent = g * originalCurrent`, zero correction magnitude, and containment inside the signed raw branch.
+
+## Files changed
+
+Production:
+
+- `src/components/CvPeakAnalysisPanel.tsx`
+- `src/components/CvPeakOverviewChart.tsx`
+- `src/components/CvPeakRegressionChart.tsx`
+- `src/lib/cvInterpolation.ts`
+- `src/lib/cvParsing.ts`
+- `src/lib/cvPeakAnalysis.ts`
+- `src/lib/cvPeakOverrides.ts`
+- `src/lib/cvTypes.ts`
+- `src/pages/CvKineticsPage.tsx`
+
+Tests:
+
+- `tests/cv-interpolation.test.ts`
+- `tests/cv-page.test.tsx`
+- `tests/cv-peak-analysis.test.ts`
+- `tests/cv-peak-charts.test.tsx`
+- `tests/cv-peak-overrides.test.ts`
+- `tests/cv-workflow.test.ts`
+
+## Verification
+
+Codex Node used for every command:
+
+`C:\Users\ThinkPad\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe`
+
+Final focused command:
+
+```text
+node.exe .\node_modules\vitest\vitest.mjs run tests/cv-peak-analysis.test.ts tests/cv-peak-overrides.test.ts tests/cv-peak-charts.test.tsx tests/cv-page.test.tsx tests/cv-parsing.test.ts tests/cv-import.test.ts tests/cv-interpolation.test.ts tests/cv-workflow.test.ts tests/cv-cycle.test.ts
+```
+
+Result: 9 files passed, 196 tests passed.
+
+First full-suite run:
+
+```text
+node.exe .\node_modules\vitest\vitest.mjs run
+```
+
+Result: 42 files passed, 1 file failed; 522 tests passed and the new pending-add page test exceeded Vitest's 5-second default only under full parallel load. Its assertions did not fail. The same test passed alone in 2.92 seconds after assigning a 15-second timeout consistent with this file's other end-to-end page tests.
+
+Final full-suite run:
+
+```text
+node.exe .\node_modules\vitest\vitest.mjs run
+```
+
+Result: 43 files passed, 523 tests passed. The pre-existing React `act(...)` environment warning appeared in `b-value-overview-chart.test.tsx`; there were no test failures.
+
+Type check:
+
+```text
+node.exe .\node_modules\typescript\bin\tsc --noEmit
+```
+
+Result: exit code 0, no diagnostics.
+
+Repository checks:
+
+- `git diff --check`: no whitespace errors (only the worktree's LF-to-CRLF notices).
+- Baseline rechecked immediately before reporting: `bd8a7054`.
+
+## Self-review
+
+- Verified the diff is limited to the nine CV production files, six CV test files, and this report.
+- Verified no shared Dunn reconstruction/formula, contribution calculation, homepage, localization-resource architecture, or deployment file changed.
+- Verified branch-only endpoint-tail production behavior is untouched and is now explicitly characterized by regression assertions.
+- Verified strict and manual candidates retain original source indices and branch isolation.
+- Verified manual extensions cannot reuse active same-series source indices and remain subject to the ten-family cap.
+- Verified pending Add does not mutate prior families and can be canceled by pressing Add again.
+- Verified operation status cannot make a near-zero point regression-eligible or visible on the regression chart.
+- Verified normalized import confirmation preserves prior localized structural errors while accepting the requested tolerant first-loop inputs.
+
+## Remaining concerns
+
+No known correctness concern remains within the accepted fix scope. The only verification noise is the pre-existing React `act(...)` warning noted above.

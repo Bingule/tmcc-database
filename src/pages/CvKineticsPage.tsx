@@ -78,6 +78,7 @@ export function CvKineticsPage() {
   const [peakOverrides, setPeakOverrides] = useState<CvPeakOverrideState>(() => createPeakOverrideState());
   const [selectedPeakId, setSelectedPeakId] = useState<string | null>(null);
   const [selectedPeakSeriesIndex, setSelectedPeakSeriesIndex] = useState(0);
+  const [pendingPeakAdd, setPendingPeakAdd] = useState(false);
   const [peakInteractionError, setPeakInteractionError] = useState<"limit" | "snap" | null>(null);
   const [potentialInput, setPotentialInput] = useState("");
   const [selectedRate, setSelectedRate] = useState<number | undefined>();
@@ -106,6 +107,7 @@ export function CvKineticsPage() {
     setSelectedRate(undefined);
     setSelectedPeakId(null);
     setSelectedPeakSeriesIndex(0);
+    setPendingPeakAdd(false);
     setPeakInteractionError(null);
     if (!keepPeakOverrides) setPeakOverrides(createPeakOverrideState());
     setErrorCode(null);
@@ -229,6 +231,7 @@ export function CvKineticsPage() {
       setBAnalysisMode("peak");
       setSelectedPeakId(result.peakAnalysis.fits[0]?.peakId ?? null);
       setSelectedPeakSeriesIndex(0);
+      setPendingPeakAdd(false);
       setPeakInteractionError(null);
       setAnalysisMetadata({
         layout: table.layout,
@@ -409,18 +412,34 @@ export function CvKineticsPage() {
   }
 
   function addSelectedPeak() {
-    if (!analysis || !peakResult || !selectedPeakId) return setPeakInteractionError("snap");
-    const selected = peakResult.fits.find((fit) => fit.peakId === selectedPeakId);
-    const point = selected?.points[selectedPeakSeriesIndex]?.candidate;
-    if (!selected || !point) return setPeakInteractionError("snap");
+    if (!analysis || !peakResult) return setPeakInteractionError("snap");
+    if (peakResult.fits.length >= peakResult.maximumPeakCount) return setPeakInteractionError("limit");
+    setPendingPeakAdd((current) => !current);
+    setPeakInteractionError(null);
+  }
+
+  function selectPeakOverviewPoint(potential: number, seriesIndex: number, sourceIndex: number) {
+    if (!pendingPeakAdd) {
+      adjustSelectedPeak(potential);
+      return;
+    }
+    if (!analysis || !peakResult) return setPeakInteractionError("snap");
+    const cycle = analysis.alignedGrid.cycles[seriesIndex];
+    if (!cycle) return setPeakInteractionError("snap");
+    const onForward = cycle.forward.points.some((point) => point.sourceIndex === sourceIndex);
+    const onReverse = cycle.reverse.points.some((point) => point.sourceIndex === sourceIndex);
+    const branch = onForward === onReverse ? null : onForward ? "forward" as const : "reverse" as const;
+    if (!branch) return setPeakInteractionError("snap");
     try {
-      const next = addManualPeakOverride(peakOverrides, analysis.peakAnalysis, analysis.series, analysis.alignedGrid.cycles, {
-        anchorSeriesIndex: selectedPeakSeriesIndex,
-        branch: selected.branch,
-        sourceIndex: point.sourceIndex
+      const next = addManualPeakOverride(peakOverrides, peakResult, analysis.series, analysis.alignedGrid.cycles, {
+        anchorSeriesIndex: seriesIndex,
+        branch,
+        sourceIndex
       });
       setPeakOverrides(next);
       setSelectedPeakId(next.manualPeaks.at(-1)?.manualPeakId ?? selectedPeakId);
+      setSelectedPeakSeriesIndex(seriesIndex);
+      setPendingPeakAdd(false);
       setPeakInteractionError(null);
     } catch (error) {
       setPeakInteractionError(error instanceof CvPeakOverrideError && error.code === "peakLimit" ? "limit" : "snap");
@@ -432,6 +451,7 @@ export function CvKineticsPage() {
     const remaining = peakResult?.fits.filter((fit) => fit.peakId !== selectedPeakId) ?? [];
     setPeakOverrides((current) => removePeakOverride(current, selectedPeakId));
     setSelectedPeakId(remaining[0]?.peakId ?? null);
+    setPendingPeakAdd(false);
     setPeakInteractionError(null);
   }
 
@@ -481,13 +501,14 @@ export function CvKineticsPage() {
             selectedSeriesIndex={selectedPeakSeriesIndex}
             onPeakChange={(peakId) => { setSelectedPeakId(peakId); setPeakInteractionError(null); }}
             onSeriesChange={(seriesIndex) => { setSelectedPeakSeriesIndex(seriesIndex); setPeakInteractionError(null); }}
-            onPotentialSelect={(potential) => adjustSelectedPeak(potential)}
+            onPotentialSelect={selectPeakOverviewPoint}
             onAdjustPotential={(peakId, seriesIndex, potential) => adjustSelectedPeak(potential, peakId, seriesIndex)}
             onConfirm={confirmSelectedPeak}
             onExclude={excludeSelectedPeak}
             onRestore={restoreSelectedPeak}
             onAddPeak={addSelectedPeak}
             onRemovePeak={removeSelectedPeak}
+            pendingAdd={pendingPeakAdd}
             copy={makePeakPanelCopy(t)}
             metadata={chartMetadata}
           />

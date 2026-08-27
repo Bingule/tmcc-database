@@ -22,6 +22,61 @@ describe("detectPeakCandidates", () => {
       expect(local.every((candidate) => series[seriesIndex]!.points[candidate.sourceIndex]!.current === candidate.current)).toBe(true);
     }
   });
+
+  it("maps a detected peak on a rising local background to an original local extremum", () => {
+    const series = makeRisingBackgroundPeakSeries();
+    const cycles = normalizeAlignedCvCycles(series);
+    const candidates = detectPeakCandidates(series, cycles)
+      .filter((candidate) => candidate.branch === "forward");
+
+    expect(candidates.length).toBeGreaterThan(0);
+    for (const candidate of candidates) {
+      const branch = cycles[candidate.seriesIndex]!.forward.points;
+      const branchIndex = branch.findIndex((point) => point.sourceIndex === candidate.sourceIndex);
+      expect(branchIndex).toBeGreaterThan(0);
+      expect(branchIndex).toBeLessThan(branch.length - 1);
+      expect(candidate.current).toBeGreaterThan(branch[branchIndex - 1]!.current);
+      expect(candidate.current).toBeGreaterThanOrEqual(branch[branchIndex + 1]!.current);
+    }
+  });
+
+  it("does not let an isolated raw noise spike replace the nearby defensible peak", () => {
+    const clean = makeIsolatedSpikePeakSeries(false);
+    const spiked = makeIsolatedSpikePeakSeries(true);
+    const cleanCandidate = detectPeakCandidates(clean, normalizeAlignedCvCycles(clean))
+      .find((candidate) => candidate.branch === "forward");
+    const spikedCandidate = detectPeakCandidates(spiked, normalizeAlignedCvCycles(spiked))
+      .find((candidate) => candidate.branch === "forward");
+
+    expect(cleanCandidate).toBeDefined();
+    expect(spikedCandidate).toBeDefined();
+    expect(spikedCandidate!.potential).toBeCloseTo(cleanCandidate!.potential, 12);
+    expect(spikedCandidate!.sourceIndex).not.toBe(205);
+  });
+});
+
+it("matches strict peak families at the target log scan rate on both sides of a middle reference", () => {
+  const baseline = makeTargetRateMatchingFixture([0.01, 9, 10, 11, 1_000]);
+  const permuted = makeTargetRateMatchingFixture([1_000, 10, 0.01, 11, 9]);
+
+  const baselineGroups = matchPeakCandidates(baseline.candidates, baseline.series.map((item) => item.scanRate));
+  const permutedGroups = matchPeakCandidates(permuted.candidates, permuted.series.map((item) => item.scanRate));
+
+  expect(baselineGroups).toHaveLength(1);
+  expect(permutedGroups).toHaveLength(1);
+  expect(ratePotentialMap(baselineGroups[0]!)).toEqual([
+    [0.01, targetPotential(0.01)],
+    [9, targetPotential(9)],
+    [10, targetPotential(10)],
+    [11, targetPotential(11)],
+    [1_000, targetPotential(1_000)]
+  ]);
+  expect(ratePotentialMap(permutedGroups[0]!)).toEqual(ratePotentialMap(baselineGroups[0]!));
+
+  const [baselineFit] = fitPeakGroups(baselineGroups, baseline.series, 0);
+  const [permutedFit] = fitPeakGroups(permutedGroups, permuted.series, 0);
+  expect(baselineFit.b).toBeCloseTo(0.7, 12);
+  expect(permutedFit.b).toBeCloseTo(baselineFit.b!, 12);
 });
 
 it("matches shifted NCP-like peaks without combining branches", () => {
@@ -105,7 +160,7 @@ it("caps automatically matched peak groups at ten", () => {
   expect(result.fits.map((fit) => fit.labelIndex)).toEqual([1,2,3,4,5,6,7,8,9,10]);
 });
 
-it("marks a high-R² peak fit unstable when every peak current is negligible", () => {
+it("marks negligible peak currents ineligible instead of fitting their apparent power law", () => {
   const scanRates = [1, 2, 5, 10, 20];
   const group = makePeakGroup("forward", scanRates.map((scanRate, seriesIndex) => ({
     seriesIndex,
@@ -116,7 +171,10 @@ it("marks a high-R² peak fit unstable when every peak current is negligible", (
   })));
   const series = makeSeriesWithBranchScale(scanRates, 1);
   const [fit] = fitPeakGroups([group], series, 0.95);
-  expect(fit.rSquared).toBeGreaterThan(0.999);
+  expect(fit.rSquared).toBeNull();
+  expect(fit.b).toBeNull();
+  expect(fit.pointCount).toBe(0);
+  expect(fit.points.every((point) => point.regressionEligible === false)).toBe(true);
   expect(fit.fitStatus).toBe("nearZeroCurrentUnstable");
 });
 
@@ -186,5 +244,84 @@ function scaleCurrents(series: CvSeries[], factor: number): CvSeries[] {
   return series.map((item) => ({
     ...item,
     points: item.points.map((point) => ({ ...point, current: point.current * factor }))
+  }));
+}
+
+function makeTargetRateMatchingFixture(rateOrder: number[]) {
+  const series = rateOrder.map((scanRate) => ({
+    label: `${scanRate} mV/s`,
+    scanRate,
+    points: [{ potential: 0, current: Math.pow(scanRate, 0.7) }]
+  }));
+  const candidates = series.flatMap((item, seriesIndex) => {
+    const potentials = item.scanRate === 10 ? [-0.009, 0, 0.009] : [targetPotential(item.scanRate)];
+    return potentials.map((potential, sourceIndex) => ({
+      seriesIndex,
+      scanRate: item.scanRate,
+      branch: "forward" as const,
+      kind: "oxidation" as const,
+      sourceIndex,
+      potential,
+      current: Math.pow(item.scanRate, 0.7),
+      branchSpan: 1,
+      prominence: 1,
+      normalizedProminence: 1,
+      confidence: 1
+    }));
+  });
+  return { series, candidates };
+}
+
+function targetPotential(scanRate: number) {
+  return 0.015 * Math.log(scanRate / 10);
+}
+
+function ratePotentialMap(group: ReturnType<typeof matchPeakCandidates>[number]) {
+  return [...group.candidates.values()]
+    .sort((left, right) => left.scanRate - right.scanRate)
+    .map((candidate) => [candidate.scanRate, candidate.potential]);
+}
+
+function makeRisingBackgroundPeakSeries(): CvSeries[] {
+  const grid = Array.from({ length: 401 }, (_, index) => -1 + 2 * index / 400);
+  return [1, 4, 9].map((scanRate) => ({
+    label: `${scanRate} mV/s`,
+    scanRate,
+    points: [...grid, ...grid.slice(0, -1).reverse()].map((potential, sourceIndex) => {
+      const forward = sourceIndex <= 400;
+      const peak = Math.exp(-Math.pow(potential / 0.012, 2));
+      const risingShelf = potential <= 0.01
+        ? 0
+        : potential <= 0.1
+          ? 7 * (potential - 0.01) / 0.09
+          : potential <= 0.2
+            ? 7 * (0.2 - potential) / 0.1
+            : 0;
+      return {
+        potential,
+        current: forward
+          ? Math.pow(scanRate, 0.7) * (peak + risingShelf)
+          : -0.1 * Math.sqrt(scanRate)
+      };
+    })
+  }));
+}
+
+function makeIsolatedSpikePeakSeries(withSpike: boolean): CvSeries[] {
+  const grid = Array.from({ length: 401 }, (_, index) => -1 + 2 * index / 400);
+  return [1, 4, 9].map((scanRate) => ({
+    label: `${scanRate} mV/s`,
+    scanRate,
+    points: [...grid, ...grid.slice(0, -1).reverse()].map((potential, sourceIndex) => {
+      const forward = sourceIndex <= 400;
+      const peak = Math.exp(-Math.pow(potential / 0.055, 2));
+      const spike = withSpike && sourceIndex === 205 ? 1.25 : 0;
+      return {
+        potential,
+        current: forward
+          ? Math.pow(scanRate, 0.7) * (peak + spike)
+          : -0.1 * Math.sqrt(scanRate)
+      };
+    })
   }));
 }

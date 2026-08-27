@@ -257,6 +257,39 @@ describe("peak b-value charts", () => {
     await act(async () => root.unmount());
   });
 
+  it("does not plot a regression-ineligible near-zero point after it is confirmed", async () => {
+    const series = makeThreePeakNcpLikeSeries();
+    const result = analyzePeakBValues(series, normalizeAlignedCvCycles(series), 0.95);
+    const fit = result.fits[0]!;
+    const confirmedNearZero = {
+      ...fit,
+      points: fit.points.map((point, index) => index === 0
+        ? { ...point, status: "confirmed" as const, regressionEligible: false }
+        : point)
+    };
+    const container = document.createElement("div");
+    document.body.append(container);
+    containers.push(container);
+    const root = createRoot(container);
+
+    await act(async () => root.render(<CvPeakRegressionChart
+      fits={[confirmedNearZero]}
+      title="Peak-current b-value regressions"
+      xLabel="log(scan rate)"
+      yLabel="log(|peak current|)"
+      emptyLabel="No fit"
+      legendLabel="Legend"
+      peakLabel={(index) => `Peak ${index}`}
+      forwardLabel="Forward"
+      reverseLabel="Reverse"
+      oxidationLabel="Oxidation peak"
+      reductionLabel="Reduction peak"
+    />));
+
+    expect(container.querySelectorAll('[data-peak-regression-point="peak-1"]')).toHaveLength(fit.points.length - 1);
+    await act(async () => root.unmount());
+  });
+
   it("maps plot clicks to a potential while keeping branch and rate selection in the parent", async () => {
     const series = makeThreePeakNcpLikeSeries();
     const result = analyzePeakBValues(series, normalizeAlignedCvCycles(series), 0.95);

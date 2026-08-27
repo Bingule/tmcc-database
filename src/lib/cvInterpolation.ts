@@ -52,7 +52,7 @@ export function alignCvBranches(
   branches.forEach((branch) => validatePchipInput(branch.x, branch.y));
   const commonMinimum = Math.max(...branches.map((branch) => branch.x[0]!));
   const commonMaximum = Math.min(...branches.map((branch) => branch.x.at(-1)!));
-  if (commonMinimum > commonMaximum) throw new CvAnalysisError("noCommonPotentialRange");
+  if (commonMinimum >= commonMaximum) throw new CvAnalysisError("noCommonPotentialRange");
 
   const nativePotentialInterval = median(branches.map((branch) => nativeInterval(branch.x)));
   const span = commonMaximum - commonMinimum;

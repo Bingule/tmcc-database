@@ -51,6 +51,17 @@ describe("alignCvBranches", () => {
     expect(grid.resolvedPotentialInterval).toBeLessThanOrEqual(0.25);
   });
 
+  it("rejects branches whose common potential range collapses to one point", () => {
+    const series = [
+      { label: "1", scanRate: 1, points: [-1, -0.5, 0, -0.5, -1].map((potential) => ({ potential, current: potential + 2 })) },
+      { label: "4", scanRate: 4, points: [0, 0.5, 1, 0.5, 0].map((potential) => ({ potential, current: potential + 3 })) },
+      { label: "9", scanRate: 9, points: [-0.5, 0, 0.5, 0, -0.5].map((potential) => ({ potential, current: potential + 4 })) }
+    ];
+
+    expect(() => alignCvBranches(series, normalizeAlignedCvCycles(series), { mode: "auto" }))
+      .toThrow("noCommonPotentialRange");
+  });
+
   it("keeps forward and reverse currents independent on their shared grid", () => {
     const series = [1, 2, 4].map((scanRate) => ({
       label: String(scanRate),

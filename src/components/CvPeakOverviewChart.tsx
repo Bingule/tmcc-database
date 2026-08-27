@@ -6,7 +6,7 @@ interface CvPeakOverviewChartProps {
   fits: CvPeakFit[];
   selectedPeakId: string | null;
   selectedSeriesIndex: number;
-  onSelectPotential?: (potential: number) => void;
+  onSelectPotential?: (potential: number, seriesIndex: number, sourceIndex: number) => void;
   onSelectPeakPoint?: (peakId: string, seriesIndex: number) => void;
   title: string;
   xLabel: string;
@@ -62,10 +62,18 @@ export function CvPeakOverviewChart({
 
   function handlePlotClick(event: React.MouseEvent<SVGRectElement>) {
     const bounds = svgRef.current?.getBoundingClientRect();
-    if (!bounds || bounds.width <= 0) return;
+    if (!bounds || bounds.width <= 0 || bounds.height <= 0) return;
     const svgX = (event.clientX - bounds.left) / bounds.width * size.width;
-    const ratio = Math.min(1, Math.max(0, (svgX - margin.left) / width));
-    onSelectPotential?.(xDomain[0] + ratio * (xDomain[1] - xDomain[0]));
+    const svgY = (event.clientY - bounds.top) / bounds.height * size.height;
+    const selected = series.flatMap((item, seriesIndex) => item.points.map((point, sourceIndex) => ({
+      point,
+      seriesIndex,
+      sourceIndex,
+      distance: Math.hypot(x(point.potential) - svgX, y(point.current) - svgY)
+    }))).sort((left, right) => left.distance - right.distance
+      || left.seriesIndex - right.seriesIndex
+      || left.sourceIndex - right.sourceIndex)[0];
+    if (selected) onSelectPotential?.(selected.point.potential, selected.seriesIndex, selected.sourceIndex);
   }
 
   return <div className="scientific-chart-shell cv-peak-overview-shell">

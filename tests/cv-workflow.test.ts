@@ -327,8 +327,14 @@ describe("constrained Dunn regression datasets", () => {
       const endpoint = contribution.plotPath.find((point) => point.potential === -1);
       expect(endpoint).toBeDefined();
       expect(endpoint!.oppositeCurrent).toBe(0);
+      const endpointG = evaluateG(contribution.potentialGrid, contribution.g, endpoint!.potential);
+      expect(endpoint!.capacitiveCurrent).toBeCloseTo(endpointG * endpoint!.originalCurrent, 12);
+      expect(endpoint!.targetCapacitiveCurrent).toBeCloseTo(endpointG * endpoint!.originalCurrent, 12);
+      expect(endpoint!.correctionMagnitude).toBe(0);
       expect(Math.abs(endpoint!.capacitiveCurrent)).toBeLessThanOrEqual(Math.abs(endpoint!.originalCurrent));
       expect(endpoint!.capacitiveCurrent * endpoint!.originalCurrent).toBeGreaterThanOrEqual(0);
+      expect(endpoint!.capacitiveCurrent).toBeGreaterThanOrEqual(Math.min(0, endpoint!.originalCurrent));
+      expect(endpoint!.capacitiveCurrent).toBeLessThanOrEqual(Math.max(0, endpoint!.originalCurrent));
     }
   });
 

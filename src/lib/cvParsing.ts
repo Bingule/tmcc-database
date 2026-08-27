@@ -1,6 +1,6 @@
 import readXlsxFile from "read-excel-file/browser";
 import type { CvSeries } from "./cvTypes";
-import { CvCycleStructureError, splitAlignedCvCycles } from "./cvCycle";
+import { CvCycleStructureError, normalizeAlignedCvCycles, splitAlignedCvCycles } from "./cvCycle";
 import { CvParseError, makeColumnPairs } from "./cvImport";
 import type { CvColumnPair, CvImportOptions, CvParseErrorCode, ParsedCvTable as CvImportParsedCvTable } from "./cvImport";
 
@@ -262,7 +262,7 @@ export function confirmCvSeries(table: ParsedCvTable, scanRates: number[]): CvSe
   }));
 
   try {
-    splitAlignedCvCycles(series);
+    validateConfirmedCycleStructure(series);
   } catch (error) {
     if (error instanceof CvCycleStructureError) {
       throw new CvParseError("invalidCycleStructure", {
@@ -273,6 +273,54 @@ export function confirmCvSeries(table: ParsedCvTable, scanRates: number[]): CvSe
     throw error;
   }
   return series;
+}
+
+function validateConfirmedCycleStructure(series: CvSeries[]) {
+  try {
+    const normalized = normalizeAlignedCvCycles(series);
+    const tailWithAnotherTurn = normalized.findIndex((cycle, seriesIndex) =>
+      ignoredTailChangesDirection(
+        series[seriesIndex]!.points,
+        cycle.selectedEndIndex,
+        cycle.nativePotentialInterval
+      ));
+    if (tailWithAnotherTurn >= 0) {
+      throw new CvCycleStructureError("tooManyTurningPoints", { seriesIndex: tailWithAnotherTurn });
+    }
+    return;
+  } catch (normalizedError) {
+    if (!(normalizedError instanceof CvCycleStructureError)) throw normalizedError;
+    try {
+      const legacyBranches = splitAlignedCvCycles(series);
+      if (legacyBranches.every((branches) => branches.length === 1)) return;
+    } catch (legacyError) {
+      if (legacyError instanceof CvCycleStructureError) throw legacyError;
+      throw normalizedError;
+    }
+    throw normalizedError;
+  }
+}
+
+function ignoredTailChangesDirection(
+  points: CvSeries["points"],
+  selectedEndIndex: number,
+  nativePotentialInterval: number
+): boolean {
+  if (selectedEndIndex >= points.length - 1) return false;
+  const potentialScale = points.reduce(
+    (scale, point) => Math.max(scale, Math.abs(point.potential)),
+    1
+  );
+  const tolerance = Math.max(Number.EPSILON * potentialScale * 32, nativePotentialInterval * 1e-6);
+  let direction: -1 | 1 | null = null;
+  for (let index = selectedEndIndex + 1; index < points.length; index += 1) {
+    const delta = points[index]!.potential - points[index - 1]!.potential;
+    if (Math.abs(delta) <= tolerance) continue;
+    const nextDirection = delta > 0 ? 1 : -1;
+    if (direction !== null && direction !== nextDirection) return true;
+    direction = nextDirection;
+  }
+  return false;
 }
 
 function collectPointsInRowOrder(table: ParsedCvTable, pair: CvColumnPair): CvSeries["points"] {

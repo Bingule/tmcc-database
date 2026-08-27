@@ -1,4 +1,9 @@
-import { fitPeakGroups, type CvPeakGroup } from "./cvPeakAnalysis";
+import {
+  findOriginalPeakExtrema,
+  fitPeakGroups,
+  predictPeakPotentialAtRate,
+  type CvPeakGroup
+} from "./cvPeakAnalysis";
 import {
   type CvBranchKind,
   type CvPeakAnalysisResult,
@@ -16,6 +21,7 @@ export type CvPeakPointOverride = {
 
 export type CvManualPeakAnchor = {
   manualPeakId: string;
+  labelIndex: number;
   anchorSeriesIndex: number;
   branch: CvBranchKind;
   sourceIndex: number;
@@ -25,6 +31,8 @@ export type CvPeakOverrideState = {
   pointOverrides: CvPeakPointOverride[];
   manualPeaks: CvManualPeakAnchor[];
   removedPeakIds: string[];
+  nextManualPeakNumber: number;
+  nextLabelIndex: number;
 };
 
 export class CvPeakOverrideError extends Error {
@@ -34,7 +42,13 @@ export class CvPeakOverrideError extends Error {
 }
 
 export function createPeakOverrideState(): CvPeakOverrideState {
-  return { pointOverrides: [], manualPeaks: [], removedPeakIds: [] };
+  return {
+    pointOverrides: [],
+    manualPeaks: [],
+    removedPeakIds: [],
+    nextManualPeakNumber: 1,
+    nextLabelIndex: 1
+  };
 }
 
 export function setPeakPointOverride(
@@ -47,7 +61,9 @@ export function setPeakPointOverride(
       { ...override }
     ],
     manualPeaks: state.manualPeaks.map((item) => ({ ...item })),
-    removedPeakIds: [...state.removedPeakIds]
+    removedPeakIds: [...state.removedPeakIds],
+    nextManualPeakNumber: state.nextManualPeakNumber,
+    nextLabelIndex: state.nextLabelIndex
   };
 }
 
@@ -61,7 +77,9 @@ export function restorePeakPointOverride(
       .filter((item) => item.peakId !== peakId || item.seriesIndex !== seriesIndex)
       .map((item) => ({ ...item })),
     manualPeaks: state.manualPeaks.map((item) => ({ ...item })),
-    removedPeakIds: [...state.removedPeakIds]
+    removedPeakIds: [...state.removedPeakIds],
+    nextManualPeakNumber: state.nextManualPeakNumber,
+    nextLabelIndex: state.nextLabelIndex
   };
 }
 
@@ -72,7 +90,9 @@ export function removePeakOverride(state: CvPeakOverrideState, peakId: string): 
     manualPeaks: state.manualPeaks.filter((item) => item.manualPeakId !== peakId).map((item) => ({ ...item })),
     removedPeakIds: manual || state.removedPeakIds.includes(peakId)
       ? [...state.removedPeakIds]
-      : [...state.removedPeakIds, peakId]
+      : [...state.removedPeakIds, peakId],
+    nextManualPeakNumber: state.nextManualPeakNumber,
+    nextLabelIndex: state.nextLabelIndex
   };
 }
 
@@ -101,21 +121,25 @@ export function addManualPeakOverride(
   automatic: CvPeakAnalysisResult,
   series: CvSeries[],
   cycles: NormalizedCvCycle[],
-  anchor: Omit<CvManualPeakAnchor, "manualPeakId">
+  anchor: Omit<CvManualPeakAnchor, "manualPeakId" | "labelIndex">
 ): CvPeakOverrideState {
-  const activeAutomatic = automatic.fits.filter((fit) => !state.removedPeakIds.includes(fit.peakId)).length;
-  if (activeAutomatic + state.manualPeaks.length >= 10) throw new CvPeakOverrideError("peakLimit");
+  if (automatic.fits.length >= 10) throw new CvPeakOverrideError("peakLimit");
   validateSourceOnBranch(series, cycles, anchor.anchorSeriesIndex, anchor.branch, anchor.sourceIndex);
-  let suffix = 1;
-  const used = new Set(state.manualPeaks.map((item) => item.manualPeakId));
-  while (used.has(`manual-${suffix}`)) suffix += 1;
+  validateManualAnchor(automatic, series, cycles, anchor);
+  const labelIndex = Math.max(
+    state.nextLabelIndex,
+    1 + Math.max(0, ...automatic.fits.map((fit) => fit.labelIndex))
+  );
   return {
     pointOverrides: state.pointOverrides.map((item) => ({ ...item })),
     manualPeaks: [...state.manualPeaks.map((item) => ({ ...item })), {
       ...anchor,
-      manualPeakId: `manual-${suffix}`
+      manualPeakId: `manual-${state.nextManualPeakNumber}`,
+      labelIndex
     }],
-    removedPeakIds: [...state.removedPeakIds]
+    removedPeakIds: [...state.removedPeakIds],
+    nextManualPeakNumber: state.nextManualPeakNumber + 1,
+    nextLabelIndex: labelIndex + 1
   };
 }
 
@@ -129,31 +153,40 @@ export function applyPeakOverrides(
   const groups = automatic.fits
     .filter((fit) => !state.removedPeakIds.includes(fit.peakId))
     .map(fitToGroup);
-  for (const manual of state.manualPeaks) groups.push(makeManualGroup(manual, automatic, series, cycles));
   const excluded = new Map<string, CvPeakCandidate>();
-  for (const override of state.pointOverrides) {
-    const group = groups.find((item) => item.peakId === override.peakId);
-    if (!group) throw new CvPeakOverrideError("invalidPeak");
-    if (!Number.isInteger(override.seriesIndex) || !series[override.seriesIndex] || !cycles[override.seriesIndex]) {
-      throw new CvPeakOverrideError("invalidSourceIndex");
+  const pendingOverrides = [...state.pointOverrides];
+  const applyOverridesToGroup = (group: CvPeakGroup) => {
+    const matching = pendingOverrides.filter((override) => override.peakId === group.peakId);
+    for (const override of matching) {
+      if (!Number.isInteger(override.seriesIndex) || !series[override.seriesIndex] || !cycles[override.seriesIndex]) {
+        throw new CvPeakOverrideError("invalidSourceIndex");
+      }
+      if (override.action === "exclude") {
+        const candidate = group.candidates.get(override.seriesIndex);
+        if (candidate) excluded.set(pointKey(override.peakId, override.seriesIndex), candidate);
+        group.candidates.delete(override.seriesIndex);
+        continue;
+      }
+      const sourceIndex = override.sourceIndex ?? group.candidates.get(override.seriesIndex)?.sourceIndex;
+      if (sourceIndex === undefined) throw new CvPeakOverrideError("invalidSourceIndex");
+      validateSourceOnBranch(series, cycles, override.seriesIndex, group.branch, sourceIndex);
+      const base = group.candidates.get(override.seriesIndex);
+      group.candidates.set(override.seriesIndex, {
+        ...candidateFromSource(series[override.seriesIndex]!, override.seriesIndex, group.branch, sourceIndex, branchSpan(cycles[override.seriesIndex]!, group.branch)),
+        prominence: base?.prominence ?? 0,
+        normalizedProminence: base?.normalizedProminence ?? 0,
+        confidence: base?.confidence ?? 0
+      });
     }
-    if (override.action === "exclude") {
-      const candidate = group.candidates.get(override.seriesIndex);
-      if (candidate) excluded.set(pointKey(override.peakId, override.seriesIndex), candidate);
-      group.candidates.delete(override.seriesIndex);
-      continue;
-    }
-    const sourceIndex = override.sourceIndex ?? group.candidates.get(override.seriesIndex)?.sourceIndex;
-    if (sourceIndex === undefined) throw new CvPeakOverrideError("invalidSourceIndex");
-    validateSourceOnBranch(series, cycles, override.seriesIndex, group.branch, sourceIndex);
-    const base = group.candidates.get(override.seriesIndex);
-    group.candidates.set(override.seriesIndex, {
-      ...candidateFromSource(series[override.seriesIndex]!, override.seriesIndex, group.branch, sourceIndex, branchSpan(cycles[override.seriesIndex]!, group.branch)),
-      prominence: base?.prominence ?? 0,
-      normalizedProminence: base?.normalizedProminence ?? 0,
-      confidence: base?.confidence ?? 0
-    });
+    matching.forEach((override) => pendingOverrides.splice(pendingOverrides.indexOf(override), 1));
+  };
+  groups.forEach(applyOverridesToGroup);
+  for (const manual of state.manualPeaks) {
+    const group = makeManualGroup(manual, groups, series, cycles);
+    applyOverridesToGroup(group);
+    groups.push(group);
   }
+  if (pendingOverrides.length > 0) throw new CvPeakOverrideError("invalidPeak");
   const fits = fitPeakGroups(groups, series, threshold, cycles).map((fit) => {
     const points = fit.points.map((point) => {
       const override = state.pointOverrides.find((item) => item.peakId === fit.peakId && item.seriesIndex === point.seriesIndex);
@@ -192,26 +225,89 @@ function fitToGroup(fit: CvPeakAnalysisResult["fits"][number]): CvPeakGroup {
 
 function makeManualGroup(
   manual: CvManualPeakAnchor,
-  automatic: CvPeakAnalysisResult,
+  occupiedGroups: CvPeakGroup[],
   series: CvSeries[],
   cycles: NormalizedCvCycle[]
 ): CvPeakGroup {
   const span = branchSpan(cycles[manual.anchorSeriesIndex]!, manual.branch);
   const anchor = candidateFromSource(series[manual.anchorSeriesIndex]!, manual.anchorSeriesIndex, manual.branch, manual.sourceIndex, span);
-  const candidates = new Map<number, CvPeakCandidate>([[manual.anchorSeriesIndex, anchor]]);
-  for (let seriesIndex = 0; seriesIndex < series.length; seriesIndex += 1) {
-    if (seriesIndex === manual.anchorSeriesIndex) continue;
-    const local = automatic.candidates.filter((candidate) => candidate.seriesIndex === seriesIndex && candidate.branch === manual.branch);
-    const nearest = local.sort((left, right) => Math.abs(left.potential - anchor.potential) - Math.abs(right.potential - anchor.potential))[0];
-    if (nearest && Math.abs(nearest.potential - anchor.potential) <= 0.25 * span) candidates.set(seriesIndex, { ...nearest });
-  }
-  return {
+  const group: CvPeakGroup = {
     peakId: manual.manualPeakId,
-    labelIndex: 1 + Math.max(0, ...automatic.fits.map((fit) => fit.labelIndex)),
+    labelIndex: manual.labelIndex,
     branch: manual.branch,
     kind: manual.branch === "forward" ? "oxidation" : "reduction",
-    candidates
+    candidates: new Map([[manual.anchorSeriesIndex, anchor]])
   };
+  const order = series.map((item, seriesIndex) => ({ scanRate: item.scanRate, seriesIndex }))
+    .sort((left, right) => left.scanRate - right.scanRate || left.seriesIndex - right.seriesIndex);
+  const anchorPosition = order.findIndex((item) => item.seriesIndex === manual.anchorSeriesIndex);
+  extendManualGroup(group, occupiedGroups, series, cycles, order.slice(anchorPosition + 1));
+  extendManualGroup(group, occupiedGroups, series, cycles, order.slice(0, anchorPosition).reverse());
+  return group;
+}
+
+function extendManualGroup(
+  group: CvPeakGroup,
+  occupiedGroups: CvPeakGroup[],
+  series: CvSeries[],
+  cycles: NormalizedCvCycle[],
+  order: Array<{ scanRate: number; seriesIndex: number }>
+) {
+  for (const { scanRate, seriesIndex } of order) {
+    const cycle = cycles[seriesIndex]!;
+    const points = group.branch === "forward" ? cycle.forward.points : cycle.reverse.points;
+    const span = branchSpan(cycle, group.branch);
+    const currentSpan = Math.max(Number.EPSILON,
+      Math.max(...points.map((point) => point.current)) - Math.min(...points.map((point) => point.current)));
+    const minimumProminence = Math.max(Number.EPSILON, currentSpan * 1e-4);
+    const predicted = predictPeakPotentialAtRate(group, scanRate);
+    const occupied = occupiedSourceIndices(occupiedGroups, seriesIndex);
+    const selected = findOriginalPeakExtrema(points, group.kind, 0.1 * span)
+      .filter((candidate) => candidate.prominence >= minimumProminence)
+      .filter((candidate) => Math.abs(candidate.point.potential - predicted) <= 0.25 * span)
+      .filter((candidate) => !occupied.has(candidate.point.sourceIndex))
+      .sort((left, right) => Math.abs(left.point.potential - predicted) - Math.abs(right.point.potential - predicted)
+        || right.prominence - left.prominence
+        || left.point.sourceIndex - right.point.sourceIndex)[0];
+    if (!selected) continue;
+    group.candidates.set(seriesIndex, {
+      ...candidateFromSource(series[seriesIndex]!, seriesIndex, group.branch, selected.point.sourceIndex, span),
+      prominence: selected.prominence,
+      normalizedProminence: selected.prominence / currentSpan,
+      confidence: 0.5
+    });
+  }
+}
+
+function occupiedSourceIndices(groups: CvPeakGroup[], seriesIndex: number): Set<number> {
+  return new Set(groups.flatMap((group) => {
+    const candidate = group.candidates.get(seriesIndex);
+    return candidate ? [candidate.sourceIndex] : [];
+  }));
+}
+
+function validateManualAnchor(
+  active: CvPeakAnalysisResult,
+  series: CvSeries[],
+  cycles: NormalizedCvCycle[],
+  anchor: Omit<CvManualPeakAnchor, "manualPeakId" | "labelIndex">
+) {
+  const cycle = cycles[anchor.anchorSeriesIndex]!;
+  const points = anchor.branch === "forward" ? cycle.forward.points : cycle.reverse.points;
+  const span = branchSpan(cycle, anchor.branch);
+  const kind = anchor.branch === "forward" ? "oxidation" : "reduction";
+  const localExtrema = findOriginalPeakExtrema(points, kind, 0.1 * span);
+  if (!localExtrema.some((candidate) => candidate.point.sourceIndex === anchor.sourceIndex)) {
+    throw new CvPeakOverrideError("invalidSourceIndex");
+  }
+  const occupied = active.fits.some((fit) => fit.points.some((point) =>
+    point.seriesIndex === anchor.anchorSeriesIndex
+      && point.status !== "excluded"
+      && point.candidate?.sourceIndex === anchor.sourceIndex));
+  if (occupied) throw new CvPeakOverrideError("invalidSourceIndex");
+  if (!series[anchor.anchorSeriesIndex]!.points[anchor.sourceIndex]) {
+    throw new CvPeakOverrideError("invalidSourceIndex");
+  }
 }
 
 function candidateFromSource(

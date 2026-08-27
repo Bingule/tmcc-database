@@ -38,7 +38,9 @@ export function CvPeakRegressionChart({
 }: CvPeakRegressionChartProps): React.ReactElement {
   const titleId = useId();
   const prepared = fits.map((fit) => {
-    const measured = fit.points.flatMap((point) => point.candidate && !["missing", "excluded", "nearZeroCurrentUnstable"].includes(point.status)
+    const measured = fit.points.flatMap((point) => point.candidate
+      && point.regressionEligible !== false
+      && point.status !== "excluded"
       && point.candidate.current !== 0
       ? [{ x: Math.log(point.scanRate), y: Math.log(Math.abs(point.candidate.current)), seriesIndex: point.seriesIndex }]
       : []);

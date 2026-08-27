@@ -51,13 +51,14 @@ interface CvPeakAnalysisPanelProps {
   selectedSeriesIndex: number;
   onPeakChange(id: string): void;
   onSeriesChange(index: number): void;
-  onPotentialSelect(potential: number): void;
+  onPotentialSelect(potential: number, seriesIndex: number, sourceIndex: number): void;
   onAdjustPotential(peakId: string, seriesIndex: number, potential: number): void;
   onConfirm(): void;
   onExclude(): void;
   onRestore(): void;
   onAddPeak(): void;
   onRemovePeak(): void;
+  pendingAdd?: boolean;
   copy: CvPeakPanelCopy;
   metadata?: string[];
 }
@@ -76,6 +77,7 @@ export function CvPeakAnalysisPanel({
   onRestore,
   onAddPeak,
   onRemovePeak,
+  pendingAdd = false,
   copy,
   metadata = []
 }: CvPeakAnalysisPanelProps): React.ReactElement {
@@ -107,7 +109,13 @@ export function CvPeakAnalysisPanel({
         <button type="button" onClick={onRestore}>{copy.restore}</button>
       </div>
       <div className="cv-peak-management-actions" data-peak-control-row="peak-actions">
-        <button type="button" className="secondary-button" onClick={onAddPeak} disabled={result.fits.length >= result.maximumPeakCount}>{copy.add}</button>
+        <button
+          type="button"
+          className="secondary-button"
+          onClick={onAddPeak}
+          disabled={result.fits.length >= result.maximumPeakCount}
+          aria-pressed={pendingAdd}
+        >{copy.add}</button>
         <button type="button" className="secondary-button" onClick={onRemovePeak}>{copy.remove}</button>
       </div>
     </div>

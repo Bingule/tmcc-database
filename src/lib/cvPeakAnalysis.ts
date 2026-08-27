@@ -90,8 +90,8 @@ export function recoverMissingPeakCandidates(
     const cycle = cycles[seriesIndex]!;
     const pending = recovered
       .filter((group) => group.candidates.size >= 3 && !group.candidates.has(seriesIndex))
-      .sort((left, right) => predictPotentialAtRate(strictGroups.get(left.peakId)!, item.scanRate)
-        - predictPotentialAtRate(strictGroups.get(right.peakId)!, item.scanRate));
+      .sort((left, right) => predictPeakPotentialAtRate(strictGroups.get(left.peakId)!, item.scanRate)
+        - predictPeakPotentialAtRate(strictGroups.get(right.peakId)!, item.scanRate));
     for (const group of pending) {
       const strictGroup = strictGroups.get(group.peakId)!;
       const branchPoints = group.branch === "forward" ? cycle.forward.points : cycle.reverse.points;
@@ -99,7 +99,7 @@ export function recoverMissingPeakCandidates(
         Number.EPSILON,
         ...[...strictGroup.candidates.values()].map((candidate) => candidate.branchSpan)
       );
-      const predicted = predictPotentialAtRate(strictGroup, item.scanRate);
+      const predicted = predictPeakPotentialAtRate(strictGroup, item.scanRate);
       const halfWindow = Math.min(
         0.12 * branchSpan,
         Math.max(4 * cycle.nativePotentialInterval, 0.06 * branchSpan)
@@ -148,7 +148,7 @@ function sumConfidence(candidates: CvPeakCandidate[]): number {
   return candidates.reduce((sum, candidate) => sum + candidate.confidence, 0);
 }
 
-function predictPotentialAtRate(group: Pick<CvPeakGroup, "candidates">, scanRate: number): number {
+export function predictPeakPotentialAtRate(group: Pick<CvPeakGroup, "candidates">, scanRate: number): number {
   const candidates = [...group.candidates.values()]
     .filter((candidate) => candidate.scanRate > 0 && Number.isFinite(candidate.potential));
   if (candidates.length === 0) return Number.NaN;
@@ -270,10 +270,14 @@ export function fitPeakGroups(
     const currentFloor = branchScale * 1e-6;
     const points = series.map((item, seriesIndex) => {
       const candidate = group.candidates.get(seriesIndex) ?? null;
+      const regressionEligible = candidate !== null
+        && item.scanRate > 0
+        && Math.abs(candidate.current) > currentFloor;
       return {
         seriesIndex,
         scanRate: item.scanRate,
         candidate,
+        regressionEligible,
         status: candidate === null
           ? "missing" as const
           : Math.abs(candidate.current) <= currentFloor
@@ -281,17 +285,12 @@ export function fitPeakGroups(
             : "auto" as const
       };
     });
-    const stable = points.filter((point) => point.candidate
-      && point.status !== "nearZeroCurrentUnstable"
-      && point.scanRate > 0
-      && Math.abs(point.candidate.current) > 0);
-    const positive = points.filter((point) => point.candidate && point.scanRate > 0 && Math.abs(point.candidate.current) > 0);
-    const fitPoints = stable.length >= 3 ? stable : positive;
+    const fitPoints = points.filter((point) => point.candidate && point.regressionEligible);
     const regression = fitPoints.length >= 3 ? linearRegression(fitPoints.map((point) => ({
       x: Math.log(point.scanRate),
       y: Math.log(Math.abs(point.candidate!.current))
     }))) : null;
-    const unstable = stable.length < 3 && positive.some((point) => point.status === "nearZeroCurrentUnstable");
+    const unstable = fitPoints.length < 3 && points.some((point) => point.status === "nearZeroCurrentUnstable");
     const fitStatus: CvPeakFitStatus = unstable
       ? "nearZeroCurrentUnstable"
       : regression === null
@@ -323,12 +322,13 @@ function extendGroups(
   order: Array<{ scanRate: number; seriesIndex: number }>,
   span: number
 ) {
-  for (const { seriesIndex } of order) {
+  for (const { scanRate, seriesIndex } of order) {
     const local = candidates.filter((candidate) => candidate.seriesIndex === seriesIndex)
       .sort((left, right) => left.potential - right.potential);
     if (local.length === 0 || groups.length === 0) continue;
-    const sortedGroups = [...groups].sort((left, right) => predictPotential(left) - predictPotential(right));
-    const assignments = monotoneAssignments(sortedGroups, local, span);
+    const sortedGroups = [...groups].sort((left, right) =>
+      predictPeakPotentialAtRate(left, scanRate) - predictPeakPotentialAtRate(right, scanRate));
+    const assignments = monotoneAssignments(sortedGroups, local, span, scanRate);
     assignments.forEach(([groupIndex, candidateIndex]) => {
       sortedGroups[groupIndex]!.candidates.set(seriesIndex, local[candidateIndex]!);
     });
@@ -338,7 +338,8 @@ function extendGroups(
 function monotoneAssignments(
   groups: Array<Omit<CvPeakGroup, "peakId" | "labelIndex">>,
   candidates: CvPeakCandidate[],
-  span: number
+  span: number,
+  scanRate: number
 ): Array<[number, number]> {
   const rows = groups.length + 1;
   const columns = candidates.length + 1;
@@ -362,7 +363,7 @@ function monotoneAssignments(
         previous[i]![j + 1] = { i, j, matched: false };
       }
       if (i < groups.length && j < candidates.length) {
-        const match = matchCost(groups[i]!, candidates[j]!, span);
+        const match = matchCost(groups[i]!, candidates[j]!, span, scanRate);
         if (Number.isFinite(match) && current + match < costs[i + 1]![j + 1]!) {
           costs[i + 1]![j + 1] = current + match;
           previous[i + 1]![j + 1] = { i, j, matched: true };
@@ -383,27 +384,24 @@ function monotoneAssignments(
   return result.reverse();
 }
 
-function matchCost(group: Omit<CvPeakGroup, "peakId" | "labelIndex">, candidate: CvPeakCandidate, span: number): number {
+function matchCost(
+  group: Omit<CvPeakGroup, "peakId" | "labelIndex">,
+  candidate: CvPeakCandidate,
+  span: number,
+  scanRate: number
+): number {
   const values = [...group.candidates.values()].sort((left, right) => left.scanRate - right.scanRate);
-  const last = values.at(-1)!;
-  const predicted = predictPotential(group);
-  const displacement = Math.abs(candidate.potential - predicted);
-  if (displacement > 0.25 * span) return Number.POSITIVE_INFINITY;
-  const potentialCost = displacement / span;
+  const nearest = values.reduce((best, value) =>
+    Math.abs(Math.log(value.scanRate) - Math.log(scanRate))
+      < Math.abs(Math.log(best.scanRate) - Math.log(scanRate)) ? value : best);
+  const predicted = predictPeakPotentialAtRate(group, scanRate);
+  const trendResidual = Math.abs(candidate.potential - predicted);
+  if (trendResidual > 0.25 * span) return Number.POSITIVE_INFINITY;
+  const potentialCost = Math.min(1, Math.abs(candidate.potential - nearest.potential) / span);
   const prominenceCost = Math.min(1, Math.abs(Math.log((candidate.normalizedProminence + 1e-12)
-    / (last.normalizedProminence + 1e-12))) / 4);
-  const trendCost = values.length < 2 ? 0 : Math.min(1, displacement / span);
+    / (nearest.normalizedProminence + 1e-12))) / 4);
+  const trendCost = Math.min(1, trendResidual / span);
   return 0.65 * potentialCost + 0.20 * prominenceCost + 0.15 * trendCost;
-}
-
-function predictPotential(group: Omit<CvPeakGroup, "peakId" | "labelIndex">): number {
-  const values = [...group.candidates.values()].sort((left, right) => left.scanRate - right.scanRate);
-  if (values.length < 2) return values.at(-1)!.potential;
-  const first = values.at(-2)!;
-  const second = values.at(-1)!;
-  const logDelta = Math.log(second.scanRate) - Math.log(first.scanRate);
-  if (logDelta === 0) return second.potential;
-  return second.potential + (second.potential - first.potential);
 }
 
 function groupRank(group: Omit<CvPeakGroup, "peakId" | "labelIndex">): number {
@@ -474,27 +472,75 @@ function detectBranch(
     .sort((left, right) => left.index - right.index);
   const sourcePoints = branch === "forward" ? cycle.forward.points : cycle.reverse.points;
   const mappingRadius = minimumSeparation / 2;
-  return retained.flatMap(({ index, prominence }) => {
+  return retained.flatMap(({ index }) => {
     const center = potentials[index]!;
-    const nearby = sourcePoints.filter((point) => Math.abs(point.potential - center) <= mappingRadius);
-    if (nearby.length === 0) return [];
-    const selected = nearby.reduce((best, point) => branch === "forward"
-      ? point.current > best.current ? point : best
-      : point.current < best.current ? point : best);
+    const residualLimit = Math.max(4 * residualMad, 0.1 * robustSpan, Number.EPSILON);
+    const prominenceFloor = Math.max(0.005 * robustSpan, Number.EPSILON);
+    const defensible = findOriginalPeakExtrema(sourcePoints, kind, mappingRadius)
+      .filter((candidate) => Math.abs(candidate.point.potential - center) <= mappingRadius)
+      .filter((candidate) => candidate.prominence >= prominenceFloor)
+      .filter((candidate) => {
+        const gridIndex = nearestPotentialIndex(potentials, candidate.point.potential);
+        return Math.abs(candidate.point.current - smoothed[gridIndex]!) <= residualLimit;
+      })
+      .sort((left, right) => {
+        const leftDistance = Math.abs(left.point.potential - center) / mappingRadius;
+        const rightDistance = Math.abs(right.point.potential - center) / mappingRadius;
+        return leftDistance - rightDistance
+          || right.prominence - left.prominence
+          || left.point.sourceIndex - right.point.sourceIndex;
+      });
+    const selected = defensible[0];
+    if (!selected) return [];
     return [{
       seriesIndex,
       scanRate: series.scanRate,
       branch,
       kind,
-      sourceIndex: selected.sourceIndex,
-      potential: series.points[selected.sourceIndex]!.potential,
-      current: series.points[selected.sourceIndex]!.current,
+      sourceIndex: selected.point.sourceIndex,
+      potential: series.points[selected.point.sourceIndex]!.potential,
+      current: series.points[selected.point.sourceIndex]!.current,
       branchSpan: span,
-      prominence,
-      normalizedProminence: prominence / robustSpan,
-      confidence: Math.min(1, prominence / Math.max(threshold, Number.EPSILON))
+      prominence: selected.prominence,
+      normalizedProminence: selected.prominence / robustSpan,
+      confidence: Math.min(1, selected.prominence / Math.max(threshold, Number.EPSILON))
     }];
   });
+}
+
+export function findOriginalPeakExtrema(
+  points: CvSweepPoint[],
+  kind: CvPeakKind,
+  prominenceRadius: number
+): Array<{ point: CvSweepPoint; prominence: number }> {
+  return points.flatMap((point, index) => {
+    if (index === 0 || index === points.length - 1) return [];
+    const previous = points[index - 1]!;
+    const next = points[index + 1]!;
+    const expectedDirection = kind === "oxidation"
+      ? point.current > previous.current && point.current >= next.current
+      : point.current < previous.current && point.current <= next.current;
+    if (!expectedDirection) return [];
+    const left = points.slice(0, index)
+      .filter((candidate) => Math.abs(candidate.potential - point.potential) <= prominenceRadius)
+      .map((candidate) => candidate.current);
+    const right = points.slice(index + 1)
+      .filter((candidate) => Math.abs(candidate.potential - point.potential) <= prominenceRadius)
+      .map((candidate) => candidate.current);
+    if (left.length === 0 || right.length === 0) return [];
+    const prominence = kind === "oxidation"
+      ? point.current - Math.max(Math.min(...left), Math.min(...right))
+      : Math.min(Math.max(...left), Math.max(...right)) - point.current;
+    return Number.isFinite(prominence) && prominence > 0 ? [{ point, prominence }] : [];
+  });
+}
+
+function nearestPotentialIndex(potentials: number[], potential: number): number {
+  let best = 0;
+  for (let index = 1; index < potentials.length; index += 1) {
+    if (Math.abs(potentials[index]! - potential) < Math.abs(potentials[best]! - potential)) best = index;
+  }
+  return best;
 }
 
 function ascendingUnique(points: CvSweepPoint[]): CvSweepPoint[] {

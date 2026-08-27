@@ -314,6 +314,7 @@ export interface CvPeakRatePoint {
   scanRate: number;
   candidate: CvPeakCandidate | null;
   status: CvPeakPointStatus;
+  regressionEligible: boolean;
 }
 
 export interface CvPeakFit {

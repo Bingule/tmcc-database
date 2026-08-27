@@ -154,6 +154,40 @@ function completeCycleDelimited(delimiter: string) {
   return completeCycleRows.map((row) => row.join(delimiter)).join("\n");
 }
 
+function tolerantTailRows(): Array<Array<string | number | null>> {
+  const rates = [1, 4, 9];
+  const forward = Array.from({ length: 81 }, (_, index) => -1 + 2 * index / 80);
+  const potentials = [...forward, ...forward.slice(0, -1).reverse()];
+  const rows: Array<Array<string | number | null>> = [
+    ["Potential", ...rates.map((rate) => `Current ${rate} mV/s`)]
+  ];
+  potentials.forEach((potential, sourceIndex) => {
+    const isForward = sourceIndex <= 80;
+    rows.push([
+      potential,
+      ...rates.map((rate) => {
+        const sign = isForward ? 1 : -1;
+        const center = isForward ? -0.25 : 0.3;
+        const exponent = isForward ? 0.75 : 0.65;
+        return sign * (0.04 * Math.sqrt(rate)
+          + Math.exp(-Math.pow((potential - center) / 0.12, 2)) * Math.pow(rate, exponent));
+      })
+    ]);
+  });
+  const tailPotentials = [-0.975, -0.95, -0.95000000001, -0.925, -0.9];
+  tailPotentials.forEach((potential, tailIndex) => rows.push([
+    potential,
+    0.05 + tailIndex * 0.001,
+    tailIndex < 2 ? 0.1 + tailIndex * 0.001 : null,
+    null
+  ]));
+  return rows;
+}
+
+function tolerantTailDelimited(delimiter: string) {
+  return tolerantTailRows().map((row) => row.map((cell) => cell ?? "").join(delimiter)).join("\n");
+}
+
 function completeSharedCsv(
   rowCount: number,
   makeCurrents: (potential: number, sourceIndex: number) => number[]
@@ -259,6 +293,46 @@ function peakPageCsv() {
   ].join("\n");
 }
 
+function manualAddPeakPageCsv() {
+  const rates = [1, 4, 9];
+  const forward = Array.from({ length: 201 }, (_, index) => -1 + 2 * index / 200);
+  const potentials = [...forward, ...forward.slice(0, -1).reverse()];
+  return [
+    `Potential,${rates.map((rate) => `Current ${rate} mV/s`).join(",")}`,
+    ...potentials.map((potential, sourceIndex) => {
+      const isForward = sourceIndex <= 200;
+      return [potential, ...rates.map((rate) => {
+        const sign = isForward ? 1 : -1;
+        const center = isForward ? -0.3 : 0.25;
+        const strong = Math.exp(-Math.pow((potential - center) / 0.1, 2))
+          * Math.pow(rate, isForward ? 0.75 : 0.65);
+        const weakCenter = 0.55 + 0.01 * Math.log(rate / 4);
+        const weak = isForward
+          ? 0.008 * Math.exp(-Math.pow((potential - weakCenter) / 0.025, 2)) * Math.pow(rate, 0.7)
+          : 0;
+        return sign * (0.04 * Math.sqrt(rate) + strong) + weak;
+      })].join(",");
+    })
+  ].join("\n");
+}
+
+async function clickPeakOverviewSource(view: HTMLElement, seriesIndex: number, sourceIndex: number) {
+  const chart = view.querySelector<SVGSVGElement>('[data-export-id="cv-peak-overview-chart"]')!;
+  vi.spyOn(chart, "getBoundingClientRect").mockReturnValue({
+    x: 0, y: 0, left: 0, top: 0, right: 800, bottom: 450, width: 800, height: 450,
+    toJSON: () => ({})
+  });
+  const path = chart.querySelector<SVGPathElement>(`[data-cv-peak-loop="${seriesIndex}"]`)?.getAttribute("d") ?? "";
+  const point = [...path.matchAll(/[ML]\s+([^\s]+)\s+([^\s]+)/g)][sourceIndex];
+  if (!point) throw new Error(`Missing source ${sourceIndex} on series ${seriesIndex}`);
+  await act(async () => chart.querySelector<SVGRectElement>('[data-peak-click-target]')!
+    .dispatchEvent(new MouseEvent("click", {
+      bubbles: true,
+      clientX: Number(point[1]),
+      clientY: Number(point[2])
+    })));
+}
+
 describe("CV kinetics page", () => {
   it("defaults to peak b-value mode and retains the full-width potential-resolved mode", async () => {
     const view = await renderPage();
@@ -305,6 +379,61 @@ describe("CV kinetics page", () => {
     expect(view.querySelectorAll(".cv-preview tbody tr")).toHaveLength(importRowsBefore);
     expect(view.querySelectorAll('[data-table-id="cv-dunn-current-table"] tbody tr')).toHaveLength(dunnRowsBefore);
   });
+
+  it("adds a new family only after an unoccupied original extremum is clicked", async () => {
+    const view = await renderPage();
+    await upload(view, manualAddPeakPageCsv());
+    await setValue(view.querySelector<HTMLInputElement>('input[name="cv-scan-rates"]')!, "1, 4, 9");
+    await runAnalysisInPeakMode(view);
+
+    const existingRows = [...view.querySelectorAll<HTMLElement>('[data-table-id="cv-peak-points"] tbody tr')]
+      .map((row) => ({
+        key: `${row.dataset.peakId}:${row.dataset.seriesIndex}`,
+        sourceIndex: row.dataset.sourceIndex,
+        current: row.dataset.current
+      }));
+    const occupied = new Set(existingRows.map((row) => `${row.key.split(":")[1]}:${row.sourceIndex}`));
+    const initialLabels = [...view.querySelectorAll<HTMLOptionElement>('select[name="selectedPeakId"] option')]
+      .map((option) => option.textContent ?? "");
+    const initialMaximumLabel = Math.max(...initialLabels.map((label) => Number(label.match(/\d+/)?.[0] ?? 0)));
+    const add = button(view, "Add peak");
+    expect(add.getAttribute("aria-pressed")).toBe("false");
+
+    await act(async () => add.click());
+    expect(add.getAttribute("aria-pressed")).toBe("true");
+    expect([...view.querySelectorAll<HTMLElement>('[data-table-id="cv-peak-points"] tbody tr')]
+      .map((row) => `${row.dataset.peakId}:${row.dataset.seriesIndex}:${row.dataset.sourceIndex}:${row.dataset.current}`))
+      .toEqual(existingRows.map((row) => `${row.key}:${row.sourceIndex}:${row.current}`));
+
+    await clickPeakOverviewSource(view, 1, 155);
+    expect(button(view, "Add peak").getAttribute("aria-pressed")).toBe("false");
+    expect(view.querySelector<HTMLSelectElement>('select[name="selectedPeakId"]')?.value).toBe("manual-1");
+    const firstManualRows = [...view.querySelectorAll<HTMLElement>('[data-table-id="cv-peak-points"] [data-peak-id="manual-1"]')];
+    expect(firstManualRows).toHaveLength(3);
+    expect(firstManualRows.every((row) => !occupied.has(`${row.dataset.seriesIndex}:${row.dataset.sourceIndex}`))).toBe(true);
+    expect(existingRows.map((before) => {
+      const row = view.querySelector<HTMLElement>(`[data-table-id="cv-peak-points"] [data-peak-id="${before.key.split(":")[0]}"][data-series-index="${before.key.split(":")[1]}"]`)!;
+      return { key: before.key, sourceIndex: row.dataset.sourceIndex, current: row.dataset.current };
+    })).toEqual(existingRows);
+
+    await click(view, "Remove peak");
+    await click(view, "Add peak");
+    await clickPeakOverviewSource(view, 1, 155);
+    expect(view.querySelector<HTMLSelectElement>('select[name="selectedPeakId"]')?.value).toBe("manual-2");
+    const labels = [...view.querySelectorAll<HTMLOptionElement>('select[name="selectedPeakId"] option')]
+      .map((option) => option.textContent ?? "");
+    expect(new Set(labels).size).toBe(labels.length);
+    expect(labels).toContain(`Peak ${initialMaximumLabel + 2}`);
+
+    const blobs: Blob[] = [];
+    vi.stubGlobal("URL", { createObjectURL: vi.fn((blob: Blob) => { blobs.push(blob); return "blob:peaks"; }), revokeObjectURL: vi.fn() });
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    await click(view, "cv-peak-b-value-results.csv");
+    const exportedRows = (await readBlob(blobs[0]!)).split("\r\n").slice(1).filter(Boolean);
+    const exportedLabels = exportedRows.map((row) => row.split(",")[0]!);
+    expect(new Set(exportedLabels).size).toBe(exportedLabels.length);
+    expect(exportedLabels).toContain(`Peak ${initialMaximumLabel + 2}`);
+  }, 15_000);
 
   it("exports override-aware peak summaries, peak points, and both peak figures", async () => {
     const view = await renderPage();
@@ -684,6 +813,24 @@ describe("CV kinetics page", () => {
       ["1", "0", "Branch 2"], ["1", "1", "Branch 2"], ["1", "2", "Branch 2"]
     ]);
     expect(view.querySelector('[aria-live="polite"]')?.textContent).toBe("");
+  });
+
+  it.each([
+    ["CSV", () => new File([tolerantTailDelimited(",")], "tolerant-tail.csv", { type: "text/csv" })],
+    ["UTF-16 TXT", () => new File([encodeUtf16Le(tolerantTailDelimited("\t"))], "tolerant-tail.txt", { type: "text/plain" })],
+    ["XLSX", () => makeXlsxFile(tolerantTailRows(), "tolerant-tail.xlsx")]
+  ])("confirms and analyzes the first complete loop from %s despite unequal jittery tails", async (_format, makeFile) => {
+    const view = await renderPage();
+    await uploadFile(view, makeFile());
+    await runAnalysisInPeakMode(view);
+
+    expect(view.querySelector('[aria-live="polite"]')?.textContent).toBe("");
+    expect(view.querySelectorAll('[data-table-id="cv-peak-summary"] tbody tr').length).toBeGreaterThan(0);
+    expect(view.querySelectorAll('[data-table-id="cv-dunn-records-table"] tbody tr').length).toBeGreaterThan(0);
+    expect(view.querySelectorAll('[data-table-id="cv-original-current-table"] tbody tr')).toHaveLength(161);
+
+    await setSelect(view.querySelector<HTMLSelectElement>('select[name="bAnalysisMode"]')!, "potential");
+    expect(view.querySelectorAll('[data-table-id="cv-b-records-table"] tbody tr').length).toBeGreaterThan(0);
   });
 
   it.each([
