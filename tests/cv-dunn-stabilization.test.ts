@@ -351,26 +351,42 @@ describe("stabilizeDunnFractions", () => {
       Math.floor(index / 2) % 2 === 0 ? 0.48 : 0.52
     );
     const constant = Array.from({ length: 101 }, () => 0.5);
-    const flooredNoise = stabilizeDunnFractions(makeDiagnosticFits(smallRange, 0.99), 1, "weighted", 0.95);
-    const lowerBound = stabilizeDunnFractions(makeDiagnosticFits(constant, 0.99), 1, "weighted", 0.95);
+    const flooredFits = makeDiagnosticFits(smallRange, 0.99);
+    const constantFits = makeDiagnosticFits(constant, 0.99);
+    const flooredExpected = independentlyDeriveDiagnostics(flooredFits, 1, 0.95);
+    const lowerBoundExpected = independentlyDeriveDiagnostics(constantFits, 1, 0.95);
+    const flooredNoise = stabilizeDunnFractions(flooredFits, 1, "weighted", 0.95);
+    const lowerBound = stabilizeDunnFractions(constantFits, 1, "weighted", 0.95);
 
+    expect(flooredNoise.diagnostics.rawFractionNoise).toBeCloseTo(flooredExpected.rawFractionNoise, 12);
+    expect(flooredNoise.diagnostics.smoothingMultiplier).toBeCloseTo(flooredExpected.smoothingMultiplier, 12);
     expect(flooredNoise.diagnostics.rawFractionNoise).toBeCloseTo(0.2714699044446374, 12);
+    expect(lowerBound.diagnostics.rawFractionNoise).toBeCloseTo(lowerBoundExpected.rawFractionNoise, 12);
+    expect(lowerBound.diagnostics.smoothingMultiplier).toBeCloseTo(lowerBoundExpected.smoothingMultiplier, 12);
     expect(lowerBound.diagnostics.rawFractionNoise).toBe(0);
     expect(lowerBound.diagnostics.smoothingMultiplier).toBe(1);
   });
 
   it("keeps the highest attainable bounded policy multiplier below the 30 cap", () => {
     const fractions = Array.from({ length: 101 }, (_value, index) => [1, 1, 1, 0, 0, 0][index % 6]!);
-    const result = stabilizeDunnFractions(makeDiagnosticFits(fractions, 0.5, false), 1, "weighted", 0.95);
+    const fits = makeDiagnosticFits(fractions, 0.5, false);
+    const expected = independentlyDeriveDiagnostics(fits, 1, 0.95);
+    const result = stabilizeDunnFractions(fits, 1, "weighted", 0.95);
 
+    expect(result.diagnostics.rawFractionNoise).toBeCloseTo(expected.rawFractionNoise, 12);
+    expect(result.diagnostics.smoothingMultiplier).toBeCloseTo(expected.smoothingMultiplier, 12);
     expect(result.diagnostics.smoothingMultiplier).toBe(29);
     expect(result.diagnostics.smoothingMultiplier).toBeLessThanOrEqual(30);
   });
 
   it("clips robust fraction noise at one", () => {
     const fractions = Array.from({ length: 101 }, (_value, index) => [1, 1, 1, 0, 0, 0][index % 6]!);
-    const result = stabilizeDunnFractions(makeDiagnosticFits(fractions, 0.99, false), 1, "weighted", 0.95);
+    const fits = makeDiagnosticFits(fractions, 0.99, false);
+    const expected = independentlyDeriveDiagnostics(fits, 1, 0.95);
+    const result = stabilizeDunnFractions(fits, 1, "weighted", 0.95);
 
+    expect(result.diagnostics.rawFractionNoise).toBeCloseTo(expected.rawFractionNoise, 12);
+    expect(result.diagnostics.smoothingMultiplier).toBeCloseTo(expected.smoothingMultiplier, 12);
     expect(result.diagnostics.rawFractionNoise).toBe(1);
   });
 });
