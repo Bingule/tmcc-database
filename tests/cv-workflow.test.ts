@@ -67,6 +67,26 @@ function makeWorkflowLoopPotentials(): number[] {
   return [...forward, ...forward.slice(0, -1).reverse()];
 }
 
+function makeMismatchedEndpointTailSeries(): CvSeries[] {
+  const forward = Array.from({ length: 998 }, (_, index) => -0.997 + index * 0.001);
+  const reverse = Array.from({ length: 1001 }, (_, index) => -index * 0.001);
+  const potentials = [...forward, ...reverse.slice(1)];
+  return [2, 5, 10].map((scanRate) => ({
+    label: String(scanRate),
+    scanRate,
+    points: potentials.map((potential, pointIndex) => {
+      const direction = pointIndex < forward.length ? 1 : -1;
+      return {
+        potential,
+        current: direction * (
+          (1.25 + potential) * scanRate
+          + (0.5 + 0.2 * potential) * Math.sqrt(scanRate)
+        )
+      };
+    })
+  }));
+}
+
 const settings: CvAnalysisSettings = {
   potentialInterval: { mode: "auto" },
   rSquaredThreshold: 0.95,
@@ -296,6 +316,19 @@ describe("constrained Dunn regression datasets", () => {
           expect(reconstructed.capacitiveCurrent).toBeLessThanOrEqual(reconstructed.envelopeUpper + 1e-10);
         });
       });
+    }
+  });
+
+  it("preserves a branch-only endpoint tail without extrapolating the opposite branch", () => {
+    const result = analyzeCvWorkflow(makeMismatchedEndpointTailSeries(), settings);
+
+    for (const contribution of result.contributions) {
+      expect(Math.min(...contribution.plotPath.map((point) => point.potential))).toBeCloseTo(-1, 12);
+      const endpoint = contribution.plotPath.find((point) => point.potential === -1);
+      expect(endpoint).toBeDefined();
+      expect(endpoint!.oppositeCurrent).toBe(0);
+      expect(Math.abs(endpoint!.capacitiveCurrent)).toBeLessThanOrEqual(Math.abs(endpoint!.originalCurrent));
+      expect(endpoint!.capacitiveCurrent * endpoint!.originalCurrent).toBeGreaterThanOrEqual(0);
     }
   });
 

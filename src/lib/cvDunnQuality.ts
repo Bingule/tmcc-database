@@ -415,13 +415,22 @@ function evaluateOppositeCurrents(
   const minimum = opposite.potentials[0]!;
   const maximum = opposite.potentials.at(-1)!;
   const tolerance = cycle.nativePotentialInterval;
-  const bounded = potentials.map((potential) => {
+  const interpolationPotentials: number[] = [];
+  const interpolationIndices: number[] = [];
+  const currents = new Array<number>(potentials.length).fill(0);
+  potentials.forEach((potential, index) => {
     if (potential < minimum - tolerance || potential > maximum + tolerance) {
-      throw new CvAnalysisError("reconstructionFailed");
+      // No opposite-branch value exists here; zero retains signed raw-current containment without extrapolation.
+      return;
     }
-    return Math.min(maximum, Math.max(minimum, potential));
+    interpolationIndices.push(index);
+    interpolationPotentials.push(Math.min(maximum, Math.max(minimum, potential)));
   });
-  return pchipInterpolate(opposite.potentials, opposite.currents, bounded);
+  const interpolated = pchipInterpolate(opposite.potentials, opposite.currents, interpolationPotentials);
+  interpolationIndices.forEach((index, interpolationIndex) => {
+    currents[index] = interpolated[interpolationIndex]!;
+  });
+  return currents;
 }
 
 function ascendingBranch(cycle: NormalizedCvCycle, branch: CvBranchKind) {
