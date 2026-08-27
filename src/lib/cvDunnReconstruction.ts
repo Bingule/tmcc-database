@@ -117,7 +117,9 @@ export function optimizeSharedFraction(
     }
   }
 
-  if (candidates.length === 0) throw new CvAnalysisError("reconstructionFailed");
+  if (candidates.length !== BASE_LAMBDA_CANDIDATES.length) {
+    throw new CvAnalysisError("reconstructionFailed");
+  }
   candidates.sort((left, right) => left.baseLambda - right.baseLambda);
   const selected = candidates[selectLCurveIndex(candidates)];
   const lambda = selected.baseLambda * smoothingMultiplier;

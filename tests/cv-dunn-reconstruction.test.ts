@@ -175,6 +175,16 @@ it("rejects smoothing multipliers outside the stabilization range", () => {
   expect(() => optimizeSharedFraction(fractions, [0, 1], Number.NaN)).toThrow("invalidDataShape");
 });
 
+it("rejects an incomplete L-curve when any candidate fails", () => {
+  const potentials = [0, 1e-4, 2e-4, 0.25, 0.5, 0.75, 1];
+  const raw = [0.2, 0.8, 0.1, 0.9, 0.15, 0.85, 0.3];
+
+  expect(() => optimizeSharedFraction({
+    forward: raw.map((value) => point(value, 0.8)),
+    reverse: raw.map((value) => point(value, 0.7))
+  }, potentials, 1)).toThrow("reconstructionFailed");
+});
+
 function sampleNormalized(values: number[], position: number): number {
   const scaledIndex = position * (values.length - 1);
   const leftIndex = Math.floor(scaledIndex);

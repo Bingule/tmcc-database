@@ -125,3 +125,61 @@ It exited 0 with no diagnostics.
 ## Concern outside Task 2
 
 The uncommitted Task 3 workflow test for capacitive-percentage stability currently reports about `2.85` percentage points between its 51/501 fixtures. A diagnostic run with the old equivalent 8×50,000 candidate work produced the same failure (`2.8504712942670167`), so it is not caused by this performance change; the parent assigned that fixture/contribution-integration issue to Task 3. Task 2's required normalized-position `g` comparison remains green.
+
+---
+
+## Review follow-up — complete L-curve enforcement
+
+Independent review of `beb076ac` identified that `reconstructionFailed` from one candidate was caught and silently skipped, allowing selection from fewer than all eight lambdas. The performance fixture converged all eight candidates and therefore did not exercise this failure path.
+
+### TDD reproduction
+
+A deterministic seven-point nonuniform grid was found where only the `0.1` candidate fails while the previous implementation returns a result from the other seven candidates:
+
+```ts
+const potentials = [0, 1e-4, 2e-4, 0.25, 0.5, 0.75, 1];
+const raw = [0.2, 0.8, 0.1, 0.9, 0.15, 0.85, 0.3];
+```
+
+The regression was written first to require `reconstructionFailed`:
+
+```powershell
+& 'C:\Users\ThinkPad\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe' .\node_modules\vitest\vitest.mjs run tests/cv-dunn-reconstruction.test.ts -t "incomplete L-curve" --reporter=verbose
+```
+
+Red result:
+
+```text
+FAIL: expected [Function] to throw an error
+Test Files  1 failed (1)
+Tests       1 failed | 13 skipped (14)
+```
+
+### Fix
+
+Before sorting or L-curve selection, the optimizer now requires:
+
+```ts
+candidates.length === BASE_LAMBDA_CANDIDATES.length
+```
+
+Any failed solve or non-finite candidate metric therefore causes the complete optimization to throw `CvAnalysisError("reconstructionFailed")`; partial L-curves are never ranked. Candidate solves still run independently with their unchanged 50,000-iteration ceilings.
+
+### Verification
+
+The focused red test turned green, then the full reconstruction file passed:
+
+```text
+Test Files  1 passed (1)
+Tests       14 passed (14)
+```
+
+The NCP threshold+weighted integration remained within the performance target:
+
+```text
+Test Files  1 passed (1)
+Tests       1 passed | 16 skipped (17)
+NCP two-mode test time: 1.417 s
+```
+
+`tsc --noEmit` exited 0 with no diagnostics. No profile/probe logging remains. The review's Minor note is intentionally retained: the `1e-12 * max(1, abs(previousObjective))` monotonicity tolerance is a numerical roundoff allowance only; it does not relax candidate or final KKT acceptance.
