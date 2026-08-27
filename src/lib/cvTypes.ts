@@ -126,6 +126,13 @@ export interface DunnDiagnostics {
   correctedPointCount: number;
   correctedPointPercent: number;
   maximumEffectiveFractionDeparture: number;
+  softEnvelopeTolerance: number;
+  softEnvelopeIterations: number;
+  softEnvelopeConverged: boolean;
+  softEnvelopeOptimalityResidual: number;
+  maximumSharedFractionAdjustment: number;
+  envelopeResidualPointCount: number;
+  envelopeResidualPointPercent: number;
   maximumAdjacentGJump: number;
   gSmoothnessWarning: boolean;
 }
@@ -294,6 +301,7 @@ export interface DunnContributionInput {
   alignedGrid: CvAlignedBranchGrid;
   dunnRecords: DunnFitGrid;
   optimized: DunnSharedFractionResult;
+  refined: DunnSoftEnvelopeResult;
   fractions: DunnFractionGrid;
   stabilization: DunnStabilizationDiagnostics;
   scanRate: number;

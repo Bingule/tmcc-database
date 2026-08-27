@@ -102,7 +102,7 @@ it("flags low fit quality below 50% coverage without deleting the result", () =>
 });
 
 describe("reconstructDunnContribution", () => {
-  it("uses the local opposite branch to constrain every canonical ordered record", () => {
+  it("uses one refined shared fraction without pointwise branch projection", () => {
     const cycle = normalizeCvCycle([
       { potential: -1, current: 2 },
       { potential: 0, current: 4 },
@@ -111,14 +111,28 @@ describe("reconstructDunnContribution", () => {
       { potential: -1, current: 1 }
     ]);
     const alignedGrid = makeWideAlignedGrid(cycle);
-    const contribution = reconstructDunnContribution(makeContributionInput(alignedGrid, [0.25, 0.25, 0.25]));
+    const contribution = reconstructDunnContribution(makeContributionInput(
+      alignedGrid,
+      [0.25, 0.25, 0.25],
+      [0.6, 0.6, 0.6]
+    ));
 
-    for (const record of contribution.plotPath) {
-      expect(record.capacitiveCurrent).toBeGreaterThanOrEqual(record.envelopeLower - 1e-12);
-      expect(record.capacitiveCurrent).toBeLessThanOrEqual(record.envelopeUpper + 1e-12);
+    expect(contribution.g).toEqual([0.6, 0.6, 0.6]);
+    contribution.g.forEach((fraction, index) => {
+      expect(contribution.capacitiveForward[index]).toBeCloseTo(
+        fraction * contribution.originalForward[index], 12
+      );
+      expect(contribution.capacitiveReverse[index]).toBeCloseTo(
+        fraction * contribution.originalReverse[index], 12
+      );
+    });
+    for (const record of contribution.plotPath.filter((point) => !point.synthetic)) {
+      expect(record.capacitiveCurrent).toBeCloseTo(record.g * record.originalCurrent, 12);
+      expect(record.effectiveFraction).toBeCloseTo(record.g, 12);
       expect(record.capacitiveCurrent + record.diffusionCurrent).toBeCloseTo(record.originalCurrent, 12);
     }
     expect(contribution.plotPath.some((record) => record.correctionMagnitude > 0)).toBe(true);
+    expect(contribution.diagnostics.maximumAbsoluteEnvelopeViolation).toBeGreaterThan(0);
   });
 
   it("calculates contribution areas from the same canonical ordered records", () => {
@@ -169,6 +183,7 @@ describe("reconstructDunnContribution", () => {
         g: [0.5, 0.5, 0.5],
         diagnostics: { baseLambda: 0.1, lambda: 0.1, smoothingMultiplier: 1, iterations: 12, converged: true, optimalityResidual: 0, fidelity: 0, roughness: 0 }
       },
+      refined: makeRefinedResult([0.5, 0.5, 0.5]),
       stabilization: makeStabilizationDiagnostics(),
       fractions: makeFractions(alignedGrid.potentials),
       scanRate: 1,
@@ -208,6 +223,7 @@ describe("reconstructDunnContribution", () => {
         g: [0.25, 0.5, 0.75],
         diagnostics: { baseLambda: 0.1, lambda: 0.1, smoothingMultiplier: 1, iterations: 12, converged: true, optimalityResidual: 0, fidelity: 0, roughness: 0 }
       },
+      refined: makeRefinedResult([0.25, 0.5, 0.75]),
       stabilization: makeStabilizationDiagnostics(),
       fractions: makeFractions(alignedGrid.potentials),
       scanRate: 1,
@@ -219,9 +235,9 @@ describe("reconstructDunnContribution", () => {
 
     expect(contribution.plotPath).toHaveLength(cycle.originalPoints.length);
     expect(contribution.plotPath.map((point) => point.potential)).toEqual([0, 1, 1, 1, 0, -1, 0]);
-    expect(contribution.plotPath.map((point) => point.current)).toEqual([1, 2, 3, 3, 2.5, 6, 5]);
+    expect(contribution.plotPath.map((point) => point.current)).toEqual([0.5, 1.5, 2.25, 3, 2.5, 1.5, 3.5]);
     expect(contribution.plotPath.map((point) => point.originalCurrent)).toEqual([1, 2, 3, 4, 5, 6, 7]);
-    expect(contribution.plotPath.map((point) => point.diffusionCurrent)).toEqual([0, 0, 0, 1, 2.5, 0, 2]);
+    expect(contribution.plotPath.map((point) => point.diffusionCurrent)).toEqual([0.5, 0.5, 0.75, 1, 2.5, 4.5, 3.5]);
     expect(contribution.plotPath.every((point) => point.capacitiveCurrent === point.current)).toBe(true);
     expect(contribution.plotPath.map((point) => point.branch)).toEqual([
       "forward",
@@ -252,6 +268,7 @@ describe("reconstructDunnContribution", () => {
         g: [0.25, 0.5, 0.75],
         diagnostics: { baseLambda: 0.1, lambda: 0.1, smoothingMultiplier: 1, iterations: 12, converged: true, optimalityResidual: 0, fidelity: 0, roughness: 0 }
       },
+      refined: makeRefinedResult([0.25, 0.5, 0.75]),
       stabilization: makeStabilizationDiagnostics(),
       fractions: makeFractions(alignedGrid.potentials),
       scanRate: 1,
@@ -263,7 +280,7 @@ describe("reconstructDunnContribution", () => {
 
     expect(contribution.plotPath).toHaveLength(cycle.originalPoints.length);
     expect(contribution.plotPath.map((point) => point.potential)).toEqual([-0.5, 0, -0.5, -1, -0.75, -0.5]);
-    expect(contribution.plotPath.map((point) => point.current)).toEqual([1, 2, 1.5, 4, 3.5, 3]);
+    expect(contribution.plotPath.map((point) => point.current)).toEqual([0.5, 1.5, 1.5, 1, 1.875, 3]);
     expect(contribution.plotPath.map((point) => point.branch)).toEqual([
       "forward",
       "forward",
@@ -355,6 +372,7 @@ describe("reconstructDunnContribution", () => {
       alignedGrid,
       dunnRecords,
       optimized: { g: [0.25, 0.5, 0.75], diagnostics: { baseLambda: 0.1, lambda: 0.1, smoothingMultiplier: 1, iterations: 12, converged: true, optimalityResidual: 0, fidelity: 0, roughness: 0 } },
+      refined: makeRefinedResult([0.25, 0.5, 0.75]),
       stabilization: makeStabilizationDiagnostics(),
       fractions,
       scanRate: 1,
@@ -366,10 +384,10 @@ describe("reconstructDunnContribution", () => {
 
     expect(contribution.originalForward).toEqual([-4, 2, 8]);
     expect(contribution.originalReverse).toEqual([-8, -2, 4]);
-    expect(contribution.capacitiveForward).toEqual([-4, 1, 6]);
-    expect(contribution.capacitiveReverse).toEqual([-4, -1, 4]);
-    expect(contribution.diffusionForward).toEqual([0, 1, 2]);
-    expect(contribution.diffusionReverse).toEqual([-4, -1, 0]);
+    expect(contribution.capacitiveForward).toEqual([-1, 1, 6]);
+    expect(contribution.capacitiveReverse).toEqual([-2, -1, 3]);
+    expect(contribution.diffusionForward).toEqual([-3, 1, 2]);
+    expect(contribution.diffusionReverse).toEqual([-6, -1, 1]);
     expect(contribution.capacitivePercent).toBeCloseTo(53.125, 12);
     expect(contribution.diffusionPercent).toBeCloseTo(46.875, 12);
     expect(contribution.plotPath.map(({ potential, current, branch }) => ({ potential, current, branch }))).toEqual([
@@ -411,6 +429,13 @@ describe("reconstructDunnContribution", () => {
       correctedPointCount: 0,
       correctedPointPercent: 0,
       maximumEffectiveFractionDeparture: 0,
+      softEnvelopeTolerance: 1e-10,
+      softEnvelopeIterations: 4,
+      softEnvelopeConverged: true,
+      softEnvelopeOptimalityResidual: 0,
+      maximumSharedFractionAdjustment: 0,
+      envelopeResidualPointCount: 0,
+      envelopeResidualPointPercent: 0,
       maximumAdjacentGJump: 0.25,
       gSmoothnessWarning: false
     });
@@ -508,7 +533,11 @@ function makeStabilizationDiagnostics() {
   };
 }
 
-function makeContributionInput(alignedGrid: CvAlignedBranchGrid, g: number[]): DunnContributionInput {
+function makeContributionInput(
+  alignedGrid: CvAlignedBranchGrid,
+  g: number[],
+  refinedG = g
+): DunnContributionInput {
   return {
     alignedGrid,
     dunnRecords: makeDunnRecords(alignedGrid.potentials),
@@ -516,6 +545,7 @@ function makeContributionInput(alignedGrid: CvAlignedBranchGrid, g: number[]): D
       g,
       diagnostics: { baseLambda: 0.1, lambda: 0.1, smoothingMultiplier: 1, iterations: 12, converged: true, optimalityResidual: 0, fidelity: 0, roughness: 0 }
     },
+    refined: makeRefinedResult(g, refinedG),
     stabilization: makeStabilizationDiagnostics(),
     fractions: makeFractions(alignedGrid.potentials),
     scanRate: 1,
@@ -523,6 +553,29 @@ function makeContributionInput(alignedGrid: CvAlignedBranchGrid, g: number[]): D
     mode: "threshold",
     threshold: 0.95,
     resolvedTurningPointTrim: 0.05
+  };
+}
+
+function makeRefinedResult(baselineG: number[], g = baselineG) {
+  return {
+    baselineG: [...baselineG],
+    g: [...g],
+    diagnostics: {
+      fidelityWeight: 1,
+      smoothnessLambda: 0.01,
+      envelopeLambda: 8,
+      envelopeTolerance: 1e-10,
+      iterations: 4,
+      converged: true,
+      optimalityResidual: 0,
+      fidelity: 0,
+      roughness: 0,
+      envelopePenalty: 0,
+      maximumSharedFractionAdjustment: Math.max(
+        0,
+        ...g.map((value, index) => Math.abs(value - baselineG[index]!))
+      )
+    }
   };
 }
 
@@ -585,6 +638,13 @@ function makeCompleteContribution(): DunnContribution {
       correctedPointCount: 0,
       correctedPointPercent: 0,
       maximumEffectiveFractionDeparture: 0,
+      softEnvelopeTolerance: 1e-10,
+      softEnvelopeIterations: 1,
+      softEnvelopeConverged: true,
+      softEnvelopeOptimalityResidual: 0,
+      maximumSharedFractionAdjustment: 0,
+      envelopeResidualPointCount: 0,
+      envelopeResidualPointPercent: 0,
       maximumAdjacentGJump: 0,
       gSmoothnessWarning: false
     }

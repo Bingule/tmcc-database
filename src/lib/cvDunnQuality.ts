@@ -178,20 +178,13 @@ export function isLowFitQuality(
 export function reconstructDunnContribution(input: DunnContributionInput): DunnContribution {
   validateContributionInput(input);
 
-  const { alignedGrid, optimized, seriesIndex } = input;
+  const { alignedGrid, refined, seriesIndex } = input;
   const potentialGrid = [...alignedGrid.potentials];
-  const g = [...optimized.g];
+  const g = [...refined.g];
   const originalForward = [...alignedGrid.forwardCurrents[seriesIndex]!];
   const originalReverse = [...alignedGrid.reverseCurrents[seriesIndex]!];
-  const capacitiveForward: number[] = [];
-  const capacitiveReverse: number[] = [];
-  for (let index = 0; index < potentialGrid.length; index += 1) {
-    const pair = reconstructEnvelopePair(originalForward[index]!, originalReverse[index]!, g[index]!);
-    capacitiveForward.push(pair.forward);
-    capacitiveReverse.push(pair.reverse);
-  }
-  const forward = completeBranchReconstruction(originalForward, capacitiveForward);
-  const reverse = completeBranchReconstruction(originalReverse, capacitiveReverse);
+  const forward = reconstructBranchCurrents(originalForward, g);
+  const reverse = reconstructBranchCurrents(originalReverse, g);
   const plotPath = reconstructOriginalOrderPath(input);
   const overshoot = mergeOvershootDiagnostics([
     measureBranchOvershoot(originalForward, forward.capacitive),
@@ -246,11 +239,9 @@ export function validateDunnContribution(contribution: DunnContribution): void {
   validateAlignedArrays(potentialGrid, g, originalForward, originalReverse, capacitiveForward, capacitiveReverse, diffusionForward, diffusionReverse);
   originalForward.forEach((current, index) => {
     validateReconstructedPoint(current, capacitiveForward[index]!, diffusionForward[index]!);
-    validateEnvelopePoint(current, originalReverse[index]!, capacitiveForward[index]!);
   });
   originalReverse.forEach((current, index) => {
     validateReconstructedPoint(current, capacitiveReverse[index]!, diffusionReverse[index]!);
-    validateEnvelopePoint(current, originalForward[index]!, capacitiveReverse[index]!);
   });
   validatePlotPath(plotPath);
   validateDiagnostics(diagnostics);
@@ -261,9 +252,6 @@ export function validateDunnContribution(contribution: DunnContribution): void {
     ...plotPath.flatMap((point) => [Math.abs(point.originalCurrent), Math.abs(point.oppositeCurrent)])
   );
   if (diagnostics.maximumAbsoluteOvershoot > RECONSTRUCTION_TOLERANCE_SCALE * maximumCurrentMagnitude) {
-    throw new CvAnalysisError("reconstructionFailed");
-  }
-  if (diagnostics.maximumAbsoluteEnvelopeViolation > RECONSTRUCTION_TOLERANCE_SCALE * maximumCurrentMagnitude) {
     throw new CvAnalysisError("reconstructionFailed");
   }
   if (!Number.isFinite(contribution.capacitivePercent)
@@ -286,6 +274,8 @@ function validateContributionInput(input: DunnContributionInput) {
   const pointCount = alignedGrid.potentials.length;
   if (pointCount === 0
     || optimized.g.length !== pointCount
+    || input.refined.baselineG.length !== pointCount
+    || input.refined.g.length !== pointCount
     || input.dunnRecords.forward.length !== pointCount
     || input.dunnRecords.reverse.length !== pointCount
     || input.fractions.forward.length !== pointCount
@@ -297,7 +287,19 @@ function validateContributionInput(input: DunnContributionInput) {
     || !alignedGrid.reverseCurrents[seriesIndex]) {
     throw new CvAnalysisError("invalidDataShape");
   }
-  validateAlignedArrays(alignedGrid.potentials, optimized.g, alignedGrid.forwardCurrents[seriesIndex]!, alignedGrid.reverseCurrents[seriesIndex]!);
+  validateAlignedArrays(
+    alignedGrid.potentials,
+    optimized.g,
+    input.refined.baselineG,
+    input.refined.g,
+    alignedGrid.forwardCurrents[seriesIndex]!,
+    alignedGrid.reverseCurrents[seriesIndex]!
+  );
+  input.refined.g.forEach((fraction) => validateFraction(fraction));
+  if (!input.refined.diagnostics.converged
+    || !Number.isFinite(input.refined.diagnostics.optimalityResidual)) {
+    throw new CvAnalysisError("reconstructionFailed");
+  }
   if (!Number.isFinite(alignedGrid.commonMinimum)
     || !Number.isFinite(alignedGrid.commonMaximum)
     || alignedGrid.commonMinimum > alignedGrid.commonMaximum
@@ -333,8 +335,24 @@ function reconstructOriginalOrderPath(input: DunnContributionInput): DunnContrib
     const branch = branchBySourceIndex.get(sourceIndex);
     const oppositeCurrent = oppositeBySourceIndex.get(sourceIndex);
     if (branch === undefined || oppositeCurrent === undefined) throw new CvAnalysisError("invalidDataShape");
-    const fraction = evaluateSharedFraction(input.alignedGrid.potentials, input.optimized.g, point.potential);
-    return makeOrderedRecord(point, branch, sourceIndex, oppositeCurrent, fraction);
+    const baselineFraction = evaluateSharedFraction(
+      input.alignedGrid.potentials,
+      input.refined.baselineG,
+      point.potential
+    );
+    const fraction = evaluateSharedFraction(
+      input.alignedGrid.potentials,
+      input.refined.g,
+      point.potential
+    );
+    return makeOrderedRecord(
+      point,
+      branch,
+      sourceIndex,
+      oppositeCurrent,
+      baselineFraction,
+      fraction
+    );
   });
   return insertSharedZeroCrossings(records);
 }
@@ -380,11 +398,15 @@ function makeOrderedRecord(
   branch: CvBranchKind,
   sourceIndex: number,
   oppositeCurrent: number,
+  baselineFraction: number,
   fraction: number
 ): DunnOrderedRecord {
+  validateOriginalAndFraction(point.current, baselineFraction);
   validateOriginalAndFraction(point.current, fraction);
-  const projection = projectCapacitiveToEnvelope(point.current, oppositeCurrent, fraction * point.current);
-  const capacitiveCurrent = projection.constrainedCurrent;
+  const envelopeLower = Math.min(point.current, oppositeCurrent);
+  const envelopeUpper = Math.max(point.current, oppositeCurrent);
+  const targetCapacitiveCurrent = cleanZero(baselineFraction * point.current);
+  const capacitiveCurrent = cleanZero(fraction * point.current);
   const diffusionCurrent = cleanZero(point.current - capacitiveCurrent);
   validateReconstructedPoint(point.current, capacitiveCurrent, diffusionCurrent);
   return {
@@ -392,14 +414,14 @@ function makeOrderedRecord(
     current: capacitiveCurrent,
     originalCurrent: point.current,
     oppositeCurrent,
-    envelopeLower: projection.envelopeLower,
-    envelopeUpper: projection.envelopeUpper,
-    targetCapacitiveCurrent: projection.targetCurrent,
+    envelopeLower,
+    envelopeUpper,
+    targetCapacitiveCurrent,
     capacitiveCurrent,
     diffusionCurrent,
     g: fraction,
-    effectiveFraction: projection.effectiveFraction,
-    correctionMagnitude: projection.correctionMagnitude,
+    effectiveFraction: fraction,
+    correctionMagnitude: Math.abs(capacitiveCurrent - targetCapacitiveCurrent),
     branch,
     sourceIndex,
     synthetic: false
@@ -445,21 +467,6 @@ function ascendingBranch(cycle: NormalizedCvCycle, branch: CvBranchKind) {
     potentials: points.map((point) => point.potential),
     currents: points.map((point) => point.current)
   };
-}
-
-function reconstructEnvelopePair(forward: number, reverse: number, g: number) {
-  validateOriginalAndFraction(forward, g);
-  validateOriginalAndFraction(reverse, g);
-  return {
-    forward: projectCapacitiveToEnvelope(forward, reverse, g * forward).constrainedCurrent,
-    reverse: projectCapacitiveToEnvelope(reverse, forward, g * reverse).constrainedCurrent
-  };
-}
-
-function completeBranchReconstruction(original: number[], capacitive: number[]) {
-  const diffusion = original.map((current, index) => cleanZero(current - capacitive[index]!));
-  original.forEach((current, index) => validateReconstructedPoint(current, capacitive[index]!, diffusion[index]!));
-  return { capacitive, diffusion };
 }
 
 function interpolateNumber(left: number, right: number, fraction: number): number {
@@ -550,7 +557,6 @@ function validatePlotPath(plotPath: DunnContribution["plotPath"]) {
     }
     validateOriginalAndFraction(point.originalCurrent, point.g);
     validateReconstructedPoint(point.originalCurrent, point.capacitiveCurrent, point.diffusionCurrent);
-    validateEnvelopePoint(point.originalCurrent, point.oppositeCurrent, point.capacitiveCurrent);
     if (point.envelopeLower > point.envelopeUpper
       || point.effectiveFraction < 0
       || point.effectiveFraction > 1
@@ -604,6 +610,12 @@ function validateDiagnostics(diagnostics: DunnDiagnostics) {
     diagnostics.correctedPointCount,
     diagnostics.correctedPointPercent,
     diagnostics.maximumEffectiveFractionDeparture,
+    diagnostics.softEnvelopeTolerance,
+    diagnostics.softEnvelopeIterations,
+    diagnostics.softEnvelopeOptimalityResidual,
+    diagnostics.maximumSharedFractionAdjustment,
+    diagnostics.envelopeResidualPointCount,
+    diagnostics.envelopeResidualPointPercent,
     diagnostics.maximumAdjacentGJump
   ];
   const unitIntervalValues = [
@@ -632,6 +644,17 @@ function validateDiagnostics(diagnostics: DunnDiagnostics) {
     || diagnostics.correctedPointPercent > 100
     || diagnostics.maximumEffectiveFractionDeparture < 0
     || diagnostics.maximumEffectiveFractionDeparture > 1
+    || diagnostics.softEnvelopeTolerance < 0
+    || diagnostics.softEnvelopeIterations < 0
+    || !Number.isInteger(diagnostics.softEnvelopeIterations)
+    || diagnostics.softEnvelopeOptimalityResidual < 0
+    || diagnostics.maximumSharedFractionAdjustment < 0
+    || diagnostics.maximumSharedFractionAdjustment > 1
+    || diagnostics.envelopeResidualPointCount < 0
+    || !Number.isInteger(diagnostics.envelopeResidualPointCount)
+    || diagnostics.envelopeResidualPointPercent < 0
+    || diagnostics.envelopeResidualPointPercent > 100
+    || !diagnostics.softEnvelopeConverged
     || diagnostics.maximumAdjacentGJump < 0
     || diagnostics.maximumAdjacentGJump > 1
     || (diagnostics.medianForwardRSquared !== null && !Number.isFinite(diagnostics.medianForwardRSquared))
@@ -665,7 +688,10 @@ function makeDiagnostics(
   ]));
   const correctionTolerance = RECONSTRUCTION_TOLERANCE_SCALE * maximumCurrentMagnitude;
   const correctedPointCount = plotPath.filter((record) => record.correctionMagnitude > correctionTolerance).length;
-  const gDeltas = input.optimized.g.slice(1).map((value, index) => Math.abs(value - input.optimized.g[index]!));
+  const envelopeResidualPointCount = plotPath.filter((record) =>
+    record.capacitiveCurrent > record.envelopeUpper + correctionTolerance
+    || record.capacitiveCurrent < record.envelopeLower - correctionTolerance).length;
+  const gDeltas = input.refined.g.slice(1).map((value, index) => Math.abs(value - input.refined.g[index]!));
   const maximumAdjacentGJump = Math.max(0, ...gDeltas);
   const medianGJump = medianOrNull(gDeltas) ?? 0;
   return {
@@ -695,6 +721,15 @@ function makeDiagnostics(
     correctedPointCount,
     correctedPointPercent: plotPath.length === 0 ? 0 : 100 * correctedPointCount / plotPath.length,
     maximumEffectiveFractionDeparture: Math.max(0, ...plotPath.map((record) => Math.abs(record.effectiveFraction - record.g))),
+    softEnvelopeTolerance: input.refined.diagnostics.envelopeTolerance,
+    softEnvelopeIterations: input.refined.diagnostics.iterations,
+    softEnvelopeConverged: input.refined.diagnostics.converged,
+    softEnvelopeOptimalityResidual: input.refined.diagnostics.optimalityResidual,
+    maximumSharedFractionAdjustment: input.refined.diagnostics.maximumSharedFractionAdjustment,
+    envelopeResidualPointCount,
+    envelopeResidualPointPercent: plotPath.length === 0
+      ? 0
+      : 100 * envelopeResidualPointCount / plotPath.length,
     maximumAdjacentGJump,
     gSmoothnessWarning: maximumAdjacentGJump > 0.2 && maximumAdjacentGJump > 8 * medianGJump
   };
@@ -768,18 +803,6 @@ function validateReconstructedPoint(original: number, capacitive: number, diffus
     || Math.abs(diffusion) - Math.abs(original) > tolerance
     || violatesSign(original, capacitive, tolerance)
     || violatesSign(original, diffusion, tolerance)) {
-    throw new CvAnalysisError("reconstructionFailed");
-  }
-}
-
-function validateEnvelopePoint(original: number, opposite: number, capacitive: number) {
-  if (![original, opposite, capacitive].every(Number.isFinite)) {
-    throw new CvAnalysisError("invalidDataShape");
-  }
-  const lower = Math.min(original, opposite);
-  const upper = Math.max(original, opposite);
-  const tolerance = RECONSTRUCTION_TOLERANCE_SCALE * Math.max(1, Math.abs(original), Math.abs(opposite));
-  if (capacitive < lower - tolerance || capacitive > upper + tolerance) {
     throw new CvAnalysisError("reconstructionFailed");
   }
 }

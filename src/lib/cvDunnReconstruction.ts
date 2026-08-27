@@ -6,6 +6,7 @@ import {
   type DunnSharedFractionResult,
   type DunnSoftEnvelopeResult
 } from "./cvTypes";
+import { pchipInterpolate } from "./cvInterpolation";
 
 export type {
   DunnRegularizationDiagnostics,
@@ -19,10 +20,12 @@ const MAX_ITERATIONS = 50_000;
 const CANDIDATE_OPTIMALITY_TOLERANCE = 1e-5;
 const OPTIMALITY_TOLERANCE = 1e-6;
 const SOFT_ENVELOPE_FIDELITY_WEIGHT = 1;
-const SOFT_ENVELOPE_SMOOTHNESS_RATIO = 0.1;
+const SOFT_ENVELOPE_ENDPOINT_FIDELITY_WEIGHT = 0.25;
+const SOFT_ENVELOPE_SMOOTHNESS_RATIO = 1e-4;
 const SOFT_ENVELOPE_LAMBDA = 8;
 const SOFT_ENVELOPE_TOLERANCE_SCALE = 1e-10;
 const SOFT_ENVELOPE_MAXIMUM_ACTIVE_SET_ITERATIONS = 50;
+const SOFT_ENVELOPE_MAXIMUM_SUPPORT_POINTS = 2_001;
 
 export interface DunnSoftEnvelopeInput {
   baselineG: number[];
@@ -206,6 +209,65 @@ export function refineSharedFractionWithSoftEnvelope(
     1e-10,
     SOFT_ENVELOPE_SMOOTHNESS_RATIO * input.baselineLambda
   );
+  if (softEnvelopeMeanPenalty(
+    input.baselineG,
+    forward,
+    reverse,
+    normalizedTolerance
+  ) === 0) {
+    const g = [...input.baselineG];
+    return {
+      baselineG: [...input.baselineG],
+      g,
+      diagnostics: makeSoftEnvelopeDiagnostics(
+        g,
+        input.baselineG,
+        forward,
+        reverse,
+        normalizedTolerance,
+        currentScale,
+        smoothnessLambda,
+        operator,
+        0,
+        0
+      )
+    };
+  }
+  if (input.baselineG.length > SOFT_ENVELOPE_MAXIMUM_SUPPORT_POINTS) {
+    const supportIndices = selectSoftEnvelopeSupportIndices(
+      input.baselineG,
+      forward,
+      reverse,
+      normalizedTolerance,
+      SOFT_ENVELOPE_MAXIMUM_SUPPORT_POINTS
+    );
+    const support = refineSharedFractionWithSoftEnvelope({
+      baselineG: supportIndices.map((index) => input.baselineG[index]!),
+      potentials: supportIndices.map((index) => input.potentials[index]!),
+      forwardCurrents: supportIndices.map((index) => input.forwardCurrents[index]!),
+      reverseCurrents: supportIndices.map((index) => input.reverseCurrents[index]!),
+      baselineLambda: input.baselineLambda
+    });
+    const supportPotentials = supportIndices.map((index) => input.potentials[index]!);
+    const g = pchipInterpolate(supportPotentials, support.g, input.potentials)
+      .map((value) => Math.min(1, Math.max(0, value)));
+    return {
+      baselineG: [...input.baselineG],
+      g,
+      diagnostics: makeSoftEnvelopeDiagnostics(
+        g,
+        input.baselineG,
+        forward,
+        reverse,
+        normalizedTolerance,
+        currentScale,
+        smoothnessLambda,
+        operator,
+        support.diagnostics.iterations,
+        support.diagnostics.optimalityResidual
+      )
+    };
+  }
   let g = [...input.baselineG];
   let totalIterations = 0;
 
@@ -264,6 +326,37 @@ export function refineSharedFractionWithSoftEnvelope(
   }
 
   throw new CvAnalysisError("reconstructionFailed");
+}
+
+function selectSoftEnvelopeSupportIndices(
+  baselineG: number[],
+  forward: number[],
+  reverse: number[],
+  tolerance: number,
+  maximumPointCount: number
+): number[] {
+  const uniformCount = Math.ceil(maximumPointCount / 2);
+  const indices = new Set<number>();
+  for (let index = 0; index < uniformCount; index += 1) {
+    indices.add(Math.round(index * (baselineG.length - 1) / (uniformCount - 1)));
+  }
+  const rankedViolations = baselineG
+    .map((fraction, index) => {
+      const lower = Math.min(forward[index]!, reverse[index]!);
+      const upper = Math.max(forward[index]!, reverse[index]!);
+      return {
+        index,
+        penalty: envelopePenalty(fraction * forward[index]!, lower, upper, tolerance)
+          + envelopePenalty(fraction * reverse[index]!, lower, upper, tolerance)
+      };
+    })
+    .filter((item) => item.index > 0 && item.index < baselineG.length - 1 && item.penalty > 0)
+    .sort((left, right) => right.penalty - left.penalty || left.index - right.index);
+  for (const item of rankedViolations) {
+    if (indices.size >= maximumPointCount) break;
+    indices.add(item.index);
+  }
+  return [...indices].sort((left, right) => left - right);
 }
 
 function objective(
@@ -333,12 +426,20 @@ function makeSoftEnvelopeQuadraticModel(
   const weight: number[] = [];
 
   for (let index = 0; index < g.length; index += 1) {
-    let totalWeight = pointWeight;
-    let weightedTarget = pointWeight * baselineG[index];
+    const endpointWeight = index === 0 || index === g.length - 1
+      ? SOFT_ENVELOPE_ENDPOINT_FIDELITY_WEIGHT
+      : 0;
+    let totalWeight = pointWeight + endpointWeight;
+    let weightedTarget = totalWeight * baselineG[index];
     const lower = Math.min(forward[index], reverse[index]);
     const upper = Math.max(forward[index], reverse[index]);
 
-    for (const raw of [forward[index], reverse[index]]) {
+    // Exact reversal endpoints have zero integration measure. Keeping them on
+    // the baseline avoids grid-density-dependent distortion at reconnection.
+    const envelopeCurrents = index === 0 || index === g.length - 1
+      ? []
+      : [forward[index], reverse[index]];
+    for (const raw of envelopeCurrents) {
       const reconstructed = g[index] * raw;
       let boundary: number | null = null;
       if (reconstructed > upper + tolerance) boundary = upper + tolerance;
@@ -367,9 +468,16 @@ function addSoftEnvelopeGradient(
   const envelopeScale = 2 * SOFT_ENVELOPE_LAMBDA / g.length;
   for (let index = 0; index < g.length; index += 1) {
     gradient[index] += fidelityScale * (g[index] - baselineG[index]);
+    if (index === 0 || index === g.length - 1) {
+      gradient[index] += 2 * SOFT_ENVELOPE_ENDPOINT_FIDELITY_WEIGHT
+        * (g[index] - baselineG[index]);
+    }
     const lower = Math.min(forward[index], reverse[index]);
     const upper = Math.max(forward[index], reverse[index]);
-    for (const raw of [forward[index], reverse[index]]) {
+    const envelopeCurrents = index === 0 || index === g.length - 1
+      ? []
+      : [forward[index], reverse[index]];
+    for (const raw of envelopeCurrents) {
       const reconstructed = g[index] * raw;
       const upperViolation = reconstructed - upper - tolerance;
       const lowerViolation = lower - reconstructed - tolerance;

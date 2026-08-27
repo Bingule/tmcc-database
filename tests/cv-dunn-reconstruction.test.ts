@@ -62,6 +62,21 @@ it("uses a tolerance dead zone and a quadratic envelope penalty", () => {
   expect(large).toBeCloseTo(4 * small, 8);
 });
 
+it("reuses the baseline exactly when it already satisfies the soft envelope", () => {
+  const baselineG = [0.4, 0.55, 0.5, 0.6, 0.45];
+  const result = refineSharedFractionWithSoftEnvelope({
+    baselineG,
+    potentials: [0, 0.25, 0.5, 0.75, 1],
+    forwardCurrents: [2, 3, 4, 3, 2],
+    reverseCurrents: [-2, -3, -4, -3, -2],
+    baselineLambda: 1e-4
+  });
+
+  expect(result.g).toEqual(baselineG);
+  expect(result.diagnostics.iterations).toBe(0);
+  expect(result.diagnostics.maximumSharedFractionAdjustment).toBe(0);
+});
+
 it("keeps soft-envelope smoothing stable across potential-grid density", () => {
   const solve = (count: number) => {
     const potentials = Array.from({ length: count }, (_value, index) => index / (count - 1));

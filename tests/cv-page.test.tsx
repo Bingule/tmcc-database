@@ -846,7 +846,7 @@ describe("CV kinetics page", () => {
       else Reflect.deleteProperty(navigator, "clipboard");
     };
     const toolbar = bTable.closest(".cv-result-table-block")?.querySelector<HTMLElement>(".cv-table-copy-toolbar")!;
-    await act(async () => toolbar.querySelector<HTMLInputElement>('input[value="1"]')!.click());
+    await act(async () => bTable.querySelector<HTMLInputElement>('thead input[value="1"]')!.click());
     await act(async () => toolbar.querySelector<HTMLButtonElement>("button")!.click());
     expect(writeText.mock.calls[0][0]).toBe("Sweep branch\r\nForward sweep\r\nForward sweep\r\nForward sweep\r\nReverse sweep\r\nReverse sweep");
 
@@ -1049,7 +1049,7 @@ describe("CV kinetics page", () => {
     expect(view.querySelector('[data-export-id="cv-dunn-chart"] [data-selected-x="1"]')).not.toBeNull();
     const rows = [...view.querySelectorAll<HTMLTableRowElement>('[data-table-id="cv-dunn-current-table"] tbody tr')];
     const selected = rows.find((row) => row.cells[0].textContent === "1")!;
-    expect([...selected.cells].map((cell) => cell.textContent)).toEqual(["1", "-9", "-9", "-9", "0"]);
+    expect([...selected.cells].map((cell) => cell.textContent)).toEqual(["1", "-9", "-9", "-4.5", "-4.5"]);
     const chart = view.querySelector('[data-export-id="cv-dunn-chart"]')!;
     expect(chart.querySelectorAll('[data-series-id]')).toHaveLength(3);
     expect(chart.querySelector('[data-series-id="original"]')?.getAttribute("data-render-point-count")).toBe("6");
@@ -1221,8 +1221,8 @@ describe("CV kinetics page", () => {
     expect(english[0]).toContain("Potential (V),Total current (arb. units) at 1 mV/s");
     expect(english[1]).toContain("Potential (V),Sweep branch,b value,Intercept,R²,Point count,Fit status");
     expect(english[2]).toContain("Scan rate (mV/s),Potential (V),Sweep branch,k1,k2,R²,Point count,Fit status,Local capacitive fraction,Local confidence");
-    expect(english[3]).toContain("Scan rate (mV/s),Ordered sequence index,Original source index,Sweep branch,Potential (V),Original measured current (arb. units),Opposite-branch current,Envelope lower current,Envelope upper current,g(V),Target capacitive current,Effective capacitive fraction,Capacitive contribution,Envelope correction magnitude,Maximum absolute containment overshoot,Maximum absolute envelope violation");
-    expect(english[4]).toContain("Scan rate (mV/s),Ordered sequence index,Original source index,Sweep branch,Potential (V),Original measured current (arb. units),Opposite-branch current,Envelope lower current,Envelope upper current,g(V),Target capacitive current,Effective capacitive fraction,Diffusion-controlled contribution,Envelope correction magnitude,Maximum absolute containment overshoot,Maximum absolute envelope violation");
+    expect(english[3]).toContain("Scan rate (mV/s),Ordered sequence index,Original source index,Sweep branch,Potential (V),Original measured current (arb. units),Opposite-branch current,Envelope lower current,Envelope upper current,g(V),Baseline capacitive current,Shared g(V),Capacitive contribution,Shared g(V) current adjustment,Maximum absolute containment overshoot,Maximum residual envelope crossing");
+    expect(english[4]).toContain("Scan rate (mV/s),Ordered sequence index,Original source index,Sweep branch,Potential (V),Original measured current (arb. units),Opposite-branch current,Envelope lower current,Envelope upper current,g(V),Baseline capacitive current,Shared g(V),Diffusion-controlled contribution,Shared g(V) current adjustment,Maximum absolute containment overshoot,Maximum residual envelope crossing");
     expect(english[5]).toContain("Scan rate (mV/s),Capacitive contribution (%),Diffusion-controlled contribution (%)");
     expect(english[6]).toContain("Peak label,Sweep branch,Peak kind,b value,Intercept,R²,Fit point count,Scan-rate coverage,Fit status");
     expect(english[7]).toContain("Peak label,Scan rate (mV/s),Peak potential (V),Peak current,Original source index,Point status");
@@ -1294,7 +1294,7 @@ describe("CV kinetics page", () => {
     expect((view.querySelector('path[data-series-id="b-values"]')?.getAttribute("d") ?? "").match(/\bM\b/g)).toHaveLength(2);
 
     const toolbar = bTable.closest('.cv-result-table-block')?.querySelector<HTMLElement>('.cv-table-copy-toolbar')!;
-    await act(async () => toolbar.querySelector<HTMLInputElement>('input[value="0"]')!.click());
+    await act(async () => bTable.querySelector<HTMLInputElement>('thead input[value="0"]')!.click());
     await act(async () => toolbar.querySelector<HTMLButtonElement>('button')!.click());
     expect((writeText.mock.calls[0][0] as string).split("\r\n").some((row) => row === "5")).toBe(true);
 
@@ -1384,15 +1384,15 @@ describe("CV kinetics page", () => {
     expect(exported[3].split("\r\n")[0]).toContain("Opposite-branch current");
     expect(exported[3].split("\r\n")[0]).toContain("Envelope lower current");
     expect(exported[3].split("\r\n")[0]).toContain("Envelope upper current");
-    expect(exported[3].split("\r\n")[0]).toContain("Target capacitive current");
-    expect(exported[3].split("\r\n")[0]).toContain("Effective capacitive fraction");
-    expect(exported[3].split("\r\n")[0]).toContain("Envelope correction magnitude");
-    expect(exported[3].split("\r\n")[0]).toContain("Maximum absolute envelope violation");
+    expect(exported[3].split("\r\n")[0]).toContain("Baseline capacitive current");
+    expect(exported[3].split("\r\n")[0]).toContain("Shared g(V)");
+    expect(exported[3].split("\r\n")[0]).toContain("Shared g(V) current adjustment");
+    expect(exported[3].split("\r\n")[0]).toContain("Maximum residual envelope crossing");
     expect(exported[4].split("\r\n")[0]).toContain("R² threshold");
     expect(exported[4].split("\r\n")[0]).toContain("g(V)");
     expect(exported[4].split("\r\n")[0]).toContain("Diffusion-controlled contribution");
     expect(exported[4].split("\r\n")[0]).toContain("Maximum absolute containment overshoot");
-    expect(exported[4].split("\r\n")[0]).toContain("Maximum absolute envelope violation");
+    expect(exported[4].split("\r\n")[0]).toContain("Maximum residual envelope crossing");
     expect(exported[5]).toContain("Valid points,Sampled points,Coverage (%),Contribution status,Data layout,Data source,Requested interval,Resolved interval,Dunn method,R² threshold,Requested turning point trim,Resolved turning point trim,Smoothing,Common potential range (V),Forward median R²,Reverse median R²,Dunn coverage (%)");
     expect(exported[5]).toContain(",6,10,60,Available,XYYYYY,File upload,5000 mV,5000 mV,R² threshold,0.95,Auto,100 mV");
     expect(exported[6]).toContain("Peak label,Sweep branch,Peak kind,b value,Intercept,R²,Fit point count,Scan-rate coverage,Fit status");
@@ -1404,6 +1404,8 @@ describe("CV kinetics page", () => {
     expect(chinese).toContain("拟合状态,数据格式,数据来源,请求间隔,解析间隔,Dunn 方法,R² 阈值,请求转折点裁剪,解析转折点裁剪");
     expect(chinese).toContain("5,正向扫描");
     expect(view.querySelector('[data-dunn-envelope-diagnostics="true"]')).not.toBeNull();
+    expect(view.querySelector('[data-dunn-envelope-diagnostics="true"]')?.textContent).toContain("共享 g(V) 调整");
+    expect(view.querySelector('[data-dunn-envelope-diagnostics="true"]')?.textContent).toContain("残余包络交叉");
 
     await click(view, "EN");
     await click(view, "Export SVG — cv-b-chart.svg");
@@ -1637,14 +1639,15 @@ describe("CV kinetics page", () => {
 
     const dunnTable = view.querySelector('[data-table-id="cv-dunn-current-table"]')!;
     const toolbar = dunnTable.closest('.cv-result-table-block')?.querySelector<HTMLElement>('.cv-table-copy-toolbar')!;
-    const columnGroup = toolbar.querySelector<HTMLElement>('.cv-table-copy-columns');
-    expect(columnGroup?.getAttribute("role")).toBe("group");
-    expect(columnGroup?.getAttribute("aria-labelledby")).toBe(toolbar.querySelector("span")?.id);
+    expect(toolbar.querySelector('.cv-table-copy-columns')).toBeNull();
+    expect(toolbar.querySelector('span')).toBeNull();
+    expect(dunnTable.querySelectorAll('thead th input[type="checkbox"]')).toHaveLength(5);
+    expect(dunnTable.querySelector('thead th')?.textContent).toContain("Potential (V)");
     const copyButton = [...toolbar.querySelectorAll('button')]
       .find((item) => item.textContent === "Copy selected columns")!;
     expect(copyButton.disabled).toBe(true);
-    await act(async () => toolbar.querySelector<HTMLInputElement>('input[value="3"]')!.click());
-    await act(async () => toolbar.querySelector<HTMLInputElement>('input[value="0"]')!.click());
+    await act(async () => dunnTable.querySelector<HTMLInputElement>('thead input[value="3"]')!.click());
+    await act(async () => dunnTable.querySelector<HTMLInputElement>('thead input[value="0"]')!.click());
     await act(async () => copyButton.click());
 
     const copied = writeText.mock.calls[0][0] as string;

@@ -198,16 +198,14 @@ describe("constrained Dunn regression datasets", () => {
       for (const contribution of result.contributions) {
         expect(contribution.g.every((value) => Number.isFinite(value) && value >= 0 && value <= 1)).toBe(true);
         contribution.capacitiveForward.forEach((value, index) => {
-          const lower = Math.min(contribution.originalForward[index]!, contribution.originalReverse[index]!);
-          const upper = Math.max(contribution.originalForward[index]!, contribution.originalReverse[index]!);
-          expect(value).toBeGreaterThanOrEqual(lower - 1e-10);
-          expect(value).toBeLessThanOrEqual(upper + 1e-10);
+          const original = contribution.originalForward[index]!;
+          expect(Math.abs(value)).toBeLessThanOrEqual(Math.abs(original) + 1e-10);
+          expect(value * original).toBeGreaterThanOrEqual(-1e-10);
         });
         contribution.capacitiveReverse.forEach((value, index) => {
-          const lower = Math.min(contribution.originalForward[index]!, contribution.originalReverse[index]!);
-          const upper = Math.max(contribution.originalForward[index]!, contribution.originalReverse[index]!);
-          expect(value).toBeGreaterThanOrEqual(lower - 1e-10);
-          expect(value).toBeLessThanOrEqual(upper + 1e-10);
+          const original = contribution.originalReverse[index]!;
+          expect(Math.abs(value)).toBeLessThanOrEqual(Math.abs(original) + 1e-10);
+          expect(value * original).toBeGreaterThanOrEqual(-1e-10);
         });
         expect(contribution.capacitiveForward.every(Number.isFinite)).toBe(true);
         expect(contribution.capacitiveReverse.every(Number.isFinite)).toBe(true);
@@ -287,8 +285,8 @@ describe("constrained Dunn regression datasets", () => {
         );
       });
     }));
-    expect(maximumPercentageDifference).toBeLessThan(0.75);
     expect(maximumFixedPotentialDifference).toBeLessThan(0.02);
+    expect(maximumPercentageDifference).toBeLessThan(0.75);
   });
 
   it("restores every singly and doubly recorded turning-point sample in the final path", () => {
@@ -307,13 +305,15 @@ describe("constrained Dunn regression datasets", () => {
           const reconstructed = contribution.plotPath[sourceIndex]!;
           expect(reconstructed.potential).toBe(original.potential);
           expect(reconstructed.branch).toBe(expectedBranches[turningIndex]);
-          expect(reconstructed.targetCapacitiveCurrent).toBeCloseTo(
+          expect(reconstructed.capacitiveCurrent).toBeCloseTo(
             original.current * evaluateG(contribution.potentialGrid, contribution.g, original.potential),
             12
           );
           expect(reconstructed.current).toBe(reconstructed.capacitiveCurrent);
-          expect(reconstructed.capacitiveCurrent).toBeGreaterThanOrEqual(reconstructed.envelopeLower - 1e-10);
-          expect(reconstructed.capacitiveCurrent).toBeLessThanOrEqual(reconstructed.envelopeUpper + 1e-10);
+          expect(reconstructed.correctionMagnitude).toBeCloseTo(
+            Math.abs(reconstructed.capacitiveCurrent - reconstructed.targetCapacitiveCurrent),
+            12
+          );
         });
       });
     }
@@ -329,8 +329,10 @@ describe("constrained Dunn regression datasets", () => {
       expect(endpoint!.oppositeCurrent).toBe(0);
       const endpointG = evaluateG(contribution.potentialGrid, contribution.g, endpoint!.potential);
       expect(endpoint!.capacitiveCurrent).toBeCloseTo(endpointG * endpoint!.originalCurrent, 12);
-      expect(endpoint!.targetCapacitiveCurrent).toBeCloseTo(endpointG * endpoint!.originalCurrent, 12);
-      expect(endpoint!.correctionMagnitude).toBe(0);
+      expect(endpoint!.correctionMagnitude).toBeCloseTo(
+        Math.abs(endpoint!.capacitiveCurrent - endpoint!.targetCapacitiveCurrent),
+        12
+      );
       expect(Math.abs(endpoint!.capacitiveCurrent)).toBeLessThanOrEqual(Math.abs(endpoint!.originalCurrent));
       expect(endpoint!.capacitiveCurrent * endpoint!.originalCurrent).toBeGreaterThanOrEqual(0);
       expect(endpoint!.capacitiveCurrent).toBeGreaterThanOrEqual(Math.min(0, endpoint!.originalCurrent));
@@ -341,27 +343,45 @@ describe("constrained Dunn regression datasets", () => {
   it.each([
     ["NCP", makeNcpRegressionSeries],
     ["BP150", makeBp150RegressionSeries]
-  ] as const)("keeps every %s scan rate inside its local CV envelope", (_name, makeSeries) => {
+  ] as const)("keeps every %s scan rate on one bounded shared fraction and reports envelope residuals", (_name, makeSeries) => {
     for (const dunnConfidenceMode of ["threshold", "weighted"] as const) {
       const result = analyzeCvWorkflow(makeSeries(), { ...settings, dunnConfidenceMode });
-      expectEnvelopeContained(result);
+      expectSharedSoftEnvelopeReconstruction(result);
       const highest = result.contributions.reduce((best, item) => item.scanRate > best.scanRate ? item : best);
-      expect(highest.diagnostics.maximumAbsoluteEnvelopeViolation).toBeLessThanOrEqual(1e-10);
+      expect(highest.diagnostics.maximumAbsoluteEnvelopeViolation).toBeGreaterThanOrEqual(0);
+      expect(Number.isFinite(highest.diagnostics.maximumAbsoluteEnvelopeViolation)).toBe(true);
     }
   });
 });
 
-function expectEnvelopeContained(result: CvWorkflowResult) {
+function expectSharedSoftEnvelopeReconstruction(result: CvWorkflowResult) {
   for (const contribution of result.contributions) {
     expect(contribution.g.every((value) => value >= 0 && value <= 1)).toBe(true);
+    contribution.g.forEach((fraction, index) => {
+      expect(contribution.capacitiveForward[index]).toBeCloseTo(
+        fraction * contribution.originalForward[index], 10
+      );
+      expect(contribution.capacitiveReverse[index]).toBeCloseTo(
+        fraction * contribution.originalReverse[index], 10
+      );
+    });
     for (const record of contribution.plotPath) {
       const tolerance = 1e-10 * Math.max(1, Math.abs(record.originalCurrent), Math.abs(record.oppositeCurrent));
-      expect(record.capacitiveCurrent).toBeGreaterThanOrEqual(record.envelopeLower - tolerance);
-      expect(record.capacitiveCurrent).toBeLessThanOrEqual(record.envelopeUpper + tolerance);
+      expect(record.capacitiveCurrent).toBeCloseTo(record.g * record.originalCurrent, 10);
+      expect(record.effectiveFraction).toBeCloseTo(record.g, 10);
       expect(Math.abs(record.capacitiveCurrent)).toBeLessThanOrEqual(Math.abs(record.originalCurrent) + tolerance);
+      expect(record.capacitiveCurrent * record.originalCurrent).toBeGreaterThanOrEqual(-tolerance);
       expect(record.capacitiveCurrent + record.diffusionCurrent).toBeCloseTo(record.originalCurrent, 10);
     }
-    expect(contribution.diagnostics.maximumAbsoluteEnvelopeViolation).toBeLessThanOrEqual(1e-10);
+    expect(contribution.diagnostics.maximumAbsoluteEnvelopeViolation).toBeGreaterThanOrEqual(0);
+    expect(Number.isFinite(contribution.diagnostics.maximumAbsoluteEnvelopeViolation)).toBe(true);
+    expect(contribution.diagnostics.softEnvelopeConverged).toBe(true);
+    expect(contribution.diagnostics.softEnvelopeIterations).toBeGreaterThanOrEqual(0);
+    expect(contribution.diagnostics.softEnvelopeOptimalityResidual).toBeGreaterThanOrEqual(0);
+    expect(contribution.diagnostics.maximumSharedFractionAdjustment).toBeGreaterThanOrEqual(0);
+    expect(contribution.diagnostics.envelopeResidualPointCount).toBeGreaterThanOrEqual(0);
+    expect(contribution.diagnostics.envelopeResidualPointPercent).toBeGreaterThanOrEqual(0);
+    expect(contribution.diagnostics.envelopeResidualPointPercent).toBeLessThanOrEqual(100);
   }
 }
 

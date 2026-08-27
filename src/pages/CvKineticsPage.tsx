@@ -1,4 +1,4 @@
-import { useId, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Breadcrumbs } from "../components/Breadcrumbs";
 import { BValueOverviewChart } from "../components/BValueOverviewChart";
 import { CvPeakAnalysisPanel, type CvPeakPanelCopy } from "../components/CvPeakAnalysisPanel";
@@ -583,9 +583,9 @@ export function CvKineticsPage() {
         </>}
         {selectedContribution && <dl className="cv-dunn-envelope-diagnostics" data-dunn-envelope-diagnostics="true">
           <dt>{t("cv.dunn.envelopeCorrection")}</dt>
-          <dd>{selectedContribution.diagnostics.correctedPointCount} / {selectedContribution.plotPath.length} · {format(selectedContribution.diagnostics.maximumEnvelopeCorrection)}</dd>
+          <dd>{selectedContribution.diagnostics.correctedPointCount} / {selectedContribution.plotPath.length} · max Δg = {format(selectedContribution.diagnostics.maximumSharedFractionAdjustment)}</dd>
           <dt>{t("cv.dunn.envelopeViolation")}</dt>
-          <dd>{format(selectedContribution.diagnostics.maximumAbsoluteEnvelopeViolation)}</dd>
+          <dd>{selectedContribution.diagnostics.envelopeResidualPointCount} / {selectedContribution.plotPath.length} · max = {format(selectedContribution.diagnostics.maximumAbsoluteEnvelopeViolation)}</dd>
           {selectedContribution.diagnostics.gSmoothnessWarning && <><dt>{t("cv.results.fitStatus")}</dt><dd>{t("cv.dunn.smoothnessWarning")}</dd></>}
         </dl>}
         <ScientificLineChart title={t("cv.dunn.chart")} xLabel={`${t("cv.table.potential")} (V)`} yLabel={t("cv.table.currentArbitrary")}
@@ -653,7 +653,6 @@ class PageAnalysisError extends Error { constructor(readonly code: "noBFit" | "a
 
 function DataTable({ headers, rows, tableId }: { headers: string[]; rows: Array<Array<string | number | null>>; tableId?: string }) {
   const { t } = useI18n();
-  const controlId = useId();
   const [selectedColumns, setSelectedColumns] = useState<Set<number>>(() => new Set());
   const [copyStatus, setCopyStatus] = useState<"success" | "error" | null>(null);
   const supportsColumnCopy = rows.length > 1;
@@ -688,23 +687,26 @@ function DataTable({ headers, rows, tableId }: { headers: string[]; rows: Array<
   const scrollsVertically = displayedRows.length > MAX_VISIBLE_TABLE_ROWS;
   return <div className="cv-result-table-block">
     {supportsColumnCopy && <div className="cv-table-copy-toolbar">
-      <span id={`${controlId}-columns`}>{t("cv.table.copy.columns")}</span>
-      <div className="cv-table-copy-columns" role="group" aria-labelledby={`${controlId}-columns`}>
-        {headers.map((header, index) => {
-          const checkboxId = `${controlId}-column-${index}`;
-          return <label htmlFor={checkboxId} key={index}>
-            <input id={checkboxId} type="checkbox" value={index} checked={selectedColumns.has(index)} onChange={() => toggleColumn(index)} />
-            {header}
-          </label>;
-        })}
-      </div>
       <button type="button" disabled={selectedColumns.size === 0} onClick={copySelectedColumns}>{t("cv.table.copy.action")}</button>
-      <p role="status" aria-live="polite">{copyStatus && t(`cv.table.copy.${copyStatus}`)}</p>
+      {copyStatus && <p role="status" aria-live="polite">{t(`cv.table.copy.${copyStatus}`)}</p>}
     </div>}
     <div className={`cv-result-table-frame${scrollsVertically ? " cv-result-table-frame-scroll" : ""}`}>
       <div className="tool-table-wrap">
         <div className="cv-result-table-viewport">
-          <table data-table-id={tableId}><thead><tr>{headers.map((header, index) => <th scope="col" key={index}>{header}</th>)}</tr></thead>
+          <table data-table-id={tableId}><thead><tr>{headers.map((header, index) => <th scope="col" key={index}>
+            {supportsColumnCopy
+              ? <label className="cv-table-column-heading">
+                <span>{header}</span>
+                <input
+                  type="checkbox"
+                  value={index}
+                  checked={selectedColumns.has(index)}
+                  aria-label={`${t("cv.table.copy.columns")}: ${header}`}
+                  onChange={() => toggleColumn(index)}
+                />
+              </label>
+              : header}
+          </th>)}</tr></thead>
             <tbody>{displayedRows.map((row, index) => <tr key={index}>{row.map((cell, cellIndex) => <td key={cellIndex}>{format(cell)}</td>)}</tr>)}</tbody></table>
         </div>
       </div>
