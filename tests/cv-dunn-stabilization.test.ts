@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { makeDunnFractionGrid } from "../src/lib/cvDunnConfidence";
+import { optimizeSharedFraction } from "../src/lib/cvDunnReconstruction";
 import { stabilizeDunnFractions } from "../src/lib/cvDunnStabilization";
 import { CvAnalysisError, type DunnBranchFitRecord, type DunnFitGrid } from "../src/lib/cvTypes";
 
@@ -266,6 +267,50 @@ describe("stabilizeDunnFractions", () => {
     expect(result.fractions.reverse).toHaveLength(3);
     expect(result.diagnostics.rawFractionNoise).toBe(0);
     expect(Number.isFinite(result.diagnostics.rawFractionNoise)).toBe(true);
+  });
+
+  it("builds shared g from the only branch with finite Dunn evidence", () => {
+    const anchorPotential = 0.123456789;
+    const emptyForward: DunnBranchFitRecord[] = [
+      { branch: "forward", potential: 0, fit: null, status: "trimmed", trimmed: true },
+      { branch: "forward", potential: anchorPotential, fit: null, status: "regressionFailed", trimmed: false },
+      { branch: "forward", potential: 1, fit: null, status: "trimmed", trimmed: true }
+    ];
+    const evidencedReverse: DunnBranchFitRecord[] = [
+      { branch: "reverse", potential: 0, fit: null, status: "trimmed", trimmed: true },
+      {
+        branch: "reverse",
+        potential: anchorPotential,
+        fit: {
+          potential: anchorPotential,
+          k1: 0.4,
+          k2: 0.6,
+          rSquared: 0.99,
+          pointCount: 3
+        },
+        status: "valid",
+        trimmed: false
+      },
+      { branch: "reverse", potential: 1, fit: null, status: "trimmed", trimmed: true }
+    ];
+    const fits: DunnFitGrid = {
+      forward: emptyForward,
+      reverse: evidencedReverse,
+      resolvedTurningPointTrim: 0.005
+    };
+
+    const stabilized = stabilizeDunnFractions(fits, 1, "threshold", 0.95);
+    const shared = optimizeSharedFraction(
+      stabilized.fractions,
+      [0, anchorPotential, 1],
+      stabilized.diagnostics.smoothingMultiplier
+    );
+
+    expect(stabilized.diagnostics.rawFractionNoise).toBe(0);
+    expect(stabilized.fractions.forward.every((point) => point.fraction === null && point.confidence === 0)).toBe(true);
+    expect(shared.g.every((fraction) => Number.isFinite(fraction) && fraction >= 0 && fraction <= 1)).toBe(true);
+    expect(shared.g[1]).toBeCloseTo(0.4, 12);
+    expect(shared.diagnostics.optimalityResidual).toBeLessThanOrEqual(1e-6);
   });
 
   it("resamples alternating sparse native evidence that misses every interior diagnostic node", () => {
