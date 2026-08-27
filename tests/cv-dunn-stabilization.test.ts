@@ -149,9 +149,24 @@ function bridgeGaps(values: Array<number | null>): number[] {
     if (value !== null) return value;
     const before = [...anchors].reverse().find((anchor) => anchor < index);
     const after = anchors.find((anchor) => anchor > index);
-    if (before === undefined) return values[after]!;
-    if (after === undefined) return values[before]!;
-    return values[before]! + (index - before) * (values[after]! - values[before]!) / (after - before);
+    if (before === undefined && after === undefined) {
+      throw new Error("reference fixture has an unbridgeable gap");
+    }
+    if (before === undefined) {
+      if (after === undefined) throw new Error("reference fixture has no right anchor");
+      const rightValue = values[after];
+      if (rightValue === null) throw new Error("reference fixture lost its right anchor");
+      return rightValue;
+    }
+    if (after === undefined) {
+      const leftValue = values[before];
+      if (leftValue === null) throw new Error("reference fixture lost its left anchor");
+      return leftValue;
+    }
+    const leftValue = values[before];
+    const rightValue = values[after];
+    if (leftValue === null || rightValue === null) throw new Error("reference fixture lost an anchor");
+    return leftValue + (index - before) * (rightValue - leftValue) / (after - before);
   });
 }
 
