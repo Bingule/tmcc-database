@@ -2528,6 +2528,45 @@ td button {
   margin-top: 14px;
 }
 
+.cv-b-vertical-stack {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  width: 100%;
+  margin-top: 14px;
+}
+
+.cv-peak-selection-controls {
+  display: grid;
+  grid-template-columns: minmax(160px, 0.8fr) minmax(160px, 0.8fr) minmax(0, 2fr);
+  gap: 10px 14px;
+  align-items: end;
+}
+
+.cv-peak-selection-controls label {
+  display: grid;
+  gap: 5px;
+}
+
+.cv-peak-action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cv-peak-action-buttons button {
+  margin: 0;
+}
+
+.cv-table-scroll {
+  overflow-x: auto;
+}
+
+.cv-peak-potential-input {
+  min-width: 7.5rem;
+  width: 100%;
+}
+
 .cv-analysis-card {
   min-width: 0;
   padding: 14px;
@@ -3224,6 +3263,14 @@ sub {
   .cv-b-dashboard-grid,
   .cv-b-selection-controls {
     grid-template-columns: 1fr;
+  }
+
+  .cv-peak-selection-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .cv-peak-action-buttons button {
+    flex: 1 1 12rem;
   }
 
   .cv-b-selection-controls > button {
