@@ -71,19 +71,47 @@ describe("fitDunnBranches", () => {
 });
 
 describe("resolveTurningPointTrim", () => {
-  it("uses max(3 native intervals, 0.5% span) before sensible bounds", () => {
-    const trim = resolveTurningPointTrim(makeGrid({
-      potentials: Array.from({ length: 1001 }, (_, index) => index / 1000),
+  it("uses the same 0.5% physical span on coarse and dense potential grids", () => {
+    const resolveFor = (pointCount: number) => resolveTurningPointTrim(makeGrid({
+      potentials: Array.from(
+        { length: pointCount },
+        (_, index) => -0.8 + 1.4 * index / (pointCount - 1)
+      ),
       scanRates: [1, 2, 4],
       forwardCurrents: [],
       reverseCurrents: [],
-      commonMinimum: 0,
-      commonMaximum: 1,
-      nativePotentialInterval: 0.001,
-      resolvedPotentialInterval: 0.001
+      commonMinimum: -0.8,
+      commonMaximum: 0.6,
+      nativePotentialInterval: 1.4 / (pointCount - 1),
+      resolvedPotentialInterval: 1.4 / (pointCount - 1)
     }), { mode: "auto" });
 
-    expect(trim).toBeCloseTo(0.005, 12);
+    const coarse = resolveFor(51);
+    const dense = resolveFor(501);
+    expect(coarse).toBeCloseTo(0.007, 12);
+    expect(dense).toBeCloseTo(coarse, 12);
+  });
+
+  it("keeps auto trim below half of a very small positive span", () => {
+    const span = 1e-300;
+    const trim = resolveTurningPointTrim(makeGrid({
+      potentials: [0, span / 2, span],
+      commonMinimum: 0,
+      commonMaximum: span,
+      nativePotentialInterval: span / 2,
+      resolvedPotentialInterval: span / 2
+    }), { mode: "auto" });
+
+    expect(trim).toBeGreaterThanOrEqual(0);
+    expect(trim).toBeLessThan(span / 2);
+  });
+
+  it("rejects an auto trim for a zero potential span", () => {
+    expect(() => resolveTurningPointTrim(makeGrid({
+      potentials: [0],
+      commonMinimum: 0,
+      commonMaximum: 0
+    }), { mode: "auto" })).toThrow("invalidDataShape");
   });
 
   it("converts a manual trim from millivolts to volts", () => {

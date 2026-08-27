@@ -24,22 +24,11 @@ export function resolveTurningPointTrim(
   if (setting.mode === "manual") return setting.millivolts / 1000;
 
   const span = grid.commonMaximum - grid.commonMinimum;
-  const raw = Math.max(3 * grid.nativePotentialInterval, 0.005 * span);
-  const lower = 2 * grid.nativePotentialInterval;
-  const upper = Math.max(
-    lower,
-    Math.min(10 * grid.nativePotentialInterval, 0.02 * span)
-  );
-  const bounded = Math.min(Math.max(raw, lower), upper);
-  const deepestInteriorDistance = maximumInteriorTurningDistance(
-    grid.potentials,
-    grid.commonMinimum,
-    grid.commonMaximum
-  );
-  if (deepestInteriorDistance === null || bounded + trimTolerance(grid) < deepestInteriorDistance) {
-    return bounded;
+  const trim = 0.005 * span;
+  if (!Number.isFinite(trim) || !(trim < span / 2)) {
+    throw new CvAnalysisError("invalidDataShape");
   }
-  return Math.max(0, deepestInteriorDistance - 2 * trimTolerance(grid));
+  return trim;
 }
 
 export function fitDunnBranches(
@@ -108,9 +97,11 @@ function fitBranch(
 }
 
 function validateTrimInputs(grid: CvAlignedBranchGrid, setting: TurningPointTrimSetting) {
+  const span = grid.commonMaximum - grid.commonMinimum;
   if (!Number.isFinite(grid.commonMinimum)
     || !Number.isFinite(grid.commonMaximum)
-    || grid.commonMaximum < grid.commonMinimum
+    || !Number.isFinite(span)
+    || span <= 0
     || !Number.isFinite(grid.nativePotentialInterval)
     || grid.nativePotentialInterval <= 0) {
     throw new CvAnalysisError("invalidDataShape");
@@ -121,33 +112,10 @@ function validateTrimInputs(grid: CvAlignedBranchGrid, setting: TurningPointTrim
   }
   if (setting.mode === "manual") {
     const trim = setting.millivolts / 1000;
-    const span = grid.commonMaximum - grid.commonMinimum;
     if (!(2 * trim < span)) {
       throw new CvAnalysisError("invalidTurningPointTrim");
     }
   }
-}
-
-function maximumInteriorTurningDistance(
-  potentials: number[],
-  commonMinimum: number,
-  commonMaximum: number
-): number | null {
-  const distances = potentials
-    .filter((potential) => potential > commonMinimum && potential < commonMaximum)
-    .map((potential) => Math.min(
-      Math.abs(potential - commonMinimum),
-      Math.abs(commonMaximum - potential)
-    ));
-  return distances.length === 0 ? null : Math.max(...distances);
-}
-
-function trimTolerance(grid: CvAlignedBranchGrid): number {
-  return Number.EPSILON * Math.max(
-    1,
-    Math.abs(grid.commonMinimum),
-    Math.abs(grid.commonMaximum)
-  ) * 16;
 }
 
 function validateGrid(grid: CvAlignedBranchGrid) {
