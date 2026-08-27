@@ -321,12 +321,20 @@ function validateAlignedArrays(reference: number[], ...arrays: number[][]) {
 function reconstructOriginalOrderPath(input: DunnContributionInput): DunnContribution["plotPath"] {
   const cycle = input.alignedGrid.cycles[input.seriesIndex]!;
   const branchBySourceIndex = branchOwnershipBySourceIndex(cycle);
+  const oppositeBySourceIndex = new Map<number, number>();
+  for (const branch of ["forward", "reverse"] as const) {
+    const owned = cycle.originalPoints.flatMap((point, sourceIndex) =>
+      branchBySourceIndex.get(sourceIndex) === branch ? [{ point, sourceIndex }] : []);
+    const opposite = evaluateOppositeCurrents(cycle, branch, owned.map(({ point }) => point.potential));
+    owned.forEach(({ sourceIndex }, index) => oppositeBySourceIndex.set(sourceIndex, opposite[index]!));
+  }
 
   const records = cycle.originalPoints.map((point, sourceIndex) => {
     const branch = branchBySourceIndex.get(sourceIndex);
-    if (branch === undefined) throw new CvAnalysisError("invalidDataShape");
+    const oppositeCurrent = oppositeBySourceIndex.get(sourceIndex);
+    if (branch === undefined || oppositeCurrent === undefined) throw new CvAnalysisError("invalidDataShape");
     const fraction = evaluateSharedFraction(input.alignedGrid.potentials, input.optimized.g, point.potential);
-    return makeOrderedRecord(point, branch, sourceIndex, cycle, fraction);
+    return makeOrderedRecord(point, branch, sourceIndex, oppositeCurrent, fraction);
   });
   return insertSharedZeroCrossings(records);
 }
@@ -371,11 +379,10 @@ function makeOrderedRecord(
   point: { potential: number; current: number },
   branch: CvBranchKind,
   sourceIndex: number,
-  cycle: NormalizedCvCycle,
+  oppositeCurrent: number,
   fraction: number
 ): DunnOrderedRecord {
   validateOriginalAndFraction(point.current, fraction);
-  const oppositeCurrent = evaluateOppositeCurrent(cycle, branch, point.potential);
   const projection = projectCapacitiveToEnvelope(point.current, oppositeCurrent, fraction * point.current);
   const capacitiveCurrent = projection.constrainedCurrent;
   const diffusionCurrent = cleanZero(point.current - capacitiveCurrent);
@@ -399,20 +406,22 @@ function makeOrderedRecord(
   };
 }
 
-function evaluateOppositeCurrent(
+function evaluateOppositeCurrents(
   cycle: NormalizedCvCycle,
   branch: CvBranchKind,
-  potential: number
-): number {
+  potentials: number[]
+): number[] {
   const opposite = ascendingBranch(cycle, branch === "forward" ? "reverse" : "forward");
   const minimum = opposite.potentials[0]!;
   const maximum = opposite.potentials.at(-1)!;
   const tolerance = cycle.nativePotentialInterval;
-  if (potential < minimum - tolerance || potential > maximum + tolerance) {
-    throw new CvAnalysisError("reconstructionFailed");
-  }
-  const boundedPotential = Math.min(maximum, Math.max(minimum, potential));
-  return pchipInterpolate(opposite.potentials, opposite.currents, [boundedPotential])[0]!;
+  const bounded = potentials.map((potential) => {
+    if (potential < minimum - tolerance || potential > maximum + tolerance) {
+      throw new CvAnalysisError("reconstructionFailed");
+    }
+    return Math.min(maximum, Math.max(minimum, potential));
+  });
+  return pchipInterpolate(opposite.potentials, opposite.currents, bounded);
 }
 
 function ascendingBranch(cycle: NormalizedCvCycle, branch: CvBranchKind) {

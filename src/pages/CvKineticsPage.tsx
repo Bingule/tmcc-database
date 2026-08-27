@@ -430,11 +430,18 @@ export function CvKineticsPage() {
           })}</p>
           <p className="cv-dunn-coverage-help">{t("cv.dunn.coverageHelp")}</p>
         </>}
+        {selectedContribution && <dl className="cv-dunn-envelope-diagnostics" data-dunn-envelope-diagnostics="true">
+          <dt>{t("cv.dunn.envelopeCorrection")}</dt>
+          <dd>{selectedContribution.diagnostics.correctedPointCount} / {selectedContribution.plotPath.length} · {format(selectedContribution.diagnostics.maximumEnvelopeCorrection)}</dd>
+          <dt>{t("cv.dunn.envelopeViolation")}</dt>
+          <dd>{format(selectedContribution.diagnostics.maximumAbsoluteEnvelopeViolation)}</dd>
+          {selectedContribution.diagnostics.gSmoothnessWarning && <><dt>{t("cv.results.fitStatus")}</dt><dd>{t("cv.dunn.smoothnessWarning")}</dd></>}
+        </dl>}
         <ScientificLineChart title={t("cv.dunn.chart")} xLabel={`${t("cv.table.potential")} (V)`} yLabel={t("cv.table.currentArbitrary")}
           emptyLabel={t("cv.chart.empty")} legendLabel={t("cv.chart.legend")} series={dunnChart} polygons={dunnPolygons} selectedX={selectedDunnPotential} exportId="cv-dunn-chart" metadata={dunnChartMetadata} />
         <DataTable tableId="cv-original-current-table" headers={[`${t("cv.table.potential")} (V)`, t("cv.dunn.originalMeasured")]}
           rows={(selectedOriginalSeries?.points ?? []).map((point) => [point.potential, point.current])} />
-        <DataTable tableId="cv-dunn-current-table" headers={[`${t("cv.table.potential")} (V)`, t("cv.dunn.interpolatedInput"), t("cv.dunn.reconstructedTotalUnits"), t("cv.dunn.capacitive") + " (arb. units)", t("cv.dunn.diffusion") + " (arb. units)"]}
+        <DataTable tableId="cv-dunn-current-table" headers={[`${t("cv.table.potential")} (V)`, t("cv.dunn.originalMeasured"), t("cv.dunn.reconstructedTotalUnits"), t("cv.dunn.capacitive") + " (arb. units)", t("cv.dunn.diffusion") + " (arb. units)"]}
           rows={dunnRows(analysis, selectedContribution, selectedSeriesIndex)} />
       </section>
 
@@ -721,7 +728,7 @@ function makeFitChart(point: BValuePoint | undefined, measuredLabel: string): Ch
   ];
 }
 
-function makeDunnChart(
+export function makeDunnChart(
   original: CvSeries | undefined,
   contribution: DunnContribution | undefined,
   plotPath: DunnContribution["plotPath"],
@@ -774,7 +781,7 @@ function makeBranchBoundaryPoints(
   return points;
 }
 
-function makeDunnPolygons(
+export function makeDunnPolygons(
   plotPath: DunnContribution["plotPath"],
   t: ReturnType<typeof useI18n>["t"]
 ): ChartPolygonSeries[] {
@@ -831,7 +838,7 @@ function sampleDunnPlotPath(
   return [...selected].sort((left, right) => left - right).slice(0, MAX_CHART_OUTPUT_POINTS).map((index) => plotPath[index]!);
 }
 
-function makeDunnAreas(
+export function makeDunnAreas(
   analysis: AnalysisState | null,
   scanRate: number | undefined,
   seriesIndex: number,
@@ -900,17 +907,13 @@ function collectAreaSegments(
 
 function dunnRows(analysis: AnalysisState | null, contribution: DunnContribution | undefined, seriesIndex: number) {
   if (!analysis || !contribution || seriesIndex < 0) return [];
-  const forwardRows = contribution.potentialGrid.map((potential, index) => {
-    const capacitive = contribution.capacitiveForward[index];
-    const diffusion = contribution.diffusionForward[index];
-    return [potential, contribution.originalForward[index], capacitive + diffusion, capacitive, diffusion];
-  });
-  const reverseRows = contribution.potentialGrid.map((potential, index) => {
-    const capacitive = contribution.capacitiveReverse[index];
-    const diffusion = contribution.diffusionReverse[index];
-    return [potential, contribution.originalReverse[index], capacitive + diffusion, capacitive, diffusion];
-  });
-  return [...forwardRows, ...reverseRows];
+  return contribution.plotPath.map((record) => [
+    record.potential,
+    record.originalCurrent,
+    record.capacitiveCurrent + record.diffusionCurrent,
+    record.capacitiveCurrent,
+    record.diffusionCurrent
+  ]);
 }
 
 function sampleChartSeries(series: ChartSeries[]): ChartSeries[] {
@@ -1107,9 +1110,16 @@ function exportCsv(
         t("cv.table.sweepBranch"),
         potentialHeader,
         t("cv.dunn.originalMeasured"),
+        t("cv.export.oppositeCurrent"),
+        t("cv.export.envelopeLower"),
+        t("cv.export.envelopeUpper"),
         "g(V)",
+        t("cv.export.targetCapacitiveCurrent"),
+        t("cv.export.effectiveFraction"),
         capacitive ? t("cv.dunn.capacitive") : t("cv.dunn.diffusion"),
+        t("cv.export.envelopeCorrection"),
         t("cv.export.maximumAbsoluteOvershoot"),
+        t("cv.export.maximumEnvelopeViolation"),
         ...metadataHeaders
       ],
       sortedRates.flatMap((rate) => {
@@ -1122,9 +1132,16 @@ function exportCsv(
           record.branch === "forward" ? t("cv.b.forwardSweep") : t("cv.b.reverseSweep"),
           record.potential,
           record.originalCurrent,
+          record.oppositeCurrent,
+          record.envelopeLower,
+          record.envelopeUpper,
           record.g,
+          record.targetCapacitiveCurrent,
+          record.effectiveFraction,
           capacitive ? record.capacitiveCurrent : record.diffusionCurrent,
+          record.correctionMagnitude,
           item.diagnostics.maximumAbsoluteOvershoot,
+          item.diagnostics.maximumAbsoluteEnvelopeViolation,
           ...metadataValues
         ]);
       })

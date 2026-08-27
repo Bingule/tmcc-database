@@ -736,7 +736,7 @@ describe("CV kinetics page", () => {
     expect(view.querySelector('[data-export-id="cv-dunn-chart"] [data-selected-x="1"]')).not.toBeNull();
     const rows = [...view.querySelectorAll<HTMLTableRowElement>('[data-table-id="cv-dunn-current-table"] tbody tr')];
     const selected = rows.find((row) => row.cells[0].textContent === "1")!;
-    expect([...selected.cells].map((cell) => cell.textContent)).toEqual(["1", "-9", "-9", "-4.5", "-4.5"]);
+    expect([...selected.cells].map((cell) => cell.textContent)).toEqual(["1", "-9", "-9", "-9", "0"]);
     const chart = view.querySelector('[data-export-id="cv-dunn-chart"]')!;
     expect(chart.querySelectorAll('[data-series-id]')).toHaveLength(3);
     expect(chart.querySelector('[data-series-id="original"]')?.getAttribute("data-render-point-count")).toBe("6");
@@ -813,8 +813,8 @@ describe("CV kinetics page", () => {
     expect(english[0]).toContain("Potential (V),Total current (arb. units) at 1 mV/s");
     expect(english[1]).toContain("Potential (V),Sweep branch,b value,Intercept,R²,Point count,Fit status");
     expect(english[2]).toContain("Scan rate (mV/s),Potential (V),Sweep branch,k1,k2,R²,Point count,Fit status,Local capacitive fraction,Local confidence");
-    expect(english[3]).toContain("Scan rate (mV/s),Ordered sequence index,Original source index,Sweep branch,Potential (V),Original measured current (arb. units),g(V),Capacitive contribution,Maximum absolute containment overshoot");
-    expect(english[4]).toContain("Scan rate (mV/s),Ordered sequence index,Original source index,Sweep branch,Potential (V),Original measured current (arb. units),g(V),Diffusion-controlled contribution,Maximum absolute containment overshoot");
+    expect(english[3]).toContain("Scan rate (mV/s),Ordered sequence index,Original source index,Sweep branch,Potential (V),Original measured current (arb. units),Opposite-branch current,Envelope lower current,Envelope upper current,g(V),Target capacitive current,Effective capacitive fraction,Capacitive contribution,Envelope correction magnitude,Maximum absolute containment overshoot,Maximum absolute envelope violation");
+    expect(english[4]).toContain("Scan rate (mV/s),Ordered sequence index,Original source index,Sweep branch,Potential (V),Original measured current (arb. units),Opposite-branch current,Envelope lower current,Envelope upper current,g(V),Target capacitive current,Effective capacitive fraction,Diffusion-controlled contribution,Envelope correction magnitude,Maximum absolute containment overshoot,Maximum absolute envelope violation");
     expect(english[5]).toContain("Scan rate (mV/s),Capacitive contribution (%),Diffusion-controlled contribution (%)");
     await click(view, "中文");
     await click(view, "cv-b-value-results.csv");
@@ -971,10 +971,18 @@ describe("CV kinetics page", () => {
     expect(exported[3].split("\r\n")[0]).toContain("g(V)");
     expect(exported[3].split("\r\n")[0]).toContain("Capacitive contribution");
     expect(exported[3].split("\r\n")[0]).toContain("Maximum absolute containment overshoot");
+    expect(exported[3].split("\r\n")[0]).toContain("Opposite-branch current");
+    expect(exported[3].split("\r\n")[0]).toContain("Envelope lower current");
+    expect(exported[3].split("\r\n")[0]).toContain("Envelope upper current");
+    expect(exported[3].split("\r\n")[0]).toContain("Target capacitive current");
+    expect(exported[3].split("\r\n")[0]).toContain("Effective capacitive fraction");
+    expect(exported[3].split("\r\n")[0]).toContain("Envelope correction magnitude");
+    expect(exported[3].split("\r\n")[0]).toContain("Maximum absolute envelope violation");
     expect(exported[4].split("\r\n")[0]).toContain("R² threshold");
     expect(exported[4].split("\r\n")[0]).toContain("g(V)");
     expect(exported[4].split("\r\n")[0]).toContain("Diffusion-controlled contribution");
     expect(exported[4].split("\r\n")[0]).toContain("Maximum absolute containment overshoot");
+    expect(exported[4].split("\r\n")[0]).toContain("Maximum absolute envelope violation");
     expect(exported[5]).toContain("Valid points,Sampled points,Coverage (%),Contribution status,Data layout,Data source,Requested interval,Resolved interval,Dunn method,R² threshold,Requested turning point trim,Resolved turning point trim,Smoothing,Common potential range (V),Forward median R²,Reverse median R²,Dunn coverage (%)");
     expect(exported[5]).toContain(",6,10,60,Available,XYYYYY,File upload,5000 mV,5000 mV,R² threshold,0.95,Auto,100 mV");
 
@@ -983,6 +991,7 @@ describe("CV kinetics page", () => {
     const chinese = await readBlob(blobs[6]);
     expect(chinese).toContain("拟合状态,数据格式,数据来源,请求间隔,解析间隔,Dunn 方法,R² 阈值,请求转折点裁剪,解析转折点裁剪");
     expect(chinese).toContain("5,正向扫描");
+    expect(view.querySelector('[data-dunn-envelope-diagnostics="true"]')).not.toBeNull();
 
     await click(view, "EN");
     await click(view, "Export SVG — cv-b-chart.svg");
@@ -1167,8 +1176,8 @@ describe("CV kinetics page", () => {
     expect(view.querySelectorAll('[data-area-series-id="capacitive-area"]').length).toBeGreaterThan(0);
     expect(view.querySelectorAll('[data-area-series-id="diffusion-area"]').length).toBeGreaterThan(0);
     expect(view.querySelectorAll('[data-table-id="cv-original-current-table"] tbody tr')).toHaveLength(4);
-    expect(view.querySelectorAll('[data-table-id="cv-dunn-current-table"] tbody tr')).toHaveLength(6);
-    expect(view.querySelector('[data-table-id="cv-dunn-current-table"]')?.textContent).toContain("Interpolated input current");
+    expect(view.querySelectorAll('[data-table-id="cv-dunn-current-table"] tbody tr')).toHaveLength(4);
+    expect(view.querySelector('[data-table-id="cv-dunn-current-table"]')?.textContent).toContain("Original measured current");
   });
 
   it("caps chart and table rendering while CSV export retains the full analysis", async () => {
@@ -1205,7 +1214,7 @@ describe("CV kinetics page", () => {
       expect(renderedPointCount).toBeLessThanOrEqual(MAX_CHART_OUTPUT_POINTS);
     }
     expect(view.querySelectorAll('[data-table-id="cv-dunn-current-table"] tbody tr').length).toBeLessThanOrEqual(500);
-    const dunnRowCount = 2 * (Math.floor(sourceRowCount / 2) + 1);
+    const dunnRowCount = sourceRowCount;
     expect(view.textContent).toContain(`Showing 500 of ${dunnRowCount} rows`);
     const longFrame = view.querySelector('[data-table-id="cv-dunn-current-table"]')
       ?.closest('.cv-result-table-frame');
