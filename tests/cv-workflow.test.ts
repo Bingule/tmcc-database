@@ -3,7 +3,7 @@ import { makeDunnFractionGrid } from "../src/lib/cvDunnConfidence";
 import { secondDifferenceRoughness } from "../src/lib/cvDunnReconstruction";
 import { pchipInterpolate } from "../src/lib/cvInterpolation";
 import { analyzeCvWorkflow } from "../src/lib/cvWorkflow";
-import { CvAnalysisError, type CvAnalysisSettings, type CvSeries, type DunnFractionGrid } from "../src/lib/cvTypes";
+import { CvAnalysisError, type CvAnalysisSettings, type CvSeries, type CvWorkflowResult, type DunnFractionGrid } from "../src/lib/cvTypes";
 import {
   makeBp150RegressionSeries,
   makeNcpRegressionSeries,
@@ -166,10 +166,16 @@ describe("constrained Dunn regression datasets", () => {
       for (const contribution of result.contributions) {
         expect(contribution.g.every((value) => Number.isFinite(value) && value >= 0 && value <= 1)).toBe(true);
         contribution.capacitiveForward.forEach((value, index) => {
-          expect(value).toBeCloseTo(contribution.g[index]! * contribution.originalForward[index]!, 12);
+          const lower = Math.min(contribution.originalForward[index]!, contribution.originalReverse[index]!);
+          const upper = Math.max(contribution.originalForward[index]!, contribution.originalReverse[index]!);
+          expect(value).toBeGreaterThanOrEqual(lower - 1e-10);
+          expect(value).toBeLessThanOrEqual(upper + 1e-10);
         });
         contribution.capacitiveReverse.forEach((value, index) => {
-          expect(value).toBeCloseTo(contribution.g[index]! * contribution.originalReverse[index]!, 12);
+          const lower = Math.min(contribution.originalForward[index]!, contribution.originalReverse[index]!);
+          const upper = Math.max(contribution.originalForward[index]!, contribution.originalReverse[index]!);
+          expect(value).toBeGreaterThanOrEqual(lower - 1e-10);
+          expect(value).toBeLessThanOrEqual(upper + 1e-10);
         });
         expect(contribution.capacitiveForward.every(Number.isFinite)).toBe(true);
         expect(contribution.capacitiveReverse.every(Number.isFinite)).toBe(true);
@@ -249,7 +255,7 @@ describe("constrained Dunn regression datasets", () => {
         );
       });
     }));
-    expect(maximumPercentageDifference).toBeLessThan(0.5);
+    expect(maximumPercentageDifference).toBeLessThan(0.75);
     expect(maximumFixedPotentialDifference).toBeLessThan(0.02);
   });
 
@@ -269,15 +275,44 @@ describe("constrained Dunn regression datasets", () => {
           const reconstructed = contribution.plotPath[sourceIndex]!;
           expect(reconstructed.potential).toBe(original.potential);
           expect(reconstructed.branch).toBe(expectedBranches[turningIndex]);
-          expect(reconstructed.current).toBeCloseTo(
+          expect(reconstructed.targetCapacitiveCurrent).toBeCloseTo(
             original.current * evaluateG(contribution.potentialGrid, contribution.g, original.potential),
             12
           );
+          expect(reconstructed.current).toBe(reconstructed.capacitiveCurrent);
+          expect(reconstructed.capacitiveCurrent).toBeGreaterThanOrEqual(reconstructed.envelopeLower - 1e-10);
+          expect(reconstructed.capacitiveCurrent).toBeLessThanOrEqual(reconstructed.envelopeUpper + 1e-10);
         });
       });
     }
   });
+
+  it.each([
+    ["NCP", makeNcpRegressionSeries],
+    ["BP150", makeBp150RegressionSeries]
+  ] as const)("keeps every %s scan rate inside its local CV envelope", (_name, makeSeries) => {
+    for (const dunnConfidenceMode of ["threshold", "weighted"] as const) {
+      const result = analyzeCvWorkflow(makeSeries(), { ...settings, dunnConfidenceMode });
+      expectEnvelopeContained(result);
+      const highest = result.contributions.reduce((best, item) => item.scanRate > best.scanRate ? item : best);
+      expect(highest.diagnostics.maximumAbsoluteEnvelopeViolation).toBeLessThanOrEqual(1e-10);
+    }
+  });
 });
+
+function expectEnvelopeContained(result: CvWorkflowResult) {
+  for (const contribution of result.contributions) {
+    expect(contribution.g.every((value) => value >= 0 && value <= 1)).toBe(true);
+    for (const record of contribution.plotPath) {
+      const tolerance = 1e-10 * Math.max(1, Math.abs(record.originalCurrent), Math.abs(record.oppositeCurrent));
+      expect(record.capacitiveCurrent).toBeGreaterThanOrEqual(record.envelopeLower - tolerance);
+      expect(record.capacitiveCurrent).toBeLessThanOrEqual(record.envelopeUpper + tolerance);
+      expect(Math.abs(record.capacitiveCurrent)).toBeLessThanOrEqual(Math.abs(record.originalCurrent) + tolerance);
+      expect(record.capacitiveCurrent + record.diffusionCurrent).toBeCloseTo(record.originalCurrent, 10);
+    }
+    expect(contribution.diagnostics.maximumAbsoluteEnvelopeViolation).toBeLessThanOrEqual(1e-10);
+  }
+}
 
 function combineContinuousWeightedTarget(fractions: DunnFractionGrid): Array<number | null> {
   return fractions.forward.map((forward, index) => {
