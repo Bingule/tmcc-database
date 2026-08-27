@@ -55,6 +55,17 @@ async function click(view: HTMLElement, label: string) {
   const button = [...view.querySelectorAll<HTMLButtonElement>("button")].find((item) => item.textContent?.trim() === label);
   if (!button) throw new Error(`Missing button: ${label}`);
   await act(async () => button.click());
+  if (label === "Run analysis") {
+    const mode = view.querySelector<HTMLSelectElement>('select[name="bAnalysisMode"]');
+    if (mode) await setSelect(mode, "potential");
+  }
+}
+
+async function runAnalysisInPeakMode(view: HTMLElement) {
+  const analyze = [...view.querySelectorAll<HTMLButtonElement>("button")]
+    .find((item) => item.textContent?.trim() === "Run analysis");
+  if (!analyze) throw new Error("Missing button: Run analysis");
+  await act(async () => analyze.click());
 }
 
 async function setValue(input: HTMLInputElement, value: string) {
@@ -228,7 +239,72 @@ function lowQualityWorkflowCsv() {
   ].join("\n");
 }
 
+function peakPageCsv() {
+  const rates = [1, 4, 9];
+  const forward = Array.from({ length: 101 }, (_, index) => -1 + 2 * index / 100);
+  const potentials = [...forward, ...forward.slice(0, -1).reverse()];
+  return [
+    `Potential,${rates.map((rate) => `Current ${rate} mV/s`).join(",")}`,
+    ...potentials.map((potential, sourceIndex) => {
+      const branch = sourceIndex <= 100 ? "forward" : "reverse";
+      const currents = rates.map((rate) => {
+        const baseline = (branch === "forward" ? 1 : -1) * 0.04 * Math.sqrt(rate);
+        const center = branch === "forward" ? -0.25 : 0.3;
+        const peak = Math.exp(-Math.pow((potential - center) / 0.12, 2)) * Math.pow(rate, branch === "forward" ? 0.75 : 0.65);
+        return baseline + (branch === "forward" ? peak : -peak);
+      });
+      return [potential, ...currents].join(",");
+    })
+  ].join("\n");
+}
+
 describe("CV kinetics page", () => {
+  it("defaults to peak b-value mode and retains the full-width potential-resolved mode", async () => {
+    const view = await renderPage();
+    await upload(view, peakPageCsv());
+    await setValue(view.querySelector<HTMLInputElement>('input[name="cv-scan-rates"]')!, "1, 4, 9");
+    await runAnalysisInPeakMode(view);
+
+    const mode = view.querySelector<HTMLSelectElement>('select[name="bAnalysisMode"]')!;
+    expect(mode.value).toBe("peak");
+    expect(view.querySelector('[data-panel-id="cv-peak-analysis"]')).not.toBeNull();
+    expect(view.querySelector('[data-panel-id="cv-potential-b-analysis"]')).toBeNull();
+
+    await setSelect(mode, "potential");
+    expect(view.querySelector('[data-panel-id="cv-peak-analysis"]')).toBeNull();
+    const potentialPanel = view.querySelector('[data-panel-id="cv-potential-b-analysis"]');
+    expect(potentialPanel).not.toBeNull();
+    expect(potentialPanel?.querySelector(".cv-b-dashboard-grid")?.classList.contains("cv-b-vertical-stack")).toBe(true);
+  });
+
+  it("adjusts one peak to the nearest original point without changing imported or Dunn rows", async () => {
+    const view = await renderPage();
+    await upload(view, peakPageCsv());
+    await setValue(view.querySelector<HTMLInputElement>('input[name="cv-scan-rates"]')!, "1, 4, 9");
+    await runAnalysisInPeakMode(view);
+    await setSelect(view.querySelector<HTMLSelectElement>('select[name="selectedPeakId"]')!, "peak-1");
+    await setSelect(view.querySelector<HTMLSelectElement>('select[name="selectedPeakSeriesIndex"]')!, "1");
+
+    const rowSelector = '[data-table-id="cv-peak-points"] [data-peak-id="peak-1"][data-series-index="1"]';
+    const before = view.querySelector<HTMLElement>(rowSelector)!;
+    const sourceBefore = before.dataset.sourceIndex;
+    const importRowsBefore = view.querySelectorAll(".cv-preview tbody tr").length;
+    const dunnRowsBefore = view.querySelectorAll('[data-table-id="cv-dunn-current-table"] tbody tr').length;
+    const chart = view.querySelector<SVGSVGElement>('[data-export-id="cv-peak-overview-chart"]')!;
+    vi.spyOn(chart, "getBoundingClientRect").mockReturnValue({
+      x: 0, y: 0, left: 0, top: 0, right: 1000, bottom: 500, width: 1000, height: 500,
+      toJSON: () => ({})
+    });
+    await act(async () => chart.querySelector<SVGRectElement>('[data-peak-click-target]')!
+      .dispatchEvent(new MouseEvent("click", { bubbles: true, clientX: 250, clientY: 250 })));
+
+    const after = view.querySelector<HTMLElement>(rowSelector)!;
+    expect(after.dataset.sourceIndex).not.toBe(sourceBefore);
+    expect(after.textContent).toContain("Adjusted");
+    expect(view.querySelectorAll(".cv-preview tbody tr")).toHaveLength(importRowsBefore);
+    expect(view.querySelectorAll('[data-table-id="cv-dunn-current-table"] tbody tr')).toHaveLength(dunnRowsBefore);
+  });
+
   it("renders the advanced Dunn introduction below the unchanged title and above Import Data", async () => {
     const view = await renderPage();
     const title = view.querySelector<HTMLHeadingElement>(".tool-page-header h1")!;

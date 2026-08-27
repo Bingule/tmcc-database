@@ -162,6 +162,15 @@ describe("I18nProvider", () => {
     expect(zh["cv.dunn.help"]).toContain("文献式填色");
   });
 
+  it("defines bilingual peak and potential-resolved b-value modes", () => {
+    expect(en["cv.b.mode.peak"]).toBe("Peak b-value");
+    expect(en["cv.b.mode.potential"]).toBe("Potential-resolved b-value");
+    expect(en["cv.peak.limit"]).toContain("10");
+    expect(zh["cv.b.mode.peak"]).toBe("峰值 b 值");
+    expect(zh["cv.b.mode.potential"]).toBe("电位分辨 b 值");
+    expect(zh["cv.peak.partial"]).toContain("部分");
+  });
+
   it("keeps Angstrom units untranslated in Chinese resources", () => {
     expect(zh["xrd.wavelength"]).toBe("波长（Angstrom）");
   });

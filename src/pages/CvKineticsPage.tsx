@@ -1,6 +1,7 @@
-import { useId, useRef, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import { Breadcrumbs } from "../components/Breadcrumbs";
 import { BValueOverviewChart } from "../components/BValueOverviewChart";
+import { CvPeakAnalysisPanel, type CvPeakPanelCopy } from "../components/CvPeakAnalysisPanel";
 import {
   CvImportPanel,
   type CvImportDraft,
@@ -14,7 +15,18 @@ import { confirmCvSeries, CvParseError, parseCvFile, parseDelimitedCv, type Pars
 import { localCapacitiveFraction, rSquaredConfidence } from "../lib/cvDunnConfidence";
 import { formatSelectedPotential, isSelectableBRecord, selectRepresentativeBRecord, snapBRecordToPotential } from "../lib/cvBValueSelection";
 import { analyzeCvWorkflow } from "../lib/cvWorkflow";
-import { CvAnalysisError, type BValuePoint, type CvAnalysisSettings, type CvFitRecord, type CvFitStatus, type CvSeries, type CvWorkflowResult, type DunnBranchFitRecord, type DunnContribution, type DunnFitStatus } from "../lib/cvTypes";
+import {
+  addManualPeakOverride,
+  applyPeakOverrides,
+  createPeakOverrideState,
+  CvPeakOverrideError,
+  removePeakOverride,
+  restorePeakPointOverride,
+  setPeakPointOverride,
+  snapPeakPoint,
+  type CvPeakOverrideState
+} from "../lib/cvPeakOverrides";
+import { CvAnalysisError, type BValuePoint, type CvAnalysisSettings, type CvFitRecord, type CvFitStatus, type CvPeakFitStatus, type CvPeakPointStatus, type CvSeries, type CvWorkflowResult, type DunnBranchFitRecord, type DunnContribution, type DunnFitStatus } from "../lib/cvTypes";
 import { downloadCsv, downloadPng, downloadSvg, rowsToCsv } from "../lib/toolExport";
 
 type AnalysisState = CvWorkflowResult;
@@ -60,6 +72,11 @@ export function CvKineticsPage() {
   const [analysis, setAnalysis] = useState<AnalysisState | null>(null);
   const [analysisMetadata, setAnalysisMetadata] = useState<ResultMetadata | null>(null);
   const [selectedBSequenceIndex, setSelectedBSequenceIndex] = useState<number | undefined>();
+  const [bAnalysisMode, setBAnalysisMode] = useState<"peak" | "potential">("peak");
+  const [peakOverrides, setPeakOverrides] = useState<CvPeakOverrideState>(() => createPeakOverrideState());
+  const [selectedPeakId, setSelectedPeakId] = useState<string | null>(null);
+  const [selectedPeakSeriesIndex, setSelectedPeakSeriesIndex] = useState(0);
+  const [peakInteractionError, setPeakInteractionError] = useState<"limit" | "snap" | null>(null);
   const [potentialInput, setPotentialInput] = useState("");
   const [selectedRate, setSelectedRate] = useState<number | undefined>();
   const [errorCode, setErrorCode] = useState<CvUiError | null>(null);
@@ -69,13 +86,26 @@ export function CvKineticsPage() {
   const selectableBResultRecords = bResultRecords.filter(isSelectableBRecord);
   const contributions = analysis?.contributions ?? [];
   const canExportCsv = Boolean(analysis && analysisMetadata);
+  const peakResult = useMemo(() => analysis
+    ? applyPeakOverrides(
+      analysis.peakAnalysis,
+      analysis.series,
+      analysis.alignedGrid.cycles,
+      analysis.settings.rSquaredThreshold,
+      peakOverrides
+    )
+    : null, [analysis, peakOverrides]);
 
-  function invalidateAnalysis() {
+  function invalidateAnalysis(keepPeakOverrides = false) {
     setAnalysis(null);
     setAnalysisMetadata(null);
     setSelectedBSequenceIndex(undefined);
     setPotentialInput("");
     setSelectedRate(undefined);
+    setSelectedPeakId(null);
+    setSelectedPeakSeriesIndex(0);
+    setPeakInteractionError(null);
+    if (!keepPeakOverrides) setPeakOverrides(createPeakOverrideState());
     setErrorCode(null);
   }
 
@@ -89,7 +119,7 @@ export function CvKineticsPage() {
     setBusy(false);
     if (parsingChanged) setTable(null);
     setDraft(next);
-    invalidateAnalysis();
+    invalidateAnalysis(sameDraftExceptRSquaredThreshold(draft, next));
     if (next.source === "file" && selectedFile && (fileSettingsChanged || sourceChanged)) {
       if (next.options.layout) void parseSelectedFile(selectedFile, {
         layout: next.options.layout,
@@ -194,6 +224,10 @@ export function CvKineticsPage() {
       if (!firstAvailableB) throw new PageAnalysisError("noBFit");
       const firstValidB = selectRepresentativeBRecord(result.bRecords);
       setAnalysis(result);
+      setBAnalysisMode("peak");
+      setSelectedPeakId(result.peakAnalysis.fits[0]?.peakId ?? null);
+      setSelectedPeakSeriesIndex(0);
+      setPeakInteractionError(null);
       setAnalysisMetadata({
         layout: table.layout,
         headerMode: table.headerMode,
@@ -314,6 +348,83 @@ export function CvKineticsPage() {
     setPotentialInput(formatSelectedPotential(record.potential));
   }
 
+  function adjustSelectedPeak(potential: number, peakId = selectedPeakId, seriesIndex = selectedPeakSeriesIndex) {
+    if (!analysis || !peakResult || !peakId) return;
+    const fit = peakResult.fits.find((item) => item.peakId === peakId);
+    const series = analysis.series[seriesIndex];
+    const cycle = analysis.alignedGrid.cycles[seriesIndex];
+    if (!fit || !series || !cycle) return;
+    try {
+      const snapped = snapPeakPoint(series, cycle, fit.branch, potential);
+      setPeakOverrides((current) => setPeakPointOverride(current, {
+        peakId,
+        seriesIndex,
+        action: "adjust",
+        sourceIndex: snapped.sourceIndex
+      }));
+      setSelectedPeakId(peakId);
+      setSelectedPeakSeriesIndex(seriesIndex);
+      setPeakInteractionError(null);
+    } catch {
+      setPeakInteractionError("snap");
+    }
+  }
+
+  function confirmSelectedPeak() {
+    const point = peakResult?.fits.find((fit) => fit.peakId === selectedPeakId)?.points[selectedPeakSeriesIndex];
+    if (!selectedPeakId || !point?.candidate) return setPeakInteractionError("snap");
+    setPeakOverrides((current) => setPeakPointOverride(current, {
+      peakId: selectedPeakId,
+      seriesIndex: selectedPeakSeriesIndex,
+      action: "confirm",
+      sourceIndex: point.candidate!.sourceIndex
+    }));
+    setPeakInteractionError(null);
+  }
+
+  function excludeSelectedPeak() {
+    if (!selectedPeakId) return;
+    setPeakOverrides((current) => setPeakPointOverride(current, {
+      peakId: selectedPeakId,
+      seriesIndex: selectedPeakSeriesIndex,
+      action: "exclude"
+    }));
+    setPeakInteractionError(null);
+  }
+
+  function restoreSelectedPeak() {
+    if (!selectedPeakId) return;
+    setPeakOverrides((current) => restorePeakPointOverride(current, selectedPeakId, selectedPeakSeriesIndex));
+    setPeakInteractionError(null);
+  }
+
+  function addSelectedPeak() {
+    if (!analysis || !peakResult || !selectedPeakId) return setPeakInteractionError("snap");
+    const selected = peakResult.fits.find((fit) => fit.peakId === selectedPeakId);
+    const point = selected?.points[selectedPeakSeriesIndex]?.candidate;
+    if (!selected || !point) return setPeakInteractionError("snap");
+    try {
+      const next = addManualPeakOverride(peakOverrides, analysis.peakAnalysis, analysis.series, analysis.alignedGrid.cycles, {
+        anchorSeriesIndex: selectedPeakSeriesIndex,
+        branch: selected.branch,
+        sourceIndex: point.sourceIndex
+      });
+      setPeakOverrides(next);
+      setSelectedPeakId(next.manualPeaks.at(-1)?.manualPeakId ?? selectedPeakId);
+      setPeakInteractionError(null);
+    } catch (error) {
+      setPeakInteractionError(error instanceof CvPeakOverrideError && error.code === "peakLimit" ? "limit" : "snap");
+    }
+  }
+
+  function removeSelectedPeak() {
+    if (!selectedPeakId) return;
+    const remaining = peakResult?.fits.filter((fit) => fit.peakId !== selectedPeakId) ?? [];
+    setPeakOverrides((current) => removePeakOverride(current, selectedPeakId));
+    setSelectedPeakId(remaining[0]?.peakId ?? null);
+    setPeakInteractionError(null);
+  }
+
   return (
     <section className="tools-page cv-page">
       <Breadcrumbs current={t("cv.title")} />
@@ -345,76 +456,85 @@ export function CvKineticsPage() {
 
       <section className="tool-section cv-b-analysis">
         <h2>{t("cv.b.title")}</h2><p>{t("cv.b.help")}</p>
-        <div className="cv-b-selection-controls">
-          <label htmlFor="cv-selected-branch">{t("cv.table.sweepBranch")}</label>
-          <select id="cv-selected-branch" name="selectedBBranch" value={selectedBRecord?.branchIndex ?? 0} onChange={(event) => chooseBBranch(Number(event.target.value))}>
-            <option value={0}>{t("cv.b.forwardSweep")}</option>
-            <option value={1}>{t("cv.b.reverseSweep")}</option>
+        <label className="cv-b-mode-control">{t("cv.b.mode.label")}
+          <select name="bAnalysisMode" value={bAnalysisMode} onChange={(event) => setBAnalysisMode(event.target.value as "peak" | "potential")}>
+            <option value="peak">{t("cv.b.mode.peak")}</option>
+            <option value="potential">{t("cv.b.mode.potential")}</option>
           </select>
-          <label htmlFor="cv-selected-potential">{t("cv.results.potential")} (V)</label>
-          <input
-            id="cv-selected-potential"
-            name="selectedPotential"
-            type="number"
-            step="any"
-            inputMode="decimal"
-            aria-label={t("cv.aria.selectedPotential")}
-            value={potentialInput}
-            onChange={(event) => handlePotentialInput(event.target.value)}
-            onBlur={commitPotentialInput}
-            onKeyDown={(event) => { if (event.key === "Enter") commitPotentialInput(); }}
+        </label>
+        {bAnalysisMode === "peak" && analysis && peakResult && <>
+          {peakInteractionError && <p className="cv-analysis-notice" role="alert">{t(peakInteractionError === "limit" ? "cv.peak.limit" : "cv.peak.snapError")}</p>}
+          <CvPeakAnalysisPanel
+            series={analysis.series}
+            result={peakResult}
+            selectedPeakId={selectedPeakId}
+            selectedSeriesIndex={selectedPeakSeriesIndex}
+            onPeakChange={(peakId) => { setSelectedPeakId(peakId); setPeakInteractionError(null); }}
+            onSeriesChange={(seriesIndex) => { setSelectedPeakSeriesIndex(seriesIndex); setPeakInteractionError(null); }}
+            onPotentialSelect={(potential) => adjustSelectedPeak(potential)}
+            onAdjustPotential={(peakId, seriesIndex, potential) => adjustSelectedPeak(potential, peakId, seriesIndex)}
+            onConfirm={confirmSelectedPeak}
+            onExclude={excludeSelectedPeak}
+            onRestore={restoreSelectedPeak}
+            onAddPeak={addSelectedPeak}
+            onRemovePeak={removeSelectedPeak}
+            copy={makePeakPanelCopy(t)}
+            metadata={chartMetadata}
           />
-          <button type="button" disabled={selectedBRecordIndex <= 0} onClick={() => movePotential(-1)}>{t("cv.results.previousPotential")}</button>
-          <button type="button" disabled={!analysis || selectedBRecordIndex < 0 || selectedBRecordIndex >= selectableBResultRecords.length - 1} onClick={() => movePotential(1)}>{t("cv.results.nextPotential")}</button>
-        </div>
-        <p>{t("cv.results.potentialHelp")}</p>
-        {analysis && missingBFitCount > 0 && <p role="status">{t("cv.b.missingFits", { count: missingBFitCount, total: analysis.analysisGrid.potentials.length })}</p>}
-        {bGapRunCount > MAX_CHART_GAP_RUNS && <p role="status">{t("cv.chart.tooManyGaps")}</p>}
-        <div className="cv-b-dashboard-grid">
-          <article className="cv-analysis-card cv-b-overview-card">
-            <h3>{t("cv.b.overviewTitle")}</h3>
-            <BValueOverviewChart
-              records={analysis?.bRecords ?? []}
-              selectedSequenceIndex={selectedBSequenceIndex}
-              onSelectSequenceIndex={(sequenceIndex) => chooseBSequenceIndex(String(sequenceIndex))}
-              title={t("cv.b.chart")}
-              xLabel={`${t("cv.table.potential")} (V)`}
-              yLabel={t("cv.b.value")}
-              legendLabel={t("cv.chart.legend")}
-              forwardLabel={t("cv.b.forwardSweep")}
-              reverseLabel={t("cv.b.reverseSweep")}
-              validLabel={t("cv.b.quality.conventional")}
-              outsideLabel={t("cv.b.quality.outside")}
-              excludedLabel={t("cv.b.quality.excluded")}
-              unstableLabel={t("cv.b.quality.unstable")}
-              diffusionLabel={t("cv.b.interpretation.diffusion")}
-              capacitiveLabel={t("cv.b.interpretation.capacitive")}
-              exportId="cv-b-chart"
-              metadata={chartMetadata}
-            />
-            <p className="cv-b-interpretation">{t("cv.b.interpretation.help")}</p>
-          </article>
-          <article className="cv-analysis-card cv-b-fit-card">
-            <h3>{t("cv.b.fitChart")}</h3>
-            <ScientificLineChart title={t("cv.b.fitChart")} xLabel={t("cv.b.logRate")} yLabel={t("cv.b.logCurrent")}
-              emptyLabel={t("cv.results.noFit")} legendLabel={t("cv.chart.legend")} series={fitChart} exportId="cv-fit-chart" metadata={fitChartMetadata} />
-            {selectedBRecord?.fit && <dl className="cv-b-fit-metrics" data-selected-fit-status="true">
-              <dt>{t("cv.results.potential")}</dt><dd>{formatSelectedPotential(selectedBRecord.potential)} V</dd>
-              <dt>{t("cv.table.sweepBranch")}</dt><dd>{selectedBRecord.branchIndex === 0 ? t("cv.b.forwardSweep") : t("cv.b.reverseSweep")}</dd>
-              <dt>{t("cv.b.value")}</dt><dd>{format(selectedBRecord.fit.b)}</dd>
-              <dt>{t("cv.b.intercept")}</dt><dd>{format(selectedBRecord.fit.intercept)}</dd>
-              <dt>{t("cv.results.rSquared")}</dt><dd>{format(selectedBRecord.fit.rSquared)}</dd>
-              <dt>{t("cv.results.points")}</dt><dd>{selectedBRecord.fit.pointCount}</dd>
-              <dt>{t("cv.results.fitStatus")}</dt><dd>{fitStatusLabel(selectedBRecord.status, t)}</dd>
-            </dl>}
-            {selectedBRecord?.fit && (selectedBRecord.fit.b < 0.5 || selectedBRecord.fit.b > 1) && <p className="cv-b-range-note" role="status">{t("cv.b.outsideRangeNote")}</p>}
-          </article>
-        </div>
-        <h3>{t("cv.b.resultsTable")}</h3>
-        <DataTable tableId="cv-b-records-table" headers={[`${t("cv.table.potential")} (V)`, t("cv.table.sweepBranch"), t("cv.b.value"), t("cv.b.intercept"), t("cv.results.rSquared"), t("cv.table.pointCount"), t("cv.results.fitStatus")]}
-          rows={bResultRecords.map((record) => bRecordRow(record, t))} />
-        <DataTable tableId="cv-selected-b-record-table" headers={[t("cv.results.potential"), t("cv.table.sweepBranch"), t("cv.b.value"), t("cv.b.intercept"), t("cv.results.rSquared"), t("cv.results.points"), t("cv.results.fitStatus")]}
-          rows={selectedBRecord ? [bRecordRow(selectedBRecord, t)] : []} />
+        </>}
+        {bAnalysisMode === "potential" && <div data-panel-id="cv-potential-b-analysis" className="cv-b-vertical-stack">
+          <div className="cv-b-selection-controls">
+            <label htmlFor="cv-selected-branch">{t("cv.table.sweepBranch")}</label>
+            <select id="cv-selected-branch" name="selectedBBranch" value={selectedBRecord?.branchIndex ?? 0} onChange={(event) => chooseBBranch(Number(event.target.value))}>
+              <option value={0}>{t("cv.b.forwardSweep")}</option>
+              <option value={1}>{t("cv.b.reverseSweep")}</option>
+            </select>
+            <label htmlFor="cv-selected-potential">{t("cv.results.potential")} (V)</label>
+            <input id="cv-selected-potential" name="selectedPotential" type="number" step="any" inputMode="decimal"
+              aria-label={t("cv.aria.selectedPotential")} value={potentialInput}
+              onChange={(event) => handlePotentialInput(event.target.value)} onBlur={commitPotentialInput}
+              onKeyDown={(event) => { if (event.key === "Enter") commitPotentialInput(); }} />
+            <button type="button" disabled={selectedBRecordIndex <= 0} onClick={() => movePotential(-1)}>{t("cv.results.previousPotential")}</button>
+            <button type="button" disabled={!analysis || selectedBRecordIndex < 0 || selectedBRecordIndex >= selectableBResultRecords.length - 1} onClick={() => movePotential(1)}>{t("cv.results.nextPotential")}</button>
+          </div>
+          <p>{t("cv.results.potentialHelp")}</p>
+          {analysis && missingBFitCount > 0 && <p role="status">{t("cv.b.missingFits", { count: missingBFitCount, total: analysis.analysisGrid.potentials.length })}</p>}
+          {bGapRunCount > MAX_CHART_GAP_RUNS && <p role="status">{t("cv.chart.tooManyGaps")}</p>}
+          <div className="cv-b-dashboard-grid cv-b-vertical-stack">
+            <article className="cv-analysis-card cv-b-overview-card">
+              <h3>{t("cv.b.overviewTitle")}</h3>
+              <BValueOverviewChart records={analysis?.bRecords ?? []} selectedSequenceIndex={selectedBSequenceIndex}
+                onSelectSequenceIndex={(sequenceIndex) => chooseBSequenceIndex(String(sequenceIndex))} title={t("cv.b.chart")}
+                xLabel={`${t("cv.table.potential")} (V)`} yLabel={t("cv.b.value")} legendLabel={t("cv.chart.legend")}
+                forwardLabel={t("cv.b.forwardSweep")} reverseLabel={t("cv.b.reverseSweep")}
+                validLabel={t("cv.b.quality.conventional")} outsideLabel={t("cv.b.quality.outside")}
+                excludedLabel={t("cv.b.quality.excluded")} unstableLabel={t("cv.b.quality.unstable")}
+                diffusionLabel={t("cv.b.interpretation.diffusion")} capacitiveLabel={t("cv.b.interpretation.capacitive")}
+                exportId="cv-b-chart" metadata={chartMetadata} />
+              <p className="cv-b-interpretation">{t("cv.b.interpretation.help")}</p>
+            </article>
+            <article className="cv-analysis-card cv-b-fit-card">
+              <h3>{t("cv.b.fitChart")}</h3>
+              <ScientificLineChart title={t("cv.b.fitChart")} xLabel={t("cv.b.logRate")} yLabel={t("cv.b.logCurrent")}
+                emptyLabel={t("cv.results.noFit")} legendLabel={t("cv.chart.legend")} series={fitChart} exportId="cv-fit-chart" metadata={fitChartMetadata} />
+              {selectedBRecord?.fit && <dl className="cv-b-fit-metrics" data-selected-fit-status="true">
+                <dt>{t("cv.results.potential")}</dt><dd>{formatSelectedPotential(selectedBRecord.potential)} V</dd>
+                <dt>{t("cv.table.sweepBranch")}</dt><dd>{selectedBRecord.branchIndex === 0 ? t("cv.b.forwardSweep") : t("cv.b.reverseSweep")}</dd>
+                <dt>{t("cv.b.value")}</dt><dd>{format(selectedBRecord.fit.b)}</dd>
+                <dt>{t("cv.b.intercept")}</dt><dd>{format(selectedBRecord.fit.intercept)}</dd>
+                <dt>{t("cv.results.rSquared")}</dt><dd>{format(selectedBRecord.fit.rSquared)}</dd>
+                <dt>{t("cv.results.points")}</dt><dd>{selectedBRecord.fit.pointCount}</dd>
+                <dt>{t("cv.results.fitStatus")}</dt><dd>{fitStatusLabel(selectedBRecord.status, t)}</dd>
+              </dl>}
+              {selectedBRecord?.fit && (selectedBRecord.fit.b < 0.5 || selectedBRecord.fit.b > 1) && <p className="cv-b-range-note" role="status">{t("cv.b.outsideRangeNote")}</p>}
+            </article>
+          </div>
+          <h3>{t("cv.b.resultsTable")}</h3>
+          <DataTable tableId="cv-b-records-table" headers={[`${t("cv.table.potential")} (V)`, t("cv.table.sweepBranch"), t("cv.b.value"), t("cv.b.intercept"), t("cv.results.rSquared"), t("cv.table.pointCount"), t("cv.results.fitStatus")]}
+            rows={bResultRecords.map((record) => bRecordRow(record, t))} />
+          <DataTable tableId="cv-selected-b-record-table" headers={[t("cv.results.potential"), t("cv.table.sweepBranch"), t("cv.b.value"), t("cv.b.intercept"), t("cv.results.rSquared"), t("cv.results.points"), t("cv.results.fitStatus")]}
+            rows={selectedBRecord ? [bRecordRow(selectedBRecord, t)] : []} />
+        </div>}
       </section>
 
       <section className="tool-section cv-dunn-analysis">
@@ -665,6 +785,73 @@ function fitStatusLabel(status: CvFitStatus | DunnFitStatus, t: ReturnType<typeo
   return t(keys[status]);
 }
 
+function makePeakPanelCopy(t: ReturnType<typeof useI18n>["t"]): CvPeakPanelCopy {
+  return {
+    overview: t("cv.peak.overview"),
+    regression: t("cv.peak.regression"),
+    peak: t("cv.peak.peak"),
+    scanRate: t("cv.table.scanRate"),
+    potential: t("cv.table.potential"),
+    current: t("cv.table.current"),
+    branch: t("cv.table.sweepBranch"),
+    kind: t("cv.peak.peak"),
+    forward: t("cv.b.forwardSweep"),
+    reverse: t("cv.b.reverseSweep"),
+    oxidation: t("cv.peak.oxidation"),
+    reduction: t("cv.peak.reduction"),
+    bValue: t("cv.b.value"),
+    intercept: t("cv.b.intercept"),
+    rSquared: t("cv.results.rSquared"),
+    fitPoints: t("cv.results.points"),
+    coverage: t("cv.peak.coverage"),
+    fitStatus: t("cv.results.fitStatus"),
+    pointStatus: t("cv.peak.pointStatus"),
+    sourceIndex: t("cv.peak.sourceIndex"),
+    confirm: t("cv.peak.confirm"),
+    exclude: t("cv.peak.exclude"),
+    restore: t("cv.peak.restore"),
+    add: t("cv.peak.add"),
+    remove: t("cv.peak.remove"),
+    noPeaks: t("cv.peak.noPeaks"),
+    summary: t("cv.peak.summary"),
+    adjustments: t("cv.peak.adjustments"),
+    legend: t("cv.chart.legend"),
+    empty: t("cv.results.noFit"),
+    xPotential: `${t("cv.table.potential")} (V)`,
+    yCurrent: t("cv.table.currentArbitrary"),
+    xLogRate: t("cv.b.logRate"),
+    yLogCurrent: t("cv.b.logCurrent"),
+    complete: t("cv.peak.complete"),
+    partial: t("cv.peak.partial"),
+    unavailable: "—",
+    fitStatusLabel: (status) => peakFitStatusLabel(status, t),
+    pointStatusLabel: (status) => peakPointStatusLabel(status, t)
+  };
+}
+
+function peakFitStatusLabel(status: CvPeakFitStatus, t: ReturnType<typeof useI18n>["t"]): string {
+  const keys = {
+    valid: "cv.peak.fit.valid",
+    belowRSquaredThreshold: "cv.peak.fit.belowRSquaredThreshold",
+    insufficientData: "cv.peak.fit.insufficientData",
+    nearZeroCurrentUnstable: "cv.peak.fit.nearZeroCurrentUnstable",
+    regressionFailed: "cv.peak.fit.regressionFailed"
+  } as const;
+  return t(keys[status]);
+}
+
+function peakPointStatusLabel(status: CvPeakPointStatus, t: ReturnType<typeof useI18n>["t"]): string {
+  const keys = {
+    auto: "cv.peak.status.auto",
+    confirmed: "cv.peak.status.confirmed",
+    adjusted: "cv.peak.status.adjusted",
+    missing: "cv.peak.status.missing",
+    excluded: "cv.peak.status.excluded",
+    nearZeroCurrentUnstable: "cv.peak.status.nearZeroCurrentUnstable"
+  } as const;
+  return t(keys[status]);
+}
+
 function layoutIdentifier(layout: CvDataLayout) {
   return layout === "sharedPotential" ? "XYYYYY" : "XYXYXY";
 }
@@ -716,6 +903,11 @@ function analysisSettingsFromDraft(draft: CvImportDraft): CvAnalysisSettings {
       ? { mode: "manual", millivolts: draft.turningPointTrimMillivolts }
       : { mode: "auto" }
   };
+}
+
+function sameDraftExceptRSquaredThreshold(previous: CvImportDraft, next: CvImportDraft): boolean {
+  if (previous.rSquaredThreshold === next.rSquaredThreshold) return false;
+  return JSON.stringify({ ...previous, rSquaredThreshold: 0 }) === JSON.stringify({ ...next, rSquaredThreshold: 0 });
 }
 
 function makeFitChart(point: BValuePoint | undefined, measuredLabel: string): ChartSeries[] {
