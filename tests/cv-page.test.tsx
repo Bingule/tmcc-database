@@ -924,31 +924,63 @@ describe("CV kinetics page", () => {
   });
 
   it("preserves branch endpoints while uniformly sampling more than 4,000 synthetic crossings", () => {
-    const forwardLength = 2_501;
-    const plotPath: DunnContribution["plotPath"] = Array.from({ length: 5_002 }, (_, index) => ({
-      potential: index,
-      current: index % 2 === 0 ? 1 : -1,
-      originalCurrent: index % 2 === 0 ? 1 : -1,
-      oppositeCurrent: 0,
-      capacitiveCurrent: 0,
-      diffusionCurrent: index % 2 === 0 ? 1 : -1,
-      g: 0,
-      effectiveFraction: 0,
-      correctionMagnitude: 0,
-      branch: index < forwardLength ? "forward" : "reverse",
-      sourceIndex: null,
-      synthetic: true
-    }));
+    const forwardOriginalCount = 2_002;
+    const originalCount = forwardOriginalCount * 2;
+    const originalRecords: DunnContribution["plotPath"] = Array.from({ length: originalCount }, (_, sourceIndex) => {
+      const current = sourceIndex % 2 === 0 ? 1 : -1;
+      const branch = sourceIndex < forwardOriginalCount ? "forward" : "reverse";
+      const potential = branch === "forward" ? sourceIndex : originalCount - sourceIndex - 1;
+      return {
+        potential,
+        current,
+        originalCurrent: current,
+        oppositeCurrent: current,
+        envelopeLower: Math.min(0, current),
+        envelopeUpper: Math.max(0, current),
+        targetCapacitiveCurrent: current,
+        capacitiveCurrent: current,
+        diffusionCurrent: 0,
+        g: 1,
+        effectiveFraction: 1,
+        correctionMagnitude: 0,
+        branch,
+        sourceIndex,
+        synthetic: false
+      };
+    });
+    const plotPath: DunnContribution["plotPath"] = originalRecords.flatMap((record, index) => {
+      const next = originalRecords[index + 1];
+      if (!next || next.branch !== record.branch) return [record];
+      return [record, {
+        potential: (record.potential + next.potential) / 2,
+        current: 0,
+        originalCurrent: 0,
+        oppositeCurrent: 0,
+        envelopeLower: 0,
+        envelopeUpper: 0,
+        targetCapacitiveCurrent: 0,
+        capacitiveCurrent: 0,
+        diffusionCurrent: 0,
+        g: 0.5,
+        effectiveFraction: 0,
+        correctionMagnitude: 0,
+        branch: record.branch,
+        sourceIndex: null,
+        synthetic: true
+      }];
+    });
 
     const sampled = sampleDunnPlotPath(plotPath, MAX_CHART_POINTS);
-    const indexes = sampled.map((record) => record.potential);
-    const syntheticIndexes = indexes.filter((index) => index !== 0 && index !== forwardLength - 1 && index !== forwardLength && index !== plotPath.length - 1);
+    const sampledSourceIndexes = sampled.flatMap((record) => record.synthetic ? [] : [record.sourceIndex]);
+    const sourcePositions = new Map(plotPath.map((record, index) => [record, index]));
+    const syntheticPositions = sampled.filter((record) => record.synthetic).map((record) => sourcePositions.get(record)!);
 
     expect(sampled.length).toBeLessThanOrEqual(MAX_CHART_OUTPUT_POINTS);
-    expect(indexes).toEqual(expect.arrayContaining([0, forwardLength - 1, forwardLength, plotPath.length - 1]));
-    expect(syntheticIndexes.at(0)).toBeLessThanOrEqual(2);
-    expect(syntheticIndexes.at(-1)).toBeGreaterThanOrEqual(plotPath.length - 3);
-    expect(Math.max(...syntheticIndexes.slice(1).map((index, position) => index - syntheticIndexes[position]!))).toBeLessThanOrEqual(3);
+    expect(sampledSourceIndexes).toEqual(expect.arrayContaining([0, forwardOriginalCount - 1, forwardOriginalCount, originalCount - 1]));
+    expect(syntheticPositions.at(0)).toBeLessThanOrEqual(3);
+    expect(syntheticPositions.at(-1)).toBeGreaterThanOrEqual(plotPath.length - 4);
+    expect(syntheticPositions.some((position) => Math.abs(position - Math.floor(plotPath.length / 2)) <= 3)).toBe(true);
+    expect(Math.max(...syntheticPositions.slice(1).map((position, index) => position - syntheticPositions[index]!))).toBeLessThanOrEqual(4);
   });
 
   it("clears stale validation on edit and ignores an older import finishing last", async () => {
