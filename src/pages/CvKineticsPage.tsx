@@ -5,6 +5,7 @@ import {
   type CvImportDraft,
   type CvUiError
 } from "../components/CvImportPanel";
+import { ScientificStackedBarChart } from "../components/ScientificStackedBarChart";
 import { ScientificLineChart, type ChartAreaPoint, type ChartAreaSeries, type ChartSeries } from "../components/ScientificLineChart";
 import { useI18n } from "../i18n/I18nProvider";
 import { parseScanRateList, type CvDataLayout, type CvHeaderMode } from "../lib/cvImport";
@@ -247,7 +248,6 @@ export function CvKineticsPage() {
   const fitChart = sampleChartSeries(makeFitChart(selectedB, t("cv.b.fitData")));
   const dunnChart = sampleChartSeries(makeDunnChart(selectedOriginalSeries, selectedContribution, t));
   const dunnAreas = sampleChartAreas(makeDunnAreas(analysis, selectedRate, selectedSeriesIndex, t));
-  const contributionChart = sampleChartSeries(makeContributionChart(sortedContributions, t));
   const sampledBChart = useMemo(() => sampleChartSeries(bChart), [bChart]);
   const bGapRunCount = useMemo(() => countNullRuns(bChart[0]?.points ?? []), [bChart]);
   const missingBFitCount = analysis?.summary.unavailableBCount ?? 0;
@@ -284,7 +284,7 @@ export function CvKineticsPage() {
     "cv-b-chart": hasChartPoints(sampledBChart),
     "cv-fit-chart": hasChartPoints(fitChart),
     "cv-dunn-chart": hasChartPoints(dunnChart),
-    "cv-contribution-chart": hasChartPoints(contributionChart)
+    "cv-contribution-chart": sortedContributions.length > 0
   } as const;
 
   function choosePotential(potential: number) {
@@ -406,8 +406,25 @@ export function CvKineticsPage() {
 
       <section className="tool-section tool-section-wide cv-results">
         <h2>{t("cv.results.title")}</h2>
-        <ScientificLineChart title={t("cv.dunn.contributionChart")} xLabel={`${t("cv.table.scanRate")} (mV/s)`} yLabel="%"
-          emptyLabel={t("cv.chart.empty")} legendLabel={t("cv.chart.legend")} series={contributionChart} exportId="cv-contribution-chart" metadata={chartMetadata} />
+        <ScientificStackedBarChart
+          title={t("cv.dunn.contributionChart")}
+          xLabel={`${t("cv.table.scanRate")} (mV/s)`}
+          yLabel="%"
+          emptyLabel={t("cv.chart.empty")}
+          legendLabel={t("cv.chart.legend")}
+          lowerLabel={t("cv.dunn.capacitive")}
+          upperLabel={t("cv.dunn.diffusion")}
+          lowerColor="#e07a5f"
+          upperColor="#3d405b"
+          data={sortedContributions.map((item) => ({
+            id: String(item.scanRate),
+            x: item.scanRate,
+            lower: item.capacitivePercent,
+            upper: item.diffusionPercent
+          }))}
+          exportId="cv-contribution-chart"
+          metadata={chartMetadata}
+        />
         <DataTable tableId="cv-contribution-table" headers={[`${t("cv.table.scanRate")} (mV/s)`, t("cv.dunn.capacitive") + " (%)", t("cv.dunn.diffusion") + " (%)", t("cv.results.validSampledPoints"), `${t("cv.results.coverage")} (%)`]}
           rows={sortedContributions.map((item) => [
             item.scanRate,
@@ -670,13 +687,6 @@ function makeFitChart(point: BValuePoint | undefined, measuredLabel: string): Ch
   return [
     { id: "fit-points", label: measuredLabel, color: "#16697a", mode: "points", points: fitPoints.map((item) => ({ x: item.logScanRate, y: item.logCurrentMagnitude })) },
     { id: "fit-line", label: "log(|i|) = log(a) + b log(v)", color: "#d1495b", dash: "7 4", points: [Math.min(...xs), Math.max(...xs)].map((x) => ({ x, y: point.intercept + point.b * x })) }
-  ];
-}
-
-function makeContributionChart(contributions: DunnContribution[], t: ReturnType<typeof useI18n>["t"]): ChartSeries[] {
-  return [
-    { id: "capacitive-percent", label: t("cv.dunn.capacitive"), color: "#e07a5f", points: contributions.map((item) => ({ x: item.scanRate, y: item.capacitivePercent })) },
-    { id: "diffusion-percent", label: t("cv.dunn.diffusion"), color: "#3d405b", dash: "5 3", points: contributions.map((item) => ({ x: item.scanRate, y: item.diffusionPercent })) }
   ];
 }
 

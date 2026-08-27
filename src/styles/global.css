@@ -2991,6 +2991,17 @@ td button {
   min-width: 560px;
 }
 
+.scientific-stacked-bar-chart-svg {
+  min-width: var(--scientific-stacked-bar-min-width, 560px);
+}
+
+.scientific-stacked-bar-chart-svg [data-label-placement="external"] {
+  paint-order: stroke;
+  stroke: #fbfcfb;
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
 .scientific-chart-point:focus-visible {
   outline: none;
   stroke: #a6423f;

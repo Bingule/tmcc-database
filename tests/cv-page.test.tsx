@@ -393,6 +393,15 @@ describe("CV kinetics page", () => {
     expect(view.querySelector<HTMLSelectElement>('select[name="selectedRate"]')?.value).toBe("1");
     expect(view.querySelector<HTMLInputElement>('input[name="selectedPotential"]')?.value).toBe("0");
     expect(view.textContent).toContain("Contribution percentage by scan rate");
+    const contributionChart = view.querySelector('[data-export-id="cv-contribution-chart"]')!;
+    expect(contributionChart.classList.contains("scientific-stacked-bar-chart-svg")).toBe(true);
+    expect([...contributionChart.querySelectorAll('[data-stacked-bar]')].map((bar) => bar.getAttribute("data-x")))
+      .toEqual(["1", "4", "9"]);
+    expect(contributionChart.querySelectorAll('[data-bar-segment="capacitive"]')).toHaveLength(3);
+    expect(contributionChart.querySelectorAll('[data-bar-segment="diffusion"]')).toHaveLength(3);
+    expect(contributionChart.querySelector('[data-series-id="capacitive-percent"]')).toBeNull();
+    expect(contributionChart.textContent).toMatch(/\d+\.\d{2}%/);
+    expect(view.querySelector('[data-table-id="cv-contribution-table"]')).not.toBeNull();
     expect(view.querySelectorAll<HTMLButtonElement>(".cv-export button:disabled")).toHaveLength(0);
     expect([...view.querySelectorAll<HTMLButtonElement>(".cv-export button")].filter((button) => button.textContent?.endsWith(".csv")).map((button) => button.textContent)).toEqual(csvFilenames);
     expect([...view.querySelectorAll<HTMLButtonElement>(".cv-export button")].filter((button) => /\.(svg|png)$/.test(button.textContent ?? ""))).toHaveLength(8);
@@ -403,6 +412,7 @@ describe("CV kinetics page", () => {
     expect(view.textContent).toContain("R² 加权");
     expect(view.textContent).toContain("转折点裁剪");
     expect(view.textContent).toContain("平滑：自动");
+    expect(view.querySelector('[data-export-id="cv-contribution-chart"] title')?.textContent).toContain("贡献百分比");
     const zhSummary = view.querySelector('[data-quality-summary="true"]')?.textContent ?? "";
     expect(zhSummary).toContain("电位间隔 自动");
     expect(zhSummary).toContain("裁剪 自动");
