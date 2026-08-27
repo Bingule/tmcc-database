@@ -119,6 +119,33 @@ export interface DunnDiagnostics {
   maximumPositiveOvershoot: number;
   maximumNegativeOvershoot: number;
   maximumAbsoluteOvershoot: number;
+  maximumEnvelopeCorrection: number;
+  maximumUpperEnvelopeViolation: number;
+  maximumLowerEnvelopeViolation: number;
+  maximumAbsoluteEnvelopeViolation: number;
+  correctedPointCount: number;
+  correctedPointPercent: number;
+  maximumEffectiveFractionDeparture: number;
+  maximumAdjacentGJump: number;
+  gSmoothnessWarning: boolean;
+}
+
+export interface EnvelopeProjection {
+  envelopeLower: number;
+  envelopeUpper: number;
+  feasibleLower: number;
+  feasibleUpper: number;
+  targetCurrent: number;
+  constrainedCurrent: number;
+  correctionMagnitude: number;
+  effectiveFraction: number;
+}
+
+export interface EnvelopeViolationDiagnostics {
+  maximumUpperViolation: number;
+  maximumLowerViolation: number;
+  maximumAbsoluteViolation: number;
+  worstIndex: number | null;
 }
 
 export interface DunnOrderedRecord {
@@ -126,9 +153,15 @@ export interface DunnOrderedRecord {
   /** Backward-compatible alias of capacitiveCurrent. */
   current: number;
   originalCurrent: number;
+  oppositeCurrent: number;
+  envelopeLower: number;
+  envelopeUpper: number;
+  targetCapacitiveCurrent: number;
   capacitiveCurrent: number;
   diffusionCurrent: number;
   g: number;
+  effectiveFraction: number;
+  correctionMagnitude: number;
   branch: CvBranchKind;
   sourceIndex: number | null;
   synthetic: boolean;

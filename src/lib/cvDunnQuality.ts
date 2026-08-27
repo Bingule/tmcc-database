@@ -6,6 +6,9 @@ import {
   type DunnContribution,
   type DunnContributionInput,
   type DunnDiagnostics,
+  type DunnOrderedRecord,
+  type EnvelopeProjection,
+  type EnvelopeViolationDiagnostics,
   type NormalizedCvCycle
 } from "./cvTypes";
 
@@ -22,6 +25,55 @@ export interface BranchOvershootDiagnostics {
   maximumNegativeOvershoot: number;
   maximumAbsoluteOvershoot: number;
   worstIndex: number | null;
+}
+
+export function projectCapacitiveToEnvelope(
+  originalCurrent: number,
+  oppositeCurrent: number,
+  targetCurrent: number
+): EnvelopeProjection {
+  if (![originalCurrent, oppositeCurrent, targetCurrent].every(Number.isFinite)) {
+    throw new CvAnalysisError("invalidDataShape");
+  }
+  const envelopeLower = Math.min(originalCurrent, oppositeCurrent);
+  const envelopeUpper = Math.max(originalCurrent, oppositeCurrent);
+  const signedLower = Math.min(0, originalCurrent);
+  const signedUpper = Math.max(0, originalCurrent);
+  const feasibleLower = Math.max(envelopeLower, signedLower);
+  const feasibleUpper = Math.min(envelopeUpper, signedUpper);
+  if (feasibleLower > feasibleUpper) throw new CvAnalysisError("reconstructionFailed");
+  const constrainedCurrent = cleanZero(Math.min(feasibleUpper, Math.max(feasibleLower, targetCurrent)));
+  return {
+    envelopeLower,
+    envelopeUpper,
+    feasibleLower,
+    feasibleUpper,
+    targetCurrent,
+    constrainedCurrent,
+    correctionMagnitude: Math.abs(constrainedCurrent - targetCurrent),
+    effectiveFraction: originalCurrent === 0 ? 0 : constrainedCurrent / originalCurrent
+  };
+}
+
+export function measureEnvelopeViolation(
+  records: Array<Pick<DunnOrderedRecord, "envelopeLower" | "envelopeUpper" | "capacitiveCurrent">>
+): EnvelopeViolationDiagnostics {
+  return records.reduce<EnvelopeViolationDiagnostics>((result, record, index) => {
+    const upper = Math.max(0, record.capacitiveCurrent - record.envelopeUpper);
+    const lower = Math.max(0, record.envelopeLower - record.capacitiveCurrent);
+    const absolute = Math.max(upper, lower);
+    return {
+      maximumUpperViolation: Math.max(result.maximumUpperViolation, upper),
+      maximumLowerViolation: Math.max(result.maximumLowerViolation, lower),
+      maximumAbsoluteViolation: Math.max(result.maximumAbsoluteViolation, absolute),
+      worstIndex: absolute > result.maximumAbsoluteViolation ? index : result.worstIndex
+    };
+  }, {
+    maximumUpperViolation: 0,
+    maximumLowerViolation: 0,
+    maximumAbsoluteViolation: 0,
+    worstIndex: null
+  });
 }
 
 export function containCapacitiveCurrent(original: number, capacitive: number): number {

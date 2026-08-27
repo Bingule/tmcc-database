@@ -4,6 +4,8 @@ import {
   integrateMagnitude,
   isLowFitQuality,
   measureBranchOvershoot,
+  measureEnvelopeViolation,
+  projectCapacitiveToEnvelope,
   reconstructBranchCurrents,
   reconstructDunnContribution,
   validateDunnContribution
@@ -45,6 +47,48 @@ it("measures signed and absolute branch overshoot", () => {
     maximumPositiveOvershoot: 0.25,
     maximumNegativeOvershoot: 0.5,
     maximumAbsoluteOvershoot: 0.5,
+    worstIndex: 1
+  });
+});
+
+it("projects same-sign targets to the nearest feasible CV-envelope value", () => {
+  expect(projectCapacitiveToEnvelope(4, 2, 1)).toEqual({
+    envelopeLower: 2,
+    envelopeUpper: 4,
+    feasibleLower: 2,
+    feasibleUpper: 4,
+    targetCurrent: 1,
+    constrainedCurrent: 2,
+    correctionMagnitude: 1,
+    effectiveFraction: 0.5
+  });
+  expect(projectCapacitiveToEnvelope(-4, -2, -1)).toEqual({
+    envelopeLower: -4,
+    envelopeUpper: -2,
+    feasibleLower: -4,
+    feasibleUpper: -2,
+    targetCurrent: -1,
+    constrainedCurrent: -2,
+    correctionMagnitude: 1,
+    effectiveFraction: 0.5
+  });
+});
+
+it("leaves opposite-sign and already feasible shared-g targets unchanged", () => {
+  expect(projectCapacitiveToEnvelope(4, -3, 1).constrainedCurrent).toBe(1);
+  expect(projectCapacitiveToEnvelope(-4, 3, -1).constrainedCurrent).toBe(-1);
+  expect(projectCapacitiveToEnvelope(4, 2, 3).correctionMagnitude).toBe(0);
+});
+
+it("measures signed and absolute residual envelope violation", () => {
+  const diagnostics = measureEnvelopeViolation([
+    { envelopeLower: -2, envelopeUpper: 3, capacitiveCurrent: 3.25 },
+    { envelopeLower: -4, envelopeUpper: -1, capacitiveCurrent: -4.5 }
+  ]);
+  expect(diagnostics).toEqual({
+    maximumUpperViolation: 0.25,
+    maximumLowerViolation: 0.5,
+    maximumAbsoluteViolation: 0.5,
     worstIndex: 1
   });
 });
