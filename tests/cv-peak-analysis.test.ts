@@ -3,6 +3,7 @@ import { normalizeAlignedCvCycles } from "../src/lib/cvCycle";
 import { analyzePeakBValues, detectPeakCandidates, fitPeakGroups, matchPeakCandidates } from "../src/lib/cvPeakAnalysis";
 import type { CvBranchKind, CvPeakCandidate, CvSeries } from "../src/lib/cvTypes";
 import {
+  makeHighRateShoulderNcpSeries,
   makeManyPeakSeries,
   makeOrderSensitiveRecoverablePeakSeries,
   makePartialPeakSeries,
@@ -118,6 +119,28 @@ it("recovers coherent weak peak-family members from original branch points", () 
       expect(cycles[point.seriesIndex]!.reverse.points.some((item) => item.sourceIndex === candidate.sourceIndex)).toBe(false);
     }
   }
+});
+
+it("recovers the NCP-like 50 mV/s shoulder at its adjacent original local extremum", () => {
+  const series = makeHighRateShoulderNcpSeries();
+  const cycles = normalizeAlignedCvCycles(series);
+  const strict = matchPeakCandidates(detectPeakCandidates(series, cycles), series.map((item) => item.scanRate));
+  expect(strict.map((group) => group.candidates.size)).toEqual([5, 4, 5]);
+
+  const result = analyzePeakBValues(series, cycles, 0);
+  expect(result.fits.map((fit) => fit.coverageCount)).toEqual([5, 5, 5]);
+  const highRatePoint = result.fits[1]!.points.find((point) => point.scanRate === 50)!;
+  expect(highRatePoint.candidate).not.toBeNull();
+  const candidate = highRatePoint.candidate!;
+  const original = series[highRatePoint.seriesIndex]!.points[candidate.sourceIndex]!;
+  expect(candidate.potential).toBe(original.potential);
+  expect(candidate.current).toBe(original.current);
+  const branch = cycles[highRatePoint.seriesIndex]!.forward.points;
+  const branchIndex = branch.findIndex((point) => point.sourceIndex === candidate.sourceIndex);
+  expect(branchIndex).toBeGreaterThan(0);
+  expect(branchIndex).toBeLessThan(branch.length - 1);
+  expect(candidate.current).toBeGreaterThan(branch[branchIndex - 1]!.current);
+  expect(candidate.current).toBeGreaterThanOrEqual(branch[branchIndex + 1]!.current);
 });
 
 it("keeps recovered peak families invariant when scan-rate series are reordered", () => {

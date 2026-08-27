@@ -184,31 +184,37 @@ function recoverLocalExtremum(
     return expectedDirection ? [index] : [];
   });
   if (extrema.length === 0) return null;
-  const index = extrema.reduce((best, candidate) =>
-    Math.abs(points[candidate]!.potential - predicted) < Math.abs(points[best]!.potential - predicted)
-      ? candidate
-      : best
-  );
-  const point = points[index]!;
-  const left = currents.slice(0, index);
-  const right = currents.slice(index + 1);
-  if (left.length === 0 || right.length === 0) return null;
-  const isOriginalExtremum = kind === "oxidation"
-    ? point.current > currents[index - 1]! && point.current >= currents[index + 1]!
-    : point.current < currents[index - 1]! && point.current <= currents[index + 1]!;
-  if (!isOriginalExtremum) return null;
-  const prominence = kind === "oxidation"
-    ? point.current - Math.max(Math.min(...left), Math.min(...right))
-    : Math.min(Math.max(...left), Math.max(...right)) - point.current;
   const localSpan = Math.max(Number.EPSILON, Math.max(...currents) - Math.min(...currents));
   const residualMad = median(currents.map((value, itemIndex) => Math.abs(value - smoothed[itemIndex]!)));
   const prominenceFloor = Math.max(4 * residualMad, 0.005 * localSpan, Number.EPSILON);
-  if (!Number.isFinite(prominence) || prominence < prominenceFloor) return null;
+  const residualLimit = Math.max(4 * residualMad, 0.1 * localSpan, Number.EPSILON);
+  const mappingRadius = Math.min(
+    halfWindow,
+    Math.max(2 * nativePotentialInterval, 0.005 * branchSpan)
+  );
+  const originalExtrema = findOriginalPeakExtrema(points, kind, 2 * halfWindow);
+  const selected = extrema.flatMap((smoothIndex) => originalExtrema
+    .filter((candidate) => Math.abs(candidate.point.potential - points[smoothIndex]!.potential) <= mappingRadius)
+    .filter((candidate) => candidate.prominence >= prominenceFloor)
+    .filter((candidate) => {
+      const originalIndex = points.findIndex((point) => point.sourceIndex === candidate.point.sourceIndex);
+      return originalIndex >= 0
+        && Math.abs(candidate.point.current - smoothed[originalIndex]!) <= residualLimit;
+    })
+    .map((candidate) => ({ candidate, smoothIndex })))
+    .sort((left, right) =>
+      Math.abs(points[left.smoothIndex]!.potential - predicted)
+        - Math.abs(points[right.smoothIndex]!.potential - predicted)
+      || Math.abs(left.candidate.point.potential - points[left.smoothIndex]!.potential)
+        - Math.abs(right.candidate.point.potential - points[right.smoothIndex]!.potential)
+      || right.candidate.prominence - left.candidate.prominence
+      || left.candidate.point.sourceIndex - right.candidate.point.sourceIndex)[0];
+  if (!selected) return null;
   return {
-    point,
-    prominence,
-    normalizedProminence: prominence / robustCurrentSpanForBranch(branchPoints, nativePotentialInterval),
-    confidence: Math.min(0.49, Math.max(0.05, 0.1 * prominence / prominenceFloor))
+    point: selected.candidate.point,
+    prominence: selected.candidate.prominence,
+    normalizedProminence: selected.candidate.prominence / robustCurrentSpanForBranch(branchPoints, nativePotentialInterval),
+    confidence: Math.min(0.49, Math.max(0.05, 0.1 * selected.candidate.prominence / prominenceFloor))
   };
 }
 

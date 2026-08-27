@@ -19,6 +19,51 @@ export function makeThreePeakNcpLikeSeries(): CvSeries[] {
   ]);
 }
 
+export function makeHighRateShoulderNcpSeries(): CvSeries[] {
+  const rates = [50, 20, 10, 5, 2];
+  const grid = Array.from({ length: 801 }, (_, index) => -1 + 2 * index / 800);
+  return rates.map((scanRate) => {
+    const forward = grid.map((potential) => {
+      const baselineSlope = 14 * Math.sqrt(scanRate);
+      const firstCenter = -0.543 + 0.0085 * Math.log(scanRate / 2);
+      const shoulderCenter = -0.411 + 0.055 * Math.log(scanRate / 2);
+      const firstPeak = 34 * Math.sqrt(scanRate)
+        * Math.exp(-Math.pow((potential - firstCenter) / 0.04, 2));
+      const shoulderAmplitude = scanRate === 50
+        ? 10.5
+        : ({ 20: 25, 10: 20, 5: 16, 2: 13 } as const)[scanRate as 20 | 10 | 5 | 2];
+      const shoulder = shoulderAmplitude
+        * Math.exp(-Math.pow((potential - shoulderCenter) / 0.08, 2));
+      return {
+        potential,
+        current: baselineSlope * (potential + 1) + firstPeak + shoulder
+      };
+    });
+    if (scanRate === 50) {
+      const shoulderCenter = -0.411 + 0.055 * Math.log(scanRate / 2);
+      const local = forward
+        .map((point, sourceIndex) => ({ point, sourceIndex }))
+        .filter(({ point }) => Math.abs(point.potential - shoulderCenter) <= 0.1)
+        .sort((left, right) => right.point.current - left.point.current)[0]!;
+      const plateau = Math.max(forward[local.sourceIndex - 1]!.current, forward[local.sourceIndex]!.current);
+      forward[local.sourceIndex - 1] = { ...forward[local.sourceIndex - 1]!, current: plateau };
+      forward[local.sourceIndex] = { ...forward[local.sourceIndex]!, current: plateau };
+    }
+    const reverse = grid.slice(0, -1).reverse().map((potential) => {
+      const center = -0.678 - 0.064 * Math.log(scanRate / 2);
+      const baseline = -0.8 * Math.sqrt(scanRate) * (potential + 1);
+      const peak = -28 * Math.sqrt(scanRate)
+        * Math.exp(-Math.pow((potential - center) / 0.09, 2));
+      return { potential, current: baseline + peak };
+    });
+    return {
+      label: `${scanRate} mV/s`,
+      scanRate,
+      points: [...forward, ...reverse]
+    };
+  });
+}
+
 export function makePartialPeakSeries(): CvSeries[] {
   return makePeakSeries([
     { branch: "forward", center: -0.3, width: 0.07, exponent: 0.75, amplitude: 1, shiftPerLogRate: 0.01 },

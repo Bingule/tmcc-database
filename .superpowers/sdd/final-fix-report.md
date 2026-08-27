@@ -211,6 +211,73 @@ Result: exit code 0, no diagnostics.
 
 Follow-up files changed: `src/components/CvPeakAnalysisPanel.tsx`, `tests/cv-page.test.tsx`, and this report. Self-review confirmed that analysis, matching, override allocation, ten-family enforcement, occupied-candidate exclusion, localization resources, and Dunn behavior are unchanged.
 
+## Real NCP final-gate follow-up: 50 mV/s shoulder recovery
+
+Root cause investigation:
+
+- The supplied real-data gate reproduced identically for CSV and XLSX: peak coverage was `[5, 4, 5]`; P2 was missing only at 50 mV/s, while Dunn raw/plot ranges matched and both overshoot diagnostics remained zero.
+- Stage tracing showed strict detection produced only P1 at 50 mV/s, while P2 had four strict members at 2, 5, 10, and 20 mV/s. Guided recovery predicted P2 at `-0.2670688557 V` and opened a valid local window.
+- That window contained the defensible original forward local maximum at `-0.23340 V`, `sourceIndex = 762`, with neighborhood prominence `10.63749`.
+- Seven-point smoothing placed its maximum one sample later at `-0.23218 V`, `sourceIndex = 763`. That adjacent plateau point was not itself an original local maximum, so the old recovery code rejected the entire candidate instead of mapping the smooth center back to source 762.
+
+RED:
+
+- Added `makeHighRateShoulderNcpSeries` to `tests/fixtures/cvPeakData.ts`. It is self-contained, uses five NCP-like scan rates, has P1/P2/P3 families, and gives the 50 mV/s P2 a broad rising-background shoulder with an adjacent two-sample plateau.
+- Added a peak-analysis regression that requires strict coverage `[5, 4, 5]`, recovered coverage `[5, 5, 5]`, exact original potential/current lookup through `sourceIndex`, same-forward-branch membership, and original-neighbour local-maximum evidence.
+- Exact RED command:
+
+```text
+node.exe .\node_modules\vitest\vitest.mjs run tests\cv-peak-analysis.test.ts -t "recovers the NCP-like 50 mV/s shoulder at its adjacent original local extremum" --reporter verbose
+```
+
+- Result before production change: 1 failed, 12 skipped; received `[5, 4, 5]` instead of `[5, 5, 5]`.
+
+GREEN implementation:
+
+- Guided recovery still starts from a detected smoothed extremum, but now enumerates only original branch-local extrema within a tightly bounded mapping radius (`max(2 native intervals, 0.5% branch span)`, capped by the guided window).
+- Candidates must retain the existing neighborhood-prominence floor and additionally pass a raw-versus-smoothed residual limit. This accepts a broad shoulder whose smoothed center shifts by one sample while continuing to reject isolated raw spikes.
+- Selection remains target-rate guided and deterministic: nearest smoothed center to the trend prediction, then nearest original extremum to that center, then prominence/source-index tie breaks.
+- No arbitrary window maximum path was restored; every accepted point comes from `findOriginalPeakExtrema` and retains its original same-branch `sourceIndex`.
+
+Targeted GREEN: 1 passed, 12 skipped.
+
+Required focused verification:
+
+```text
+node.exe .\node_modules\vitest\vitest.mjs run tests\cv-peak-analysis.test.ts tests\cv-workflow.test.ts tests\cv-page.test.tsx tests\cv-peak-overrides.test.ts
+```
+
+Result: 4 files passed, 101 tests passed. The existing rising-background and isolated-noise-spike regressions remained green.
+
+Real NCP gate:
+
+```text
+node.exe .\node_modules\vitest\vitest.mjs run .superpowers\sdd\real-ncp-final.test.ts --reporter verbose
+```
+
+Result: 1 passed. Both CSV and XLSX produced peak coverage `[5, 5, 5]`; P2 potentials were `[-0.23340, -0.30609, -0.34228, -0.37510, -0.41099]`. The 50 mV/s point maps to original `sourceIndex = 762`. Both formats retained identical raw/plot potential ranges, zero maximum overshoot, and zero maximum envelope violation.
+
+Type check:
+
+```text
+node.exe .\node_modules\typescript\bin\tsc --noEmit
+```
+
+Result: exit code 0, no diagnostics.
+
+Full suite:
+
+- The first parallel run completed all 525 repository assertions but the supplied ignored real-data gate exceeded its 5-second default after printing fully correct results.
+- Its local timeout was set to 15 seconds (the gate file is ignored and is not part of the production commit), then the exact full-suite command was rerun:
+
+```text
+node.exe .\node_modules\vitest\vitest.mjs run
+```
+
+Result: 44 files passed, 526 tests passed, including the real CSV/XLSX gate in 7.08 seconds. The only output noise was the previously documented React `act(...)` warning in `b-value-overview-chart.test.tsx`.
+
+Follow-up files changed: `src/lib/cvPeakAnalysis.ts`, `tests/cv-peak-analysis.test.ts`, `tests/fixtures/cvPeakData.ts`, and this report. Self-review confirmed no change to strict candidate detection, target-rate group matching, Dunn reconstruction/contributions, page behavior, overrides, localization, or deployment.
+
 ## Remaining concerns
 
 No known correctness concern remains within the accepted fix scope. The only verification noise is the pre-existing React `act(...)` warning noted above.
