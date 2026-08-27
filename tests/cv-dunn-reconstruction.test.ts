@@ -116,6 +116,25 @@ it("solves a production-sized shared fraction grid within the regression budget"
   expect(elapsedMilliseconds).toBeLessThan(6_000);
 }, 30_000);
 
+it("completes the full L-curve for a 5001-point constant target with sparse zero weights", () => {
+  const pointCount = 5_001;
+  const potentials = Array.from({ length: pointCount }, (_value, index) => index / (pointCount - 1));
+  const missing = { fraction: null, confidence: 0, rSquared: null, trustedAnchor: false };
+  const fractions = {
+    forward: potentials.map((_potential, index) =>
+      index < 26 || index >= pointCount - 26 ? missing : point(1, 5)),
+    reverse: potentials.map((_potential, index) =>
+      index < 26 || index >= pointCount - 26 ? missing : point(1, 5))
+  };
+
+  const result = optimizeSharedFraction(fractions, potentials);
+
+  expect(result.g).toHaveLength(pointCount);
+  expect(result.g.every((value) => value >= 0 && value <= 1)).toBe(true);
+  expect(result.diagnostics.converged).toBe(true);
+  expect(result.diagnostics.optimalityResidual).toBeLessThanOrEqual(1e-6);
+}, 30_000);
+
 it("preserves a linear normalized-potential ramp on a nonuniform grid", () => {
   const potentials = [0, 0.25, 1];
   const result = optimizeSharedFraction({

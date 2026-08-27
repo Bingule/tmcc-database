@@ -242,10 +242,12 @@ function makeSecondDifferenceOperator(normalizedPotentials: number[]): SecondDif
 
     const quadratureWidth = (leftSpacing + rightSpacing) / 2;
     const scale = Math.sqrt(quadratureWidth);
+    const firstCoefficient = scale * 2 / (leftSpacing * (leftSpacing + rightSpacing));
+    const lastCoefficient = scale * 2 / (rightSpacing * (leftSpacing + rightSpacing));
     const coefficients: [number, number, number] = [
-      scale * 2 / (leftSpacing * (leftSpacing + rightSpacing)),
-      scale * -2 / (leftSpacing * rightSpacing),
-      scale * 2 / (rightSpacing * (leftSpacing + rightSpacing))
+      firstCoefficient,
+      -(firstCoefficient + lastCoefficient),
+      lastCoefficient
     ];
     const indices: [number, number, number] = [index - 1, index, index + 1];
     rows.push({ indices, coefficients });
@@ -266,9 +268,9 @@ function makeSecondDifferenceOperator(normalizedPotentials: number[]): SecondDif
 }
 
 function applySecondDifferenceRow(values: number[], row: SecondDifferenceRow): number {
-  return row.coefficients[0] * values[row.indices[0]]
-    + row.coefficients[1] * values[row.indices[1]]
-    + row.coefficients[2] * values[row.indices[2]];
+  const middle = values[row.indices[1]];
+  return row.coefficients[0] * (values[row.indices[0]] - middle)
+    + row.coefficients[2] * (values[row.indices[2]] - middle);
 }
 
 function combineBranchTargets(fractions: DunnFractionGrid): { target: number[]; weight: number[] } {
@@ -533,12 +535,11 @@ function majorizesObjective(
     squaredDistance += difference * difference;
   }
   for (const row of operator.rows) {
+    const middleDifference = next[row.indices[1]] - accelerated[row.indices[1]];
     const secondDifference = row.coefficients[0]
-      * (next[row.indices[0]] - accelerated[row.indices[0]])
-      + row.coefficients[1]
-      * (next[row.indices[1]] - accelerated[row.indices[1]])
+      * ((next[row.indices[0]] - accelerated[row.indices[0]]) - middleDifference)
       + row.coefficients[2]
-      * (next[row.indices[2]] - accelerated[row.indices[2]]);
+      * ((next[row.indices[2]] - accelerated[row.indices[2]]) - middleDifference);
     quadraticRemainder += lambda * secondDifference * secondDifference;
   }
   const quadraticBound = localLipschitz * squaredDistance / 2;
