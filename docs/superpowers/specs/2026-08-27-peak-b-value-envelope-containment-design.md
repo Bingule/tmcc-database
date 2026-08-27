@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-27  
 **Branch:** `fix-dunn-literature-plot`  
-**Status:** Approved conversational design; pending written-spec review  
+**Status:** Approved written design
 **Source of truth:** The user's “combined improvements” instruction plus the confirmed choices in this thread.
 
 ## 1. Objective and Scope
