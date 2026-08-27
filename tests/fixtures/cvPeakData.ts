@@ -7,6 +7,7 @@ type PeakDefinition = {
   exponent: number;
   amplitude: number;
   shiftPerLogRate: number;
+  centerByRate?: Readonly<Record<number, number>>;
   strengthByRate?: Readonly<Record<number, number>>;
 };
 
@@ -26,6 +27,14 @@ export function makePartialPeakSeries(): CvSeries[] {
 }
 
 export function makeRecoverablePeakSeries(): CvSeries[] {
+  return makeRecoverablePeakSeriesWithWeakCenters();
+}
+
+export function makeOrderSensitiveRecoverablePeakSeries(): CvSeries[] {
+  return makeRecoverablePeakSeriesWithWeakCenters({ 10: 0.43, 20: 0.268 });
+}
+
+function makeRecoverablePeakSeriesWithWeakCenters(centerByRate?: Readonly<Record<number, number>>): CvSeries[] {
   const series = makePeakSeries([
     { branch: "forward", center: -0.56, width: 0.06, exponent: 0.72, amplitude: 1.1, shiftPerLogRate: 0.008 },
     {
@@ -44,6 +53,7 @@ export function makeRecoverablePeakSeries(): CvSeries[] {
       exponent: 0.64,
       amplitude: 1.05,
       shiftPerLogRate: -0.006,
+      centerByRate,
       strengthByRate: { 10: 0.003, 20: 0.003 }
     }
   ]);
@@ -85,7 +95,7 @@ function makePeakSeries(definitions: PeakDefinition[], missing = new Set<string>
       const peakCurrent = definitions
         .filter((peak) => peak.branch === branch && !missing.has(`${branch}:${scanRate}`))
         .reduce((sum, peak) => {
-          const center = peak.center + peak.shiftPerLogRate * Math.log(scanRate);
+          const center = (peak.centerByRate?.[scanRate] ?? peak.center) + peak.shiftPerLogRate * Math.log(scanRate);
           const shape = Math.exp(-Math.pow((potential - center) / peak.width, 2));
           return sum + sign * peak.amplitude * (peak.strengthByRate?.[scanRate] ?? 1)
             * Math.pow(scanRate, peak.exponent) * shape;

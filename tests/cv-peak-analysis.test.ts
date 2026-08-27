@@ -4,6 +4,7 @@ import { analyzePeakBValues, detectPeakCandidates, fitPeakGroups, matchPeakCandi
 import type { CvBranchKind, CvPeakCandidate, CvSeries } from "../src/lib/cvTypes";
 import {
   makeManyPeakSeries,
+  makeOrderSensitiveRecoverablePeakSeries,
   makePartialPeakSeries,
   makeRecoverablePeakSeries,
   makeThreePeakNcpLikeSeries
@@ -60,6 +61,39 @@ it("recovers coherent weak peak-family members from original branch points", () 
       expect(candidate.branch).toBe(fit.branch);
       expect(cycles[point.seriesIndex]!.forward.points.some((item) => item.sourceIndex === candidate.sourceIndex)).toBe(true);
       expect(cycles[point.seriesIndex]!.reverse.points.some((item) => item.sourceIndex === candidate.sourceIndex)).toBe(false);
+    }
+  }
+});
+
+it("keeps recovered peak families invariant when scan-rate series are reordered", () => {
+  const series = makeOrderSensitiveRecoverablePeakSeries();
+  const reordered = [series[4]!, series[2]!, series[0]!, series[3]!, series[1]!];
+  const baseline = analyzePeakBValues(series, normalizeAlignedCvCycles(series), 0);
+  const permuted = analyzePeakBValues(reordered, normalizeAlignedCvCycles(reordered), 0);
+
+  expect(permuted.fits.map((fit) => fit.coverageCount)).toEqual(baseline.fits.map((fit) => fit.coverageCount));
+  for (const [index, fit] of baseline.fits.entries()) {
+    const reorderedFit = permuted.fits[index]!;
+    expect(reorderedFit.b).toBeCloseTo(fit.b!, 12);
+    for (const point of fit.points) {
+      const reorderedPoint = reorderedFit.points.find((item) => item.scanRate === point.scanRate)!;
+      expect(reorderedPoint.candidate?.potential).toBe(point.candidate?.potential);
+      expect(reorderedPoint.candidate?.sourceIndex).toBe(point.candidate?.sourceIndex);
+    }
+  }
+});
+
+it("keeps recovered normalized prominence invariant under current-unit scaling", () => {
+  const series = makeRecoverablePeakSeries();
+  const scaled = scaleCurrents(series, 1_000);
+  const baseline = analyzePeakBValues(series, normalizeAlignedCvCycles(series), 0);
+  const scaledResult = analyzePeakBValues(scaled, normalizeAlignedCvCycles(scaled), 0);
+
+  for (const [index, fit] of baseline.fits.entries()) {
+    const scaledFit = scaledResult.fits[index]!;
+    for (const point of fit.points.filter((item) => item.candidate !== null && item.candidate.confidence < 1)) {
+      const scaledPoint = scaledFit.points.find((item) => item.scanRate === point.scanRate)!;
+      expect(scaledPoint.candidate?.normalizedProminence).toBeCloseTo(point.candidate!.normalizedProminence, 12);
     }
   }
 });
@@ -145,5 +179,12 @@ function makeSeriesWithBranchScale(scanRates: number[], scale: number): CvSeries
       { potential: 0, current: -scale },
       { potential: -1, current: -scale }
     ]
+  }));
+}
+
+function scaleCurrents(series: CvSeries[], factor: number): CvSeries[] {
+  return series.map((item) => ({
+    ...item,
+    points: item.points.map((point) => ({ ...point, current: point.current * factor }))
   }));
 }

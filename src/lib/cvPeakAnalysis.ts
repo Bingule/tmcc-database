@@ -81,24 +81,37 @@ export function recoverMissingPeakCandidates(
 ): CvPeakGroup[] {
   if (series.length !== cycles.length) throw new CvAnalysisError("invalidDataShape");
   const recovered = groups.map((group) => ({ ...group, candidates: new Map(group.candidates) }));
+  const strictGroups = new Map(groups.map((group) => [
+    group.peakId,
+    { ...group, candidates: new Map(group.candidates) }
+  ]));
   for (let seriesIndex = 0; seriesIndex < series.length; seriesIndex += 1) {
     const item = series[seriesIndex]!;
     const cycle = cycles[seriesIndex]!;
     const pending = recovered
       .filter((group) => group.candidates.size >= 3 && !group.candidates.has(seriesIndex))
-      .sort((left, right) => predictPotentialAtRate(left, item.scanRate) - predictPotentialAtRate(right, item.scanRate));
+      .sort((left, right) => predictPotentialAtRate(strictGroups.get(left.peakId)!, item.scanRate)
+        - predictPotentialAtRate(strictGroups.get(right.peakId)!, item.scanRate));
     for (const group of pending) {
+      const strictGroup = strictGroups.get(group.peakId)!;
       const branchPoints = group.branch === "forward" ? cycle.forward.points : cycle.reverse.points;
       const branchSpan = Math.max(
         Number.EPSILON,
-        ...[...group.candidates.values()].map((candidate) => candidate.branchSpan)
+        ...[...strictGroup.candidates.values()].map((candidate) => candidate.branchSpan)
       );
-      const predicted = predictPotentialAtRate(group, item.scanRate);
+      const predicted = predictPotentialAtRate(strictGroup, item.scanRate);
       const halfWindow = Math.min(
         0.12 * branchSpan,
         Math.max(4 * cycle.nativePotentialInterval, 0.06 * branchSpan)
       );
-      const candidate = recoverLocalExtremum(branchPoints, predicted, halfWindow, group.kind, branchSpan);
+      const candidate = recoverLocalExtremum(
+        branchPoints,
+        predicted,
+        halfWindow,
+        group.kind,
+        branchSpan,
+        cycle.nativePotentialInterval
+      );
       if (candidate === null || !isSeparatedFromFamily(candidate.point, group, recovered, seriesIndex, branchSpan)) continue;
       group.candidates.set(seriesIndex, {
         seriesIndex,
@@ -154,7 +167,8 @@ function recoverLocalExtremum(
   predicted: number,
   halfWindow: number,
   kind: CvPeakKind,
-  branchSpan: number
+  branchSpan: number,
+  nativePotentialInterval: number
 ): { point: CvSweepPoint; prominence: number; normalizedProminence: number; confidence: number } | null {
   if (!Number.isFinite(predicted) || !Number.isFinite(halfWindow) || halfWindow <= 0) return null;
   const points = ascendingUnique(branchPoints)
@@ -193,9 +207,32 @@ function recoverLocalExtremum(
   return {
     point,
     prominence,
-    normalizedProminence: prominence / Math.max(Number.EPSILON, branchSpan),
+    normalizedProminence: prominence / robustCurrentSpanForBranch(branchPoints, nativePotentialInterval),
     confidence: Math.min(0.49, Math.max(0.05, 0.1 * prominence / prominenceFloor))
   };
+}
+
+function robustCurrentSpanForBranch(points: CvSweepPoint[], nativePotentialInterval: number): number {
+  const original = ascendingUnique(points);
+  if (original.length < 2) return Number.EPSILON;
+  const minimum = original[0]!.potential;
+  const maximum = original.at(-1)!.potential;
+  const span = maximum - minimum;
+  if (!(span > 0) || !Number.isFinite(nativePotentialInterval) || nativePotentialInterval <= 0) {
+    return robustCurrentSpan(original.map((point) => point.current));
+  }
+  const intervalCount = Math.max(2, Math.ceil(span / nativePotentialInterval));
+  const potentials = Array.from({ length: intervalCount + 1 }, (_, index) =>
+    index === intervalCount ? maximum : minimum + span * index / intervalCount);
+  const currents = pchipInterpolate(
+    original.map((point) => point.potential),
+    original.map((point) => point.current),
+    potentials
+  );
+  const gridInterval = span / intervalCount;
+  const desiredCount = makeOdd(Math.max(7, Math.round(0.015 * span / gridInterval)));
+  const maximumCount = Math.max(7, largestOdd(Math.max(7, Math.floor(0.05 * span / gridInterval))));
+  return robustCurrentSpan(smoothLocalQuadratic(currents, Math.min(desiredCount, maximumCount)));
 }
 
 function isSeparatedFromFamily(
@@ -406,9 +443,7 @@ function detectBranch(
   const maximumCount = Math.max(7, largestOdd(Math.max(7, Math.floor(0.05 * span / gridInterval))));
   const smoothed = smoothLocalQuadratic(currents, Math.min(desiredCount, maximumCount));
   const residualMad = median(smoothed.map((value, index) => Math.abs(currents[index]! - value)));
-  const robustMinimum = quantile(smoothed, 0.05);
-  const robustMaximum = quantile(smoothed, 0.95);
-  const robustSpan = Math.max(Number.EPSILON, robustMaximum - robustMinimum);
+  const robustSpan = robustCurrentSpan(smoothed);
   const threshold = Math.max(5 * residualMad, 0.02 * robustSpan);
   const prominenceRadius = Math.max(2, Math.round(0.1 * span / gridInterval));
   const extrema = smoothed.flatMap((value, index) => {
@@ -500,6 +535,10 @@ function quantile(values: number[], fraction: number): number {
   const upper = Math.ceil(position);
   const blend = position - lower;
   return sorted[lower]! + blend * (sorted[upper]! - sorted[lower]!);
+}
+
+function robustCurrentSpan(values: number[]): number {
+  return Math.max(Number.EPSILON, quantile(values, 0.95) - quantile(values, 0.05));
 }
 
 function median(values: number[]): number {
