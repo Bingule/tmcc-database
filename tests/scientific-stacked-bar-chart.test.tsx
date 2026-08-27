@@ -1,10 +1,11 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   ScientificStackedBarChart,
   type ScientificStackedBarChartProps
 } from "../src/components/ScientificStackedBarChart";
+import { downloadSvg } from "../src/lib/toolExport";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -13,6 +14,8 @@ const roots: Root[] = [];
 afterEach(async () => {
   await act(async () => roots.splice(0).forEach((root) => root.unmount()));
   document.body.replaceChildren();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 async function renderChart(props: ScientificStackedBarChartProps) {
@@ -107,4 +110,76 @@ describe("ScientificStackedBarChart", () => {
     expect(empty.querySelector('[role="status"]')?.textContent).toBe("No chart data");
     expect(empty.querySelector("svg")).toBeNull();
   });
+
+  it("grows its internal plot geometry so labels remain separated across twenty bars", async () => {
+    const data = Array.from({ length: 20 }, (_, index) => ({
+      id: String(index + 1),
+      x: index + 1,
+      lower: index % 2 === 0 ? 4 : 56.25,
+      upper: index % 2 === 0 ? 96 : 43.75
+    }));
+    const view = await renderChart({ ...baseProps, data });
+    const svg = view.querySelector("svg")!;
+    const [, , viewBoxWidth] = svg.getAttribute("viewBox")!.split(/\s+/).map(Number);
+    const bars = [...svg.querySelectorAll<SVGGElement>("[data-stacked-bar]")];
+
+    expect(viewBoxWidth).toBeGreaterThanOrEqual(68 + 20 * 84 + 38);
+    expect(Number.parseFloat(svg.style.getPropertyValue("--scientific-stacked-bar-min-width")))
+      .toBeGreaterThanOrEqual(viewBoxWidth);
+    expect(bars).toHaveLength(20);
+
+    for (let index = 0; index < bars.length - 1; index += 1) {
+      const currentBounds = [...bars[index]!.querySelectorAll<SVGTextElement>("[data-label-placement]")]
+        .map(estimatedTextBounds);
+      const nextBounds = [...bars[index + 1]!.querySelectorAll<SVGTextElement>("[data-label-placement]")]
+        .map(estimatedTextBounds);
+      const currentRight = Math.max(...currentBounds.map((bounds) => bounds.right));
+      const nextLeft = Math.min(...nextBounds.map((bounds) => bounds.left));
+      expect(nextLeft - currentRight).toBeGreaterThanOrEqual(4);
+
+      const currentRect = bars[index]!.querySelector<SVGRectElement>('[data-bar-segment="capacitive"]')!;
+      const nextRect = bars[index + 1]!.querySelector<SVGRectElement>('[data-bar-segment="capacitive"]')!;
+      expect(Number(nextRect.getAttribute("x"))
+        - (Number(currentRect.getAttribute("x")) + Number(currentRect.getAttribute("width"))))
+        .toBeGreaterThan(0);
+    }
+  });
+
+  it("serializes bars, value labels, accessibility text and metadata for SVG export", async () => {
+    const view = await renderChart(baseProps);
+    const svg = view.querySelector("svg")!;
+    const blobs: Blob[] = [];
+    vi.stubGlobal("URL", {
+      createObjectURL: vi.fn((blob: Blob) => { blobs.push(blob); return "blob:stacked-chart"; }),
+      revokeObjectURL: vi.fn()
+    });
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+
+    downloadSvg(svg, "cv-contribution-chart.svg");
+
+    const serialized = await readBlob(blobs[0]!);
+    expect(serialized).toContain('data-export-id="cv-contribution-chart"');
+    expect(serialized).toContain('data-stacked-bar="true"');
+    expect(serialized).toContain('data-bar-segment="capacitive"');
+    expect(serialized).toContain("75.95%");
+    expect(serialized).toContain("Contribution percentage by scan rate");
+    expect(serialized).toContain("R² &gt;= 0.95");
+  });
 });
+
+function estimatedTextBounds(label: SVGTextElement): { left: number; right: number } {
+  const x = Number(label.getAttribute("x"));
+  const width = (label.textContent?.length ?? 0) * 6.3;
+  return label.getAttribute("text-anchor") === "start"
+    ? { left: x, right: x + width }
+    : { left: x - width / 2, right: x + width / 2 };
+}
+
+function readBlob(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsText(blob);
+  });
+}

@@ -31,6 +31,7 @@ const dimensions = { width: 800, height: 420 };
 const margin = { top: 72, right: 38, bottom: 62, left: 68 };
 const yTicks = [0, 25, 50, 75, 100] as const;
 const smallSegmentThreshold = 7;
+const minimumSlotWidth = 84;
 const metadataLineLength = 60;
 
 export function ScientificStackedBarChart({
@@ -64,13 +65,17 @@ export function ScientificStackedBarChart({
     ...margin,
     top: Math.max(margin.top, legendTop + 24)
   };
-  const plotWidth = dimensions.width - chartMargin.left - chartMargin.right;
+  const chartWidth = Math.max(
+    dimensions.width,
+    chartMargin.left + chartMargin.right + normalizedData.length * minimumSlotWidth
+  );
+  const plotWidth = chartWidth - chartMargin.left - chartMargin.right;
   const plotHeight = dimensions.height - chartMargin.top - chartMargin.bottom;
   const slotWidth = plotWidth / normalizedData.length;
   const barWidth = Math.min(42, Math.max(14, slotWidth * 0.58));
   const projectY = (value: number) => chartMargin.top + (100 - value) / 100 * plotHeight;
   const chartStyle = {
-    "--scientific-stacked-bar-min-width": `${Math.max(560, normalizedData.length * 52 + chartMargin.left + chartMargin.right)}px`
+    "--scientific-stacked-bar-min-width": `${chartWidth}px`
   } as CSSProperties;
 
   return (
@@ -79,7 +84,7 @@ export function ScientificStackedBarChart({
         role="img"
         aria-labelledby={titleId}
         aria-describedby={metadataSourceLines.length > 0 ? descriptionId : undefined}
-        viewBox={`0 0 ${dimensions.width} ${dimensions.height}`}
+        viewBox={`0 0 ${chartWidth} ${dimensions.height}`}
         width="100%"
         height="auto"
         data-export-id={exportId}
@@ -117,7 +122,7 @@ export function ScientificStackedBarChart({
             key={`grid-${tick}`}
             x1={chartMargin.left}
             y1={projectY(tick)}
-            x2={dimensions.width - chartMargin.right}
+            x2={chartWidth - chartMargin.right}
             y2={projectY(tick)}
             stroke="#d7dfdc"
             strokeWidth={1}
@@ -125,7 +130,7 @@ export function ScientificStackedBarChart({
         </g>
         <g className="scientific-chart-axes" aria-hidden="true">
           <line x1={chartMargin.left} y1={chartMargin.top} x2={chartMargin.left} y2={dimensions.height - chartMargin.bottom} stroke="#607d8b" strokeWidth={1.25} />
-          <line x1={chartMargin.left} y1={dimensions.height - chartMargin.bottom} x2={dimensions.width - chartMargin.right} y2={dimensions.height - chartMargin.bottom} stroke="#607d8b" strokeWidth={1.25} />
+          <line x1={chartMargin.left} y1={dimensions.height - chartMargin.bottom} x2={chartWidth - chartMargin.right} y2={dimensions.height - chartMargin.bottom} stroke="#607d8b" strokeWidth={1.25} />
           {yTicks.map((tick) => <g key={`y-${tick}`} data-y-tick={String(tick)}>
             <line x1={chartMargin.left - 6} y1={projectY(tick)} x2={chartMargin.left} y2={projectY(tick)} stroke="#607d8b" strokeWidth={1.25} />
             <text x={chartMargin.left - 10} y={projectY(tick) + 4} textAnchor="end" fill="#455a64" fontSize={11}>{tick}</text>

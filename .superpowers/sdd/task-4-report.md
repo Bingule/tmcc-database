@@ -14,6 +14,8 @@
 3. Implemented the smallest component satisfying sorting, normalization, stacked segments, two-decimal labels, small-segment leader labels, accessibility, fixed 0–100 ticks, metadata, and responsive width.
 4. Verified GREEN: `4/4` component tests passed.
 5. Added page integration assertions before replacing the line chart.
+6. Review follow-up verified that CSS-only enlargement preserved the fixed 800-unit geometry and could overlap labels at 20 bars. Added a failing 20-bar coordinate-space regression, then made the SVG viewBox and plot width grow by an 84-unit slot per bar.
+7. Added an SVG download regression that verifies serialized bars, contribution labels, accessible title, metadata, and the preserved export id.
 
 ## Verification
 
@@ -22,6 +24,11 @@
 - `tsc --noEmit`: passed (exit 0).
 - `git diff --check`: clean.
 
-## Known upstream blocker at handoff
+## Review follow-up verification
 
-The separate Dunn stabilization correction restored the main page flow. At Task 4 commit time, the full page suite still has one unrelated optimizer-precondition failure in `preserves every unavailable-gap run when downsampling a long b-value curve`; the numerical optimizer worker is handling it independently. Task 4's chart component, integration flow, existing line charts, export utilities, and TypeScript check are green.
+- Twenty-bar internal viewBox width is at least `68 + 20 * 84 + 38 = 1786` units, rather than a CSS-scaled fixed 800-unit plot.
+- Estimated label bounds retain at least a four-unit gap between adjacent categories for both ordinary inside labels and `< 7%` external labels.
+- Component plus export suites: `14/14` passed.
+- Task 4 page integration: `1/1` passed.
+- The formerly blocked long-gap page regression now passes after the independent optimizer correction.
+- Existing generic table tests already exercise selectable-column copy behavior; the chart refactor did not modify `DataTable` or its copy toolbar.
