@@ -1,6 +1,6 @@
 {
   "material_id": "TMCC-0010",
-  "slug": "fe0-5-nb2s2c-r-3m-config01",
+  "slug": "fe0-5-nb2s2c-p-3m1-config01",
   "family": "TMCC",
   "material_type": "tm_intercalated",
   "formula": "Fe0.5Nb2S2C",
@@ -15,336 +15,113 @@
     "x": 0.5,
     "mode": "hetero",
     "site": null,
-    "ordering": "ordered 2x1x1 approximant",
+    "ordering": "partial-occupancy representative P-3m1 cell",
     "configuration": "config01"
   },
   "experimental_status": "experimental",
   "calculation_status": "calculated",
   "structure": {
-    "space_group_symbol": "P1",
-    "space_group_number": 1,
-    "crystal_system": "triclinic",
+    "space_group_symbol": "P-3m1",
+    "space_group_number": 164,
+    "crystal_system": "trigonal",
     "lattice_parameters": {
       "a": {
-        "value": 7.05787,
+        "value": 3.3121,
         "unit": "angstrom"
       },
       "b": {
-        "value": 3.5351899999999996,
+        "value": 3.3120999999999996,
         "unit": "angstrom"
       },
       "c": {
-        "value": 24.6525,
+        "value": 9.0113,
         "unit": "angstrom"
       }
     },
     "angles": {
       "alpha": {
-        "value": 90.001,
+        "value": 90.0,
         "unit": "degree"
       },
       "beta": {
-        "value": 91.5637,
+        "value": 90.0,
         "unit": "degree"
       },
       "gamma": {
-        "value": 120.05799999999999,
+        "value": 119.99999999999999,
         "unit": "degree"
       }
     },
     "layer_thickness": {
-      "value": 6.886,
+      "value": 6.462,
       "unit": "angstrom"
     },
     "vdw_gap": {
-      "value": 1.331,
+      "value": 2.549,
       "unit": "angstrom"
     },
     "atomic_sites": [
       {
-        "label": "C1",
-        "element": "C",
-        "fract_x": 0,
-        "fract_y": 0,
-        "fract_z": 0.5,
-        "occupancy": 1
-      },
-      {
-        "label": "C2",
-        "element": "C",
-        "fract_x": 0.34966,
-        "fract_y": 0.3497,
-        "fract_z": 0.84727,
-        "occupancy": 1
-      },
-      {
-        "label": "C3",
-        "element": "C",
-        "fract_x": 0.12675,
-        "fract_y": 0.62671,
-        "fract_z": 0.16411,
-        "occupancy": 1
-      },
-      {
-        "label": "C4",
-        "element": "C",
-        "fract_x": 0.5,
-        "fract_y": 0,
-        "fract_z": 0.5,
-        "occupancy": 1
-      },
-      {
-        "label": "C5",
-        "element": "C",
-        "fract_x": 0.87325,
-        "fract_y": 0.37329,
-        "fract_z": 0.83589,
-        "occupancy": 1
-      },
-      {
-        "label": "C6",
-        "element": "C",
-        "fract_x": 0.65034,
-        "fract_y": 0.6503,
-        "fract_z": 0.15273,
-        "occupancy": 1
-      },
-      {
         "label": "Fe1",
         "element": "Fe",
-        "fract_x": 0,
-        "fract_y": 0,
-        "fract_z": 0,
+        "fract_x": 0.66576,
+        "fract_y": 0.33178,
+        "fract_z": 0.64143,
         "occupancy": 1
       },
       {
         "label": "Fe2",
         "element": "Fe",
-        "fract_x": 0.01654,
-        "fract_y": 0.51651,
-        "fract_z": 0.65593,
-        "occupancy": 1
-      },
-      {
-        "label": "Fe3",
-        "element": "Fe",
-        "fract_x": 0.98346,
-        "fract_y": 0.48349,
-        "fract_z": 0.34407,
+        "fract_x": 0.33424,
+        "fract_y": 0.66822,
+        "fract_z": 0.35857,
         "occupancy": 1
       },
       {
         "label": "Nb1",
         "element": "Nb",
-        "fract_x": 0.00293,
-        "fract_y": 0.00298,
-        "fract_z": 0.87443,
+        "fract_x": 0.66663,
+        "fract_y": 0.33326,
+        "fract_z": 0.9175,
         "occupancy": 1
       },
       {
         "label": "Nb2",
         "element": "Nb",
-        "fract_x": 0.99707,
-        "fract_y": 0.99702,
-        "fract_z": 0.12557,
-        "occupancy": 1
-      },
-      {
-        "label": "Nb3",
-        "element": "Nb",
-        "fract_x": 0.30801,
-        "fract_y": 0.30798,
-        "fract_z": 0.19958,
-        "occupancy": 1
-      },
-      {
-        "label": "Nb4",
-        "element": "Nb",
-        "fract_x": 0.32703,
-        "fract_y": 0.32703,
-        "fract_z": 0.4706,
-        "occupancy": 1
-      },
-      {
-        "label": "Nb5",
-        "element": "Nb",
-        "fract_x": 0.09796,
-        "fract_y": 0.59797,
-        "fract_z": 0.54993,
-        "occupancy": 1
-      },
-      {
-        "label": "Nb6",
-        "element": "Nb",
-        "fract_x": 0.24361,
-        "fract_y": 0.74365,
-        "fract_z": 0.81185,
-        "occupancy": 1
-      },
-      {
-        "label": "Nb7",
-        "element": "Nb",
-        "fract_x": 0.48975,
-        "fract_y": 0.9898,
-        "fract_z": 0.90346,
-        "occupancy": 1
-      },
-      {
-        "label": "Nb8",
-        "element": "Nb",
-        "fract_x": 0.51025,
-        "fract_y": 0.0102,
-        "fract_z": 0.09654,
-        "occupancy": 1
-      },
-      {
-        "label": "Nb9",
-        "element": "Nb",
-        "fract_x": 0.75639,
-        "fract_y": 0.25635,
-        "fract_z": 0.18815,
-        "occupancy": 1
-      },
-      {
-        "label": "Nb10",
-        "element": "Nb",
-        "fract_x": 0.90204,
-        "fract_y": 0.40203,
-        "fract_z": 0.45007,
-        "occupancy": 1
-      },
-      {
-        "label": "Nb11",
-        "element": "Nb",
-        "fract_x": 0.67297,
-        "fract_y": 0.67297,
-        "fract_z": 0.5294,
-        "occupancy": 1
-      },
-      {
-        "label": "Nb12",
-        "element": "Nb",
-        "fract_x": 0.69199,
-        "fract_y": 0.69202,
-        "fract_z": 0.80042,
+        "fract_x": 0.33337,
+        "fract_y": 0.66674,
+        "fract_z": 0.0825,
         "occupancy": 1
       },
       {
         "label": "S1",
         "element": "S",
-        "fract_x": 0.92179,
-        "fract_y": 0.92176,
-        "fract_z": 0.70594,
+        "fract_x": 0.66726,
+        "fract_y": 0.33437,
+        "fract_z": 0.25101,
         "occupancy": 1
       },
       {
         "label": "S2",
         "element": "S",
-        "fract_x": 0.07821,
-        "fract_y": 0.07824,
-        "fract_z": 0.29406,
+        "fract_x": 0.33274,
+        "fract_y": 0.66563,
+        "fract_z": 0.74899,
         "occupancy": 1
       },
       {
-        "label": "S3",
-        "element": "S",
-        "fract_x": 0.30949,
-        "fract_y": 0.30943,
-        "fract_z": 0.05765,
-        "occupancy": 1
-      },
-      {
-        "label": "S4",
-        "element": "S",
-        "fract_x": 0.21639,
-        "fract_y": 0.21639,
-        "fract_z": 0.61673,
-        "occupancy": 1
-      },
-      {
-        "label": "S5",
-        "element": "S",
-        "fract_x": 0.24246,
-        "fract_y": 0.74243,
-        "fract_z": 0.40887,
-        "occupancy": 1
-      },
-      {
-        "label": "S6",
-        "element": "S",
-        "fract_x": 0.16172,
-        "fract_y": 0.66174,
-        "fract_z": 0.95267,
-        "occupancy": 1
-      },
-      {
-        "label": "S7",
-        "element": "S",
-        "fract_x": 0.50402,
-        "fract_y": 0.00405,
-        "fract_z": 0.74641,
-        "occupancy": 1
-      },
-      {
-        "label": "S8",
-        "element": "S",
-        "fract_x": 0.49598,
-        "fract_y": 0.99595,
-        "fract_z": 0.25359,
-        "occupancy": 1
-      },
-      {
-        "label": "S9",
-        "element": "S",
-        "fract_x": 0.83828,
-        "fract_y": 0.33826,
-        "fract_z": 0.04733,
-        "occupancy": 1
-      },
-      {
-        "label": "S10",
-        "element": "S",
-        "fract_x": 0.75754,
-        "fract_y": 0.25757,
-        "fract_z": 0.59113,
-        "occupancy": 1
-      },
-      {
-        "label": "S11",
-        "element": "S",
-        "fract_x": 0.78361,
-        "fract_y": 0.78361,
-        "fract_z": 0.38327,
-        "occupancy": 1
-      },
-      {
-        "label": "S12",
-        "element": "S",
-        "fract_x": 0.69051,
-        "fract_y": 0.69057,
-        "fract_z": 0.94235,
+        "label": "C1",
+        "element": "C",
+        "fract_x": 0.0,
+        "fract_y": 0.0,
+        "fract_z": 0.0,
         "occupancy": 1
       }
-    ],
-    "parent_space_group_symbol": "R-3m",
-    "parent_space_group_number": 166,
-    "ordering_supercell": [
-      2,
-      1,
-      1
-    ],
-    "cell_volume": {
-      "value": 532.117814,
-      "unit": "angstrom^3"
-    },
-    "density": {
-      "value": 5.427379,
-      "unit": "g/cm^3"
-    }
+    ]
   },
   "thermodynamics": {
     "total_energy": {
-      "value": -269.10781773433314,
+      "value": -52.76415835959974,
       "unit": "eV/cell"
     },
     "formation_energy": {
@@ -365,17 +142,15 @@
   "mechanical": {},
   "electronic": {
     "band_gap": {
-      "value": 0,
+      "value": 0.0,
       "unit": "eV"
     },
     "fermi_level": {
-      "value": 8.770258141711775,
+      "value": 12.15034670942119,
       "unit": "eV"
     },
     "dos_calculated": true,
-    "band_structure_calculated": false,
-    "electronic_character": "metallic (DOS-derived estimate)",
-    "band_gap_method": "DOS-derived estimate from total DOS threshold 1e-3 near Ef; not a full band-structure gap."
+    "band_structure_calculated": false
   },
   "energy_storage": {},
   "files": {
@@ -409,46 +184,12 @@
     "setups": null,
     "soc": false,
     "convergence_criteria": {
-      "density": 0.00001,
-      "force": {
-        "value": 0.02,
-        "unit": "eV/angstrom"
-      }
+      "density": 5e-07
     },
-    "calculation_date": "2026-08-27",
-    "workflow_version": "tmcc-five-template-v0.1-ordered-gamma-relax-density2.5-dos",
-    "source": "cluster calculation",
+    "calculation_date": "2026-08-28",
+    "workflow_version": "tmcc-five-template-v0.1-tmcc0009-direct-substitution-gamma-positions-density2.5-dos",
+    "source": "cluster calculation; seven-atom P-3m1 partial-occupancy representative cell derived by direct Cu-to-Fe substitution in relaxed TMCC-0009",
     "formation_energy_reference_note": null,
-    "doi": null,
-    "calculation_note": "Explicit Fe0.5 ordered 2x1x1 approximant (Fe3Nb12S12C6). Geometry optimized at Gamma only; density=2.5 used for static and DOS. Band structure was not calculated. The density=2.5 static maximum force on the Gamma-relaxed structure was 3.930568 eV/angstrom.",
-    "geometry_optimization": {
-      "k_points": [
-        1,
-        1,
-        1
-      ],
-      "positions_final_fmax": {
-        "value": 0.0133,
-        "unit": "eV/angstrom"
-      },
-      "cell_final_fmax": {
-        "value": 0.0164,
-        "unit": "eV/angstrom"
-      }
-    },
-    "electronic_calculation": {
-      "k_points": {
-        "density": 2.5,
-        "gamma": true
-      },
-      "dos_calculated": true,
-      "band_structure_calculated": false,
-      "static_max_force": {
-        "value": 3.930568,
-        "unit": "eV/angstrom"
-      }
-    }
-  },
-  "subclass": "TMCDC",
-  "structure_type": "M2X2C"
+    "doi": null
+  }
 }
