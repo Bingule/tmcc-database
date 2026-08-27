@@ -89,22 +89,26 @@ export function CvPeakAnalysisPanel({
 
   return <div data-panel-id="cv-peak-analysis" className="cv-b-vertical-stack">
     <div className="cv-peak-selection-controls">
-      <label>{copy.peak}
-        <select name="selectedPeakId" value={selectedFit.peakId} onChange={(event) => onPeakChange(event.target.value)}>
-          {result.fits.map((fit) => <option key={fit.peakId} value={fit.peakId}>{peakName(fit.labelIndex)}</option>)}
-        </select>
-      </label>
-      <label>{copy.scanRate}
-        <select name="selectedPeakSeriesIndex" value={selectedSeriesIndex} onChange={(event) => onSeriesChange(Number(event.target.value))}>
-          {series.map((item, index) => <option key={`${item.label}-${index}`} value={index}>{item.scanRate} mV/s</option>)}
-        </select>
-      </label>
-      <div className="cv-peak-action-buttons">
+      <div className="cv-peak-selector-row" data-peak-control-row="selectors">
+        <label>{copy.peak}
+          <select name="selectedPeakId" value={selectedFit.peakId} onChange={(event) => onPeakChange(event.target.value)}>
+            {result.fits.map((fit) => <option key={fit.peakId} value={fit.peakId}>{peakName(fit.labelIndex)}</option>)}
+          </select>
+        </label>
+        <label>{copy.scanRate}
+          <select name="selectedPeakSeriesIndex" value={selectedSeriesIndex} onChange={(event) => onSeriesChange(Number(event.target.value))}>
+            {series.map((item, index) => <option key={`${item.label}-${index}`} value={index}>{item.scanRate} mV/s</option>)}
+          </select>
+        </label>
+      </div>
+      <div className="cv-peak-point-actions" data-peak-control-row="point-actions">
         <button type="button" onClick={onConfirm}>{copy.confirm}</button>
         <button type="button" onClick={onExclude}>{copy.exclude}</button>
         <button type="button" onClick={onRestore}>{copy.restore}</button>
-        <button type="button" onClick={onAddPeak} disabled={result.fits.length >= result.maximumPeakCount}>{copy.add}</button>
-        <button type="button" onClick={onRemovePeak}>{copy.remove}</button>
+      </div>
+      <div className="cv-peak-management-actions" data-peak-control-row="peak-actions">
+        <button type="button" className="secondary-button" onClick={onAddPeak} disabled={result.fits.length >= result.maximumPeakCount}>{copy.add}</button>
+        <button type="button" className="secondary-button" onClick={onRemovePeak}>{copy.remove}</button>
       </div>
     </div>
 

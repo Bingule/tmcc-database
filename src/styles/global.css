@@ -2545,24 +2545,45 @@ td button {
 
 .cv-peak-selection-controls {
   display: grid;
-  grid-template-columns: minmax(160px, 0.8fr) minmax(160px, 0.8fr) minmax(0, 2fr);
-  gap: 10px 14px;
-  align-items: end;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #d5e0dc;
+  border-radius: 9px;
+  background: #f5f9f7;
+}
+
+.cv-peak-selector-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(10rem, 14rem));
+  gap: 12px;
 }
 
 .cv-peak-selection-controls label {
+  min-width: 0;
   display: grid;
   gap: 5px;
+  overflow-wrap: anywhere;
 }
 
-.cv-peak-action-buttons {
+.cv-peak-selection-controls select {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.cv-peak-point-actions,
+.cv-peak-management-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  justify-content: flex-start;
 }
 
-.cv-peak-action-buttons button {
+.cv-peak-point-actions button,
+.cv-peak-management-actions button {
+  min-width: 0;
   margin: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .cv-table-scroll {
@@ -3273,11 +3294,22 @@ sub {
   }
 
   .cv-peak-selection-controls {
-    grid-template-columns: 1fr;
+    gap: 10px;
   }
 
-  .cv-peak-action-buttons button {
-    flex: 1 1 12rem;
+  .cv-peak-selector-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cv-peak-point-actions,
+  .cv-peak-management-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  }
+
+  .cv-peak-point-actions button,
+  .cv-peak-management-actions button {
+    width: 100%;
   }
 
   .cv-b-selection-controls > button {

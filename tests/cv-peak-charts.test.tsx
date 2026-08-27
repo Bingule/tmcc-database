@@ -89,6 +89,48 @@ describe("peak b-value charts", () => {
     await act(async () => root.unmount());
   });
 
+  it("groups peak selection controls into selector and action rows", async () => {
+    const series = makeThreePeakNcpLikeSeries();
+    const result = analyzePeakBValues(series, normalizeAlignedCvCycles(series), 0.95);
+    const container = document.createElement("div");
+    document.body.append(container);
+    containers.push(container);
+    const root = createRoot(container);
+
+    await act(async () => root.render(<CvPeakAnalysisPanel
+      series={series}
+      result={result}
+      selectedPeakId="peak-1"
+      selectedSeriesIndex={0}
+      onPeakChange={() => undefined}
+      onSeriesChange={() => undefined}
+      onPotentialSelect={() => undefined}
+      onAdjustPotential={() => undefined}
+      onConfirm={() => undefined}
+      onExclude={() => undefined}
+      onRestore={() => undefined}
+      onAddPeak={() => undefined}
+      onRemovePeak={() => undefined}
+      copy={panelCopy}
+    />));
+
+    const selectors = container.querySelector('[data-peak-control-row="selectors"]');
+    expect(Array.from(selectors?.querySelectorAll("label") ?? []).map((label) => label.childNodes[0]?.textContent)).toEqual([
+      panelCopy.peak,
+      panelCopy.scanRate
+    ]);
+    expect(Array.from(container.querySelectorAll('[data-peak-control-row="point-actions"] button')).map((button) => button.textContent)).toEqual([
+      panelCopy.confirm,
+      panelCopy.exclude,
+      panelCopy.restore
+    ]);
+    const peakActions = Array.from(container.querySelectorAll('[data-peak-control-row="peak-actions"] button'));
+    expect(peakActions.map((button) => button.textContent)).toEqual([panelCopy.add, panelCopy.remove]);
+    expect(peakActions.every((button) => button.classList.contains("secondary-button"))).toBe(true);
+
+    await act(async () => root.unmount());
+  });
+
   it("shows all matched peak points, stable labels, and independent regression lines", async () => {
     const series = makeThreePeakNcpLikeSeries();
     const result = analyzePeakBValues(series, normalizeAlignedCvCycles(series), 0.95);
