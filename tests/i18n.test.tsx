@@ -141,6 +141,16 @@ describe("I18nProvider", () => {
     expect(zh["cv.import.pointInterval.help"]).toContain("各分支内");
   });
 
+  it("defines the bilingual advanced Dunn introduction as plain text", () => {
+    expect(en["cv.intro.advancedTitle"]).toBe("Advanced R²-Guided Regularized Dunn Analysis");
+    expect(en["cv.intro.description"]).toContain("Local k1, k2, and R² values");
+    expect(en["cv.intro.description"]).toContain("0 <= g(V) <= 1");
+    expect(en["cv.intro.benefits"]).toBe("Benefits: robust reconstruction · R²-aware confidence weighting · smooth branch consistency · sign preservation · bounded capacitive contribution · reduced sensitivity to local fitting noise");
+    expect(zh["cv.intro.advancedTitle"]).toBe("高级 R² 引导正则化 Dunn 分析");
+    expect(zh["cv.intro.description"]).toContain("0 <= g(V) <= 1");
+    expect(zh["cv.intro.benefits"]).toContain("优势：稳健重构");
+  });
+
   it("defines bilingual publication-style Dunn area and coverage resources", () => {
     expect(en["cv.dunn.excludedArea"]).toBe("Excluded by R² threshold / unavailable");
     expect(en["cv.dunn.coverageNotice"]).toContain("{{valid}} / {{total}} points");

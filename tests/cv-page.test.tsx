@@ -229,6 +229,25 @@ function lowQualityWorkflowCsv() {
 }
 
 describe("CV kinetics page", () => {
+  it("renders the advanced Dunn introduction below the unchanged title and above Import Data", async () => {
+    const view = await renderPage();
+    const title = view.querySelector<HTMLHeadingElement>(".tool-page-header h1")!;
+    const subtitle = view.querySelector<HTMLHeadingElement>(".cv-intro-subtitle")!;
+    const description = view.querySelector<HTMLElement>(".cv-intro-description")!;
+    const benefits = view.querySelector<HTMLElement>(".cv-intro-benefits")!;
+    const importSection = view.querySelector<HTMLElement>(".cv-import")!;
+
+    expect(title.textContent).toBe("CV Kinetics Analysis");
+    expect(subtitle.textContent).toBe("Advanced R²-Guided Regularized Dunn Analysis");
+    expect(description.textContent).toContain("0 <= g(V) <= 1");
+    expect(description.querySelector("math, .katex")).toBeNull();
+    expect(benefits.textContent).toContain("R²-aware confidence weighting");
+    expect(subtitle.compareDocumentPosition(importSection) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+
+    await click(view, "中文");
+    expect(view.querySelector(".cv-intro-subtitle")?.textContent).toBe("高级 R² 引导正则化 Dunn 分析");
+    expect(view.querySelector(".cv-intro-benefits")?.textContent).toContain("优势：稳健重构");
+  });
   it("requires an explicit layout and parses both upload and Excel paste with selected header handling", async () => {
     const view = await renderPage();
     expect(view.querySelectorAll<HTMLInputElement>('input[name="cv-layout"]:checked')).toHaveLength(0);

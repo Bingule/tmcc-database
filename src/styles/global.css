@@ -2307,6 +2307,33 @@ td button {
   line-height: 1.6;
 }
 
+.cv-intro-subtitle {
+  margin: 16px 0 0;
+  color: #285b70;
+  font-size: clamp(1.15rem, 2vw, 1.5rem);
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.tool-page-header .cv-intro-description {
+  margin-top: 10px;
+}
+
+.tool-page-header .cv-intro-benefits {
+  margin-top: 8px;
+  color: #3f5963;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  .tool-page-header .cv-intro-benefits {
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+}
+
 .tools-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

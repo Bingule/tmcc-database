@@ -322,7 +322,9 @@ export function CvKineticsPage() {
       <Breadcrumbs current={t("cv.title")} />
       <header className="tool-page-header">
         <h1>{t("cv.title")}</h1>
-        <p>{t("cv.subtitle")}</p>
+        <h2 className="cv-intro-subtitle">{t("cv.intro.advancedTitle")}</h2>
+        <p className="cv-intro-description">{t("cv.intro.description")}</p>
+        <p className="cv-intro-benefits">{t("cv.intro.benefits")}</p>
         <p>{t("cv.chart.samplingNotice", {
           target: MAX_CHART_POINTS,
           maximum: MAX_CHART_OUTPUT_POINTS
