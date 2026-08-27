@@ -50,12 +50,20 @@ export function attemptBValueFits(data: InterpolatedCvData): Array<CvFitRecord<B
   validateInterpolatedCvData(data);
   const records: Array<CvFitRecord<BValuePoint>> = [];
   const branches = resolveGridBranches(data);
+  const branchScales = new Map(branches.map((branch) => [
+    branch.branchIndex,
+    maximumBranchCurrentMagnitude(data, branch)
+  ]));
 
   for (let potentialIndex = 0; potentialIndex < data.potentials.length; potentialIndex += 1) {
     const identity = fitRecordIdentity(branches, potentialIndex);
+    const branchScale = branchScales.get(identity.branchIndex) ?? 0;
+    const currentStabilityFloor = branchScale * 1e-6;
     const fitPoints: BValuePoint["fitPoints"] = [];
     const distinctScanRates = new Set<number>();
     let zeroCurrentUnavailable = false;
+    let nearZeroCurrentUnstable = false;
+    let minimumCurrentMagnitude = Number.POSITIVE_INFINITY;
     for (let seriesIndex = 0; seriesIndex < data.scanRates.length; seriesIndex += 1) {
       const scanRate = data.scanRates[seriesIndex];
       const current = data.currents[seriesIndex][potentialIndex];
@@ -64,8 +72,13 @@ export function attemptBValueFits(data: InterpolatedCvData): Array<CvFitRecord<B
         zeroCurrentUnavailable = true;
         continue;
       }
+      const currentMagnitude = Math.abs(current);
+      minimumCurrentMagnitude = Math.min(minimumCurrentMagnitude, currentMagnitude);
+      if (currentStabilityFloor > 0 && currentMagnitude <= currentStabilityFloor) {
+        nearZeroCurrentUnstable = true;
+      }
       const logScanRate = Math.log(scanRate);
-      const logCurrentMagnitude = Math.log(Math.abs(current));
+      const logCurrentMagnitude = Math.log(currentMagnitude);
       if (!Number.isFinite(logScanRate) || !Number.isFinite(logCurrentMagnitude)) continue;
       distinctScanRates.add(scanRate);
       fitPoints.push({ logScanRate, logCurrentMagnitude });
@@ -92,19 +105,37 @@ export function attemptBValueFits(data: InterpolatedCvData): Array<CvFitRecord<B
     records.push({
       ...identity,
       potential,
-      status: "valid",
+      status: zeroCurrentUnavailable
+        ? "zeroCurrentLogUnavailable"
+        : nearZeroCurrentUnstable
+          ? "nearZeroCurrentUnstable"
+          : "valid",
       fit: {
         potential,
         b: regression.slope,
         intercept: regression.intercept,
         rSquared: regression.rSquared,
         pointCount: regression.pointCount,
-        fitPoints
+        fitPoints,
+        minimumCurrentMagnitude,
+        currentStabilityFloor,
+        currentStabilityRatio: branchScale > 0 ? minimumCurrentMagnitude / branchScale : 0
       }
     });
   }
 
   return records;
+}
+
+function maximumBranchCurrentMagnitude(data: InterpolatedCvData, branch: CvGridBranch): number {
+  let maximum = 0;
+  for (const currents of data.currents) {
+    for (let index = branch.startIndex; index <= branch.endIndex; index += 1) {
+      const current = currents[index];
+      if (Number.isFinite(current)) maximum = Math.max(maximum, Math.abs(current));
+    }
+  }
+  return maximum;
 }
 
 export function analyzeDunn(data: InterpolatedCvData): DunnAnalysisResult {

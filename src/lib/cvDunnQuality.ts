@@ -17,6 +17,49 @@ export type {
 
 const RECONSTRUCTION_TOLERANCE_SCALE = 1e-10;
 
+export interface BranchOvershootDiagnostics {
+  maximumPositiveOvershoot: number;
+  maximumNegativeOvershoot: number;
+  maximumAbsoluteOvershoot: number;
+  worstIndex: number | null;
+}
+
+export function containCapacitiveCurrent(original: number, capacitive: number): number {
+  if (!Number.isFinite(original) || !Number.isFinite(capacitive)) {
+    throw new CvAnalysisError("invalidDataShape");
+  }
+  if (original >= 0) return cleanZero(Math.min(original, Math.max(0, capacitive)));
+  return cleanZero(Math.max(original, Math.min(0, capacitive)));
+}
+
+export function measureBranchOvershoot(
+  original: number[],
+  capacitive: number[]
+): BranchOvershootDiagnostics {
+  if (original.length !== capacitive.length) throw new CvAnalysisError("invalidDataShape");
+  let maximumPositiveOvershoot = 0;
+  let maximumNegativeOvershoot = 0;
+  let maximumAbsoluteOvershoot = 0;
+  let worstIndex: number | null = null;
+
+  for (let index = 0; index < original.length; index += 1) {
+    const raw = original[index]!;
+    const cap = capacitive[index]!;
+    if (!Number.isFinite(raw) || !Number.isFinite(cap)) throw new CvAnalysisError("invalidDataShape");
+    const positiveOvershoot = Math.max(0, cap - Math.max(0, raw));
+    const negativeOvershoot = Math.max(0, Math.min(0, raw) - cap);
+    const absoluteOvershoot = Math.max(positiveOvershoot, negativeOvershoot);
+    maximumPositiveOvershoot = Math.max(maximumPositiveOvershoot, positiveOvershoot);
+    maximumNegativeOvershoot = Math.max(maximumNegativeOvershoot, negativeOvershoot);
+    if (absoluteOvershoot > maximumAbsoluteOvershoot) {
+      maximumAbsoluteOvershoot = absoluteOvershoot;
+      worstIndex = index;
+    }
+  }
+
+  return { maximumPositiveOvershoot, maximumNegativeOvershoot, maximumAbsoluteOvershoot, worstIndex };
+}
+
 export function reconstructBranchCurrents(
   original: number[],
   g: number[]
@@ -26,7 +69,7 @@ export function reconstructBranchCurrents(
   const capacitive = original.map((current, index) => {
     const fraction = g[index]!;
     validateOriginalAndFraction(current, fraction);
-    return cleanZero(fraction * current);
+    return containCapacitiveCurrent(current, fraction * current);
   });
   const diffusion = original.map((current, index) => cleanZero(current - capacitive[index]!));
 
@@ -72,6 +115,15 @@ export function reconstructDunnContribution(input: DunnContributionInput): DunnC
   const originalReverse = [...alignedGrid.reverseCurrents[seriesIndex]!];
   const forward = reconstructBranchCurrents(originalForward, g);
   const reverse = reconstructBranchCurrents(originalReverse, g);
+  const plotPath = reconstructOriginalOrderPath(input);
+  const overshoot = mergeOvershootDiagnostics([
+    measureBranchOvershoot(originalForward, forward.capacitive),
+    measureBranchOvershoot(originalReverse, reverse.capacitive),
+    measureBranchOvershoot(
+      plotPath.map((point) => point.originalCurrent),
+      plotPath.map((point) => point.capacitiveCurrent)
+    )
+  ]);
   const totalArea = integrateMagnitude(potentialGrid, originalForward)
     + integrateMagnitude(potentialGrid, originalReverse);
   const capacitiveArea = integrateMagnitude(potentialGrid, forward.capacitive)
@@ -91,10 +143,10 @@ export function reconstructDunnContribution(input: DunnContributionInput): DunnC
     capacitiveReverse: reverse.capacitive,
     diffusionForward: forward.diffusion,
     diffusionReverse: reverse.diffusion,
-    plotPath: reconstructOriginalOrderPath(input),
+    plotPath,
     capacitivePercent: 100 * capacitiveArea / totalArea,
     diffusionPercent: 100 * diffusionArea / totalArea,
-    diagnostics: makeDiagnostics(input)
+    diagnostics: makeDiagnostics(input, overshoot)
   };
 
   validateDunnContribution(contribution);
@@ -126,6 +178,15 @@ export function validateDunnContribution(contribution: DunnContribution): void {
   });
   validatePlotPath(plotPath);
   validateDiagnostics(diagnostics);
+  const maximumCurrentMagnitude = Math.max(
+    1,
+    ...originalForward.map(Math.abs),
+    ...originalReverse.map(Math.abs),
+    ...plotPath.map((point) => Math.abs(point.originalCurrent))
+  );
+  if (diagnostics.maximumAbsoluteOvershoot > RECONSTRUCTION_TOLERANCE_SCALE * maximumCurrentMagnitude) {
+    throw new CvAnalysisError("reconstructionFailed");
+  }
   if (!Number.isFinite(contribution.capacitivePercent)
     || !Number.isFinite(contribution.diffusionPercent)
     || Math.abs(contribution.capacitivePercent + contribution.diffusionPercent - 100) > 1e-8) {
@@ -182,17 +243,54 @@ function reconstructOriginalOrderPath(input: DunnContributionInput): DunnContrib
   const cycle = input.alignedGrid.cycles[input.seriesIndex]!;
   const branchBySourceIndex = branchOwnershipBySourceIndex(cycle);
 
-  return cycle.originalPoints.map((point, sourceIndex) => {
+  const records = cycle.originalPoints.map((point, sourceIndex) => {
     const branch = branchBySourceIndex.get(sourceIndex);
     if (branch === undefined) throw new CvAnalysisError("invalidDataShape");
     const fraction = evaluateSharedFraction(input.alignedGrid.potentials, input.optimized.g, point.potential);
     validateOriginalAndFraction(point.current, fraction);
+    const capacitiveCurrent = containCapacitiveCurrent(point.current, fraction * point.current);
+    const diffusionCurrent = cleanZero(point.current - capacitiveCurrent);
+    validateReconstructedPoint(point.current, capacitiveCurrent, diffusionCurrent);
     return {
       potential: point.potential,
-      current: cleanZero(fraction * point.current),
-      branch
+      current: capacitiveCurrent,
+      originalCurrent: point.current,
+      capacitiveCurrent,
+      diffusionCurrent,
+      g: fraction,
+      branch,
+      sourceIndex,
+      synthetic: false
     };
   });
+  return insertSharedZeroCrossings(records);
+}
+
+function insertSharedZeroCrossings(records: DunnContribution["plotPath"]): DunnContribution["plotPath"] {
+  const result: DunnContribution["plotPath"] = [];
+  records.forEach((record, index) => {
+    const previous = result.at(-1);
+    if (previous
+      && previous.branch === record.branch
+      && previous.originalCurrent * record.originalCurrent < 0) {
+      const fraction = -previous.originalCurrent / (record.originalCurrent - previous.originalCurrent);
+      const potential = previous.potential + fraction * (record.potential - previous.potential);
+      const g = previous.g + fraction * (record.g - previous.g);
+      result.push({
+        potential,
+        current: 0,
+        originalCurrent: 0,
+        capacitiveCurrent: 0,
+        diffusionCurrent: 0,
+        g,
+        branch: record.branch,
+        sourceIndex: null,
+        synthetic: true
+      });
+    }
+    result.push(record);
+  });
+  return result;
 }
 
 function branchOwnershipBySourceIndex(cycle: NormalizedCvCycle): Map<number, CvBranchKind> {
@@ -264,9 +362,16 @@ function validatePlotPath(plotPath: DunnContribution["plotPath"]) {
   for (const point of plotPath) {
     if (!Number.isFinite(point.potential)
       || !Number.isFinite(point.current)
+      || !Number.isFinite(point.originalCurrent)
+      || !Number.isFinite(point.capacitiveCurrent)
+      || !Number.isFinite(point.diffusionCurrent)
+      || !Number.isFinite(point.g)
       || (point.branch !== "forward" && point.branch !== "reverse")) {
       throw new CvAnalysisError("invalidDataShape");
     }
+    validateOriginalAndFraction(point.originalCurrent, point.g);
+    validateReconstructedPoint(point.originalCurrent, point.capacitiveCurrent, point.diffusionCurrent);
+    if (point.current !== point.capacitiveCurrent) throw new CvAnalysisError("invalidDataShape");
     const currentRun = runs.at(-1);
     if (currentRun?.branch === point.branch) {
       currentRun.potentials.push(point.potential);
@@ -302,7 +407,10 @@ function validateDiagnostics(diagnostics: DunnDiagnostics) {
     diagnostics.confidenceBlend,
     diagnostics.smoothingMultiplier,
     diagnostics.baseLambda,
-    diagnostics.effectiveLambda
+    diagnostics.effectiveLambda,
+    diagnostics.maximumPositiveOvershoot,
+    diagnostics.maximumNegativeOvershoot,
+    diagnostics.maximumAbsoluteOvershoot
   ];
   const unitIntervalValues = [
     diagnostics.forwardAnchorCoverage,
@@ -318,6 +426,9 @@ function validateDiagnostics(diagnostics: DunnDiagnostics) {
     || diagnostics.smoothingMultiplier > 30
     || diagnostics.baseLambda <= 0
     || diagnostics.effectiveLambda <= 0
+    || diagnostics.maximumPositiveOvershoot < 0
+    || diagnostics.maximumNegativeOvershoot < 0
+    || diagnostics.maximumAbsoluteOvershoot < 0
     || (diagnostics.medianForwardRSquared !== null && !Number.isFinite(diagnostics.medianForwardRSquared))
     || (diagnostics.medianReverseRSquared !== null && !Number.isFinite(diagnostics.medianReverseRSquared))
     || (diagnostics.mode !== "threshold" && diagnostics.mode !== "weighted")) {
@@ -333,7 +444,10 @@ function evaluateSharedFraction(potentials: number[], g: number[], potential: nu
   return validateFraction(pchipInterpolate(potentials, g, [potential])[0]!);
 }
 
-function makeDiagnostics(input: DunnContributionInput): DunnDiagnostics {
+function makeDiagnostics(
+  input: DunnContributionInput,
+  overshoot: BranchOvershootDiagnostics
+): DunnDiagnostics {
   const forwardRSquared = finiteRSquared(input.dunnRecords.forward);
   const reverseRSquared = finiteRSquared(input.dunnRecords.reverse);
   const lowFitQuality = isLowFitQuality(forwardRSquared, reverseRSquared, input.threshold);
@@ -354,8 +468,32 @@ function makeDiagnostics(input: DunnContributionInput): DunnDiagnostics {
     qualityPassed: !lowFitQuality && !scanRateWarning,
     ...input.stabilization,
     baseLambda: input.optimized.diagnostics.baseLambda,
-    effectiveLambda: input.optimized.diagnostics.lambda
+    effectiveLambda: input.optimized.diagnostics.lambda,
+    maximumPositiveOvershoot: overshoot.maximumPositiveOvershoot,
+    maximumNegativeOvershoot: overshoot.maximumNegativeOvershoot,
+    maximumAbsoluteOvershoot: overshoot.maximumAbsoluteOvershoot
   };
+}
+
+function mergeOvershootDiagnostics(
+  diagnostics: BranchOvershootDiagnostics[]
+): BranchOvershootDiagnostics {
+  return diagnostics.reduce<BranchOvershootDiagnostics>((merged, item) => {
+    const maximumAbsoluteOvershoot = Math.max(merged.maximumAbsoluteOvershoot, item.maximumAbsoluteOvershoot);
+    return {
+      maximumPositiveOvershoot: Math.max(merged.maximumPositiveOvershoot, item.maximumPositiveOvershoot),
+      maximumNegativeOvershoot: Math.max(merged.maximumNegativeOvershoot, item.maximumNegativeOvershoot),
+      maximumAbsoluteOvershoot,
+      worstIndex: item.maximumAbsoluteOvershoot > merged.maximumAbsoluteOvershoot
+        ? item.worstIndex
+        : merged.worstIndex
+    };
+  }, {
+    maximumPositiveOvershoot: 0,
+    maximumNegativeOvershoot: 0,
+    maximumAbsoluteOvershoot: 0,
+    worstIndex: null
+  });
 }
 
 function finiteRSquared(records: DunnBranchFitRecord[]): number[] {

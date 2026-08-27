@@ -80,6 +80,9 @@ export interface BValuePoint {
   rSquared: number;
   pointCount: number;
   fitPoints: Array<{ logScanRate: number; logCurrentMagnitude: number }>;
+  minimumCurrentMagnitude: number;
+  currentStabilityFloor: number;
+  currentStabilityRatio: number;
 }
 
 export interface DunnPoint {
@@ -113,6 +116,22 @@ export interface DunnDiagnostics {
   smoothingMultiplier: number;
   baseLambda: number;
   effectiveLambda: number;
+  maximumPositiveOvershoot: number;
+  maximumNegativeOvershoot: number;
+  maximumAbsoluteOvershoot: number;
+}
+
+export interface DunnOrderedRecord {
+  potential: number;
+  /** Backward-compatible alias of capacitiveCurrent. */
+  current: number;
+  originalCurrent: number;
+  capacitiveCurrent: number;
+  diffusionCurrent: number;
+  g: number;
+  branch: CvBranchKind;
+  sourceIndex: number | null;
+  synthetic: boolean;
 }
 
 export interface DunnContribution {
@@ -125,7 +144,7 @@ export interface DunnContribution {
   capacitiveReverse: number[];
   diffusionForward: number[];
   diffusionReverse: number[];
-  plotPath: Array<{ potential: number; current: number; branch: CvBranchKind }>;
+  plotPath: DunnOrderedRecord[];
   capacitivePercent: number;
   diffusionPercent: number;
   diagnostics: DunnDiagnostics;
@@ -154,6 +173,7 @@ export type CvFitStatus =
   | "belowRSquaredThreshold"
   | "insufficientData"
   | "zeroCurrentLogUnavailable"
+  | "nearZeroCurrentUnstable"
   | "regressionFailed";
 
 export type DunnFitStatus = CvFitStatus | "trimmed";

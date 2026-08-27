@@ -2327,6 +2327,10 @@ td button {
   overflow-wrap: anywhere;
 }
 
+.cv-page-header {
+  max-width: none;
+}
+
 @media (max-width: 640px) {
   .tool-page-header .cv-intro-benefits {
     font-size: 0.875rem;
@@ -2497,6 +2501,85 @@ td button {
 
 .cv-import > :is(h2, p, .cv-format-choices, .cv-data-input, .cv-settings-diagnostics, .cv-preview, .cv-analysis-actions) {
   grid-column: 1 / -1;
+}
+
+.cv-b-selection-controls {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.7fr) minmax(180px, 1fr) auto auto;
+  gap: 8px 12px;
+  align-items: end;
+  margin: 14px 0 6px;
+}
+
+.cv-b-selection-controls > label {
+  align-self: center;
+}
+
+.cv-b-selection-controls > button {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.cv-b-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  align-items: start;
+  margin-top: 14px;
+}
+
+.cv-analysis-card {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #dce2df;
+  border-radius: 8px;
+  background: #fbfcfc;
+}
+
+.cv-analysis-card > h3 {
+  margin: 0 0 10px;
+}
+
+.cv-b-interpretation,
+.cv-b-range-note {
+  margin: 10px 0 0;
+  font-size: 0.86rem;
+}
+
+.cv-b-range-note {
+  padding: 8px 10px;
+  border-left: 3px solid #d47b3c;
+  background: #fff7f1;
+  color: #734324;
+}
+
+.cv-b-fit-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, auto) minmax(0, 1fr));
+  gap: 6px 10px;
+  margin: 12px 0 0;
+  font-size: 0.84rem;
+}
+
+.cv-b-fit-metrics dt {
+  color: #607078;
+  font-weight: 700;
+}
+
+.cv-b-fit-metrics dd {
+  min-width: 0;
+  margin: 0;
+  color: #17242a;
+  overflow-wrap: anywhere;
+}
+
+.b-value-overview-svg [role="button"] {
+  cursor: pointer;
+}
+
+.b-value-overview-svg [role="button"]:focus-visible {
+  outline: none;
+  filter: drop-shadow(0 0 2px #111b25);
 }
 
 .cv-import-fieldset {
@@ -3136,6 +3219,19 @@ sub {
 
   .tool-layout {
     grid-template-columns: 1fr;
+  }
+
+  .cv-b-dashboard-grid,
+  .cv-b-selection-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .cv-b-selection-controls > button {
+    width: 100%;
+  }
+
+  .cv-b-fit-metrics {
+    grid-template-columns: minmax(0, auto) minmax(0, 1fr);
   }
 
   .tools-grid {

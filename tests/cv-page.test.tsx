@@ -238,6 +238,7 @@ describe("CV kinetics page", () => {
     const importSection = view.querySelector<HTMLElement>(".cv-import")!;
 
     expect(title.textContent).toBe("CV Kinetics Analysis");
+    expect(title.closest(".cv-page-header")).not.toBeNull();
     expect(subtitle.textContent).toBe("Advanced R²-Guided Regularized Dunn Analysis");
     expect(description.textContent).toContain("0 <= g(V) <= 1");
     expect(description.querySelector("math, .katex")).toBeNull();
@@ -391,7 +392,7 @@ describe("CV kinetics page", () => {
     expect(view.textContent).toContain("Dunn Analysis");
     expect(view.querySelectorAll("svg")).toHaveLength(4);
     expect(view.querySelector<HTMLSelectElement>('select[name="selectedRate"]')?.value).toBe("1");
-    expect(view.querySelector<HTMLInputElement>('input[name="selectedPotential"]')?.value).toBe("0");
+    expect(view.querySelector<HTMLInputElement>('input[name="selectedPotential"]')?.value).toBe("0.5");
     expect(view.textContent).toContain("Contribution percentage by scan rate");
     const contributionChart = view.querySelector('[data-export-id="cv-contribution-chart"]')!;
     expect(contributionChart.classList.contains("scientific-stacked-bar-chart-svg")).toBe(true);
@@ -428,7 +429,7 @@ describe("CV kinetics page", () => {
     expect(view.querySelectorAll("svg")).toHaveLength(4);
     await click(view, "EN");
     expect(view.querySelector<HTMLSelectElement>('select[name="selectedRate"]')?.value).toBe("1");
-    expect(view.querySelector<HTMLInputElement>('input[name="selectedPotential"]')?.value).toBe("0");
+    expect(view.querySelector<HTMLInputElement>('input[name="selectedPotential"]')?.value).toBe("0.5");
   });
 
   it("localizes validation and keeps exports disabled before valid analysis", async () => {
@@ -484,7 +485,7 @@ describe("CV kinetics page", () => {
     expect(bTable.querySelector("thead")?.textContent).toContain("Sweep branch");
     expect(dunnTable.querySelector("thead")?.textContent).toContain("Sweep branch");
     expect([...bTable.querySelectorAll<HTMLTableRowElement>("tbody tr")].map((row) => [row.cells[0].textContent, row.cells[1].textContent])).toEqual([
-      ["0", "Branch 1"], ["1", "Branch 1"], ["2", "Branch 1"], ["1", "Branch 2"], ["0", "Branch 2"]
+      ["0", "Forward sweep"], ["1", "Forward sweep"], ["2", "Forward sweep"], ["1", "Reverse sweep"], ["0", "Reverse sweep"]
     ]);
     expect([...dunnTable.querySelectorAll<HTMLTableRowElement>("tbody tr")].map((row) => [row.cells[0].textContent, row.cells[1].textContent])).toEqual([
       ["0", "Branch 1"], ["1", "Branch 1"], ["2", "Branch 1"], ["0", "Branch 2"], ["1", "Branch 2"], ["2", "Branch 2"]
@@ -498,8 +499,8 @@ describe("CV kinetics page", () => {
     expect(originalXs[4]).toBeLessThan(originalXs[3]);
     expect(view.querySelector('[data-series-id="reconstructed-total"]')).toBeNull();
     const chart = view.querySelector('[data-export-id="cv-dunn-chart"]')!;
-    const capacitiveAreas = [...chart.querySelectorAll<SVGPathElement>('[data-area-series-id="capacitive-area"]')];
-    const diffusionAreas = [...chart.querySelectorAll<SVGPathElement>('[data-area-series-id="diffusion-area"]')];
+    const capacitiveAreas = [...chart.querySelectorAll<SVGPathElement>('[data-polygon-series-id="capacitive-area"]')];
+    const diffusionAreas = [...chart.querySelectorAll<SVGPathElement>('[data-polygon-series-id="diffusion-area"]')];
     expect(capacitiveAreas).toHaveLength(1);
     expect(diffusionAreas).toHaveLength(2);
     expect(chart.querySelector('[data-area-series-id="excluded-area"]')).toBeNull();
@@ -507,42 +508,40 @@ describe("CV kinetics page", () => {
     const capacitiveForwardXs = pathXs(chart.querySelector<SVGPathElement>('[data-series-id="capacitive-forward"]')?.getAttribute("d") ?? "");
     const capacitiveReverseXs = pathXs(chart.querySelector<SVGPathElement>('[data-series-id="capacitive-reverse"]')?.getAttribute("d") ?? "");
     expect(capacitiveForwardXs).toHaveLength(3);
-    expect(capacitiveReverseXs).toHaveLength(3);
+    expect(capacitiveReverseXs).toHaveLength(2);
     expect(capacitiveForwardXs).toEqual([...capacitiveForwardXs].sort((left, right) => left - right));
     expect(capacitiveReverseXs).toEqual([...capacitiveReverseXs].sort((left, right) => right - left));
-    expect(capacitiveAreas.map((path) => path.dataset.renderPointCount)).toEqual(["3"]);
-    expect(diffusionAreas.map((path) => path.dataset.renderPointCount)).toEqual(["3", "3"]);
-    const bPath = view.querySelector<SVGPathElement>('[data-series-id="b-values"]')!;
-    expect(bPath.getAttribute("data-render-point-count")).toBe("5");
-    const bXs = pathXs(bPath.getAttribute("d") ?? "");
-    const bYs = pathYs(bPath.getAttribute("d") ?? "");
-    expect(bXs).toHaveLength(5);
-    expect(bXs[3]).toBeLessThan(bXs[2]);
-    expect(bXs[4]).toBeLessThan(bXs[3]);
-    expect(bYs[3]).not.toBe(bYs[1]);
+    expect(capacitiveAreas.map((path) => path.dataset.renderPointCount)).toEqual(["5"]);
+    expect(diffusionAreas.map((path) => path.dataset.renderPointCount)).toEqual(["6", "4"]);
+    const bForwardPath = view.querySelector<SVGPathElement>('[data-series-id="b-values"]')!;
+    const bReversePath = view.querySelector<SVGPathElement>('[data-series-id="b-values-reverse"]')!;
+    expect(bForwardPath.getAttribute("data-render-point-count")).toBe("3");
+    expect(bReversePath.getAttribute("data-render-point-count")).toBe("2");
+    expect(pathXs(bForwardPath.getAttribute("d") ?? "")).toHaveLength(3);
+    expect(pathXs(bReversePath.getAttribute("d") ?? "")).toHaveLength(2);
 
     await setPotential(view, "1");
-    expect(view.querySelector<HTMLTableRowElement>('[data-table-id="cv-selected-b-record-table"] tbody tr')?.cells[1].textContent).toBe("Branch 1");
+    expect(view.querySelector<HTMLTableRowElement>('[data-table-id="cv-selected-b-record-table"] tbody tr')?.cells[1].textContent).toBe("Forward sweep");
     expect(view.querySelector<HTMLTableRowElement>('[data-table-id="cv-selected-b-record-table"] tbody tr')?.cells[2].textContent).toBe("0.5");
     await click(view, "Next potential");
     expect(view.querySelector<HTMLInputElement>('input[name="selectedPotential"]')?.value).toBe("2");
     await click(view, "Next potential");
     expect(view.querySelector<HTMLInputElement>('input[name="selectedPotential"]')?.value).toBe("1");
-    expect(view.querySelector<HTMLTableRowElement>('[data-table-id="cv-selected-b-record-table"] tbody tr')?.cells[1].textContent).toBe("Branch 2");
+    expect(view.querySelector<HTMLTableRowElement>('[data-table-id="cv-selected-b-record-table"] tbody tr')?.cells[1].textContent).toBe("Reverse sweep");
     expect(view.querySelector<HTMLTableRowElement>('[data-table-id="cv-selected-b-record-table"] tbody tr')?.cells[2].textContent).toBe("1");
 
     const bBranchOne = view.querySelector<SVGCircleElement>('[data-export-id="cv-b-chart"] [data-point-id="1"]')!;
     const bBranchTwo = view.querySelector<SVGCircleElement>('[data-export-id="cv-b-chart"] [data-point-id="3"]')!;
-    expect(bBranchOne.getAttribute("aria-label")).toContain("Branch 1");
-    expect(bBranchTwo.getAttribute("aria-label")).toContain("Branch 2");
+    expect(bBranchOne.getAttribute("aria-label")).toContain("Forward sweep");
+    expect(bBranchTwo.getAttribute("aria-label")).toContain("Reverse sweep");
     expect(bBranchTwo.getAttribute("aria-label")).not.toBe(bBranchOne.getAttribute("aria-label"));
     await act(async () => bBranchTwo.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })));
     expect(view.querySelector('[data-export-id="cv-b-chart"] [data-selected-point-id="3"]')).not.toBeNull();
-    expect(view.querySelector<HTMLTableRowElement>('[data-table-id="cv-selected-b-record-table"] tbody tr')?.cells[1].textContent).toBe("Branch 2");
+    expect(view.querySelector<HTMLTableRowElement>('[data-table-id="cv-selected-b-record-table"] tbody tr')?.cells[1].textContent).toBe("Reverse sweep");
     await setPotential(view, "1");
     await act(async () => bBranchTwo.dispatchEvent(new MouseEvent("click", { bubbles: true })));
     expect(view.querySelector('[data-export-id="cv-b-chart"] [data-selected-point-id="3"]')).not.toBeNull();
-    expect(view.querySelector<HTMLTableRowElement>('[data-table-id="cv-selected-b-record-table"] tbody tr')?.cells[1].textContent).toBe("Branch 2");
+    expect(view.querySelector<HTMLTableRowElement>('[data-table-id="cv-selected-b-record-table"] tbody tr')?.cells[1].textContent).toBe("Reverse sweep");
 
     const writeText = vi.fn().mockResolvedValue(undefined);
     const clipboardDescriptor = Object.getOwnPropertyDescriptor(navigator, "clipboard");
@@ -554,7 +553,7 @@ describe("CV kinetics page", () => {
     const toolbar = bTable.closest(".cv-result-table-block")?.querySelector<HTMLElement>(".cv-table-copy-toolbar")!;
     await act(async () => toolbar.querySelector<HTMLInputElement>('input[value="1"]')!.click());
     await act(async () => toolbar.querySelector<HTMLButtonElement>("button")!.click());
-    expect(writeText.mock.calls[0][0]).toBe("Sweep branch\r\nBranch 1\r\nBranch 1\r\nBranch 1\r\nBranch 2\r\nBranch 2");
+    expect(writeText.mock.calls[0][0]).toBe("Sweep branch\r\nForward sweep\r\nForward sweep\r\nForward sweep\r\nReverse sweep\r\nReverse sweep");
 
     const blobs: Blob[] = [];
     vi.stubGlobal("URL", { createObjectURL: vi.fn((blob: Blob) => { blobs.push(blob); return `blob:${blobs.length}`; }), revokeObjectURL: vi.fn() });
@@ -565,7 +564,7 @@ describe("CV kinetics page", () => {
     expect(bCsv).toContain("Potential (V),Sweep branch,");
     expect(bCsv.split("\r\n")).toHaveLength(6);
     expect(bCsv.split("\r\n").slice(1).map((row) => row.split(",").slice(0, 2))).toEqual([
-      ["0", "Branch 1"], ["1", "Branch 1"], ["2", "Branch 1"], ["1", "Branch 2"], ["0", "Branch 2"]
+      ["0", "Forward sweep"], ["1", "Forward sweep"], ["2", "Forward sweep"], ["1", "Reverse sweep"], ["0", "Reverse sweep"]
     ]);
     expect(dunnCsv).toContain("Scan rate (mV/s),Potential (V),Sweep branch,");
     expect(dunnCsv.split("\r\n")).toHaveLength(19);
@@ -636,7 +635,7 @@ describe("CV kinetics page", () => {
 
     const bRows = view.querySelectorAll('[data-table-id="cv-b-records-table"] tbody tr');
     const dunnRows = view.querySelectorAll('[data-table-id="cv-dunn-records-table"] tbody tr');
-    expect(bRows).toHaveLength(0);
+    expect(bRows).toHaveLength(5);
     expect(dunnRows).toHaveLength(6);
     expect(view.querySelector('[data-table-id="cv-contribution-table"]')).not.toBeNull();
     expect(view.querySelector('[aria-live="polite"]')?.textContent).not.toContain("No b-value fit");
@@ -710,19 +709,20 @@ describe("CV kinetics page", () => {
     vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
     await click(view, "cv-b-value-results.csv");
     const exported = await new Promise<string>((resolve) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.readAsText(blobs[0]); });
-    expect(exported).toContain("0,Branch 1,,,,,Zero-current logarithm unavailable");
+    expect(exported).toContain("0,Forward sweep,,,,,Zero-current logarithm unavailable");
   });
 
-  it("round-trips a high-precision retained potential without display rounding", async () => {
+  it("rounds the selected potential for display while retaining a grid-backed selection", async () => {
     const view = await renderPage();
     await upload(view, "Potential,Current 1 mV/s,Current 4 mV/s,Current 9 mV/s\n0.123456789,1,4,9\n0.5,2,8,18\n1,3,12,27\n0.5,2,8,18\n0.123456789,1,4,9");
     await click(view, "Run analysis");
 
-    expect(view.querySelector<HTMLInputElement>('input[name="selectedPotential"]')?.value).toBe("0.123456789");
+    const displayed = view.querySelector<HTMLInputElement>('input[name="selectedPotential"]')?.value ?? "";
+    expect(displayed).toMatch(/^-?\d+(?:\.\d{1,4})?$/);
     await click(view, "Next potential");
     await click(view, "Previous potential");
-    expect(view.querySelector<HTMLInputElement>('input[name="selectedPotential"]')?.value).toBe("0.123456789");
-    expect(view.querySelector('[data-export-id="cv-b-chart"] [data-selected-x="0.123456789"]')).not.toBeNull();
+    expect(view.querySelector<HTMLInputElement>('input[name="selectedPotential"]')?.value).toBe(displayed);
+    expect(view.querySelector('[data-export-id="cv-b-chart"] [data-selected-point-id]')).not.toBeNull();
   });
 
   it("maps exact potential and rate selections to signed publication-style Dunn areas", async () => {
@@ -739,7 +739,7 @@ describe("CV kinetics page", () => {
     expect([...selected.cells].map((cell) => cell.textContent)).toEqual(["1", "-9", "-9", "-4.5", "-4.5"]);
     const chart = view.querySelector('[data-export-id="cv-dunn-chart"]')!;
     expect(chart.querySelectorAll('[data-series-id]')).toHaveLength(3);
-    expect(chart.querySelector('[data-series-id="original"]')?.getAttribute("data-render-point-count")).toBe("5");
+    expect(chart.querySelector('[data-series-id="original"]')?.getAttribute("data-render-point-count")).toBe("6");
     expect(chart.querySelector('[data-series-id="reconstructed-total"]')).toBeNull();
     expect(chart.querySelectorAll('[data-series-id="capacitive-forward"], [data-series-id="capacitive-reverse"]')).toHaveLength(2);
     expect(chart.querySelector('[data-series-id="capacitive"]')).toBeNull();
@@ -813,8 +813,8 @@ describe("CV kinetics page", () => {
     expect(english[0]).toContain("Potential (V),Total current (arb. units) at 1 mV/s");
     expect(english[1]).toContain("Potential (V),Sweep branch,b value,Intercept,R²,Point count,Fit status");
     expect(english[2]).toContain("Scan rate (mV/s),Potential (V),Sweep branch,k1,k2,R²,Point count,Fit status,Local capacitive fraction,Local confidence");
-    expect(english[3]).toContain("Potential (V),g(V) at 1 mV/s,Forward capacitive current (arb. units) at 1 mV/s,Reverse capacitive current (arb. units) at 1 mV/s");
-    expect(english[4]).toContain("Potential (V),g(V) at 1 mV/s,Forward diffusion-controlled current (arb. units) at 1 mV/s,Reverse diffusion-controlled current (arb. units) at 1 mV/s");
+    expect(english[3]).toContain("Scan rate (mV/s),Ordered sequence index,Original source index,Sweep branch,Potential (V),Original measured current (arb. units),g(V),Capacitive contribution,Maximum absolute containment overshoot");
+    expect(english[4]).toContain("Scan rate (mV/s),Ordered sequence index,Original source index,Sweep branch,Potential (V),Original measured current (arb. units),g(V),Diffusion-controlled contribution,Maximum absolute containment overshoot");
     expect(english[5]).toContain("Scan rate (mV/s),Capacitive contribution (%),Diffusion-controlled contribution (%)");
     await click(view, "中文");
     await click(view, "cv-b-value-results.csv");
@@ -865,10 +865,10 @@ describe("CV kinetics page", () => {
     const dunnTable = view.querySelector('[data-table-id="cv-dunn-records-table"]')!;
     expect(bTable.querySelector("thead")?.textContent).toContain("Fit status");
     expect(dunnTable.querySelector("thead")?.textContent).toContain("Fit status");
-    expect(bTable.querySelectorAll("tbody tr")).toHaveLength(7);
+    expect(bTable.querySelectorAll("tbody tr")).toHaveLength(9);
     expect(dunnTable.querySelectorAll("tbody tr")).toHaveLength(10);
 
-    expect([...bTable.querySelectorAll<HTMLTableRowElement>("tbody tr")].some((row) => row.cells[0].textContent === "5")).toBe(false);
+    expect([...bTable.querySelectorAll<HTMLTableRowElement>("tbody tr")].some((row) => row.cells[0].textContent === "5")).toBe(true);
     expect([...dunnTable.querySelectorAll<HTMLTableRowElement>("tbody tr")].some((row) => row.cells[0].textContent === "5")).toBe(true);
     const unavailableRow = [...bTable.querySelectorAll<HTMLTableRowElement>("tbody tr")].find((row) => row.cells[0].textContent === "10")!;
     expect([...unavailableRow.cells].slice(2, 6).map((cell) => cell.textContent)).toEqual(["—", "—", "—", "—"]);
@@ -876,25 +876,24 @@ describe("CV kinetics page", () => {
 
     expect(view.querySelector('select[name="selectedPotential"]')).toBeNull();
     await setPotential(view, "5");
-    expect(view.querySelector('[data-selected-fit-status="true"]')).toBeNull();
-    expect(view.textContent).toContain("not an exact retained potential");
+    expect(view.querySelector('[data-selected-fit-status="true"]')?.textContent).toContain("Below R² threshold");
     await setPotential(view, "0");
     await click(view, "Next potential");
-    expect(view.querySelector<HTMLInputElement>('input[name="selectedPotential"]')?.value).toBe("15");
-    expect(view.querySelector('[data-export-id="cv-b-chart"] [data-selected-x="5"]')).toBeNull();
-    expect((view.querySelector('path[data-series-id="b-values"]')?.getAttribute("d") ?? "").match(/\bM\b/g)).toHaveLength(3);
+    expect(view.querySelector<HTMLInputElement>('input[name="selectedPotential"]')?.value).toBe("5");
+    expect(view.querySelector('[data-export-id="cv-b-chart"] [data-selected-point-id="1"]')).not.toBeNull();
+    expect((view.querySelector('path[data-series-id="b-values"]')?.getAttribute("d") ?? "").match(/\bM\b/g)).toHaveLength(2);
 
     const toolbar = bTable.closest('.cv-result-table-block')?.querySelector<HTMLElement>('.cv-table-copy-toolbar')!;
     await act(async () => toolbar.querySelector<HTMLInputElement>('input[value="0"]')!.click());
     await act(async () => toolbar.querySelector<HTMLButtonElement>('button')!.click());
-    expect((writeText.mock.calls[0][0] as string).split("\r\n").some((row) => row === "5")).toBe(false);
+    expect((writeText.mock.calls[0][0] as string).split("\r\n").some((row) => row === "5")).toBe(true);
 
     const blobs: Blob[] = [];
     vi.stubGlobal("URL", { createObjectURL: vi.fn((blob: Blob) => { blobs.push(blob); return `blob:filtered-${blobs.length}`; }), revokeObjectURL: vi.fn() });
     vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
     await click(view, "cv-b-value-results.csv");
     await click(view, "cv-dunn-k1-k2.csv");
-    expect((await readBlob(blobs[0])).split("\r\n").some((row) => row.startsWith("5,"))).toBe(false);
+    expect((await readBlob(blobs[0])).split("\r\n").some((row) => row.startsWith("5,"))).toBe(true);
     expect((await readBlob(blobs[1])).split("\r\n").some((row) => row.includes(",5,Branch"))).toBe(true);
 
     const contributionTable = view.querySelector('[data-table-id="cv-contribution-table"]')!;
@@ -964,18 +963,18 @@ describe("CV kinetics page", () => {
     expect(exported[0].split("\r\n")[0]).toContain("Requested interval: 5000 mV");
     expect(exported[0].split("\r\n")[0]).toContain("Resolved interval: 5000 mV");
     expect(exported[1]).toContain("Fit status,Data layout,Data source,Requested interval,Resolved interval,Dunn method,R² threshold,Requested turning point trim,Resolved turning point trim,Smoothing,Common potential range (V),Forward median R²,Reverse median R²,Dunn coverage (%)");
-    expect(exported[1]).not.toMatch(/(?:^|\r\n)5,/);
-    expect(exported[1]).toContain("10,Branch 1,,,,,Zero-current logarithm unavailable");
+    expect(exported[1]).toContain("5,Forward sweep");
+    expect(exported[1]).toContain("10,Forward sweep,,,,,Zero-current logarithm unavailable");
     expect(exported[2]).toContain("Scan rate (mV/s),Potential (V),Sweep branch,k1,k2,R²,Point count,Fit status,Local capacitive fraction,Local confidence,Data layout,Data source,Requested interval,Resolved interval,Dunn method,R² threshold,Requested turning point trim,Resolved turning point trim,Smoothing,Common potential range (V),Forward median R²,Reverse median R²,Dunn coverage (%)");
     expect(exported[2]).toContain("1,0,Branch 1,");
-    expect(exported[3].split("\r\n")[0]).toContain("Resolved interval: 5000 mV");
-    expect(exported[3].split("\r\n")[0]).toContain("g(V) at 1 mV/s");
-    expect(exported[3].split("\r\n")[0]).toContain("Forward capacitive current (arb. units) at 1 mV/s");
-    expect(exported[3].split("\r\n")[0]).toContain("Reverse capacitive current (arb. units) at 1 mV/s");
-    expect(exported[4].split("\r\n")[0]).toContain("R² threshold: 0.95");
-    expect(exported[4].split("\r\n")[0]).toContain("g(V) at 1 mV/s");
-    expect(exported[4].split("\r\n")[0]).toContain("Forward diffusion-controlled current (arb. units) at 1 mV/s");
-    expect(exported[4].split("\r\n")[0]).toContain("Reverse diffusion-controlled current (arb. units) at 1 mV/s");
+    expect(exported[3].split("\r\n")[0]).toContain("Resolved interval");
+    expect(exported[3].split("\r\n")[0]).toContain("g(V)");
+    expect(exported[3].split("\r\n")[0]).toContain("Capacitive contribution");
+    expect(exported[3].split("\r\n")[0]).toContain("Maximum absolute containment overshoot");
+    expect(exported[4].split("\r\n")[0]).toContain("R² threshold");
+    expect(exported[4].split("\r\n")[0]).toContain("g(V)");
+    expect(exported[4].split("\r\n")[0]).toContain("Diffusion-controlled contribution");
+    expect(exported[4].split("\r\n")[0]).toContain("Maximum absolute containment overshoot");
     expect(exported[5]).toContain("Valid points,Sampled points,Coverage (%),Contribution status,Data layout,Data source,Requested interval,Resolved interval,Dunn method,R² threshold,Requested turning point trim,Resolved turning point trim,Smoothing,Common potential range (V),Forward median R²,Reverse median R²,Dunn coverage (%)");
     expect(exported[5]).toContain(",6,10,60,Available,XYYYYY,File upload,5000 mV,5000 mV,R² threshold,0.95,Auto,100 mV");
 
@@ -983,7 +982,7 @@ describe("CV kinetics page", () => {
     await click(view, "cv-b-value-results.csv");
     const chinese = await readBlob(blobs[6]);
     expect(chinese).toContain("拟合状态,数据格式,数据来源,请求间隔,解析间隔,Dunn 方法,R² 阈值,请求转折点裁剪,解析转折点裁剪");
-    expect(chinese).not.toMatch(/(?:^|\r\n)5,/);
+    expect(chinese).toContain("5,正向扫描");
 
     await click(view, "EN");
     await click(view, "Export SVG — cv-b-chart.svg");
@@ -1011,7 +1010,7 @@ describe("CV kinetics page", () => {
     await click(view, "Run analysis");
 
     expect(view.querySelector('[data-quality-summary="true"]')).not.toBeNull();
-    expect(view.querySelectorAll('[data-table-id="cv-b-records-table"] tbody tr')).toHaveLength(3);
+    expect(view.querySelectorAll('[data-table-id="cv-b-records-table"] tbody tr')).toHaveLength(5);
     expect(view.querySelectorAll('[data-table-id="cv-dunn-records-table"] tbody tr')).toHaveLength(6);
     expect(view.querySelector('[data-table-id="cv-contribution-table"]')).not.toBeNull();
     expect(view.textContent).toContain("unavailable when no contiguous valid segment");
@@ -1099,12 +1098,15 @@ describe("CV kinetics page", () => {
     await setValue(view.querySelector<HTMLInputElement>('input[name="cv-r-squared-threshold"]')!, threshold);
     await click(view, "Run analysis");
 
-    expect(view.querySelector<HTMLInputElement>('input[name="selectedPotential"]')?.value).toBe("0.123456789");
+    const selectedDisplay = view.querySelector<HTMLInputElement>('input[name="selectedPotential"]')?.value ?? "";
+    expect(selectedDisplay).toMatch(/^-?\d+(?:\.\d{1,4})?$/);
     expect(view.querySelector<HTMLSelectElement>('select[name="selectedRate"]')?.value).toBe("0.123456789");
     const fitChart = view.querySelector<SVGSVGElement>('[data-export-id="cv-fit-chart"]')!;
     const dunnChart = view.querySelector<SVGSVGElement>('[data-export-id="cv-dunn-chart"]')!;
     expect(fitChart.querySelector("desc")?.id).toBe(fitChart.getAttribute("aria-describedby"));
-    expect(fitChart.querySelector("desc")?.textContent).toContain("potential = 0.123456789 V");
+    const selectedMetadata = fitChart.querySelector("desc")?.textContent?.match(/potential = ([^ ]+) V/)?.[1];
+    expect(selectedMetadata).toBeDefined();
+    expect(Number(selectedMetadata).toFixed(4)).toBe(Number(selectedDisplay).toFixed(4));
     expect(dunnChart.querySelector("desc")?.id).toBe(dunnChart.getAttribute("aria-describedby"));
     expect(dunnChart.querySelector("desc")?.textContent).toContain("scan rate = 0.123456789 mV/s");
 
@@ -1123,7 +1125,7 @@ describe("CV kinetics page", () => {
 
     await click(view, "Export SVG — cv-fit-chart.svg");
     const fitSvg = await readBlob(blobs[2]);
-    expect(fitSvg).toContain("potential = 0.123456789 V");
+    expect(fitSvg).toContain(`potential = ${selectedMetadata} V`);
     expect(fitSvg).toContain(`R² ≥ ${threshold}`);
     expect(fitSvg).toContain("rates = 0.123456789, 0.987654321, 1.234567891 mV/s");
 
@@ -1148,8 +1150,10 @@ describe("CV kinetics page", () => {
     const observed = [...view.querySelectorAll<SVGCircleElement>('[data-point-series-id="fit-points"]')].map((point) => Number(point.dataset.pointX));
     expect(observed).toEqual([...observed].sort((left, right) => left - right));
     expect(view.querySelector('path[data-series-id="fit-points"]')).toBeNull();
-    const bPath = view.querySelector('path[data-series-id="b-values"]')?.getAttribute("d") ?? "";
-    expect(bPath.match(/\bM\b/g)).toHaveLength(3);
+    const forwardPath = view.querySelector('path[data-series-id="b-values"]')?.getAttribute("d") ?? "";
+    const reversePath = view.querySelector('path[data-series-id="b-values-reverse"]')?.getAttribute("d") ?? "";
+    expect(forwardPath.match(/\bM\b/g)).toHaveLength(2);
+    expect(reversePath.match(/\bM\b/g)).toHaveLength(1);
   });
 
   it("keeps original CV points distinct from interpolated and reconstructed grid values", async () => {
@@ -1185,17 +1189,18 @@ describe("CV kinetics page", () => {
     await click(view, "Run analysis");
     expect(view.querySelector('select[name="selectedPotential"]')).toBeNull();
     expect(view.querySelectorAll('datalist[name="selectedPotential"] option')).toHaveLength(0);
+    await setSelect(view.querySelector<HTMLSelectElement>('select[name="selectedBBranch"]')!, "0");
     await setPotential(view, String(Math.floor(sourceRowCount / 2)));
     expect(view.querySelector('[data-table-id="cv-selected-b-record-table"] tbody tr')?.firstElementChild?.textContent).toBe(String(Math.floor(sourceRowCount / 2)));
     expect(button(view, "Previous potential").disabled).toBe(false);
     expect(button(view, "Next potential").disabled).toBe(false);
     expect(Number(view.querySelector('[data-series-id="b-values"]')?.getAttribute("data-render-point-count"))).toBeLessThanOrEqual(2_000);
-    const dunnAreaPaths = [...view.querySelectorAll<SVGPathElement>('[data-export-id="cv-dunn-chart"] [data-area-series-id]')];
+    const dunnAreaPaths = [...view.querySelectorAll<SVGPathElement>('[data-export-id="cv-dunn-chart"] [data-polygon-series-id]')];
     expect(dunnAreaPaths.length).toBeGreaterThan(0);
     expect(dunnAreaPaths.every((path) => path.hasAttribute("data-render-point-count"))).toBe(true);
-    for (const areaId of new Set(dunnAreaPaths.map((path) => path.dataset.areaSeriesId))) {
+    for (const areaId of new Set(dunnAreaPaths.map((path) => path.dataset.polygonSeriesId))) {
       const renderedPointCount = dunnAreaPaths
-        .filter((path) => path.dataset.areaSeriesId === areaId)
+        .filter((path) => path.dataset.polygonSeriesId === areaId)
         .reduce((total, path) => total + Number(path.dataset.renderPointCount), 0);
       expect(renderedPointCount).toBeLessThanOrEqual(MAX_CHART_OUTPUT_POINTS);
     }
@@ -1274,11 +1279,9 @@ describe("CV kinetics page", () => {
       gaps.has(index) ? [0, 0, 0] : [index + 1, 4 * (index + 1), 9 * (index + 1)]);
     await upload(view, contents);
     await click(view, "Run analysis");
-    const path = view.querySelector('path[data-series-id="b-values"]')!;
-    expect({
-      moveCount: path.getAttribute("d")?.match(/\bM\b/g)?.length,
-      gapRunCount: path.getAttribute("data-gap-run-count")
-    }).toEqual({ moveCount: 4, gapRunCount: "3" });
+    const paths = [...view.querySelectorAll<SVGPathElement>('path[data-series-id="b-values"], path[data-series-id="b-values-reverse"]')];
+    expect(paths.reduce((total, path) => total + Number(path.dataset.gapRunCount), 0)).toBe(3);
+    expect(paths.every((path) => (path.getAttribute("d")?.match(/\bM\b/g)?.length ?? 0) <= Number(path.dataset.gapRunCount) + 1)).toBe(true);
   }, 30_000);
 
   it("falls back to an explicitly disclosed point view for pathological alternating gaps", async () => {

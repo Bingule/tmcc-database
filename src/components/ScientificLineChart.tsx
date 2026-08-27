@@ -37,6 +37,14 @@ export interface ChartAreaSeries {
   segments: ChartAreaPoint[][];
 }
 
+export interface ChartPolygonSeries {
+  id: string;
+  label: string;
+  color: string;
+  opacity?: number;
+  polygons: Array<Array<{ x: number; y: number }>>;
+}
+
 interface ScientificLineChartProps {
   title: string;
   xLabel: string;
@@ -45,6 +53,7 @@ interface ScientificLineChartProps {
   legendLabel: string;
   series: ChartSeries[];
   areas?: ChartAreaSeries[];
+  polygons?: ChartPolygonSeries[];
   selectedX?: number;
   onSelectX?: (x: number) => void;
   selectedPointId?: string;
@@ -65,6 +74,7 @@ export function ScientificLineChart({
   legendLabel,
   series,
   areas = [],
+  polygons = [],
   selectedX,
   onSelectX,
   selectedPointId,
@@ -88,7 +98,12 @@ export function ScientificLineChart({
     { x: point.x, y: point.lower },
     { x: point.x, y: point.upper }
   ])));
-  const domainPoints = [...allPoints, ...areaBounds];
+  const finitePolygons = polygons.map((item) => ({
+    ...item,
+    polygons: item.polygons.map((polygon) => polygon.filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y))).filter((polygon) => polygon.length >= 3)
+  }));
+  const polygonBounds = finitePolygons.flatMap((item) => item.polygons.flat());
+  const domainPoints = [...allPoints, ...areaBounds, ...polygonBounds];
 
   if (domainPoints.length === 0) {
     return <div className="scientific-chart-empty" role="status">{emptyLabel}</div>;
@@ -98,9 +113,10 @@ export function ScientificLineChart({
   const yDomain = expandedDomain(domainPoints, "y");
   const legendColumns = calculateLegendColumns([
     ...finiteAreas.map((item) => item.label),
+    ...finitePolygons.map((item) => item.label),
     ...finiteSeries.map((item) => item.label)
   ]);
-  const legendRows = Math.ceil((finiteAreas.length + finiteSeries.length) / legendColumns);
+  const legendRows = Math.ceil((finiteAreas.length + finitePolygons.length + finiteSeries.length) / legendColumns);
   const metadataSourceLines = typeof metadata === "string" ? [metadata] : metadata ?? [];
   const metadataLines = metadataSourceLines.flatMap((line) => wrapMetadataLine(line));
   const legendTop = metadataLines.length > 0 ? 17 + metadataLines.length * 18 + 4 : 17;
@@ -168,7 +184,7 @@ export function ScientificLineChart({
           role="group"
           aria-label={legendLabel}
         >
-          {[...finiteAreas.map((item) => ({ kind: "area" as const, item })), ...finiteSeries.map((item) => ({ kind: "line" as const, item }))].map((entry, index) => {
+          {[...finiteAreas.map((item) => ({ kind: "area" as const, item })), ...finitePolygons.map((item) => ({ kind: "polygon" as const, item })), ...finiteSeries.map((item) => ({ kind: "line" as const, item }))].map((entry, index) => {
             const column = index % legendColumns;
             const row = Math.floor(index / legendColumns);
             const x = chartMargin.left + column * (plotWidth / legendColumns);
@@ -178,6 +194,8 @@ export function ScientificLineChart({
               <g key={item.id} className="scientific-chart-legend-item" transform={`translate(${x} ${y})`}>
                 {entry.kind === "area"
                   ? <rect x={1} y={-6} width={24} height={12} rx={2} fill={entry.item.pattern === "diagonalHatch" ? `url(#${patternId(entry.item)})` : entry.item.color} fillOpacity={entry.item.pattern ? 1 : entry.item.opacity ?? 0.68} />
+                  : entry.kind === "polygon"
+                    ? <rect x={1} y={-6} width={24} height={12} rx={2} fill={entry.item.color} fillOpacity={entry.item.opacity ?? 0.68} />
                   : entry.item.mode === "points"
                     ? <circle cx={13} cy={0} r={3.5} fill={entry.item.color} />
                     : <line x1={0} y1={0} x2={26} y2={0} stroke={entry.item.color} strokeWidth={2.25} strokeDasharray={entry.item.dash} />}
@@ -212,6 +230,19 @@ export function ScientificLineChart({
               stroke="none"
             />
           )))}
+        </g>
+        <g className="scientific-chart-polygons" aria-hidden="true">
+          {finitePolygons.flatMap((item) => item.polygons.map((polygon, polygonIndex) => <path
+            key={`${item.id}-${polygonIndex}`}
+            data-polygon-series-id={item.id}
+            data-area-series-id={item.id}
+            data-polygon-index={polygonIndex}
+            data-render-point-count={polygon.length}
+            d={`${polygon.map((point, index) => `${index === 0 ? "M" : "L"} ${projectX(point.x)} ${projectY(point.y)}`).join(" ")} Z`}
+            fill={item.color}
+            fillOpacity={item.opacity ?? 0.68}
+            stroke="none"
+          />))}
         </g>
         <g className="scientific-chart-axes" aria-hidden="true">
           <line x1={chartMargin.left} y1={chartMargin.top} x2={chartMargin.left} y2={dimensions.height - chartMargin.bottom} stroke="#607d8b" strokeWidth={1.25} />

@@ -178,6 +178,19 @@ describe("constrained Dunn regression datasets", () => {
         expect(contribution.capacitivePercent).toBeGreaterThanOrEqual(0);
         expect(contribution.capacitivePercent).toBeLessThanOrEqual(100);
         expect(contribution.capacitivePercent + contribution.diffusionPercent).toBeCloseTo(100, 10);
+        expect(contribution.diagnostics.maximumPositiveOvershoot).toBe(0);
+        expect(contribution.diagnostics.maximumNegativeOvershoot).toBe(0);
+        expect(contribution.diagnostics.maximumAbsoluteOvershoot).toBe(0);
+        for (const record of contribution.plotPath) {
+          if (record.originalCurrent >= 0) {
+            expect(record.capacitiveCurrent).toBeGreaterThanOrEqual(0);
+            expect(record.capacitiveCurrent).toBeLessThanOrEqual(record.originalCurrent);
+          } else {
+            expect(record.capacitiveCurrent).toBeGreaterThanOrEqual(record.originalCurrent);
+            expect(record.capacitiveCurrent).toBeLessThanOrEqual(0);
+          }
+          expect(record.diffusionCurrent + record.capacitiveCurrent).toBeCloseTo(record.originalCurrent, 12);
+        }
       }
     }
   });

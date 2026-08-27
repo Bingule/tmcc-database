@@ -76,7 +76,7 @@ function classifyRecords<T extends { rSquared: number }>(
   threshold: number
 ): Array<CvFitRecord<T>> {
   return records.map((record) => {
-    if (!record.fit) return record;
+    if (!record.fit || record.status !== "valid") return record;
     return {
       ...record,
       status: threshold === 0 || record.fit.rSquared >= threshold

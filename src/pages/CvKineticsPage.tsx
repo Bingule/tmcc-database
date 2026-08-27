@@ -1,16 +1,18 @@
-import { useId, useMemo, useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { Breadcrumbs } from "../components/Breadcrumbs";
+import { BValueOverviewChart } from "../components/BValueOverviewChart";
 import {
   CvImportPanel,
   type CvImportDraft,
   type CvUiError
 } from "../components/CvImportPanel";
 import { ScientificStackedBarChart } from "../components/ScientificStackedBarChart";
-import { ScientificLineChart, type ChartAreaPoint, type ChartAreaSeries, type ChartSeries } from "../components/ScientificLineChart";
+import { ScientificLineChart, type ChartAreaPoint, type ChartAreaSeries, type ChartPolygonSeries, type ChartSeries } from "../components/ScientificLineChart";
 import { useI18n } from "../i18n/I18nProvider";
 import { parseScanRateList, type CvDataLayout, type CvHeaderMode } from "../lib/cvImport";
 import { confirmCvSeries, CvParseError, parseCvFile, parseDelimitedCv, type ParsedCvTable } from "../lib/cvParsing";
 import { localCapacitiveFraction, rSquaredConfidence } from "../lib/cvDunnConfidence";
+import { formatSelectedPotential, isSelectableBRecord, selectRepresentativeBRecord, snapBRecordToPotential } from "../lib/cvBValueSelection";
 import { analyzeCvWorkflow } from "../lib/cvWorkflow";
 import { CvAnalysisError, type BValuePoint, type CvAnalysisSettings, type CvFitRecord, type CvFitStatus, type CvSeries, type CvWorkflowResult, type DunnBranchFitRecord, type DunnContribution, type DunnFitStatus } from "../lib/cvTypes";
 import { downloadCsv, downloadPng, downloadSvg, rowsToCsv } from "../lib/toolExport";
@@ -62,9 +64,9 @@ export function CvKineticsPage() {
   const [selectedRate, setSelectedRate] = useState<number | undefined>();
   const [errorCode, setErrorCode] = useState<CvUiError | null>(null);
   const importVersion = useRef(0);
-  const bResultRecords = (analysis?.bRecords ?? []).filter(isResultOutputRecord);
+  const bResultRecords = analysis?.bRecords ?? [];
   const dunnResultRecords = flattenDunnRecords(analysis).filter(isDunnResultOutputRecord);
-  const validBResultRecords = bResultRecords.filter((record) => record.status === "valid" && record.fit);
+  const selectableBResultRecords = bResultRecords.filter(isSelectableBRecord);
   const contributions = analysis?.contributions ?? [];
   const canExportCsv = Boolean(analysis && analysisMetadata);
 
@@ -190,7 +192,7 @@ export function CvKineticsPage() {
       const result = analyzeCvWorkflow(series, analysisSettingsFromDraft(draft));
       const firstAvailableB = result.bRecords.find((record) => record.fit)?.fit;
       if (!firstAvailableB) throw new PageAnalysisError("noBFit");
-      const firstValidB = result.bRecords.find((record) => record.status === "valid" && record.fit);
+      const firstValidB = selectRepresentativeBRecord(result.bRecords);
       setAnalysis(result);
       setAnalysisMetadata({
         layout: table.layout,
@@ -199,7 +201,7 @@ export function CvKineticsPage() {
         orderedScanRates: [...parsedRates]
       });
       setSelectedBSequenceIndex(firstValidB?.sequenceIndex);
-      setPotentialInput(firstValidB ? String(firstValidB.potential) : "");
+      setPotentialInput(firstValidB ? formatSelectedPotential(firstValidB.potential) : "");
       setSelectedRate([...result.analysisGrid.scanRates].sort((left, right) => left - right)[0]);
     } catch (error) {
       if (error instanceof CvParseError) setErrorCode(error.code);
@@ -213,12 +215,10 @@ export function CvKineticsPage() {
     }
   }
 
-  const selectedBRecord = validBResultRecords.find((record) => record.sequenceIndex === selectedBSequenceIndex);
+  const selectedBRecord = bResultRecords.find((record) => record.sequenceIndex === selectedBSequenceIndex);
   const selectedB = selectedBRecord?.fit ?? undefined;
-  const selectedPotential = selectedBRecord?.potential;
-  const requestedPotential = potentialInput.trim() === "" ? Number.NaN : Number(potentialInput);
   const selectedContribution = contributions.find((item) => item.scanRate === selectedRate);
-  const selectedDunnPotential = Number.isFinite(requestedPotential) ? requestedPotential : undefined;
+  const selectedDunnPotential = selectedBRecord?.potential;
   const selectedSeriesIndex = analysis?.analysisGrid.scanRates.findIndex((rate) => rate === selectedRate) ?? -1;
   const selectedRawSeries = analysis?.series.find((item) => item.scanRate === selectedRate);
   const selectedCycle = selectedSeriesIndex >= 0 ? analysis?.alignedGrid.cycles[selectedSeriesIndex] : undefined;
@@ -228,29 +228,13 @@ export function CvKineticsPage() {
   const sortedContributions = [...contributions].sort((left, right) => left.scanRate - right.scanRate);
   const sortedDunnRates = [...(analysis?.analysisGrid.scanRates ?? [])].sort((left, right) => left - right);
   const dunnCoverage = analysis ? makeDunnCoverage(analysis) : undefined;
-  const selectedBRecordIndex = validBResultRecords.findIndex((record) => record.sequenceIndex === selectedBSequenceIndex);
-  const bChart = useMemo<ChartSeries[]>(() => {
-    if (!analysis) return [];
-    const bRecordBySequence = new Map(analysis.bRecords.map((record) => [record.sequenceIndex, record]));
-    return [{
-      id: "b-values", label: t("cv.b.value"), color: "#16697a",
-      points: analysis.analysisGrid.potentials.map((potential, sequenceIndex) => {
-        const record = bRecordBySequence.get(sequenceIndex);
-        return {
-          id: String(sequenceIndex),
-          x: potential,
-          y: record?.status === "valid" && record.fit ? record.fit.b : null,
-          accessibilityLabel: `${t("cv.b.value")}: ${t("cv.table.potential")} ${serializeScientificNumber(potential)} V, ${t("cv.table.branchValue", { branch: (record?.branchIndex ?? 0) + 1 })}`
-        };
-      })
-    }];
-  }, [analysis, t]);
+  const selectedBRecordIndex = selectableBResultRecords.findIndex((record) => record.sequenceIndex === selectedBSequenceIndex);
   const fitChart = sampleChartSeries(makeFitChart(selectedB, t("cv.b.fitData")));
-  const dunnChart = sampleChartSeries(makeDunnChart(selectedOriginalSeries, selectedContribution, t));
-  const dunnAreas = sampleChartAreas(makeDunnAreas(analysis, selectedRate, selectedSeriesIndex, t));
-  const sampledBChart = useMemo(() => sampleChartSeries(bChart), [bChart]);
-  const bGapRunCount = useMemo(() => countNullRuns(bChart[0]?.points ?? []), [bChart]);
+  const sampledDunnPath = sampleDunnPlotPath(selectedContribution?.plotPath ?? [], MAX_CHART_POINTS);
+  const dunnChart = makeDunnChart(selectedOriginalSeries, selectedContribution, sampledDunnPath, t);
+  const dunnPolygons = makeDunnPolygons(sampledDunnPath, t);
   const missingBFitCount = analysis?.summary.unavailableBCount ?? 0;
+  const bGapRunCount = countBInvalidRuns(analysis?.bRecords ?? []);
   const resultMetadata = analysis ? analysisMetadata : null;
   const chartMetadata = analysis && resultMetadata
     ? [
@@ -281,46 +265,59 @@ export function CvKineticsPage() {
     ]
     : chartMetadata;
   const figureAvailability = {
-    "cv-b-chart": hasChartPoints(sampledBChart),
+    "cv-b-chart": Boolean(analysis?.bRecords.some((record) => record.fit)),
     "cv-fit-chart": hasChartPoints(fitChart),
     "cv-dunn-chart": hasChartPoints(dunnChart),
     "cv-contribution-chart": sortedContributions.length > 0
   } as const;
 
-  function choosePotential(potential: number) {
-    const record = validBResultRecords.find((item) => item.potential === potential);
-    setSelectedBSequenceIndex(record?.sequenceIndex);
-    setPotentialInput(record ? String(record.potential) : String(potential));
-  }
-
   function chooseBSequenceIndex(pointId: string) {
-    const record = validBResultRecords.find((item) => String(item.sequenceIndex) === pointId);
+    const record = bResultRecords.find((item) => String(item.sequenceIndex) === pointId && item.fit);
     if (!record) return;
     setSelectedBSequenceIndex(record.sequenceIndex);
-    setPotentialInput(String(record.potential));
+    setPotentialInput(formatSelectedPotential(record.potential));
   }
 
   function handlePotentialInput(value: string) {
     setPotentialInput(value);
     const potential = value.trim() === "" ? Number.NaN : Number(value);
-    const record = Number.isFinite(potential)
-      ? validBResultRecords.find((item) => item.potential === potential)
+    const branchIndex = selectedBRecord?.branchIndex ?? 0;
+    const exactRecord = Number.isFinite(potential)
+      ? bResultRecords.find((record) => record.branchIndex === branchIndex && record.potential === potential)
       : undefined;
-    setSelectedBSequenceIndex(record?.sequenceIndex);
+    if (exactRecord) setSelectedBSequenceIndex(exactRecord.sequenceIndex);
+  }
+
+  function commitPotentialInput() {
+    const potential = potentialInput.trim() === "" ? Number.NaN : Number(potentialInput);
+    const branchIndex = selectedBRecord?.branchIndex ?? 0;
+    const record = snapBRecordToPotential(bResultRecords, branchIndex, potential);
+    if (!record) return;
+    setSelectedBSequenceIndex(record.sequenceIndex);
+    setPotentialInput(formatSelectedPotential(record.potential));
+  }
+
+  function chooseBBranch(branchIndex: number) {
+    const requested = selectedBRecord?.potential ?? Number(potentialInput);
+    const record = snapBRecordToPotential(bResultRecords, branchIndex, requested)
+      ?? selectableBResultRecords.find((item) => item.branchIndex === branchIndex);
+    if (!record) return;
+    setSelectedBSequenceIndex(record.sequenceIndex);
+    setPotentialInput(formatSelectedPotential(record.potential));
   }
 
   function movePotential(offset: -1 | 1) {
     if (!analysis || selectedBRecordIndex < 0) return;
-    const record = validBResultRecords[selectedBRecordIndex + offset];
+    const record = selectableBResultRecords[selectedBRecordIndex + offset];
     if (!record) return;
     setSelectedBSequenceIndex(record.sequenceIndex);
-    setPotentialInput(String(record.potential));
+    setPotentialInput(formatSelectedPotential(record.potential));
   }
 
   return (
     <section className="tools-page cv-page">
       <Breadcrumbs current={t("cv.title")} />
-      <header className="tool-page-header">
+      <header className="tool-page-header cv-page-header">
         <h1>{t("cv.title")}</h1>
         <h2 className="cv-intro-subtitle">{t("cv.intro.advancedTitle")}</h2>
         <p className="cv-intro-description">{t("cv.intro.description")}</p>
@@ -348,37 +345,74 @@ export function CvKineticsPage() {
 
       <section className="tool-section cv-b-analysis">
         <h2>{t("cv.b.title")}</h2><p>{t("cv.b.help")}</p>
-        <label htmlFor="cv-selected-potential">{t("cv.results.potential")} (V)</label>
-        <input
-          id="cv-selected-potential"
-          name="selectedPotential"
-          type="number"
-          step="any"
-          inputMode="decimal"
-          aria-label={t("cv.aria.selectedPotential")}
-          aria-invalid={potentialInput !== "" && selectedPotential === undefined}
-          value={potentialInput}
-          onChange={(event) => handlePotentialInput(event.target.value)}
-        />
-        <button type="button" disabled={selectedBRecordIndex <= 0} onClick={() => movePotential(-1)}>{t("cv.results.previousPotential")}</button>
-        <button type="button" disabled={!analysis || selectedBRecordIndex < 0 || selectedBRecordIndex >= validBResultRecords.length - 1} onClick={() => movePotential(1)}>{t("cv.results.nextPotential")}</button>
+        <div className="cv-b-selection-controls">
+          <label htmlFor="cv-selected-branch">{t("cv.table.sweepBranch")}</label>
+          <select id="cv-selected-branch" name="selectedBBranch" value={selectedBRecord?.branchIndex ?? 0} onChange={(event) => chooseBBranch(Number(event.target.value))}>
+            <option value={0}>{t("cv.b.forwardSweep")}</option>
+            <option value={1}>{t("cv.b.reverseSweep")}</option>
+          </select>
+          <label htmlFor="cv-selected-potential">{t("cv.results.potential")} (V)</label>
+          <input
+            id="cv-selected-potential"
+            name="selectedPotential"
+            type="number"
+            step="any"
+            inputMode="decimal"
+            aria-label={t("cv.aria.selectedPotential")}
+            value={potentialInput}
+            onChange={(event) => handlePotentialInput(event.target.value)}
+            onBlur={commitPotentialInput}
+            onKeyDown={(event) => { if (event.key === "Enter") commitPotentialInput(); }}
+          />
+          <button type="button" disabled={selectedBRecordIndex <= 0} onClick={() => movePotential(-1)}>{t("cv.results.previousPotential")}</button>
+          <button type="button" disabled={!analysis || selectedBRecordIndex < 0 || selectedBRecordIndex >= selectableBResultRecords.length - 1} onClick={() => movePotential(1)}>{t("cv.results.nextPotential")}</button>
+        </div>
         <p>{t("cv.results.potentialHelp")}</p>
-        {potentialInput !== "" && selectedPotential === undefined && <p role="status">{t("cv.results.potentialUnavailable")}</p>}
         {analysis && missingBFitCount > 0 && <p role="status">{t("cv.b.missingFits", { count: missingBFitCount, total: analysis.analysisGrid.potentials.length })}</p>}
         {bGapRunCount > MAX_CHART_GAP_RUNS && <p role="status">{t("cv.chart.tooManyGaps")}</p>}
-        <ScientificLineChart title={t("cv.b.chart")} xLabel={`${t("cv.table.potential")} (V)`} yLabel={t("cv.b.value")}
-          emptyLabel={t("cv.chart.empty")} legendLabel={t("cv.chart.legend")} series={sampledBChart}
-          selectedPointId={selectedBSequenceIndex === undefined ? undefined : String(selectedBSequenceIndex)} onSelectPointId={chooseBSequenceIndex}
-          exportId="cv-b-chart" metadata={chartMetadata} />
+        <div className="cv-b-dashboard-grid">
+          <article className="cv-analysis-card cv-b-overview-card">
+            <h3>{t("cv.b.overviewTitle")}</h3>
+            <BValueOverviewChart
+              records={analysis?.bRecords ?? []}
+              selectedSequenceIndex={selectedBSequenceIndex}
+              onSelectSequenceIndex={(sequenceIndex) => chooseBSequenceIndex(String(sequenceIndex))}
+              title={t("cv.b.chart")}
+              xLabel={`${t("cv.table.potential")} (V)`}
+              yLabel={t("cv.b.value")}
+              legendLabel={t("cv.chart.legend")}
+              forwardLabel={t("cv.b.forwardSweep")}
+              reverseLabel={t("cv.b.reverseSweep")}
+              validLabel={t("cv.b.quality.conventional")}
+              outsideLabel={t("cv.b.quality.outside")}
+              excludedLabel={t("cv.b.quality.excluded")}
+              unstableLabel={t("cv.b.quality.unstable")}
+              diffusionLabel={t("cv.b.interpretation.diffusion")}
+              capacitiveLabel={t("cv.b.interpretation.capacitive")}
+              exportId="cv-b-chart"
+              metadata={chartMetadata}
+            />
+            <p className="cv-b-interpretation">{t("cv.b.interpretation.help")}</p>
+          </article>
+          <article className="cv-analysis-card cv-b-fit-card">
+            <h3>{t("cv.b.fitChart")}</h3>
+            <ScientificLineChart title={t("cv.b.fitChart")} xLabel={t("cv.b.logRate")} yLabel={t("cv.b.logCurrent")}
+              emptyLabel={t("cv.results.noFit")} legendLabel={t("cv.chart.legend")} series={fitChart} exportId="cv-fit-chart" metadata={fitChartMetadata} />
+            {selectedBRecord?.fit && <dl className="cv-b-fit-metrics" data-selected-fit-status="true">
+              <dt>{t("cv.results.potential")}</dt><dd>{formatSelectedPotential(selectedBRecord.potential)} V</dd>
+              <dt>{t("cv.table.sweepBranch")}</dt><dd>{selectedBRecord.branchIndex === 0 ? t("cv.b.forwardSweep") : t("cv.b.reverseSweep")}</dd>
+              <dt>{t("cv.b.value")}</dt><dd>{format(selectedBRecord.fit.b)}</dd>
+              <dt>{t("cv.b.intercept")}</dt><dd>{format(selectedBRecord.fit.intercept)}</dd>
+              <dt>{t("cv.results.rSquared")}</dt><dd>{format(selectedBRecord.fit.rSquared)}</dd>
+              <dt>{t("cv.results.points")}</dt><dd>{selectedBRecord.fit.pointCount}</dd>
+              <dt>{t("cv.results.fitStatus")}</dt><dd>{fitStatusLabel(selectedBRecord.status, t)}</dd>
+            </dl>}
+            {selectedBRecord?.fit && (selectedBRecord.fit.b < 0.5 || selectedBRecord.fit.b > 1) && <p className="cv-b-range-note" role="status">{t("cv.b.outsideRangeNote")}</p>}
+          </article>
+        </div>
+        <h3>{t("cv.b.resultsTable")}</h3>
         <DataTable tableId="cv-b-records-table" headers={[`${t("cv.table.potential")} (V)`, t("cv.table.sweepBranch"), t("cv.b.value"), t("cv.b.intercept"), t("cv.results.rSquared"), t("cv.table.pointCount"), t("cv.results.fitStatus")]}
           rows={bResultRecords.map((record) => bRecordRow(record, t))} />
-        <ScientificLineChart title={t("cv.b.fitChart")} xLabel={t("cv.b.logRate")} yLabel={t("cv.b.logCurrent")}
-          emptyLabel={t("cv.results.noFit")} legendLabel={t("cv.chart.legend")} series={fitChart} exportId="cv-fit-chart" metadata={fitChartMetadata} />
-        {selectedBRecord && <p data-selected-fit-status="true">{t("cv.results.selectedFit", {
-          status: fitStatusLabel(selectedBRecord.status, t),
-          rSquared: selectedBRecord.fit ? format(selectedBRecord.fit.rSquared) : "—",
-          points: selectedBRecord.fit ? selectedBRecord.fit.pointCount : "—"
-        })}</p>}
         <DataTable tableId="cv-selected-b-record-table" headers={[t("cv.results.potential"), t("cv.table.sweepBranch"), t("cv.b.value"), t("cv.b.intercept"), t("cv.results.rSquared"), t("cv.results.points"), t("cv.results.fitStatus")]}
           rows={selectedBRecord ? [bRecordRow(selectedBRecord, t)] : []} />
       </section>
@@ -397,7 +431,7 @@ export function CvKineticsPage() {
           <p className="cv-dunn-coverage-help">{t("cv.dunn.coverageHelp")}</p>
         </>}
         <ScientificLineChart title={t("cv.dunn.chart")} xLabel={`${t("cv.table.potential")} (V)`} yLabel={t("cv.table.currentArbitrary")}
-          emptyLabel={t("cv.chart.empty")} legendLabel={t("cv.chart.legend")} series={dunnChart} areas={dunnAreas} selectedX={selectedDunnPotential} exportId="cv-dunn-chart" metadata={dunnChartMetadata} />
+          emptyLabel={t("cv.chart.empty")} legendLabel={t("cv.chart.legend")} series={dunnChart} polygons={dunnPolygons} selectedX={selectedDunnPotential} exportId="cv-dunn-chart" metadata={dunnChartMetadata} />
         <DataTable tableId="cv-original-current-table" headers={[`${t("cv.table.potential")} (V)`, t("cv.dunn.originalMeasured")]}
           rows={(selectedOriginalSeries?.points ?? []).map((point) => [point.potential, point.current])} />
         <DataTable tableId="cv-dunn-current-table" headers={[`${t("cv.table.potential")} (V)`, t("cv.dunn.interpolatedInput"), t("cv.dunn.reconstructedTotalUnits"), t("cv.dunn.capacitive") + " (arb. units)", t("cv.dunn.diffusion") + " (arb. units)"]}
@@ -586,17 +620,13 @@ function QualitySummary({ analysis, metadata }: { analysis: AnalysisState; metad
 function bRecordRow(record: CvWorkflowResult["bRecords"][number], t: ReturnType<typeof useI18n>["t"]): Array<string | number | null> {
   return [
     record.potential,
-    t("cv.table.branchValue", { branch: record.branchIndex + 1 }),
+    record.branchIndex === 0 ? t("cv.b.forwardSweep") : t("cv.b.reverseSweep"),
     record.fit?.b ?? null,
     record.fit?.intercept ?? null,
     record.fit?.rSquared ?? null,
     record.fit?.pointCount ?? null,
     fitStatusLabel(record.status, t)
   ];
-}
-
-function isResultOutputRecord<T>(record: CvFitRecord<T>) {
-  return record.status !== "belowRSquaredThreshold";
 }
 
 function isDunnResultOutputRecord(record: DunnBranchFitRecord) {
@@ -621,6 +651,7 @@ function fitStatusLabel(status: CvFitStatus | DunnFitStatus, t: ReturnType<typeo
     belowRSquaredThreshold: "cv.status.belowRSquaredThreshold",
     insufficientData: "cv.status.insufficientData",
     zeroCurrentLogUnavailable: "cv.status.zeroCurrentLogUnavailable",
+    nearZeroCurrentUnstable: "cv.status.nearZeroCurrentUnstable",
     regressionFailed: "cv.status.regressionFailed",
     trimmed: "cv.status.trimmed"
   } as const;
@@ -693,14 +724,17 @@ function makeFitChart(point: BValuePoint | undefined, measuredLabel: string): Ch
 function makeDunnChart(
   original: CvSeries | undefined,
   contribution: DunnContribution | undefined,
+  plotPath: DunnContribution["plotPath"],
   t: ReturnType<typeof useI18n>["t"]
 ): ChartSeries[] {
-  if (!original) return [];
+  if (!original && !contribution) return [];
   const series: ChartSeries[] = [{
     id: "original",
     label: t("cv.dunn.originalCurve"),
     color: "#16697a",
-    points: original.points.map((point) => ({ x: point.potential, y: point.current }))
+    points: contribution
+      ? plotPath.map((point) => ({ x: point.potential, y: point.originalCurrent }))
+      : original!.points.map((point) => ({ x: point.potential, y: point.current }))
   }];
   if (!contribution) return series;
 
@@ -709,14 +743,14 @@ function makeDunnChart(
     label: `${t("cv.dunn.capacitive")} ${t("cv.table.branchValue", { branch: 1 })}`,
     color: "#7656a8",
     dash: "4 3",
-    points: makeBranchBoundaryPoints(contribution.plotPath, "forward")
+    points: makeBranchBoundaryPoints(plotPath, "forward")
   });
   series.push({
     id: "capacitive-reverse",
     label: `${t("cv.dunn.capacitive")} ${t("cv.table.branchValue", { branch: 2 })}`,
     color: "#9a78cf",
     dash: "4 3",
-    points: makeBranchBoundaryPoints(contribution.plotPath, "reverse")
+    points: makeBranchBoundaryPoints(plotPath, "reverse")
   });
   return series;
 }
@@ -733,15 +767,68 @@ function makeBranchBoundaryPoints(
       insideRun = false;
       continue;
     }
-    if (!insideRun && index > 0) {
-      if (points.length > 0) points.push({ x: point.potential, y: null });
-      const sharedTurningPoint = plotPath[index - 1]!;
-      points.push({ x: sharedTurningPoint.potential, y: sharedTurningPoint.current });
-    }
-    points.push({ x: point.potential, y: point.current });
+    if (!insideRun && points.length > 0) points.push({ x: point.potential, y: null });
+    points.push({ x: point.potential, y: point.capacitiveCurrent });
     insideRun = true;
   }
   return points;
+}
+
+function makeDunnPolygons(
+  plotPath: DunnContribution["plotPath"],
+  t: ReturnType<typeof useI18n>["t"]
+): ChartPolygonSeries[] {
+  if (plotPath.length < 3) return [];
+  const branchRuns: DunnContribution["plotPath"][] = [];
+  for (const record of plotPath) {
+    const current = branchRuns.at(-1);
+    if (current?.[0]?.branch === record.branch) current.push(record);
+    else branchRuns.push([record]);
+  }
+  return [{
+    id: "capacitive-area",
+    label: t("cv.dunn.capacitive"),
+    color: "#7656a8",
+    opacity: 0.72,
+    polygons: [plotPath.map((record) => ({ x: record.potential, y: record.capacitiveCurrent }))]
+  }, {
+    id: "diffusion-area",
+    label: t("cv.dunn.diffusion"),
+    color: "#6fb7a7",
+    opacity: 0.72,
+    polygons: branchRuns.filter((run) => run.length >= 2).map((run) => [
+      ...run.map((record) => ({ x: record.potential, y: record.originalCurrent })),
+      ...[...run].reverse().map((record) => ({ x: record.potential, y: record.capacitiveCurrent }))
+    ])
+  }];
+}
+
+function sampleDunnPlotPath(
+  plotPath: DunnContribution["plotPath"],
+  limit: number
+): DunnContribution["plotPath"] {
+  if (plotPath.length <= limit) return plotPath;
+  const selected = new Set<number>([0, plotPath.length - 1]);
+  plotPath.forEach((record, index) => {
+    const previous = plotPath[index - 1];
+    const next = plotPath[index + 1];
+    if (record.synthetic
+      || previous?.branch !== record.branch
+      || next?.branch !== record.branch) selected.add(index);
+  });
+  const available = Math.max(0, limit - selected.size);
+  for (let bucket = 0; bucket < available; bucket += 1) {
+    const start = Math.floor(bucket * plotPath.length / available);
+    const end = Math.max(start + 1, Math.floor((bucket + 1) * plotPath.length / available));
+    let extremeIndex = start;
+    for (let index = start + 1; index < Math.min(plotPath.length, end); index += 1) {
+      const magnitude = Math.max(Math.abs(plotPath[index]!.originalCurrent), Math.abs(plotPath[index]!.capacitiveCurrent));
+      const extremeMagnitude = Math.max(Math.abs(plotPath[extremeIndex]!.originalCurrent), Math.abs(plotPath[extremeIndex]!.capacitiveCurrent));
+      if (magnitude > extremeMagnitude) extremeIndex = index;
+    }
+    selected.add(extremeIndex);
+  }
+  return [...selected].sort((left, right) => left - right).slice(0, MAX_CHART_OUTPUT_POINTS).map((index) => plotPath[index]!);
 }
 
 function makeDunnAreas(
@@ -973,7 +1060,7 @@ function exportCsv(
   }
   else if (filename === csvFiles[1]) csv = rowsToCsv(
     [potentialHeader, t("cv.table.sweepBranch"), t("cv.b.value"), t("cv.b.intercept"), t("cv.results.rSquared"), t("cv.table.pointCount"), t("cv.results.fitStatus"), ...metadataHeaders],
-    analysis.bRecords.filter(isResultOutputRecord).map((record) => [...bRecordRow(record, t), ...metadataValues])
+    analysis.bRecords.map((record) => [...bRecordRow(record, t), ...metadataValues])
   );
   else if (filename === csvFiles[2]) csv = rowsToCsv(
     [
@@ -1012,28 +1099,51 @@ function exportCsv(
   }
   else {
     const capacitive = filename === csvFiles[3];
-    const forwardHeaderKey = capacitive
-      ? "cv.export.capacitiveCurrentAtForward"
-      : "cv.export.diffusionCurrentAtForward";
-    const reverseHeaderKey = capacitive
-      ? "cv.export.capacitiveCurrentAtReverse"
-      : "cv.export.diffusionCurrentAtReverse";
-    const currentHeaders = sortedRates.flatMap((rate) => [
-      t("cv.export.gAt", { rate: serializeScientificNumber(rate) }),
-      t(forwardHeaderKey, { rate: serializeScientificNumber(rate) }),
-      t(reverseHeaderKey, { rate: serializeScientificNumber(rate) })
-    ]);
     csv = rowsToCsv(
-      [potentialHeader, ...withWideMetadata(currentHeaders, analysis, metadata, t)],
-      analysis.alignedGrid.potentials.map((potential, index) => [potential, ...sortedRates.map((rate) => {
+      [
+        scanRateHeader,
+        t("cv.export.sequenceIndex"),
+        t("cv.export.sourceIndex"),
+        t("cv.table.sweepBranch"),
+        potentialHeader,
+        t("cv.dunn.originalMeasured"),
+        "g(V)",
+        capacitive ? t("cv.dunn.capacitive") : t("cv.dunn.diffusion"),
+        t("cv.export.maximumAbsoluteOvershoot"),
+        ...metadataHeaders
+      ],
+      sortedRates.flatMap((rate) => {
         const item = contributionByRate.get(rate);
-        const forward = item ? (capacitive ? item.capacitiveForward : item.diffusionForward)[index] : null;
-        const reverse = item ? (capacitive ? item.capacitiveReverse : item.diffusionReverse)[index] : null;
-        return [item?.g[index] ?? null, forward, reverse];
-      }).flat()])
+        if (!item) return [];
+        return item.plotPath.map((record, sequenceIndex) => [
+          rate,
+          sequenceIndex,
+          record.sourceIndex,
+          record.branch === "forward" ? t("cv.b.forwardSweep") : t("cv.b.reverseSweep"),
+          record.potential,
+          record.originalCurrent,
+          record.g,
+          capacitive ? record.capacitiveCurrent : record.diffusionCurrent,
+          item.diagnostics.maximumAbsoluteOvershoot,
+          ...metadataValues
+        ]);
+      })
     );
   }
   downloadCsv(filename, csv);
+}
+
+function countBInvalidRuns(records: CvWorkflowResult["bRecords"]): number {
+  return [0, 1].reduce((total, branchIndex) => {
+    let inside = false;
+    let count = 0;
+    records.filter((record) => record.branchIndex === branchIndex).forEach((record) => {
+      const invalid = record.status !== "valid" || record.fit === null;
+      if (invalid && !inside) count += 1;
+      inside = invalid;
+    });
+    return total + count;
+  }, 0);
 }
 
 function exportMetadataHeaders(t: ReturnType<typeof useI18n>["t"]) {
