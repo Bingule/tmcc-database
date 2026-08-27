@@ -261,6 +261,12 @@ export function CvKineticsPage() {
   const selectedOriginalSeries: CvSeries | undefined = selectedRawSeries && selectedCycle
     ? { ...selectedRawSeries, points: selectedCycle.originalPoints }
     : undefined;
+  const selectedDunnXDomain = selectedOriginalSeries
+    ? selectedOriginalSeries.points.reduce<[number, number]>(
+      ([minimum, maximum], point) => [Math.min(minimum, point.potential), Math.max(maximum, point.potential)],
+      [Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]
+    )
+    : undefined;
   const sortedContributions = [...contributions].sort((left, right) => left.scanRate - right.scanRate);
   const sortedDunnRates = [...(analysis?.analysisGrid.scanRates ?? [])].sort((left, right) => left - right);
   const dunnCoverage = analysis ? makeDunnCoverage(analysis) : undefined;
@@ -562,7 +568,7 @@ export function CvKineticsPage() {
           {selectedContribution.diagnostics.gSmoothnessWarning && <><dt>{t("cv.results.fitStatus")}</dt><dd>{t("cv.dunn.smoothnessWarning")}</dd></>}
         </dl>}
         <ScientificLineChart title={t("cv.dunn.chart")} xLabel={`${t("cv.table.potential")} (V)`} yLabel={t("cv.table.currentArbitrary")}
-          emptyLabel={t("cv.chart.empty")} legendLabel={t("cv.chart.legend")} series={dunnChart} polygons={dunnPolygons} selectedX={selectedDunnPotential} exportId="cv-dunn-chart" metadata={dunnChartMetadata} />
+          emptyLabel={t("cv.chart.empty")} legendLabel={t("cv.chart.legend")} series={dunnChart} polygons={dunnPolygons} selectedX={selectedDunnPotential} xDomain={selectedDunnXDomain} exportId="cv-dunn-chart" metadata={dunnChartMetadata} />
         <DataTable tableId="cv-original-current-table" headers={[`${t("cv.table.potential")} (V)`, t("cv.dunn.originalMeasured")]}
           rows={(selectedOriginalSeries?.points ?? []).map((point) => [point.potential, point.current])} />
         <DataTable tableId="cv-dunn-current-table" headers={[`${t("cv.table.potential")} (V)`, t("cv.dunn.originalMeasured"), t("cv.dunn.reconstructedTotalUnits"), t("cv.dunn.capacitive") + " (arb. units)", t("cv.dunn.diffusion") + " (arb. units)"]}
@@ -1015,12 +1021,16 @@ function sampleDunnPlotPath(
 ): DunnContribution["plotPath"] {
   if (plotPath.length <= limit) return plotPath;
   const selected = new Set<number>([0, plotPath.length - 1]);
+  let runStart = 0;
+  for (let index = 1; index <= plotPath.length; index += 1) {
+    if (index === plotPath.length || plotPath[index]!.branch !== plotPath[runStart]!.branch) {
+      selected.add(runStart);
+      selected.add(index - 1);
+      runStart = index;
+    }
+  }
   plotPath.forEach((record, index) => {
-    const previous = plotPath[index - 1];
-    const next = plotPath[index + 1];
-    if (record.synthetic
-      || previous?.branch !== record.branch
-      || next?.branch !== record.branch) selected.add(index);
+    if (record.synthetic) selected.add(index);
   });
   const available = Math.max(0, limit - selected.size);
   for (let bucket = 0; bucket < available; bucket += 1) {

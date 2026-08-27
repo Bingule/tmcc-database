@@ -45,7 +45,7 @@ export interface ChartPolygonSeries {
   polygons: Array<Array<{ x: number; y: number }>>;
 }
 
-interface ScientificLineChartProps {
+export interface ScientificLineChartProps {
   title: string;
   xLabel: string;
   yLabel: string;
@@ -58,6 +58,7 @@ interface ScientificLineChartProps {
   onSelectX?: (x: number) => void;
   selectedPointId?: string;
   onSelectPointId?: (id: string) => void;
+  xDomain?: [number, number];
   exportId?: string;
   metadata?: string | string[];
 }
@@ -79,6 +80,7 @@ export function ScientificLineChart({
   onSelectX,
   selectedPointId,
   onSelectPointId,
+  xDomain,
   exportId,
   metadata
 }: ScientificLineChartProps): React.ReactElement {
@@ -109,7 +111,12 @@ export function ScientificLineChart({
     return <div className="scientific-chart-empty" role="status">{emptyLabel}</div>;
   }
 
-  const xDomain = expandedDomain(domainPoints, "x");
+  const resolvedXDomain = xDomain
+    && xDomain.length === 2
+    && xDomain.every(Number.isFinite)
+    && xDomain[0] < xDomain[1]
+    ? xDomain
+    : expandedDomain(domainPoints, "x");
   const yDomain = expandedDomain(domainPoints, "y");
   const legendColumns = calculateLegendColumns([
     ...finiteAreas.map((item) => item.label),
@@ -123,9 +130,9 @@ export function ScientificLineChart({
   const chartMargin = { ...margin, top: Math.max(margin.top, legendTop + legendRows * 22) };
   const plotWidth = dimensions.width - chartMargin.left - chartMargin.right;
   const plotHeight = dimensions.height - chartMargin.top - chartMargin.bottom;
-  const projectX = (value: number) => chartMargin.left + normalized(value, xDomain) * plotWidth;
+  const projectX = (value: number) => chartMargin.left + normalized(value, resolvedXDomain) * plotWidth;
   const projectY = (value: number) => dimensions.height - chartMargin.bottom - normalized(value, yDomain) * plotHeight;
-  const xTicks = ticks(xDomain);
+  const xTicks = ticks(resolvedXDomain);
   const yTicks = ticks(yDomain);
   const selectedPoint = selectedPointId !== undefined
     ? allPoints.find((point) => point.id === selectedPointId) ?? null
@@ -151,6 +158,7 @@ export function ScientificLineChart({
         viewBox={`0 0 ${dimensions.width} ${dimensions.height}`}
         width="100%"
         height="auto"
+        data-x-domain={resolvedXDomain.join(",")}
         data-export-id={exportId}
         className="scientific-chart-svg"
       >
@@ -250,7 +258,7 @@ export function ScientificLineChart({
           {xTicks.map((tick, index) => (
             <g key={`x-${index}`}>
               <line x1={projectX(tick)} y1={dimensions.height - chartMargin.bottom} x2={projectX(tick)} y2={dimensions.height - chartMargin.bottom + 6} stroke="#607d8b" strokeWidth={1.25} />
-              <text x={projectX(tick)} y={dimensions.height - chartMargin.bottom + 22} textAnchor="middle" fill="#455a64" fontSize={11}>{formatTick(tick)}</text>
+              <text x={projectX(tick)} y={dimensions.height - chartMargin.bottom + 22} textAnchor="middle" fill="#455a64" fontSize={11}>{formatEndpointTick(tick, resolvedXDomain)}</text>
             </g>
           ))}
           {yTicks.map((tick, index) => (
@@ -458,4 +466,12 @@ function formatTick(value: number): string {
   const magnitude = Math.abs(value);
   if (magnitude >= 10_000 || magnitude < 0.001) return value.toExponential(2);
   return Number(value.toPrecision(4)).toString();
+}
+
+function formatEndpointTick(value: number, [minimum, maximum]: [number, number]): string {
+  if (value === minimum || value === maximum) {
+    const nearestInteger = Math.round(value);
+    if (Math.abs(value - nearestInteger) <= 0.001 * (maximum - minimum)) return String(nearestInteger);
+  }
+  return formatTick(value);
 }

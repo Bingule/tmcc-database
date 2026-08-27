@@ -887,6 +887,41 @@ describe("CV kinetics page", () => {
     expect(chart.querySelector('[data-chart-legend="true"]')?.textContent).not.toContain("低于 R² 阈值／不可用");
   });
 
+  it("preserves raw loop endpoints in sampled Dunn paths", async () => {
+    const view = await renderPage();
+    const minimum = -0.9992;
+    const maximum = -0.000307;
+    const branchLength = Math.ceil((MAX_CHART_POINTS + 5) / 2);
+    const potentials = [
+      ...Array.from({ length: branchLength }, (_, index) => minimum + (maximum - minimum) * index / (branchLength - 1)),
+      ...Array.from({ length: branchLength - 1 }, (_, index) => maximum - (maximum - minimum) * (index + 1) / (branchLength - 1))
+    ];
+    const rawMaximum = potentials[branchLength - 1]!;
+    const contents = [
+      "Potential,Current 1 mV/s,Current 4 mV/s,Current 9 mV/s",
+      ...potentials.map((potential, index) => {
+        const current = index + 1;
+        return `${potential},${current},${4 * current},${9 * current}`;
+      })
+    ].join("\n");
+    await upload(view, contents);
+    await click(view, "Run analysis");
+
+    const chart = view.querySelector<SVGSVGElement>('[data-export-id="cv-dunn-chart"]')!;
+    expect(chart.getAttribute("data-x-domain")).toBe(`${minimum},${rawMaximum}`);
+    const projectPotential = (potential: number) => 72 + 704 * (potential - minimum) / (rawMaximum - minimum);
+    const expectPathEndpoints = (id: string, endpoints: number[]) => {
+      const path = chart.querySelector(`[data-series-id="${id}"]`)?.getAttribute("d") ?? "";
+      const xCoordinates = [...path.matchAll(/(?:M|L) ([^ ]+) /g)].map((match) => Number(match[1]));
+      for (const endpoint of endpoints) {
+        expect(xCoordinates.some((x) => Math.abs(x - projectPotential(endpoint)) < 1e-6)).toBe(true);
+      }
+    };
+    expectPathEndpoints("original", [minimum, rawMaximum]);
+    expectPathEndpoints("capacitive-forward", [minimum, rawMaximum]);
+    expectPathEndpoints("capacitive-reverse", [potentials[branchLength]!, minimum]);
+  });
+
   it("clears stale validation on edit and ignores an older import finishing last", async () => {
     const view = await renderPage();
     await upload(view, csv);
