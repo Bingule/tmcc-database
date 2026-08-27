@@ -303,6 +303,7 @@ export interface CvPeakCandidate {
   sourceIndex: number;
   potential: number;
   current: number;
+  branchSpan: number;
   prominence: number;
   normalizedProminence: number;
   confidence: number;
