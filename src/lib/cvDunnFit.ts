@@ -28,7 +28,16 @@ export function resolveTurningPointTrim(
   if (!Number.isFinite(trim) || !(trim < span / 2)) {
     throw new CvAnalysisError("invalidDataShape");
   }
-  return trim;
+  const deepestInteriorDistance = maximumInteriorTurningDistance(
+    grid.potentials,
+    grid.commonMinimum,
+    grid.commonMaximum
+  );
+  const tolerance = potentialTolerance(grid);
+  if (deepestInteriorDistance === null || trim + tolerance < deepestInteriorDistance) {
+    return trim;
+  }
+  return Math.max(0, deepestInteriorDistance - 2 * tolerance);
 }
 
 export function fitDunnBranches(
@@ -50,11 +59,7 @@ function fitBranch(
   currents: number[][],
   trim: number
 ): DunnBranchFitRecord[] {
-  const tolerance = Number.EPSILON * Math.max(
-    1,
-    Math.abs(grid.commonMinimum),
-    Math.abs(grid.commonMaximum)
-  ) * 16;
+  const tolerance = potentialTolerance(grid);
 
   return grid.potentials.map((potential, potentialIndex) => {
     const distanceFromTurningPoint = Math.min(
@@ -116,6 +121,31 @@ function validateTrimInputs(grid: CvAlignedBranchGrid, setting: TurningPointTrim
       throw new CvAnalysisError("invalidTurningPointTrim");
     }
   }
+}
+
+function maximumInteriorTurningDistance(
+  potentials: number[],
+  commonMinimum: number,
+  commonMaximum: number
+): number | null {
+  const distances = potentials
+    .filter((potential) => potential > commonMinimum && potential < commonMaximum)
+    .map((potential) => Math.min(
+      Math.abs(potential - commonMinimum),
+      Math.abs(commonMaximum - potential)
+    ));
+  return distances.length === 0 ? null : Math.max(...distances);
+}
+
+function potentialTolerance(grid: CvAlignedBranchGrid): number {
+  const span = grid.commonMaximum - grid.commonMinimum;
+  const scale = Math.max(
+    Math.abs(grid.commonMinimum),
+    Math.abs(grid.commonMaximum),
+    span
+  );
+  const scaledTolerance = Number.EPSILON * scale * 16;
+  return scaledTolerance > 0 ? scaledTolerance : Number.MIN_VALUE;
 }
 
 function validateGrid(grid: CvAlignedBranchGrid) {

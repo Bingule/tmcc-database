@@ -59,3 +59,46 @@ Result: exit 0 with no diagnostics.
 - Coarse grids naturally trim only points actually sampled inside the physical window, typically the turning point itself.
 - The change does not alter shared-g smoothing, confidence policy, workflow orchestration, or Task 3 fixtures.
 - No temporary logging or profiling file remains.
+
+## Review follow-up: numerical tolerance and sparse-grid evidence
+
+Review of the initial physical-trim change identified two record-level evidence-erasure cases. Both were reproduced with tests before production changes.
+
+### Red evidence
+
+The first new test fits a `[0, 5e-301, 1e-300]` potential grid and requires the middle record to remain valid. The second fits `[0, 0.001, 0.999, 1]` and requires the automatic trim to preserve at least one internal fit record.
+
+```powershell
+& 'C:\Users\ThinkPad\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe' .\node_modules\vitest\vitest.mjs run tests/cv-dunn-fit.test.ts -t "retains fit evidence|reduces auto trim" --reporter=verbose
+```
+
+Initial result:
+
+```text
+Tests  2 failed | 10 skipped (12)
+tiny-span middle record: expected valid, received trimmed
+sparse grid trim: expected below 0.001, received 0.005
+```
+
+### Numerical fix
+
+- Endpoint comparison tolerance now uses `16 * Number.EPSILON` times the actual maximum magnitude of the two endpoints and their span. The former artificial 1 V scale floor was removed. If multiplication underflows, `Number.MIN_VALUE` supplies the smallest representable positive tolerance.
+- The nominal automatic trim remains exactly `0.005 * span` whenever an internal sampled point lies outside that window.
+- If the nominal window plus its floating tolerance would cover every internal point, the trim is reduced to below the deepest internal turning-point distance. Returning zero is allowed as the final fallback because `fitBranch` then performs no trimming and cannot erase all evidence.
+
+The focused red tests then passed 2/2, and the full fit file passed 12/12.
+
+### Follow-up verification
+
+```powershell
+& 'C:\Users\ThinkPad\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe' .\node_modules\vitest\vitest.mjs run tests/cv-dunn-fit.test.ts tests/cv-cycle.test.ts tests/cv-workflow.test.ts --reporter=verbose
+```
+
+Result: 3 files and 53 tests passed. NCP and BP150 both-confidence-mode cases completed in 1.592 s and 1.733 s; their sparse-stabilization cases completed in 1.013 s and 0.781 s.
+
+Fresh 51/501 nonlinear-fixture profiling reported the same stable values:
+
+- maximum capacitive contribution difference: 0.182381805 percentage points
+- maximum fixed-potential g difference: 0.002511648
+
+`tsc --noEmit` exited 0 with no diagnostics. The temporary profile test was deleted, and the six uncommitted Task 3 files remained unstaged and unmodified by this follow-up.

@@ -68,6 +68,46 @@ describe("fitDunnBranches", () => {
     expect(fitDunnBranches(grid, { mode: "manual", millivolts: 0 }).forward[2])
       .toMatchObject({ fit: null, status: "insufficientData", trimmed: false });
   });
+
+  it("retains fit evidence when the positive potential span is extremely small", () => {
+    const span = 1e-300;
+    const potentials = [0, span / 2, span];
+    const scanRates = [1, 4, 9];
+    const currents = scanRates.map((v) =>
+      potentials.map(() => 2 * v + 3 * Math.sqrt(v)));
+    const result = fitDunnBranches(makeGrid({
+      potentials,
+      scanRates,
+      forwardCurrents: currents,
+      reverseCurrents: currents,
+      commonMinimum: 0,
+      commonMaximum: span,
+      nativePotentialInterval: span / 2,
+      resolvedPotentialInterval: span / 2
+    }), { mode: "auto" });
+
+    expect(result.forward[1]).toMatchObject({ trimmed: false, status: "valid" });
+    expect(result.reverse[1]).toMatchObject({ trimmed: false, status: "valid" });
+  });
+
+  it("reduces auto trim only when needed to retain sparse nonuniform interior evidence", () => {
+    const potentials = [0, 0.001, 0.999, 1];
+    const scanRates = [1, 4, 9];
+    const currents = scanRates.map((v) =>
+      potentials.map(() => 2 * v + 3 * Math.sqrt(v)));
+    const result = fitDunnBranches(makeGrid({
+      potentials,
+      scanRates,
+      forwardCurrents: currents,
+      reverseCurrents: currents,
+      nativePotentialInterval: 0.001,
+      resolvedPotentialInterval: 0.001
+    }), { mode: "auto" });
+
+    expect(result.resolvedTurningPointTrim).toBeLessThan(0.001);
+    expect(result.forward.some((record) => record.status === "valid")).toBe(true);
+    expect(result.reverse.some((record) => record.status === "valid")).toBe(true);
+  });
 });
 
 describe("resolveTurningPointTrim", () => {
