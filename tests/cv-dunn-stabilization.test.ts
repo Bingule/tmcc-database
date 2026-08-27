@@ -203,6 +203,112 @@ function medianRSquared(records: DunnBranchFitRecord[]): number {
 }
 
 describe("stabilizeDunnFractions", () => {
+  it("retains a single exact diagnostic-node anchor between trimmed endpoints", () => {
+    const makeSingleAnchorBranch = (branch: "forward" | "reverse"): DunnBranchFitRecord[] => [
+      { branch, potential: 0, fit: null, status: "trimmed", trimmed: true },
+      {
+        branch,
+        potential: 0.5,
+        fit: { potential: 0.5, k1: 0.4, k2: 0.6, rSquared: 0.99, pointCount: 3 },
+        status: "valid",
+        trimmed: false
+      },
+      { branch, potential: 1, fit: null, status: "trimmed", trimmed: true }
+    ];
+    const fits: DunnFitGrid = {
+      forward: makeSingleAnchorBranch("forward"),
+      reverse: makeSingleAnchorBranch("reverse"),
+      resolvedTurningPointTrim: 0.005
+    };
+    const threshold = makeDunnFractionGrid(fits, 1, "threshold", 0.95);
+
+    const result = stabilizeDunnFractions(fits, 1, "threshold", 0.95);
+
+    expect(result.fractions).toEqual(threshold);
+    expect(result.fractions.forward).toHaveLength(3);
+    expect(result.fractions.reverse).toHaveLength(3);
+    expect(result.fractions.forward[1]).toEqual(threshold.forward[1]);
+    expect(result.fractions.reverse[1]).toEqual(threshold.reverse[1]);
+    expect(result.diagnostics.rawFractionNoise).toBe(0);
+    expect(Number.isFinite(result.diagnostics.rawFractionNoise)).toBe(true);
+  });
+
+  it("extends a single native anchor that does not coincide with a diagnostic node", () => {
+    const anchorPotential = 0.123456789;
+    const makeBranch = (branch: "forward" | "reverse"): DunnBranchFitRecord[] => [
+      { branch, potential: 0, fit: null, status: "trimmed", trimmed: true },
+      {
+        branch,
+        potential: anchorPotential,
+        fit: {
+          potential: anchorPotential,
+          k1: 0.35,
+          k2: 0.65,
+          rSquared: 0.99,
+          pointCount: 3
+        },
+        status: "valid",
+        trimmed: false
+      },
+      { branch, potential: 1, fit: null, status: "trimmed", trimmed: true }
+    ];
+    const fits: DunnFitGrid = {
+      forward: makeBranch("forward"),
+      reverse: makeBranch("reverse"),
+      resolvedTurningPointTrim: 0.005
+    };
+    const threshold = makeDunnFractionGrid(fits, 1, "threshold", 0.95);
+
+    const result = stabilizeDunnFractions(fits, 1, "threshold", 0.95);
+
+    expect(result.fractions).toEqual(threshold);
+    expect(result.fractions.forward).toHaveLength(3);
+    expect(result.fractions.reverse).toHaveLength(3);
+    expect(result.diagnostics.rawFractionNoise).toBe(0);
+    expect(Number.isFinite(result.diagnostics.rawFractionNoise)).toBe(true);
+  });
+
+  it("resamples alternating sparse native evidence that misses every interior diagnostic node", () => {
+    const pointCount = 202;
+    const makeBranch = (branch: "forward" | "reverse"): DunnBranchFitRecord[] =>
+      Array.from({ length: pointCount }, (_value, index) => {
+        const potential = index / (pointCount - 1);
+        if (index === 0 || index === pointCount - 1) {
+          return { branch, potential, fit: null, status: "trimmed", trimmed: true };
+        }
+        if (index % 2 === 0) {
+          return { branch, potential, fit: null, status: "regressionFailed", trimmed: false };
+        }
+        const fraction = 0.3 + 0.4 * potential;
+        return {
+          branch,
+          potential,
+          fit: {
+            potential,
+            k1: fraction,
+            k2: 1 - fraction,
+            rSquared: 0.99,
+            pointCount: 3
+          },
+          status: "valid",
+          trimmed: false
+        };
+      });
+    const fits: DunnFitGrid = {
+      forward: makeBranch("forward"),
+      reverse: makeBranch("reverse"),
+      resolvedTurningPointTrim: 0.005
+    };
+
+    const result = stabilizeDunnFractions(fits, 1, "threshold", 0.95);
+
+    expect(result.fractions.forward).toHaveLength(pointCount);
+    expect(result.fractions.reverse).toHaveLength(pointCount);
+    expect(Number.isFinite(result.diagnostics.rawFractionNoise)).toBe(true);
+    expect(result.diagnostics.rawFractionNoise).toBeGreaterThanOrEqual(0);
+    expect(result.diagnostics.rawFractionNoise).toBeLessThanOrEqual(1);
+  });
+
   it.each([
     { coverage: 0.1, expectedBlend: 0.85 },
     { coverage: 0.3, expectedBlend: 0.425 },

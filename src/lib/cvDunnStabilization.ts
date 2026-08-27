@@ -125,7 +125,8 @@ function blendPoint(
 }
 
 function robustFractionNoise(fits: DunnFitGrid, weightedFractions: DunnFractionGrid): number {
-  const rawTrend = linearGapFill(diagnosticCombination(fits, weightedFractions));
+  const diagnostic = diagnosticCombination(fits, weightedFractions);
+  const rawTrend = linearGapFill(diagnostic);
   const smoothed = centeredRunningMedian(rawTrend, MEDIAN_WINDOW_RADIUS);
   const residuals = rawTrend.map((value, index) => value - smoothed[index]!);
   const medianResidual = median(residuals);
@@ -155,16 +156,32 @@ function resampleBranch(
   if (records.length !== points.length) throw new CvAnalysisError("reconstructionFailed");
   if (points.length === 0) return Array.from({ length: DIAGNOSTIC_NODE_COUNT }, () => null);
   const positions = normalizedPotentialPositions(records);
+  const evidence = positions.flatMap((position, index) => {
+    const point = evidenceAt(points[index]!);
+    return point === null ? [] : [{ position, ...point }];
+  });
+  if (evidence.length === 0) {
+    return Array.from({ length: DIAGNOSTIC_NODE_COUNT }, () => null);
+  }
+  if (evidence.length === 1) {
+    const [{ fraction, confidence }] = evidence;
+    return Array.from({ length: DIAGNOSTIC_NODE_COUNT }, () => ({ fraction, confidence }));
+  }
+
   return Array.from({ length: DIAGNOSTIC_NODE_COUNT }, (_value, nodeIndex) => {
     const position = nodeIndex / (DIAGNOSTIC_NODE_COUNT - 1);
-    const rightIndex = positions.findIndex((value) => value >= position);
-    const resolvedRight = rightIndex < 0 ? positions.length - 1 : rightIndex;
-    const leftIndex = Math.max(0, resolvedRight - 1);
-    const span = positions[resolvedRight]! - positions[leftIndex]!;
-    const blend = span === 0 ? 0 : (position - positions[leftIndex]!) / span;
-    const left = evidenceAt(points[leftIndex]!);
-    const right = evidenceAt(points[resolvedRight]!);
-    if (left === null || right === null) return null;
+    const first = evidence[0]!;
+    const last = evidence.at(-1)!;
+    if (position <= first.position) {
+      return { fraction: first.fraction, confidence: first.confidence };
+    }
+    if (position >= last.position) {
+      return { fraction: last.fraction, confidence: last.confidence };
+    }
+    const rightIndex = evidence.findIndex((point) => point.position >= position);
+    const left = evidence[rightIndex - 1]!;
+    const right = evidence[rightIndex]!;
+    const blend = (position - left.position) / (right.position - left.position);
     return {
       fraction: left.fraction + blend * (right.fraction - left.fraction),
       confidence: left.confidence + blend * (right.confidence - left.confidence)
