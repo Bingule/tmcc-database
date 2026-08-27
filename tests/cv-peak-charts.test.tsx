@@ -1,12 +1,16 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import { CvPeakOverviewChart } from "../src/components/CvPeakOverviewChart";
 import { CvPeakRegressionChart } from "../src/components/CvPeakRegressionChart";
 import { CvPeakAnalysisPanel, type CvPeakPanelCopy } from "../src/components/CvPeakAnalysisPanel";
 import { analyzePeakBValues } from "../src/lib/cvPeakAnalysis";
 import { normalizeAlignedCvCycles } from "../src/lib/cvCycle";
 import { makeThreePeakNcpLikeSeries } from "./fixtures/cvPeakData";
+
+const reactActEnvironment = globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean };
+const previousReactActEnvironment = Object.getOwnPropertyDescriptor(globalThis, "IS_REACT_ACT_ENVIRONMENT");
+reactActEnvironment.IS_REACT_ACT_ENVIRONMENT = true;
 
 const containers: HTMLDivElement[] = [];
 
@@ -54,6 +58,11 @@ const panelCopy: CvPeakPanelCopy = {
 
 afterEach(() => {
   containers.splice(0).forEach((container) => container.remove());
+});
+
+afterAll(() => {
+  if (previousReactActEnvironment) Object.defineProperty(globalThis, "IS_REACT_ACT_ENVIRONMENT", previousReactActEnvironment);
+  else Reflect.deleteProperty(reactActEnvironment, "IS_REACT_ACT_ENVIRONMENT");
 });
 
 describe("peak b-value charts", () => {
@@ -127,6 +136,73 @@ describe("peak b-value charts", () => {
     const peakActions = Array.from(container.querySelectorAll('[data-peak-control-row="peak-actions"] button'));
     expect(peakActions.map((button) => button.textContent)).toEqual([panelCopy.add, panelCopy.remove]);
     expect(peakActions.every((button) => button.classList.contains("secondary-button"))).toBe(true);
+
+    await act(async () => root.unmount());
+  });
+
+  it("keeps peak control callbacks and the add limit intact", async () => {
+    const series = makeThreePeakNcpLikeSeries();
+    const result = analyzePeakBValues(series, normalizeAlignedCvCycles(series), 0.95);
+    const onConfirm = vi.fn();
+    const onExclude = vi.fn();
+    const onRestore = vi.fn();
+    const onAddPeak = vi.fn();
+    const onRemovePeak = vi.fn();
+    const container = document.createElement("div");
+    document.body.append(container);
+    containers.push(container);
+    const root = createRoot(container);
+
+    await act(async () => root.render(<CvPeakAnalysisPanel
+      series={series}
+      result={result}
+      selectedPeakId="peak-1"
+      selectedSeriesIndex={0}
+      onPeakChange={() => undefined}
+      onSeriesChange={() => undefined}
+      onPotentialSelect={() => undefined}
+      onAdjustPotential={() => undefined}
+      onConfirm={onConfirm}
+      onExclude={onExclude}
+      onRestore={onRestore}
+      onAddPeak={onAddPeak}
+      onRemovePeak={onRemovePeak}
+      copy={panelCopy}
+    />));
+
+    const pointActions = Array.from(container.querySelectorAll<HTMLButtonElement>('[data-peak-control-row="point-actions"] button'));
+    const peakActions = Array.from(container.querySelectorAll<HTMLButtonElement>('[data-peak-control-row="peak-actions"] button'));
+    await act(async () => {
+      pointActions[0]!.click();
+      pointActions[1]!.click();
+      pointActions[2]!.click();
+      peakActions[0]!.click();
+      peakActions[1]!.click();
+    });
+
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+    expect(onExclude).toHaveBeenCalledTimes(1);
+    expect(onRestore).toHaveBeenCalledTimes(1);
+    expect(onAddPeak).toHaveBeenCalledTimes(1);
+    expect(onRemovePeak).toHaveBeenCalledTimes(1);
+
+    await act(async () => root.render(<CvPeakAnalysisPanel
+      series={series}
+      result={{ ...result, maximumPeakCount: result.fits.length as typeof result.maximumPeakCount }}
+      selectedPeakId="peak-1"
+      selectedSeriesIndex={0}
+      onPeakChange={() => undefined}
+      onSeriesChange={() => undefined}
+      onPotentialSelect={() => undefined}
+      onAdjustPotential={() => undefined}
+      onConfirm={onConfirm}
+      onExclude={onExclude}
+      onRestore={onRestore}
+      onAddPeak={onAddPeak}
+      onRemovePeak={onRemovePeak}
+      copy={panelCopy}
+    />));
+    expect(container.querySelector<HTMLButtonElement>('[data-peak-control-row="peak-actions"] button')?.disabled).toBe(true);
 
     await act(async () => root.unmount());
   });
