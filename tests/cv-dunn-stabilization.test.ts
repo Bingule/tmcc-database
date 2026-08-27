@@ -75,6 +75,118 @@ function makeDiagnosticFits(fractions: number[], rSquared: number, nonuniformPot
   };
 }
 
+function independentlyDeriveDiagnostics(fits: DunnFitGrid, scanRate: number, threshold: number) {
+  const forward = traceFromFits(fits.forward, scanRate);
+  const reverse = traceFromFits(fits.reverse, scanRate);
+  const rawTrend = bridgeGaps(forward.map((sample, index) => {
+    const counterpart = reverse[index]!;
+    const totalWeight = sample.weight + counterpart.weight;
+    return totalWeight > 0
+      ? (sample.value * sample.weight + counterpart.value * counterpart.weight) / totalWeight
+      : null;
+  }));
+  const baseline = rawTrend.map((_value, index) => middleValue(
+    rawTrend.slice(Math.max(0, index - 4), Math.min(rawTrend.length, index + 5))
+  ));
+  const residuals = rawTrend.map((value, index) => value - baseline[index]!);
+  const residualCenter = middleValue(residuals);
+  const mad = middleValue(residuals.map((value) => Math.abs(value - residualCenter)));
+  const rawIqr = quantile(rawTrend, 0.75) - quantile(rawTrend, 0.25);
+  const rawFractionNoise = Math.min(1, Math.max(0, 1.4826 * mad / Math.max(rawIqr, 0.10)));
+  const forwardCoverage = anchorShare(fits.forward, threshold);
+  const reverseCoverage = anchorShare(fits.reverse, threshold);
+  const effectiveCoverage = Math.sqrt(forwardCoverage * reverseCoverage);
+  const lowerMedianRSquared = Math.min(medianRSquared(fits.forward), medianRSquared(fits.reverse));
+  const coverageDeficiency = Math.min(1, Math.max(0, (0.50 - effectiveCoverage) / 0.50));
+  const rSquaredDeficiency = Math.min(1, Math.max(0, (0.95 - lowerMedianRSquared) / 0.45));
+  const smoothingMultiplier = Math.min(30, Math.max(1,
+    1 + 12 * coverageDeficiency ** 2 + 6 * rSquaredDeficiency ** 2 + 10 * rawFractionNoise ** 2
+  ));
+  return { rawFractionNoise, smoothingMultiplier };
+}
+
+function traceFromFits(records: DunnBranchFitRecord[], scanRate: number) {
+  const firstPotential = records[0]!.potential;
+  const potentialSpan = records.at(-1)!.potential - firstPotential;
+  const source = records.map((record) => {
+    const fit = record.fit;
+    const usable = !record.trimmed && fit !== null && record.status !== "insufficientData"
+      && record.status !== "zeroCurrentLogUnavailable" && record.status !== "regressionFailed";
+    if (!usable || !Number.isFinite(fit.rSquared)) return null;
+    const capacitive = Math.abs(fit.k1 * scanRate);
+    const diffusion = Math.abs(fit.k2 * Math.sqrt(scanRate));
+    const total = capacitive + diffusion;
+    if (!Number.isFinite(total) || total === 0) return null;
+    const rSquared = Math.min(1, Math.max(0, fit.rSquared));
+    return {
+      x: (record.potential - firstPotential) / potentialSpan,
+      value: Math.min(1, Math.max(0, capacitive / total)),
+      weight: 0.02 + 0.98 * rSquared * rSquared
+    };
+  });
+
+  return Array.from({ length: 101 }, (_value, index) => {
+    const x = index / 100;
+    const upper = source.findIndex((sample) => sample !== null && sample.x >= x);
+    const rightIndex = upper < 0 ? source.length - 1 : upper;
+    const leftIndex = Math.max(0, rightIndex - 1);
+    const left = source[leftIndex];
+    const right = source[rightIndex];
+    if (left === null || right === null) return { value: 0, weight: 0 };
+    const distance = right.x - left.x;
+    const portion = distance === 0 ? 0 : (x - left.x) / distance;
+    return {
+      value: left.value + portion * (right.value - left.value),
+      weight: left.weight + portion * (right.weight - left.weight)
+    };
+  });
+}
+
+function bridgeGaps(values: Array<number | null>): number[] {
+  const anchors = values.flatMap((value, index) => value === null ? [] : [index]);
+  if (anchors.length === 0) throw new Error("reference fixture has no evidence");
+  return values.map((value, index) => {
+    if (value !== null) return value;
+    const before = [...anchors].reverse().find((anchor) => anchor < index);
+    const after = anchors.find((anchor) => anchor > index);
+    if (before === undefined) return values[after]!;
+    if (after === undefined) return values[before]!;
+    return values[before]! + (index - before) * (values[after]! - values[before]!) / (after - before);
+  });
+}
+
+function middleValue(values: number[]): number {
+  const ordered = [...values].sort((left, right) => left - right);
+  const middle = Math.floor(ordered.length / 2);
+  return ordered.length % 2 === 0
+    ? (ordered[middle - 1]! + ordered[middle]!) / 2
+    : ordered[middle]!;
+}
+
+function quantile(values: number[], fraction: number): number {
+  const ordered = [...values].sort((left, right) => left - right);
+  const position = (ordered.length - 1) * fraction;
+  const lower = Math.floor(position);
+  const upper = Math.ceil(position);
+  return ordered[lower]! + (position - lower) * (ordered[upper]! - ordered[lower]!);
+}
+
+function anchorShare(records: DunnBranchFitRecord[], threshold: number): number {
+  const usable = records.filter((record) => record.fit !== null && !record.trimmed
+    && record.status !== "insufficientData" && record.status !== "zeroCurrentLogUnavailable"
+    && record.status !== "regressionFailed" && Number.isFinite(record.fit.rSquared));
+  return usable.length === 0 ? 0 : usable.filter((record) => record.fit!.rSquared >= threshold).length / usable.length;
+}
+
+function medianRSquared(records: DunnBranchFitRecord[]): number {
+  const values = records.flatMap((record) => record.fit !== null && !record.trimmed
+    && record.status !== "insufficientData" && record.status !== "zeroCurrentLogUnavailable"
+    && record.status !== "regressionFailed" && Number.isFinite(record.fit.rSquared)
+    ? [Math.min(1, Math.max(0, record.fit.rSquared))]
+    : []);
+  return values.length === 0 ? 0 : middleValue(values);
+}
+
 describe("stabilizeDunnFractions", () => {
   it.each([
     { coverage: 0.1, expectedBlend: 0.85 },
@@ -90,6 +202,20 @@ describe("stabilizeDunnFractions", () => {
 
     expect(result.diagnostics.effectiveAnchorCoverage).toBeCloseTo(coverage, 12);
     expect(result.diagnostics.confidenceBlend).toBeCloseTo(expectedBlend, 12);
+  });
+
+  it("uses geometric coverage when branch evidence is asymmetric", () => {
+    const result = stabilizeDunnFractions(
+      makeFits({ forwardTrusted: 0.09, reverseTrusted: 0.05 }),
+      10,
+      "threshold",
+      0.95
+    );
+
+    expect(result.diagnostics.forwardAnchorCoverage).toBeCloseTo(0.09, 12);
+    expect(result.diagnostics.reverseAnchorCoverage).toBeCloseTo(0.05, 12);
+    expect(result.diagnostics.effectiveAnchorCoverage).toBeCloseTo(Math.sqrt(0.09 * 0.05), 12);
+    expect(result.diagnostics.effectiveAnchorCoverage).toBeLessThan((0.09 + 0.05) / 2);
   });
 
   it("keeps weighted evidence unchanged", () => {
@@ -210,8 +336,12 @@ describe("stabilizeDunnFractions", () => {
 
   it("locks the 101-node robust noise and smoothing diagnostics", () => {
     const fractions = Array.from({ length: 101 }, (_value, index) => Math.floor(index / 2) % 2);
-    const result = stabilizeDunnFractions(makeDiagnosticFits(fractions, 0.99), 1, "weighted", 0.95);
+    const fits = makeDiagnosticFits(fractions, 0.99);
+    const expected = independentlyDeriveDiagnostics(fits, 1, 0.95);
+    const result = stabilizeDunnFractions(fits, 1, "weighted", 0.95);
 
+    expect(result.diagnostics.rawFractionNoise).toBeCloseTo(expected.rawFractionNoise, 12);
+    expect(result.diagnostics.smoothingMultiplier).toBeCloseTo(expected.smoothingMultiplier, 12);
     expect(result.diagnostics.rawFractionNoise).toBeCloseTo(0.6786747611115942, 12);
     expect(result.diagnostics.smoothingMultiplier).toBeCloseTo(5.605994313698795, 12);
   });
