@@ -360,6 +360,7 @@ export interface CvWorkflowResult {
   series: CvSeries[];
   alignedGrid: CvAlignedBranchGrid;
   analysisGrid: InterpolatedCvData;
+  peakAnalysis: CvPeakAnalysisResult;
   bRecords: Array<CvFitRecord<BValuePoint>>;
   dunnRecords: DunnFitGrid;
   contributions: DunnContribution[];

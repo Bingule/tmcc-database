@@ -5,6 +5,7 @@ import { reconstructDunnContribution } from "./cvDunnQuality";
 import { optimizeSharedFraction } from "./cvDunnReconstruction";
 import { stabilizeDunnFractions } from "./cvDunnStabilization";
 import { alignCvBranches, toSequentialGrid } from "./cvInterpolation";
+import { analyzePeakBValues } from "./cvPeakAnalysis";
 import {
   CvAnalysisError,
   type BValuePoint,
@@ -26,6 +27,7 @@ export function analyzeCvWorkflow(series: CvSeries[], settings: CvAnalysisSettin
     const alignedGrid = alignCvBranches(series, cycles, settings.potentialInterval);
     const analysisGrid = toSequentialGrid(alignedGrid);
     validateInterpolatedCvData(analysisGrid);
+    const peakAnalysis = analyzePeakBValues(series, cycles, settings.rSquaredThreshold);
     const bRecords = classifyRecords(attemptBValueFits(analysisGrid), settings.rSquaredThreshold);
     const dunnRecords = fitDunnBranches(alignedGrid, settings.turningPointTrim);
     const contributions = bRecords.some((record) => record.fit)
@@ -60,6 +62,7 @@ export function analyzeCvWorkflow(series: CvSeries[], settings: CvAnalysisSettin
       series: cloneSeries(series),
       alignedGrid,
       analysisGrid,
+      peakAnalysis,
       bRecords,
       dunnRecords,
       contributions,

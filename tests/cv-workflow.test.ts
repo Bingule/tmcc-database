@@ -11,6 +11,7 @@ import {
   makeSyntheticConstrainedDunnSeries,
   makeTurningPointRecoverySeries
 } from "./fixtures/cvRegressionData";
+import { makeThreePeakNcpLikeSeries } from "./fixtures/cvPeakData";
 
 function expectCvError(action: () => unknown, code: CvAnalysisError["code"]) {
   try {
@@ -74,6 +75,17 @@ const settings: CvAnalysisSettings = {
 };
 
 describe("analyzeCvWorkflow quality records", () => {
+  it("adds peak-resolved b-value fits without changing the existing potential-resolved outputs", () => {
+    const series = makeThreePeakNcpLikeSeries();
+    const result = analyzeCvWorkflow(series, settings);
+
+    expect(result.peakAnalysis.fits).toHaveLength(3);
+    expect(result.peakAnalysis.fits.every((fit) => fit.points.length === series.length)).toBe(true);
+    expect(result.bRecords.length).toBe(result.analysisGrid.potentials.length);
+    expect(result.dunnRecords.forward).toHaveLength(result.alignedGrid.potentials.length);
+    expect(result.dunnRecords.reverse).toHaveLength(result.alignedGrid.potentials.length);
+  });
+
   it("keeps b-value threshold filtering while retaining low-R2 Dunn fits", () => {
     const result = analyzeCvWorkflow(makeLowQualitySeries(), settings);
     expect(result.bRecords.some((record) => record.status === "belowRSquaredThreshold")).toBe(true);
