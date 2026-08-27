@@ -64,6 +64,30 @@ export function makeHighRateShoulderNcpSeries(): CvSeries[] {
   });
 }
 
+export function makeGuidedRecoveryEdgeSpikeSeries(): CvSeries[] {
+  const rates = [1, 2, 5, 10, 20];
+  const grid = Array.from({ length: 401 }, (_, index) => -1 + 2 * index / 400);
+  return rates.map((scanRate) => {
+    const baseline = 0.02 * Math.sqrt(scanRate);
+    const forward = grid.map((potential) => {
+      const broadPeak = scanRate === 20
+        ? 0
+        : Math.pow(scanRate, 0.7) * Math.exp(-Math.pow(potential / 0.06, 2));
+      const edgeSpike = scanRate === 20 && Math.abs(potential + 0.11) < 1e-12
+        ? 2.5 * Math.pow(scanRate, 0.7)
+        : 0;
+      return { potential, current: baseline + broadPeak + edgeSpike };
+    });
+    const reverse = grid.slice(0, -1).reverse()
+      .map((potential) => ({ potential, current: baseline }));
+    return {
+      label: `${scanRate} mV/s`,
+      scanRate,
+      points: [...forward, ...reverse]
+    };
+  });
+}
+
 export function makePartialPeakSeries(): CvSeries[] {
   return makePeakSeries([
     { branch: "forward", center: -0.3, width: 0.07, exponent: 0.75, amplitude: 1, shiftPerLogRate: 0.01 },

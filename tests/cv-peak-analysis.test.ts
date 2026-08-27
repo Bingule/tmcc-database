@@ -3,6 +3,7 @@ import { normalizeAlignedCvCycles } from "../src/lib/cvCycle";
 import { analyzePeakBValues, detectPeakCandidates, fitPeakGroups, matchPeakCandidates } from "../src/lib/cvPeakAnalysis";
 import type { CvBranchKind, CvPeakCandidate, CvSeries } from "../src/lib/cvTypes";
 import {
+  makeGuidedRecoveryEdgeSpikeSeries,
   makeHighRateShoulderNcpSeries,
   makeManyPeakSeries,
   makeOrderSensitiveRecoverablePeakSeries,
@@ -141,6 +142,19 @@ it("recovers the NCP-like 50 mV/s shoulder at its adjacent original local extrem
   expect(branchIndex).toBeLessThan(branch.length - 1);
   expect(candidate.current).toBeGreaterThan(branch[branchIndex - 1]!.current);
   expect(candidate.current).toBeGreaterThanOrEqual(branch[branchIndex + 1]!.current);
+});
+
+it("does not recover a lone spike at the edge of the guided smoothing window", () => {
+  const series = makeGuidedRecoveryEdgeSpikeSeries();
+  const cycles = normalizeAlignedCvCycles(series);
+  const strict = matchPeakCandidates(detectPeakCandidates(series, cycles), series.map((item) => item.scanRate));
+  expect(strict).toHaveLength(1);
+  expect(strict[0]!.candidates.size).toBe(4);
+
+  const result = analyzePeakBValues(series, cycles, 0);
+  expect(result.fits).toHaveLength(1);
+  expect(result.fits[0]!.coverageCount).toBe(4);
+  expect(result.fits[0]!.points.find((point) => point.scanRate === 20)!.candidate).toBeNull();
 });
 
 it("keeps recovered peak families invariant when scan-rate series are reordered", () => {

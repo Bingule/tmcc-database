@@ -278,6 +278,68 @@ Result: 44 files passed, 526 tests passed, including the real CSV/XLSX gate in 7
 
 Follow-up files changed: `src/lib/cvPeakAnalysis.ts`, `tests/cv-peak-analysis.test.ts`, `tests/fixtures/cvPeakData.ts`, and this report. Self-review confirmed no change to strict candidate detection, target-rate group matching, Dunn reconstruction/contributions, page behavior, overrides, localization, or deployment.
 
+## Guided-recovery boundary spike follow-up
+
+Root cause:
+
+- Guided recovery used a seven-point local quadratic smoother, whose radius is three samples.
+- `smoothLocalQuadratic` intentionally returns the raw value when an index lacks that full neighborhood, but guided extrema filtering excluded only the first and last samples.
+- A lone spike at filtered-window index 1 or 2 could therefore look like a "smoothed" extremum and have raw-versus-smoothed residual zero, allowing it to pass the guided noise gate.
+
+RED:
+
+- Added `makeGuidedRecoveryEdgeSpikeSeries`, a self-contained five-rate fixture with one broad oxidation family at four rates and only a single raw spike near the leading edge of the missing-rate prediction window.
+- The regression first proves strict coverage is four and then requires `analyzePeakBValues` to leave the missing 20 mV/s point null with coverage four.
+- Exact command:
+
+```text
+node.exe .\node_modules\vitest\vitest.mjs run tests/cv-peak-analysis.test.ts -t "does not recover a lone spike at the edge of the guided smoothing window" --reporter verbose
+```
+
+- Result before production change: 1 failed, 13 skipped. Strict coverage was four, but guided recovery produced coverage five (`expected 4`, `received 5`).
+
+GREEN implementation:
+
+- Guided recovery now derives the active smoothing radius from its smoothing window and considers extrema only where both sides contain the complete radius.
+- For the current seven-point window this excludes indices 0-2 and the symmetric final three indices; those raw passthrough values can no longer masquerade as smoothed evidence.
+- Original-extremum mapping, neighborhood prominence, residual checks, target-rate prediction, deterministic ordering, and same-branch `sourceIndex` preservation are unchanged.
+
+Targeted GREEN: 1 passed, 13 skipped.
+
+Required focused verification:
+
+```text
+node.exe .\node_modules\vitest\vitest.mjs run tests/cv-peak-analysis.test.ts tests/cv-workflow.test.ts tests/cv-page.test.tsx --reporter verbose
+```
+
+Result: 3 files passed, 96 tests passed. This includes the NCP high-rate shoulder `[5, 5, 5]`, rising-background and isolated-spike rejection, target-rate matching, reordered-series invariance, workflow, and page coverage.
+
+Real NCP gate:
+
+```text
+node.exe .\node_modules\vitest\vitest.mjs run .superpowers/sdd/real-ncp-final.test.ts --reporter verbose
+```
+
+Result: 1 passed. CSV and XLSX both retained `[5, 5, 5]` coverage and identical original-point peak potentials; raw/plot ranges matched, maximum overshoot was zero, and maximum envelope violation was zero.
+
+Type check:
+
+```text
+node.exe .\node_modules\typescript\bin\tsc --noEmit
+```
+
+Result: exit code 0, no diagnostics.
+
+Full suite:
+
+```text
+node.exe .\node_modules\vitest\vitest.mjs run
+```
+
+Result: 44 files passed, 527 tests passed. The only output noise was the previously documented React `act(...)` warning in `b-value-overview-chart.test.tsx`.
+
+Follow-up files changed: `src/lib/cvPeakAnalysis.ts`, `tests/cv-peak-analysis.test.ts`, `tests/fixtures/cvPeakData.ts`, and this report. Self-review confirmed no change to strict detection, broad-shoulder recovery criteria, peak grouping, Dunn behavior, UI, overrides, localization, homepage, or deployment.
+
 ## Remaining concerns
 
 No known correctness concern remains within the accepted fix scope. The only verification noise is the pre-existing React `act(...)` warning noted above.

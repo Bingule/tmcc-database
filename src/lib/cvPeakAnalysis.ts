@@ -175,9 +175,11 @@ function recoverLocalExtremum(
     .filter((point) => Math.abs(point.potential - predicted) <= halfWindow);
   if (points.length < 7) return null;
   const currents = points.map((point) => point.current);
-  const smoothed = smoothLocalQuadratic(currents, Math.min(7, largestOdd(points.length)));
+  const smoothingWindow = Math.min(7, largestOdd(points.length));
+  const smoothingRadius = Math.floor(smoothingWindow / 2);
+  const smoothed = smoothLocalQuadratic(currents, smoothingWindow);
   const extrema = smoothed.flatMap((value, index) => {
-    if (index === 0 || index === smoothed.length - 1) return [];
+    if (index < smoothingRadius || index + smoothingRadius >= smoothed.length) return [];
     const expectedDirection = kind === "oxidation"
       ? value > smoothed[index - 1]! && value >= smoothed[index + 1]!
       : value < smoothed[index - 1]! && value <= smoothed[index + 1]!;
