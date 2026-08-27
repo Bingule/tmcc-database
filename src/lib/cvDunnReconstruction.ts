@@ -3,7 +3,8 @@ import {
   type DunnFractionGrid,
   type DunnFractionPoint,
   type DunnRegularizationDiagnostics,
-  type DunnSharedFractionResult
+  type DunnSharedFractionResult,
+  type DunnSoftEnvelopeResult
 } from "./cvTypes";
 
 export type {
@@ -17,6 +18,19 @@ const BASE_LAMBDA_CANDIDATES = [
 const MAX_ITERATIONS = 50_000;
 const CANDIDATE_OPTIMALITY_TOLERANCE = 1e-5;
 const OPTIMALITY_TOLERANCE = 1e-6;
+const SOFT_ENVELOPE_FIDELITY_WEIGHT = 1;
+const SOFT_ENVELOPE_SMOOTHNESS_RATIO = 0.1;
+const SOFT_ENVELOPE_LAMBDA = 8;
+const SOFT_ENVELOPE_TOLERANCE_SCALE = 1e-10;
+const SOFT_ENVELOPE_MAXIMUM_ACTIVE_SET_ITERATIONS = 50;
+
+export interface DunnSoftEnvelopeInput {
+  baselineG: number[];
+  potentials: number[];
+  forwardCurrents: number[];
+  reverseCurrents: number[];
+  baselineLambda: number;
+}
 
 interface SecondDifferenceRow {
   indices: [number, number, number];
@@ -159,6 +173,99 @@ export function optimizeSharedFraction(
   };
 }
 
+export function envelopePenalty(
+  current: number,
+  lower: number,
+  upper: number,
+  tolerance: number
+): number {
+  if (![current, lower, upper, tolerance].every(Number.isFinite)
+    || lower > upper
+    || tolerance < 0) {
+    throw new CvAnalysisError("invalidDataShape");
+  }
+  const upperViolation = Math.max(0, current - upper - tolerance);
+  const lowerViolation = Math.max(0, lower - current - tolerance);
+  return upperViolation * upperViolation + lowerViolation * lowerViolation;
+}
+
+export function refineSharedFractionWithSoftEnvelope(
+  input: DunnSoftEnvelopeInput
+): DunnSoftEnvelopeResult {
+  const normalizedPotentials = validateSoftEnvelopeInput(input);
+  const operator = makeSecondDifferenceOperator(normalizedPotentials);
+  const currentScale = Math.max(
+    1,
+    ...input.forwardCurrents.map(Math.abs),
+    ...input.reverseCurrents.map(Math.abs)
+  );
+  const forward = input.forwardCurrents.map((current) => current / currentScale);
+  const reverse = input.reverseCurrents.map((current) => current / currentScale);
+  const normalizedTolerance = SOFT_ENVELOPE_TOLERANCE_SCALE;
+  const smoothnessLambda = Math.max(
+    1e-10,
+    SOFT_ENVELOPE_SMOOTHNESS_RATIO * input.baselineLambda
+  );
+  let g = [...input.baselineG];
+  let totalIterations = 0;
+
+  for (let activeSetIteration = 1;
+    activeSetIteration <= SOFT_ENVELOPE_MAXIMUM_ACTIVE_SET_ITERATIONS;
+    activeSetIteration += 1) {
+    const model = makeSoftEnvelopeQuadraticModel(
+      g,
+      input.baselineG,
+      forward,
+      reverse,
+      normalizedTolerance
+    );
+    const direct = solveUnconstrainedBanded(
+      model.target,
+      model.weight,
+      smoothnessLambda,
+      operator
+    );
+    const initial = direct ?? g;
+    const solution = solveProjected(
+      model.target,
+      model.weight,
+      smoothnessLambda,
+      operator,
+      OPTIMALITY_TOLERANCE,
+      initial,
+      MAX_ITERATIONS
+    );
+    totalIterations += solution.iterations;
+    g = solution.g;
+    const residual = softEnvelopeOptimalityResidual(
+      g,
+      input.baselineG,
+      forward,
+      reverse,
+      normalizedTolerance,
+      smoothnessLambda,
+      operator
+    );
+    if (residual <= OPTIMALITY_TOLERANCE) {
+      const diagnostics = makeSoftEnvelopeDiagnostics(
+        g,
+        input.baselineG,
+        forward,
+        reverse,
+        normalizedTolerance,
+        currentScale,
+        smoothnessLambda,
+        operator,
+        totalIterations,
+        residual
+      );
+      return { baselineG: [...input.baselineG], g, diagnostics };
+    }
+  }
+
+  throw new CvAnalysisError("reconstructionFailed");
+}
+
 function objective(
   g: number[],
   target: number[],
@@ -195,6 +302,158 @@ function validateInputs(
   }
 
   return normalizePotentialGrid(potentials);
+}
+
+function validateSoftEnvelopeInput(input: DunnSoftEnvelopeInput): number[] {
+  const pointCount = input.potentials.length;
+  if (pointCount === 0
+    || input.baselineG.length !== pointCount
+    || input.forwardCurrents.length !== pointCount
+    || input.reverseCurrents.length !== pointCount
+    || !Number.isFinite(input.baselineLambda)
+    || input.baselineLambda <= 0
+    || input.baselineG.some((value) => !Number.isFinite(value) || value < 0 || value > 1)
+    || input.forwardCurrents.some((value) => !Number.isFinite(value))
+    || input.reverseCurrents.some((value) => !Number.isFinite(value))) {
+    throw new CvAnalysisError("invalidDataShape");
+  }
+  return normalizePotentialGrid(input.potentials);
+}
+
+function makeSoftEnvelopeQuadraticModel(
+  g: number[],
+  baselineG: number[],
+  forward: number[],
+  reverse: number[],
+  tolerance: number
+): { target: number[]; weight: number[] } {
+  const pointWeight = SOFT_ENVELOPE_FIDELITY_WEIGHT / g.length;
+  const envelopeWeightScale = SOFT_ENVELOPE_LAMBDA / g.length;
+  const target: number[] = [];
+  const weight: number[] = [];
+
+  for (let index = 0; index < g.length; index += 1) {
+    let totalWeight = pointWeight;
+    let weightedTarget = pointWeight * baselineG[index];
+    const lower = Math.min(forward[index], reverse[index]);
+    const upper = Math.max(forward[index], reverse[index]);
+
+    for (const raw of [forward[index], reverse[index]]) {
+      const reconstructed = g[index] * raw;
+      let boundary: number | null = null;
+      if (reconstructed > upper + tolerance) boundary = upper + tolerance;
+      else if (reconstructed < lower - tolerance) boundary = lower - tolerance;
+      if (boundary === null || Math.abs(raw) <= Number.EPSILON) continue;
+      const localWeight = envelopeWeightScale * raw * raw;
+      totalWeight += localWeight;
+      weightedTarget += localWeight * boundary / raw;
+    }
+
+    weight.push(totalWeight);
+    target.push(weightedTarget / totalWeight);
+  }
+  return { target, weight };
+}
+
+function addSoftEnvelopeGradient(
+  g: number[],
+  baselineG: number[],
+  forward: number[],
+  reverse: number[],
+  tolerance: number,
+  gradient: number[]
+) {
+  const fidelityScale = 2 * SOFT_ENVELOPE_FIDELITY_WEIGHT / g.length;
+  const envelopeScale = 2 * SOFT_ENVELOPE_LAMBDA / g.length;
+  for (let index = 0; index < g.length; index += 1) {
+    gradient[index] += fidelityScale * (g[index] - baselineG[index]);
+    const lower = Math.min(forward[index], reverse[index]);
+    const upper = Math.max(forward[index], reverse[index]);
+    for (const raw of [forward[index], reverse[index]]) {
+      const reconstructed = g[index] * raw;
+      const upperViolation = reconstructed - upper - tolerance;
+      const lowerViolation = lower - reconstructed - tolerance;
+      if (upperViolation > 0) gradient[index] += envelopeScale * upperViolation * raw;
+      if (lowerViolation > 0) gradient[index] -= envelopeScale * lowerViolation * raw;
+    }
+  }
+}
+
+function softEnvelopeOptimalityResidual(
+  g: number[],
+  baselineG: number[],
+  forward: number[],
+  reverse: number[],
+  tolerance: number,
+  smoothnessLambda: number,
+  operator: SecondDifferenceOperator
+): number {
+  const gradient = new Array<number>(g.length).fill(0);
+  addSoftEnvelopeGradient(g, baselineG, forward, reverse, tolerance, gradient);
+  addRoughnessGradient(g, smoothnessLambda, operator, gradient);
+
+  let residual = 0;
+  for (let index = 0; index < g.length; index += 1) {
+    const component = gradient[index];
+    const violation = g[index] === 0
+      ? Math.min(0, component)
+      : g[index] === 1
+        ? Math.max(0, component)
+        : component;
+    residual = Math.max(residual, Math.abs(violation));
+  }
+  return residual;
+}
+
+function softEnvelopeFidelity(g: number[], baselineG: number[]): number {
+  return g.reduce((sum, value, index) =>
+    sum + (value - baselineG[index]) ** 2, 0) / g.length;
+}
+
+function softEnvelopeMeanPenalty(
+  g: number[],
+  forward: number[],
+  reverse: number[],
+  tolerance: number
+): number {
+  let penalty = 0;
+  for (let index = 0; index < g.length; index += 1) {
+    const lower = Math.min(forward[index], reverse[index]);
+    const upper = Math.max(forward[index], reverse[index]);
+    penalty += envelopePenalty(g[index] * forward[index], lower, upper, tolerance);
+    penalty += envelopePenalty(g[index] * reverse[index], lower, upper, tolerance);
+  }
+  return penalty / g.length;
+}
+
+function makeSoftEnvelopeDiagnostics(
+  g: number[],
+  baselineG: number[],
+  forward: number[],
+  reverse: number[],
+  normalizedTolerance: number,
+  currentScale: number,
+  smoothnessLambda: number,
+  operator: SecondDifferenceOperator,
+  iterations: number,
+  optimalityResidualValue: number
+): DunnSoftEnvelopeResult["diagnostics"] {
+  return {
+    fidelityWeight: SOFT_ENVELOPE_FIDELITY_WEIGHT,
+    smoothnessLambda,
+    envelopeLambda: SOFT_ENVELOPE_LAMBDA,
+    envelopeTolerance: normalizedTolerance * currentScale,
+    iterations,
+    converged: true,
+    optimalityResidual: optimalityResidualValue,
+    fidelity: softEnvelopeFidelity(g, baselineG),
+    roughness: operatorRoughness(g, operator),
+    envelopePenalty: softEnvelopeMeanPenalty(g, forward, reverse, normalizedTolerance),
+    maximumSharedFractionAdjustment: Math.max(
+      0,
+      ...g.map((value, index) => Math.abs(value - baselineG[index]))
+    )
+  };
 }
 
 function normalizePotentialGrid(potentials: number[]): number[] {

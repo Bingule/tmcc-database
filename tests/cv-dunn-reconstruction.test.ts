@@ -1,5 +1,10 @@
 import { expect, it } from "vitest";
-import { optimizeSharedFraction, secondDifferenceRoughness } from "../src/lib/cvDunnReconstruction";
+import {
+  envelopePenalty,
+  optimizeSharedFraction,
+  refineSharedFractionWithSoftEnvelope,
+  secondDifferenceRoughness
+} from "../src/lib/cvDunnReconstruction";
 
 const point = (fraction: number, confidence = 1) => ({
   fraction,
@@ -28,6 +33,55 @@ it("explicit second-difference regularization suppresses an isolated spike", () 
   expect(result.g[2]).toBeLessThan(0.95);
   expect(secondDifferenceRoughness(result.g)).toBeLessThan(secondDifferenceRoughness(raw));
   expect(result.diagnostics.lambda).toBeGreaterThan(0);
+});
+
+it("softly corrects same-sign envelope violations without forcing a hard boundary", () => {
+  const baselineG = [0.7, 0.7, 0.7, 0.7, 0.7];
+  const forwardCurrents = [-45, -44, -43, -42, -41];
+  const reverseCurrents = [-84, -80, -76, -72, -68];
+  const result = refineSharedFractionWithSoftEnvelope({
+    baselineG,
+    potentials: [0, 0.25, 0.5, 0.75, 1],
+    forwardCurrents,
+    reverseCurrents,
+    baselineLambda: 1e-4
+  });
+
+  expect(result.g.every((value) => value > 0.7 && value < 1)).toBe(true);
+  expect(result.g.some((value, index) =>
+    Math.abs(value * forwardCurrents[index] - forwardCurrents[index]) > 1e-6
+  )).toBe(true);
+  expect(result.diagnostics.maximumSharedFractionAdjustment).toBeGreaterThan(0);
+});
+
+it("uses a tolerance dead zone and a quadratic envelope penalty", () => {
+  const tolerance = 1e-10;
+  expect(envelopePenalty(2 + tolerance / 2, 1, 2, tolerance)).toBe(0);
+  const small = envelopePenalty(2.1, 1, 2, tolerance);
+  const large = envelopePenalty(2.2, 1, 2, tolerance);
+  expect(large).toBeCloseTo(4 * small, 8);
+});
+
+it("keeps soft-envelope smoothing stable across potential-grid density", () => {
+  const solve = (count: number) => {
+    const potentials = Array.from({ length: count }, (_value, index) => index / (count - 1));
+    const baselineG = potentials.map((x) => 0.55 + 0.08 * Math.sin(2 * Math.PI * x));
+    return refineSharedFractionWithSoftEnvelope({
+      baselineG,
+      potentials,
+      forwardCurrents: potentials.map((x) => -2 - x),
+      reverseCurrents: potentials.map((x) => -4 - x),
+      baselineLambda: 1e-4
+    }).g;
+  };
+  const coarse = solve(51);
+  const dense = solve(501);
+
+  for (const position of [0, 0.25, 0.5, 0.75, 1]) {
+    expect(Math.abs(
+      sampleNormalized(coarse, position) - sampleNormalized(dense, position)
+    )).toBeLessThan(0.02);
+  }
 });
 
 it("calculates roughness in normalized-potential units", () => {

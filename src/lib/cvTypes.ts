@@ -270,6 +270,26 @@ export interface DunnSharedFractionResult {
   diagnostics: DunnRegularizationDiagnostics;
 }
 
+export interface DunnSoftEnvelopeDiagnostics {
+  fidelityWeight: number;
+  smoothnessLambda: number;
+  envelopeLambda: number;
+  envelopeTolerance: number;
+  iterations: number;
+  converged: boolean;
+  optimalityResidual: number;
+  fidelity: number;
+  roughness: number;
+  envelopePenalty: number;
+  maximumSharedFractionAdjustment: number;
+}
+
+export interface DunnSoftEnvelopeResult {
+  baselineG: number[];
+  g: number[];
+  diagnostics: DunnSoftEnvelopeDiagnostics;
+}
+
 export interface DunnContributionInput {
   alignedGrid: CvAlignedBranchGrid;
   dunnRecords: DunnFitGrid;
