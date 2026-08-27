@@ -15,6 +15,7 @@ it("uses one bounded shared fraction influenced by both branches", () => {
   }, [0, 0.01, 0.02]);
   expect(result.g).toHaveLength(3);
   expect(result.g.every((value) => value >= 0 && value <= 1)).toBe(true);
+  expect(result.diagnostics.optimalityResidual).toBeLessThanOrEqual(1e-6);
   expect(result.g[1]).toBeCloseTo(0.5, 1);
 });
 

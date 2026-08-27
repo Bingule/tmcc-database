@@ -273,7 +273,7 @@ function directionRuns(points: CvSeries["points"], tolerance: number): Direction
 }
 
 function closureTolerance(native: number, span: number): number {
-  return Math.min(Math.max(2.5 * native, 0.001 * span), 0.01 * span);
+  return Math.min(Math.max(3.5 * native, 0.001 * span), 0.01 * span);
 }
 
 function selectFirstClosedLoop(
@@ -303,14 +303,8 @@ function selectFirstClosedLoop(
     ) {
       throw new CvCycleStructureError("branchPointCount", { reason: "incompleteCycle" });
     }
-    const endIndex = closestIndexNearPotential(
-      points,
-      reverseRun.startIndex,
-      reverseRun.endIndex,
-      startPotential,
-      tolerance
-    );
-    if (endIndex === undefined) {
+    const endIndex = reverseRun.endIndex;
+    if (!closeTo(points[endIndex].potential, startPotential, tolerance)) {
       throw new CvCycleStructureError("branchPointCount", { reason: "incompleteCycle" });
     }
     return { startIndex: 0, endIndex };

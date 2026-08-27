@@ -13,7 +13,7 @@ export type {
 
 const LAMBDA_CANDIDATES = [1e-4, 1e-3, 1e-2, 1e-1, 1, 10, 100] as const;
 const MAX_ITERATIONS = 10_000;
-const CONVERGENCE_TOLERANCE = 1e-9;
+const OPTIMALITY_TOLERANCE = 1e-6;
 
 interface SecondDifferenceRow {
   indices: [number, number, number];
@@ -146,6 +146,7 @@ function makeSecondDifferenceOperator(normalizedPotentials: number[]): SecondDif
 
   const rows: SecondDifferenceRow[] = [];
   const absoluteRowSums = new Array<number>(normalizedPotentials.length).fill(0);
+  const characteristicSpacingSquared = (1 / (normalizedPotentials.length - 1)) ** 2;
   for (let index = 1; index < normalizedPotentials.length - 1; index += 1) {
     const leftSpacing = normalizedPotentials[index] - normalizedPotentials[index - 1];
     const rightSpacing = normalizedPotentials[index + 1] - normalizedPotentials[index];
@@ -157,9 +158,9 @@ function makeSecondDifferenceOperator(normalizedPotentials: number[]): SecondDif
     }
 
     const coefficients: [number, number, number] = [
-      2 / (leftSpacing * (leftSpacing + rightSpacing)),
-      -2 / (leftSpacing * rightSpacing),
-      2 / (rightSpacing * (leftSpacing + rightSpacing))
+      characteristicSpacingSquared * 2 / (leftSpacing * (leftSpacing + rightSpacing)),
+      characteristicSpacingSquared * -2 / (leftSpacing * rightSpacing),
+      characteristicSpacingSquared * 2 / (rightSpacing * (leftSpacing + rightSpacing))
     ];
     const indices: [number, number, number] = [index - 1, index, index + 1];
     rows.push({ indices, coefficients });
@@ -252,27 +253,32 @@ function solveProjected(
 ): DunnSharedFractionResult {
   const maxWeight = weight.reduce((max, value) => Math.max(max, value), 0);
   const step = 1 / (2 * maxWeight + lambda * operator.lipschitzBound + Number.EPSILON);
-  const g = target.map((value) => Math.min(1, Math.max(0, value)));
+  let g = target.map((value) => Math.min(1, Math.max(0, value)));
+  let accelerated = [...g];
+  let momentum = 1;
   const gradient = new Array<number>(g.length).fill(0);
+  const next = new Array<number>(g.length).fill(0);
   let converged = false;
   let iterations = 0;
 
   for (iterations = 1; iterations <= MAX_ITERATIONS; iterations += 1) {
     gradient.fill(0);
-    addFidelityGradient(g, target, weight, gradient);
-    addRoughnessGradient(g, lambda, operator, gradient);
+    addFidelityGradient(accelerated, target, weight, gradient);
+    addRoughnessGradient(accelerated, lambda, operator, gradient);
 
-    let maxUpdate = 0;
     for (let index = 0; index < g.length; index += 1) {
-      const next = Math.min(1, Math.max(0, g[index] - step * gradient[index]));
-      const update = Math.abs(next - g[index]);
-      if (update > maxUpdate) maxUpdate = update;
-      g[index] = next;
+      next[index] = Math.min(1, Math.max(0, accelerated[index] - step * gradient[index]));
     }
 
-    const currentObjective = objective(g, target, weight, lambda, operator);
+    const currentObjective = objective(next, target, weight, lambda, operator);
     if (!Number.isFinite(currentObjective)) throw new CvAnalysisError("reconstructionFailed");
-    if (maxUpdate < CONVERGENCE_TOLERANCE) {
+    const nextMomentum = (1 + Math.sqrt(1 + 4 * momentum * momentum)) / 2;
+    const extrapolation = (momentum - 1) / nextMomentum;
+    accelerated = next.map((value, index) => value + extrapolation * (value - g[index]));
+    g = [...next];
+    momentum = nextMomentum;
+    if (iterations % 10 === 0
+      && optimalityResidual(g, target, weight, lambda, operator) <= OPTIMALITY_TOLERANCE) {
       converged = true;
       break;
     }
@@ -311,6 +317,31 @@ function addRoughnessGradient(
   }
 }
 
+function optimalityResidual(
+  g: number[],
+  target: number[],
+  weight: number[],
+  lambda: number,
+  operator: SecondDifferenceOperator
+): number {
+  const gradient = new Array<number>(g.length).fill(0);
+  addFidelityGradient(g, target, weight, gradient);
+  addRoughnessGradient(g, lambda, operator, gradient);
+
+  let residual = 0;
+  for (let index = 0; index < g.length; index += 1) {
+    const value = g[index];
+    const component = gradient[index];
+    const violation = value === 0
+      ? Math.min(0, component)
+      : value === 1
+        ? Math.max(0, component)
+        : component;
+    residual = Math.max(residual, Math.abs(violation));
+  }
+  return residual;
+}
+
 function makeDiagnostics(
   g: number[],
   target: number[],
@@ -329,6 +360,7 @@ function makeDiagnostics(
     lambda,
     iterations,
     converged,
+    optimalityResidual: optimalityResidual(g, target, weight, lambda, operator),
     fidelity,
     roughness
   };

@@ -181,6 +181,7 @@ export interface DunnRegularizationDiagnostics {
   lambda: number;
   iterations: number;
   converged: boolean;
+  optimalityResidual: number;
   fidelity: number;
   roughness: number;
 }

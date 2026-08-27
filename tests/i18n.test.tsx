@@ -144,11 +144,11 @@ describe("I18nProvider", () => {
   it("defines bilingual publication-style Dunn area and coverage resources", () => {
     expect(en["cv.dunn.excludedArea"]).toBe("Excluded by R² threshold / unavailable");
     expect(en["cv.dunn.coverageNotice"]).toContain("{{valid}} / {{total}} points");
-    expect(en["cv.dunn.coverageHelp"]).toContain("hatched regions");
+    expect(en["cv.dunn.coverageHelp"]).toContain("continuously across the CV loop");
     expect(en["cv.dunn.help"]).toContain("publication-style filled areas");
     expect(zh["cv.dunn.excludedArea"]).toBe("低于 R² 阈值／不可用");
     expect(zh["cv.dunn.coverageNotice"]).toContain("{{valid}} / {{total}} 个点");
-    expect(zh["cv.dunn.coverageHelp"]).toContain("斜线区域");
+    expect(zh["cv.dunn.coverageHelp"]).toContain("沿完整 CV loop 连续显示");
     expect(zh["cv.dunn.help"]).toContain("文献式填色");
   });
 

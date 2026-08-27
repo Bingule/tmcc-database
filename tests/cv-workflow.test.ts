@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { analyzeCvWorkflow } from "../src/lib/cvWorkflow";
 import { CvAnalysisError, type CvAnalysisSettings, type CvSeries } from "../src/lib/cvTypes";
+import {
+  makeBp150RegressionSeries,
+  makeNcpRegressionSeries,
+  makeResolutionStabilitySeries,
+  makeSyntheticConstrainedDunnSeries
+} from "./fixtures/cvRegressionData";
 
 function expectCvError(action: () => unknown, code: CvAnalysisError["code"]) {
   try {
@@ -135,5 +141,50 @@ describe("analyzeCvWorkflow quality records", () => {
       }),
       "invalidTurningPointTrim"
     );
+  });
+});
+
+describe("constrained Dunn regression datasets", () => {
+  it.each([
+    ["NCP", makeNcpRegressionSeries],
+    ["BP150", makeBp150RegressionSeries],
+    ["synthetic", makeSyntheticConstrainedDunnSeries]
+  ] as const)("keeps %s contributions finite and bounded in both confidence modes", (_name, makeSeries) => {
+    const series = makeSeries();
+    for (const dunnConfidenceMode of ["threshold", "weighted"] as const) {
+      const result = analyzeCvWorkflow(series, { ...settings, dunnConfidenceMode });
+      expect(result.contributions).toHaveLength(series.length);
+      for (const contribution of result.contributions) {
+        expect(contribution.g.every((value) => value >= 0 && value <= 1)).toBe(true);
+        expect(contribution.capacitiveForward.every(Number.isFinite)).toBe(true);
+        expect(contribution.capacitiveReverse.every(Number.isFinite)).toBe(true);
+        expect(contribution.diffusionForward.every(Number.isFinite)).toBe(true);
+        expect(contribution.diffusionReverse.every(Number.isFinite)).toBe(true);
+        expect(contribution.capacitivePercent).toBeGreaterThanOrEqual(0);
+        expect(contribution.capacitivePercent).toBeLessThanOrEqual(100);
+      }
+    }
+  });
+
+  it("preserves the BP150 low-fit-quality warning without hard-coded percentages", () => {
+    const result = analyzeCvWorkflow(makeBp150RegressionSeries(), settings);
+    expect(result.contributions.every((item) => item.diagnostics.lowFitQuality)).toBe(true);
+  });
+
+  it("keeps one continuous model stable when only grid density changes tenfold", () => {
+    const baseline = analyzeCvWorkflow(makeResolutionStabilitySeries(51), settings);
+    const dense = analyzeCvWorkflow(makeResolutionStabilitySeries(501), settings);
+    const maximumPercentageDifference = Math.max(...dense.contributions.map((item, index) =>
+      Math.abs(item.capacitivePercent - baseline.contributions[index]!.capacitivePercent)));
+    expect(maximumPercentageDifference).toBeLessThan(0.5);
+
+    dense.contributions.forEach((item, seriesIndex) => {
+      const coarse = baseline.contributions[seriesIndex]!;
+      for (const fraction of [0, 0.25, 0.5, 0.75, 1]) {
+        const coarseIndex = Math.round(fraction * (coarse.g.length - 1));
+        const denseIndex = Math.round(fraction * (item.g.length - 1));
+        expect(Math.abs(item.g[denseIndex]! - coarse.g[coarseIndex]!)).toBeLessThan(0.02);
+      }
+    });
   });
 });

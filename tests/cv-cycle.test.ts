@@ -157,6 +157,24 @@ describe("normalizeCvCycle", () => {
     expect(cycle.ignoredPointCount).toBe(0);
   });
 
+  it("accepts a one-turn cycle whose return endpoint differs by a few native intervals", () => {
+    const ascending = Array.from({ length: 998 }, (_, index) => 0.003 + index * 0.001);
+    const descending = Array.from({ length: 1_000 }, (_, index) => 0.999 - index * 0.001);
+    const cycle = normalizeCvCycle(points([...ascending, ...descending]));
+
+    expect(cycle.forward.direction).toBe(1);
+    expect(cycle.reverse.direction).toBe(-1);
+    expect(cycle.originalPoints.at(-1)?.potential).toBeCloseTo(0, 12);
+  });
+
+  it("rejects a one-turn scan that stops four native intervals before closing", () => {
+    const ascending = Array.from({ length: 997 }, (_, index) => 0.004 + index * 0.001);
+    const descending = Array.from({ length: 992 }, (_, index) => 0.999 - index * 0.001);
+
+    expect(() => normalizeCvCycle(points([...ascending, ...descending])))
+      .toThrow("branchPointCount");
+  });
+
   it("ignores a tail that extends beyond an already closed endpoint-started loop", () => {
     const cycle = normalizeCvCycle(points([-1, 0, -1, -0.5, 0.5]));
 

@@ -219,7 +219,11 @@ export function CvKineticsPage() {
   const selectedContribution = contributions.find((item) => item.scanRate === selectedRate);
   const selectedDunnPotential = Number.isFinite(requestedPotential) ? requestedPotential : undefined;
   const selectedSeriesIndex = analysis?.analysisGrid.scanRates.findIndex((rate) => rate === selectedRate) ?? -1;
-  const selectedOriginalSeries = analysis?.series.find((item) => item.scanRate === selectedRate);
+  const selectedRawSeries = analysis?.series.find((item) => item.scanRate === selectedRate);
+  const selectedCycle = selectedSeriesIndex >= 0 ? analysis?.alignedGrid.cycles[selectedSeriesIndex] : undefined;
+  const selectedOriginalSeries: CvSeries | undefined = selectedRawSeries && selectedCycle
+    ? { ...selectedRawSeries, points: selectedCycle.originalPoints }
+    : undefined;
   const sortedContributions = [...contributions].sort((left, right) => left.scanRate - right.scanRate);
   const sortedDunnRates = [...(analysis?.analysisGrid.scanRates ?? [])].sort((left, right) => left - right);
   const dunnCoverage = analysis ? makeDunnCoverage(analysis) : undefined;
@@ -688,30 +692,44 @@ function makeDunnChart(
   }];
   if (!contribution) return series;
 
-  const capacitivePath = contribution.plotPath.map((point) => ({
-    x: point.potential,
-    y: point.current,
-    branch: point.branch
-  }));
   series.push({
     id: "capacitive-forward",
     label: `${t("cv.dunn.capacitive")} ${t("cv.table.branchValue", { branch: 1 })}`,
     color: "#7656a8",
     dash: "4 3",
-    points: capacitivePath
-      .filter((point) => point.branch === "forward")
-      .map((point) => ({ x: point.x, y: point.y }))
+    points: makeBranchBoundaryPoints(contribution.plotPath, "forward")
   });
   series.push({
     id: "capacitive-reverse",
     label: `${t("cv.dunn.capacitive")} ${t("cv.table.branchValue", { branch: 2 })}`,
     color: "#9a78cf",
     dash: "4 3",
-    points: capacitivePath
-      .filter((point) => point.branch === "reverse")
-      .map((point) => ({ x: point.x, y: point.y }))
+    points: makeBranchBoundaryPoints(contribution.plotPath, "reverse")
   });
   return series;
+}
+
+function makeBranchBoundaryPoints(
+  plotPath: DunnContribution["plotPath"],
+  branch: DunnContribution["plotPath"][number]["branch"]
+): ChartSeries["points"] {
+  const points: ChartSeries["points"] = [];
+  let insideRun = false;
+  for (let index = 0; index < plotPath.length; index += 1) {
+    const point = plotPath[index]!;
+    if (point.branch !== branch) {
+      insideRun = false;
+      continue;
+    }
+    if (!insideRun && index > 0) {
+      if (points.length > 0) points.push({ x: point.potential, y: null });
+      const sharedTurningPoint = plotPath[index - 1]!;
+      points.push({ x: sharedTurningPoint.potential, y: sharedTurningPoint.current });
+    }
+    points.push({ x: point.potential, y: point.current });
+    insideRun = true;
+  }
+  return points;
 }
 
 function makeDunnAreas(
@@ -982,17 +1000,24 @@ function exportCsv(
   }
   else {
     const capacitive = filename === csvFiles[3];
-    const headerKey = capacitive ? "cv.export.capacitiveCurrentAt" : "cv.export.diffusionCurrentAt";
+    const forwardHeaderKey = capacitive
+      ? "cv.export.capacitiveCurrentAtForward"
+      : "cv.export.diffusionCurrentAtForward";
+    const reverseHeaderKey = capacitive
+      ? "cv.export.capacitiveCurrentAtReverse"
+      : "cv.export.diffusionCurrentAtReverse";
     const currentHeaders = sortedRates.flatMap((rate) => [
       t("cv.export.gAt", { rate: serializeScientificNumber(rate) }),
-      t(headerKey, { rate: serializeScientificNumber(rate) })
+      t(forwardHeaderKey, { rate: serializeScientificNumber(rate) }),
+      t(reverseHeaderKey, { rate: serializeScientificNumber(rate) })
     ]);
     csv = rowsToCsv(
       [potentialHeader, ...withWideMetadata(currentHeaders, analysis, metadata, t)],
       analysis.alignedGrid.potentials.map((potential, index) => [potential, ...sortedRates.map((rate) => {
         const item = contributionByRate.get(rate);
-        const current = item ? (capacitive ? item.capacitiveForward : item.diffusionForward)[index] : null;
-        return [item?.g[index] ?? null, current];
+        const forward = item ? (capacitive ? item.capacitiveForward : item.diffusionForward)[index] : null;
+        const reverse = item ? (capacitive ? item.capacitiveReverse : item.diffusionReverse)[index] : null;
+        return [item?.g[index] ?? null, forward, reverse];
       }).flat()])
     );
   }
@@ -1003,10 +1028,12 @@ function exportMetadataHeaders(t: ReturnType<typeof useI18n>["t"]) {
   return [
     t("cv.export.dataLayout"),
     t("cv.export.dataSource"),
+    t("cv.export.requestedInterval"),
     t("cv.export.resolvedInterval"),
     t("cv.export.dunnMethod"),
     t("cv.export.rSquaredThreshold"),
-    t("cv.export.turningTrim"),
+    t("cv.export.requestedTurningTrim"),
+    t("cv.export.resolvedTurningTrim"),
     t("cv.export.smoothing"),
     t("cv.export.commonRange"),
     t("cv.export.forwardMedianRSquared"),
@@ -1027,10 +1054,12 @@ function exportMetadataValues(
   return [
     layoutIdentifier(metadata.layout),
     t(sourceKey(metadata.source)),
+    potentialIntervalLabel(analysis, t),
     resolvedPotentialIntervalLabel(analysis),
     dunnMethodLabel(analysis.settings.dunnConfidenceMode, t),
     analysis.settings.rSquaredThreshold,
     turningPointTrimLabel(analysis, t),
+    `${serializeScientificNumber(analysis.dunnRecords.resolvedTurningPointTrim * 1000)} mV`,
     t("cv.quality.smoothing.auto"),
     `${serializeScientificNumber(analysis.alignedGrid.commonMinimum)}-${serializeScientificNumber(analysis.alignedGrid.commonMaximum)}`,
     diagnostics?.medianForwardRSquared ?? null,

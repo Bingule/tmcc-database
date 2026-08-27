@@ -475,6 +475,12 @@ describe("CV kinetics page", () => {
     expect(diffusionAreas).toHaveLength(2);
     expect(chart.querySelector('[data-area-series-id="excluded-area"]')).toBeNull();
     expect(chart.querySelectorAll('[data-series-id="capacitive-forward"], [data-series-id="capacitive-reverse"]')).toHaveLength(2);
+    const capacitiveForwardXs = pathXs(chart.querySelector<SVGPathElement>('[data-series-id="capacitive-forward"]')?.getAttribute("d") ?? "");
+    const capacitiveReverseXs = pathXs(chart.querySelector<SVGPathElement>('[data-series-id="capacitive-reverse"]')?.getAttribute("d") ?? "");
+    expect(capacitiveForwardXs).toHaveLength(3);
+    expect(capacitiveReverseXs).toHaveLength(3);
+    expect(capacitiveForwardXs).toEqual([...capacitiveForwardXs].sort((left, right) => left - right));
+    expect(capacitiveReverseXs).toEqual([...capacitiveReverseXs].sort((left, right) => right - left));
     expect(capacitiveAreas.map((path) => path.dataset.renderPointCount)).toEqual(["3"]);
     expect(diffusionAreas.map((path) => path.dataset.renderPointCount)).toEqual(["3", "3"]);
     const bPath = view.querySelector<SVGPathElement>('[data-series-id="b-values"]')!;
@@ -557,6 +563,41 @@ describe("CV kinetics page", () => {
     await setSelect(view.querySelector<HTMLSelectElement>('select[name="selectedRate"]')!, "50");
     expect([...view.querySelectorAll<HTMLTableRowElement>('[data-table-id="cv-original-current-table"] tbody tr')]
       .map((row) => row.cells[0].textContent)).toEqual(["0.2", "0.6", "1", "0.5", "0.2"]);
+  });
+
+  it("displays only the complete cycle selected by analysis when the upload has an incomplete tail", async () => {
+    const view = await renderPage();
+    await upload(view, "Potential,Current 1 mV/s,Current 4 mV/s,Current 9 mV/s\n0,1,2,3\n1,2,4,6\n2,4,8,12\n1,2,4,6\n0,1,2,3\n1,99,99,99");
+    await click(view, "Run analysis");
+
+    expect([...view.querySelectorAll<HTMLTableRowElement>('[data-table-id="cv-original-current-table"] tbody tr')]
+      .map((row) => row.cells[0].textContent)).toEqual(["0", "1", "2", "1", "0"]);
+    expect(view.querySelector('[data-series-id="original"]')?.getAttribute("data-render-point-count")).toBe("5");
+  });
+
+  it("reconnects capacitive boundaries to the selected curve's true turning endpoints", async () => {
+    const view = await renderPage();
+    await chooseRadio(view, "cv-layout", "pairedPotentialCurrent");
+    await upload(view, [
+      "V1,Current 1 mV/s,V2,Current 4 mV/s,V3,Current 9 mV/s",
+      "0,1,0.1,2,0.2,3",
+      "0.5,2,0.55,4,0.6,6",
+      "1,3,1,6,1,9",
+      "1.5,2,1.45,4,1.4,6",
+      "2,1,1.9,2,1.8,3",
+      "1.5,-2,1.45,-4,1.4,-6",
+      "1,-3,1,-6,1,-9",
+      "0.5,-2,0.55,-4,0.6,-6",
+      "0,-1,0.1,-2,0.2,-3"
+    ].join("\n"));
+    await click(view, "Run analysis");
+
+    const chart = view.querySelector('[data-export-id="cv-dunn-chart"]')!;
+    const originalXs = pathXs(chart.querySelector<SVGPathElement>('[data-series-id="original"]')?.getAttribute("d") ?? "");
+    const boundaryXs = ["capacitive-forward", "capacitive-reverse"].flatMap((id) =>
+      pathXs(chart.querySelector<SVGPathElement>(`[data-series-id="${id}"]`)?.getAttribute("d") ?? ""));
+    expect(Math.min(...boundaryXs)).toBeCloseTo(Math.min(...originalXs), 10);
+    expect(Math.max(...boundaryXs)).toBeCloseTo(Math.max(...originalXs), 10);
   });
 
   it("retains quality counts when every R-squared value is below 0.95", async () => {
@@ -743,8 +784,8 @@ describe("CV kinetics page", () => {
     expect(english[0]).toContain("Potential (V),Total current (arb. units) at 1 mV/s");
     expect(english[1]).toContain("Potential (V),Sweep branch,b value,Intercept,R²,Point count,Fit status");
     expect(english[2]).toContain("Scan rate (mV/s),Potential (V),Sweep branch,k1,k2,R²,Point count,Fit status,Local capacitive fraction,Local confidence");
-    expect(english[3]).toContain("Potential (V),g(V) at 1 mV/s,Capacitive current (arb. units) at 1 mV/s");
-    expect(english[4]).toContain("Potential (V),g(V) at 1 mV/s,Diffusion-controlled current (arb. units) at 1 mV/s");
+    expect(english[3]).toContain("Potential (V),g(V) at 1 mV/s,Forward capacitive current (arb. units) at 1 mV/s,Reverse capacitive current (arb. units) at 1 mV/s");
+    expect(english[4]).toContain("Potential (V),g(V) at 1 mV/s,Forward diffusion-controlled current (arb. units) at 1 mV/s,Reverse diffusion-controlled current (arb. units) at 1 mV/s");
     expect(english[5]).toContain("Scan rate (mV/s),Capacitive contribution (%),Diffusion-controlled contribution (%)");
     await click(view, "中文");
     await click(view, "cv-b-value-results.csv");
@@ -891,23 +932,28 @@ describe("CV kinetics page", () => {
     expect([...view.querySelectorAll<HTMLButtonElement>('.cv-export button')].filter((button) => button.textContent?.endsWith(".csv"))).toHaveLength(6);
     const exported = await Promise.all(blobs.map(readBlob));
     expect(exported[0].split("\r\n")[0]).toContain("Data layout: XYYYYY");
+    expect(exported[0].split("\r\n")[0]).toContain("Requested interval: 5000 mV");
     expect(exported[0].split("\r\n")[0]).toContain("Resolved interval: 5000 mV");
-    expect(exported[1]).toContain("Fit status,Data layout,Data source,Resolved interval,Dunn method,R² threshold,Turning point trim,Smoothing,Common potential range (V),Forward median R²,Reverse median R²,Dunn coverage (%)");
+    expect(exported[1]).toContain("Fit status,Data layout,Data source,Requested interval,Resolved interval,Dunn method,R² threshold,Requested turning point trim,Resolved turning point trim,Smoothing,Common potential range (V),Forward median R²,Reverse median R²,Dunn coverage (%)");
     expect(exported[1]).not.toMatch(/(?:^|\r\n)5,/);
     expect(exported[1]).toContain("10,Branch 1,,,,,Zero-current logarithm unavailable");
-    expect(exported[2]).toContain("Scan rate (mV/s),Potential (V),Sweep branch,k1,k2,R²,Point count,Fit status,Local capacitive fraction,Local confidence,Data layout,Data source,Resolved interval,Dunn method,R² threshold,Turning point trim,Smoothing,Common potential range (V),Forward median R²,Reverse median R²,Dunn coverage (%)");
+    expect(exported[2]).toContain("Scan rate (mV/s),Potential (V),Sweep branch,k1,k2,R²,Point count,Fit status,Local capacitive fraction,Local confidence,Data layout,Data source,Requested interval,Resolved interval,Dunn method,R² threshold,Requested turning point trim,Resolved turning point trim,Smoothing,Common potential range (V),Forward median R²,Reverse median R²,Dunn coverage (%)");
     expect(exported[2]).toContain("1,0,Branch 1,");
     expect(exported[3].split("\r\n")[0]).toContain("Resolved interval: 5000 mV");
     expect(exported[3].split("\r\n")[0]).toContain("g(V) at 1 mV/s");
+    expect(exported[3].split("\r\n")[0]).toContain("Forward capacitive current (arb. units) at 1 mV/s");
+    expect(exported[3].split("\r\n")[0]).toContain("Reverse capacitive current (arb. units) at 1 mV/s");
     expect(exported[4].split("\r\n")[0]).toContain("R² threshold: 0.95");
     expect(exported[4].split("\r\n")[0]).toContain("g(V) at 1 mV/s");
-    expect(exported[5]).toContain("Valid points,Sampled points,Coverage (%),Contribution status,Data layout,Data source,Resolved interval,Dunn method,R² threshold,Turning point trim,Smoothing,Common potential range (V),Forward median R²,Reverse median R²,Dunn coverage (%)");
-    expect(exported[5]).toContain(",6,10,60,Available,XYYYYY,File upload,5000 mV,R² threshold,0.95");
+    expect(exported[4].split("\r\n")[0]).toContain("Forward diffusion-controlled current (arb. units) at 1 mV/s");
+    expect(exported[4].split("\r\n")[0]).toContain("Reverse diffusion-controlled current (arb. units) at 1 mV/s");
+    expect(exported[5]).toContain("Valid points,Sampled points,Coverage (%),Contribution status,Data layout,Data source,Requested interval,Resolved interval,Dunn method,R² threshold,Requested turning point trim,Resolved turning point trim,Smoothing,Common potential range (V),Forward median R²,Reverse median R²,Dunn coverage (%)");
+    expect(exported[5]).toContain(",6,10,60,Available,XYYYYY,File upload,5000 mV,5000 mV,R² threshold,0.95,Auto,2000 mV");
 
     await click(view, "中文");
     await click(view, "cv-b-value-results.csv");
     const chinese = await readBlob(blobs[6]);
-    expect(chinese).toContain("拟合状态,数据格式,数据来源,解析间隔,Dunn 方法,R² 阈值");
+    expect(chinese).toContain("拟合状态,数据格式,数据来源,请求间隔,解析间隔,Dunn 方法,R² 阈值,请求转折点裁剪,解析转折点裁剪");
     expect(chinese).not.toMatch(/(?:^|\r\n)5,/);
 
     await click(view, "EN");

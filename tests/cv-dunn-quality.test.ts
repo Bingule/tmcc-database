@@ -55,7 +55,7 @@ describe("reconstructDunnContribution", () => {
       dunnRecords: makeDunnRecords(alignedGrid.potentials),
       optimized: {
         g: [0.25, 0.5, 0.75],
-        diagnostics: { lambda: 0.1, iterations: 12, converged: true, fidelity: 0, roughness: 0 }
+        diagnostics: { lambda: 0.1, iterations: 12, converged: true, optimalityResidual: 0, fidelity: 0, roughness: 0 }
       },
       fractions: makeFractions(alignedGrid.potentials),
       scanRate: 1,
@@ -95,7 +95,7 @@ describe("reconstructDunnContribution", () => {
       dunnRecords: makeDunnRecords(alignedGrid.potentials),
       optimized: {
         g: [0.25, 0.5, 0.75],
-        diagnostics: { lambda: 0.1, iterations: 12, converged: true, fidelity: 0, roughness: 0 }
+        diagnostics: { lambda: 0.1, iterations: 12, converged: true, optimalityResidual: 0, fidelity: 0, roughness: 0 }
       },
       fractions: makeFractions(alignedGrid.potentials),
       scanRate: 1,
@@ -198,7 +198,7 @@ describe("reconstructDunnContribution", () => {
     const contribution = reconstructDunnContribution({
       alignedGrid,
       dunnRecords,
-      optimized: { g: [0.25, 0.5, 0.75], diagnostics: { lambda: 0.1, iterations: 12, converged: true, fidelity: 0, roughness: 0 } },
+      optimized: { g: [0.25, 0.5, 0.75], diagnostics: { lambda: 0.1, iterations: 12, converged: true, optimalityResidual: 0, fidelity: 0, roughness: 0 } },
       fractions,
       scanRate: 1,
       seriesIndex: 0,
