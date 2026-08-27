@@ -4,7 +4,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "../src/App";
 import { I18nProvider } from "../src/i18n/I18nProvider";
 import { MAX_FILE_BYTES } from "../src/lib/cvParsing";
-import { MAX_CHART_OUTPUT_POINTS, MAX_CHART_POINTS } from "../src/pages/CvKineticsPage";
+import { MAX_CHART_OUTPUT_POINTS, MAX_CHART_POINTS, sampleDunnPlotPath } from "../src/pages/CvKineticsPage";
+import type { DunnContribution } from "../src/lib/cvTypes";
 import { makeXlsxFile } from "./xlsx-test-fixture";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -920,6 +921,34 @@ describe("CV kinetics page", () => {
     expectPathEndpoints("original", [minimum, rawMaximum]);
     expectPathEndpoints("capacitive-forward", [minimum, rawMaximum]);
     expectPathEndpoints("capacitive-reverse", [potentials[branchLength]!, minimum]);
+  });
+
+  it("preserves branch endpoints while uniformly sampling more than 4,000 synthetic crossings", () => {
+    const forwardLength = 2_501;
+    const plotPath: DunnContribution["plotPath"] = Array.from({ length: 5_002 }, (_, index) => ({
+      potential: index,
+      current: index % 2 === 0 ? 1 : -1,
+      originalCurrent: index % 2 === 0 ? 1 : -1,
+      oppositeCurrent: 0,
+      capacitiveCurrent: 0,
+      diffusionCurrent: index % 2 === 0 ? 1 : -1,
+      g: 0,
+      effectiveFraction: 0,
+      correctionMagnitude: 0,
+      branch: index < forwardLength ? "forward" : "reverse",
+      sourceIndex: null,
+      synthetic: true
+    }));
+
+    const sampled = sampleDunnPlotPath(plotPath, MAX_CHART_POINTS);
+    const indexes = sampled.map((record) => record.potential);
+    const syntheticIndexes = indexes.filter((index) => index !== 0 && index !== forwardLength - 1 && index !== forwardLength && index !== plotPath.length - 1);
+
+    expect(sampled.length).toBeLessThanOrEqual(MAX_CHART_OUTPUT_POINTS);
+    expect(indexes).toEqual(expect.arrayContaining([0, forwardLength - 1, forwardLength, plotPath.length - 1]));
+    expect(syntheticIndexes.at(0)).toBeLessThanOrEqual(2);
+    expect(syntheticIndexes.at(-1)).toBeGreaterThanOrEqual(plotPath.length - 3);
+    expect(Math.max(...syntheticIndexes.slice(1).map((index, position) => index - syntheticIndexes[position]!))).toBeLessThanOrEqual(3);
   });
 
   it("clears stale validation on edit and ignores an older import finishing last", async () => {

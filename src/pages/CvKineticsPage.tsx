@@ -1015,7 +1015,7 @@ export function makeDunnPolygons(
   }];
 }
 
-function sampleDunnPlotPath(
+export function sampleDunnPlotPath(
   plotPath: DunnContribution["plotPath"],
   limit: number
 ): DunnContribution["plotPath"] {
@@ -1029,9 +1029,8 @@ function sampleDunnPlotPath(
       runStart = index;
     }
   }
-  plotPath.forEach((record, index) => {
-    if (record.synthetic) selected.add(index);
-  });
+  const syntheticIndexes = plotPath.flatMap((record, index) => record.synthetic && !selected.has(index) ? [index] : []);
+  addEvenlySampledIndexes(selected, syntheticIndexes, Math.max(0, MAX_CHART_OUTPUT_POINTS - selected.size));
   const available = Math.max(0, limit - selected.size);
   for (let bucket = 0; bucket < available; bucket += 1) {
     const start = Math.floor(bucket * plotPath.length / available);
@@ -1045,6 +1044,22 @@ function sampleDunnPlotPath(
     selected.add(extremeIndex);
   }
   return [...selected].sort((left, right) => left - right).slice(0, MAX_CHART_OUTPUT_POINTS).map((index) => plotPath[index]!);
+}
+
+function addEvenlySampledIndexes(selected: Set<number>, candidates: number[], count: number) {
+  if (count <= 0 || candidates.length === 0) return;
+  if (count >= candidates.length) {
+    candidates.forEach((index) => selected.add(index));
+    return;
+  }
+  if (count === 1) {
+    selected.add(candidates[Math.floor((candidates.length - 1) / 2)]!);
+    return;
+  }
+  for (let sample = 0; sample < count; sample += 1) {
+    const candidateIndex = Math.round(sample * (candidates.length - 1) / (count - 1));
+    selected.add(candidates[candidateIndex]!);
+  }
 }
 
 export function makeDunnAreas(
