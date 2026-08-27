@@ -154,7 +154,7 @@ export function applyPeakOverrides(
       confidence: base?.confidence ?? 0
     });
   }
-  const fits = fitPeakGroups(groups, series, threshold).map((fit) => {
+  const fits = fitPeakGroups(groups, series, threshold, cycles).map((fit) => {
     const points = fit.points.map((point) => {
       const override = state.pointOverrides.find((item) => item.peakId === fit.peakId && item.seriesIndex === point.seriesIndex);
       const excludedCandidate = excluded.get(pointKey(fit.peakId, point.seriesIndex));

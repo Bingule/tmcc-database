@@ -26,7 +26,7 @@ import {
   snapPeakPoint,
   type CvPeakOverrideState
 } from "../lib/cvPeakOverrides";
-import { CvAnalysisError, type BValuePoint, type CvAnalysisSettings, type CvFitRecord, type CvFitStatus, type CvPeakFitStatus, type CvPeakPointStatus, type CvSeries, type CvWorkflowResult, type DunnBranchFitRecord, type DunnContribution, type DunnFitStatus } from "../lib/cvTypes";
+import { CvAnalysisError, type BValuePoint, type CvAnalysisSettings, type CvFitRecord, type CvFitStatus, type CvPeakAnalysisResult, type CvPeakFitStatus, type CvPeakPointStatus, type CvSeries, type CvWorkflowResult, type DunnBranchFitRecord, type DunnContribution, type DunnFitStatus } from "../lib/cvTypes";
 import { downloadCsv, downloadPng, downloadSvg, rowsToCsv } from "../lib/toolExport";
 
 type AnalysisState = CvWorkflowResult;
@@ -43,7 +43,9 @@ const csvFiles = [
   "cv-dunn-k1-k2.csv",
   "cv-capacitive-current.csv",
   "cv-diffusion-current.csv",
-  "cv-contribution-summary.csv"
+  "cv-contribution-summary.csv",
+  "cv-peak-b-value-results.csv",
+  "cv-peak-points.csv"
 ] as const;
 export const MAX_CHART_POINTS = 2_000;
 const MAX_CHART_GAP_RUNS = 500;
@@ -197,9 +199,9 @@ export function CvKineticsPage() {
   }
 
   function handleCsvExport(filename: typeof csvFiles[number]) {
-    if (!analysis || !analysisMetadata) return;
+    if (!analysis || !analysisMetadata || !peakResult) return;
     setErrorCode(null);
-    try { exportCsv(filename, analysis, analysisMetadata, t); }
+    try { exportCsv(filename, analysis, peakResult, analysisMetadata, t); }
     catch { setErrorCode("export"); }
   }
 
@@ -299,8 +301,10 @@ export function CvKineticsPage() {
     ]
     : chartMetadata;
   const figureAvailability = {
-    "cv-b-chart": Boolean(analysis?.bRecords.some((record) => record.fit)),
-    "cv-fit-chart": hasChartPoints(fitChart),
+    "cv-b-chart": bAnalysisMode === "potential" && Boolean(analysis?.bRecords.some((record) => record.fit)),
+    "cv-fit-chart": bAnalysisMode === "potential" && hasChartPoints(fitChart),
+    "cv-peak-overview-chart": bAnalysisMode === "peak" && Boolean(peakResult?.fits.length),
+    "cv-peak-regression-chart": bAnalysisMode === "peak" && Boolean(peakResult?.fits.some((fit) => fit.b !== null)),
     "cv-dunn-chart": hasChartPoints(dunnChart),
     "cv-contribution-chart": sortedContributions.length > 0
   } as const;
@@ -603,7 +607,10 @@ export function CvKineticsPage() {
         <h2>{t("cv.export.title")}</h2><h3>{t("cv.export.csv")}</h3>
         {csvFiles.map((filename) => <button key={filename} type="button" disabled={!canExportCsv} onClick={() => handleCsvExport(filename)}>{filename}</button>)}
         <h3>{t("cv.export.figures")}</h3>
-        {(["cv-b-chart", "cv-fit-chart", "cv-dunn-chart", "cv-contribution-chart"] as const).flatMap((id) => [
+        {(bAnalysisMode === "peak"
+          ? ["cv-peak-overview-chart", "cv-peak-regression-chart", "cv-dunn-chart", "cv-contribution-chart"] as const
+          : ["cv-b-chart", "cv-fit-chart", "cv-dunn-chart", "cv-contribution-chart"] as const
+        ).flatMap((id) => [
           <button key={`${id}-svg`} type="button" disabled={!figureAvailability[id]} onClick={() => void handleFigureExport(id, "svg")}>{t("cv.export.svg")} — {id}.svg</button>,
           <button key={`${id}-png`} type="button" disabled={!figureAvailability[id]} onClick={() => void handleFigureExport(id, "png")}>{t("cv.export.png")} — {id}.png</button>
         ])}
@@ -1235,6 +1242,7 @@ function hasChartPoints(series: ChartSeries[]) {
 function exportCsv(
   filename: typeof csvFiles[number],
   analysis: AnalysisState,
+  peakResult: CvPeakAnalysisResult,
   metadata: ResultMetadata,
   t: ReturnType<typeof useI18n>["t"]
 ) {
@@ -1272,6 +1280,52 @@ function exportCsv(
       ...metadataHeaders
     ],
     dunnExportRows(analysis, sortedRates, t).map((row) => [...row, ...metadataValues])
+  );
+  else if (filename === csvFiles[6]) csv = rowsToCsv(
+    [
+      t("cv.export.peakLabel"),
+      t("cv.table.sweepBranch"),
+      t("cv.export.peakKind"),
+      t("cv.b.value"),
+      t("cv.b.intercept"),
+      t("cv.results.rSquared"),
+      t("cv.export.fitPointCount"),
+      t("cv.peak.coverage"),
+      t("cv.results.fitStatus"),
+      ...metadataHeaders
+    ],
+    peakResult.fits.map((fit) => [
+      `${t("cv.peak.peak")} ${fit.labelIndex}`,
+      fit.branch === "forward" ? t("cv.b.forwardSweep") : t("cv.b.reverseSweep"),
+      fit.kind === "oxidation" ? t("cv.peak.oxidation") : t("cv.peak.reduction"),
+      fit.b,
+      fit.intercept,
+      fit.rSquared,
+      fit.pointCount,
+      `${fit.coverageCount}/${analysis.series.length} · ${fit.coverageStatus === "complete" ? t("cv.peak.complete") : t("cv.peak.partial")}`,
+      peakFitStatusLabel(fit.fitStatus, t),
+      ...metadataValues
+    ])
+  );
+  else if (filename === csvFiles[7]) csv = rowsToCsv(
+    [
+      t("cv.export.peakLabel"),
+      scanRateHeader,
+      t("cv.export.peakPotential"),
+      t("cv.export.peakCurrent"),
+      t("cv.peak.sourceIndex"),
+      t("cv.peak.pointStatus"),
+      ...metadataHeaders
+    ],
+    peakResult.fits.flatMap((fit) => fit.points.map((point) => [
+      `${t("cv.peak.peak")} ${fit.labelIndex}`,
+      point.scanRate,
+      point.candidate?.potential ?? null,
+      point.candidate?.current ?? null,
+      point.candidate?.sourceIndex ?? null,
+      peakPointStatusLabel(point.status, t),
+      ...metadataValues
+    ]))
   );
   else if (filename === csvFiles[5]) {
     const dunnCoverage = makeDunnCoverage(analysis);

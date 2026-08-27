@@ -223,7 +223,9 @@ describe("Tools page markup", () => {
     expect(cvLayout?.querySelector(":scope > .cv-results.tool-section-wide")).not.toBeNull();
     expect(cvLayout?.querySelector(":scope > .cv-export.tool-section-wide")).not.toBeNull();
     expect(cv.querySelector(".cv-import .cv-analysis-actions > button[name=\"cv-analyze\"] + .tool-validation")).not.toBeNull();
-    expect(cv.querySelectorAll('.scientific-chart-empty[role="status"]')).toHaveLength(4);
+    expect(cv.querySelector<HTMLSelectElement>('select[name="bAnalysisMode"]')?.value).toBe("peak");
+    expect(cv.querySelector('[data-panel-id="cv-potential-b-analysis"]')).toBeNull();
+    expect(cv.querySelectorAll('.scientific-chart-empty[role="status"]')).toHaveLength(2);
     expect((await readFile("src/pages/CvKineticsPage.tsx", "utf8"))).toContain('t("cv.table.sweepBranch")');
   });
 });

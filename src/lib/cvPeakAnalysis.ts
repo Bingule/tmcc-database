@@ -39,7 +39,7 @@ export function analyzePeakBValues(
   }
   const candidates = detectPeakCandidates(series, cycles);
   const groups = matchPeakCandidates(candidates, series.map((item) => item.scanRate));
-  return { candidates, fits: fitPeakGroups(groups, series, threshold), maximumPeakCount: 10 };
+  return { candidates, fits: fitPeakGroups(groups, series, threshold, cycles), maximumPeakCount: 10 };
 }
 
 export function matchPeakCandidates(candidates: CvPeakCandidate[], scanRates: number[]): CvPeakGroup[] {
@@ -73,12 +73,23 @@ export function matchPeakCandidates(candidates: CvPeakCandidate[], scanRates: nu
     .map((group, index) => ({ ...group, peakId: `peak-${index + 1}`, labelIndex: index + 1 }));
 }
 
-export function fitPeakGroups(groups: CvPeakGroup[], series: CvSeries[], threshold: number): CvPeakFit[] {
+export function fitPeakGroups(
+  groups: CvPeakGroup[],
+  series: CvSeries[],
+  threshold: number,
+  cycles?: NormalizedCvCycle[]
+): CvPeakFit[] {
   if (!Number.isFinite(threshold) || threshold < 0 || threshold > 1) {
     throw new CvAnalysisError("invalidRSquaredThreshold");
   }
   return groups.map((group) => {
-    const branchScale = Math.max(Number.MIN_VALUE, ...series.flatMap((item) => item.points.map((point) => Math.abs(point.current))));
+    const branchScale = Math.max(
+      Number.MIN_VALUE,
+      ...(cycles && cycles.length === series.length
+        ? cycles.flatMap((cycle) => (group.branch === "forward" ? cycle.forward.points : cycle.reverse.points)
+          .map((point) => Math.abs(point.current)))
+        : series.flatMap((item) => item.points.map((point) => Math.abs(point.current))))
+    );
     const currentFloor = branchScale * 1e-6;
     const points = series.map((item, seriesIndex) => {
       const candidate = group.candidates.get(seriesIndex) ?? null;

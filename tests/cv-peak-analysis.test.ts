@@ -59,6 +59,33 @@ it("marks a high-R² peak fit unstable when every peak current is negligible", (
   expect(fit.fitStatus).toBe("nearZeroCurrentUnstable");
 });
 
+it("uses the selected sweep branch rather than the opposite branch for the near-zero scale", () => {
+  const scanRates = [1, 2, 5, 10, 20];
+  const group = makePeakGroup("forward", scanRates.map((scanRate, seriesIndex) => ({
+    seriesIndex,
+    scanRate,
+    potential: 0,
+    current: 1e-3 * Math.pow(scanRate, 0.75),
+    sourceIndex: 1
+  })));
+  const series = scanRates.map((scanRate) => ({
+    label: `${scanRate} mV/s`,
+    scanRate,
+    points: [
+      { potential: -1, current: 1 },
+      { potential: 0, current: 1 },
+      { potential: 1, current: 1 },
+      { potential: 0, current: -1e9 },
+      { potential: -1, current: -1e9 }
+    ]
+  }));
+  const cycles = normalizeAlignedCvCycles(series);
+  const [fit] = fitPeakGroups([group], series, 0.95, cycles);
+
+  expect(fit.fitStatus).toBe("valid");
+  expect(fit.b).toBeCloseTo(0.75, 10);
+});
+
 function makePeakGroup(
   branch: CvBranchKind,
   points: Array<Pick<CvPeakCandidate, "seriesIndex" | "scanRate" | "potential" | "current" | "sourceIndex">>
