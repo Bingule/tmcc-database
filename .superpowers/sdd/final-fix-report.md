@@ -170,6 +170,47 @@ Repository checks:
 - Verified operation status cannot make a near-zero point regression-eligible or visible on the regression chart.
 - Verified normalized import confirmation preserves prior localized structural errors while accepting the requested tolerant first-loop inputs.
 
+## Follow-up final review: first manual family from zero strict fits
+
+Root cause: `CvPeakAnalysisPanel` returned immediately when `selectedFit` was null. The page and override layers already supported `fits = []`, pending Add, an empty-fit overview, and creation of `manual-1`; the early return alone hid both the overview click target and Add action.
+
+RED:
+
+- Added a page-level fixture with a valid three-rate CV cycle and one original forward local extremum per rate that strict smoothing correctly rejects as isolated noise.
+- The new test verified the zero-fit notice, empty-fit overview, safe controls, pending Add, original-extremum click, `manual-1` / `Peak 1`, three original `sourceIndex = 155` points, and no `console.error`/`console.warn` calls.
+- Exact command:
+
+```text
+node.exe .\node_modules\vitest\vitest.mjs run tests/cv-page.test.tsx -t "creates the first manual family from the zero-strict-peak overview without warnings"
+```
+
+- Result before production change: 1 failed, 60 skipped. The expected assertion failed because `[data-export-id="cv-peak-overview-chart"]` was `null`.
+
+GREEN:
+
+- Removed the empty-fit early return.
+- The concise no-peaks notice, multi-scan overview, and peak-actions row now remain visible.
+- Add stays enabled until the existing ten-family limit and exposes the existing pending `aria-pressed` state.
+- Peak/scan selectors and Confirm/Exclude/Restore are omitted until a fit exists; Remove remains rendered but disabled, so no invalid callback can fire.
+- Regression and result tables appear after the first manual family is created, without a placeholder fit or new translation key.
+- Targeted result: 1 passed, 60 skipped; the test confirmed `manual-1`, `Peak 1`, three original same-branch source indices, and zero console/act warnings.
+
+Required focused verification:
+
+```text
+node.exe .\node_modules\vitest\vitest.mjs run tests/cv-page.test.tsx tests/cv-peak-charts.test.tsx tests/cv-peak-overrides.test.ts tests/i18n.test.tsx
+```
+
+Result: 4 files passed, 90 tests passed, with no warning output.
+
+```text
+node.exe .\node_modules\typescript\bin\tsc --noEmit
+```
+
+Result: exit code 0, no diagnostics.
+
+Follow-up files changed: `src/components/CvPeakAnalysisPanel.tsx`, `tests/cv-page.test.tsx`, and this report. Self-review confirmed that analysis, matching, override allocation, ten-family enforcement, occupied-candidate exclusion, localization resources, and Dunn behavior are unchanged.
+
 ## Remaining concerns
 
 No known correctness concern remains within the accepted fix scope. The only verification noise is the pre-existing React `act(...)` warning noted above.

@@ -316,6 +316,26 @@ function manualAddPeakPageCsv() {
   ].join("\n");
 }
 
+function zeroStrictPeakPageCsv() {
+  const rates = [1, 4, 9];
+  const forward = Array.from({ length: 201 }, (_, index) => -1 + 2 * index / 200);
+  const potentials = [...forward, ...forward.slice(0, -1).reverse()];
+  return [
+    `Potential,${rates.map((rate) => `Current ${rate} mV/s`).join(",")}`,
+    ...potentials.map((potential, sourceIndex) => [
+      potential,
+      ...rates.map((rate) => {
+        const isForward = sourceIndex <= 200;
+        const baseline = (isForward ? 1 : -1) * 0.04 * Math.sqrt(rate);
+        const isolatedExtremum = isForward && sourceIndex === 155
+          ? 0.08 * Math.pow(rate, 0.7)
+          : 0;
+        return baseline + isolatedExtremum;
+      })
+    ].join(","))
+  ].join("\n");
+}
+
 async function clickPeakOverviewSource(view: HTMLElement, seriesIndex: number, sourceIndex: number) {
   const chart = view.querySelector<SVGSVGElement>('[data-export-id="cv-peak-overview-chart"]')!;
   vi.spyOn(chart, "getBoundingClientRect").mockReturnValue({
@@ -379,6 +399,41 @@ describe("CV kinetics page", () => {
     expect(view.querySelectorAll(".cv-preview tbody tr")).toHaveLength(importRowsBefore);
     expect(view.querySelectorAll('[data-table-id="cv-dunn-current-table"] tbody tr')).toHaveLength(dunnRowsBefore);
   });
+
+  it("creates the first manual family from the zero-strict-peak overview without warnings", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const view = await renderPage();
+    await upload(view, zeroStrictPeakPageCsv());
+    await setValue(view.querySelector<HTMLInputElement>('input[name="cv-scan-rates"]')!, "1, 4, 9");
+    await runAnalysisInPeakMode(view);
+
+    expect(view.textContent).toContain("No significant peaks were detected.");
+    expect(view.querySelector('[data-export-id="cv-peak-overview-chart"]')).not.toBeNull();
+    expect(view.querySelector('[data-peak-control-row="selectors"]')).toBeNull();
+    expect(view.querySelector('[data-peak-control-row="point-actions"]')).toBeNull();
+    const add = [...view.querySelectorAll<HTMLButtonElement>("button")]
+      .find((item) => item.textContent?.trim() === "Add peak");
+    const remove = [...view.querySelectorAll<HTMLButtonElement>("button")]
+      .find((item) => item.textContent?.trim() === "Remove peak");
+    expect(add).toBeDefined();
+    expect(add?.disabled).toBe(false);
+    expect(remove?.disabled ?? true).toBe(true);
+
+    await act(async () => add!.click());
+    expect(add?.getAttribute("aria-pressed")).toBe("true");
+    await clickPeakOverviewSource(view, 1, 155);
+
+    const selector = view.querySelector<HTMLSelectElement>('select[name="selectedPeakId"]');
+    expect(selector?.value).toBe("manual-1");
+    expect([...selector!.options].map((option) => option.textContent)).toEqual(["Peak 1"]);
+    const rows = [...view.querySelectorAll<HTMLElement>('[data-table-id="cv-peak-points"] [data-peak-id="manual-1"]')];
+    expect(rows).toHaveLength(3);
+    expect(rows.map((row) => row.dataset.sourceIndex)).toEqual(["155", "155", "155"]);
+    expect(button(view, "Remove peak").disabled).toBe(false);
+    expect(consoleError).not.toHaveBeenCalled();
+    expect(consoleWarn).not.toHaveBeenCalled();
+  }, 15_000);
 
   it("adds a new family only after an unoccupied original extremum is clicked", async () => {
     const view = await renderPage();

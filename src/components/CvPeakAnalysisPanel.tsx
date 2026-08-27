@@ -83,31 +83,29 @@ export function CvPeakAnalysisPanel({
 }: CvPeakAnalysisPanelProps): React.ReactElement {
   const selectedFit = result.fits.find((fit) => fit.peakId === selectedPeakId) ?? result.fits[0] ?? null;
   const peakName = (index: number) => `${copy.peak} ${index}`;
-  if (!selectedFit) {
-    return <div data-panel-id="cv-peak-analysis" className="cv-b-vertical-stack">
-      <p className="cv-analysis-notice" role="status">{copy.noPeaks}</p>
-    </div>;
-  }
 
   return <div data-panel-id="cv-peak-analysis" className="cv-b-vertical-stack">
+    {!selectedFit && <p className="cv-analysis-notice" role="status">{copy.noPeaks}</p>}
     <div className="cv-peak-selection-controls">
-      <div className="cv-peak-selector-row" data-peak-control-row="selectors">
-        <label>{copy.peak}
-          <select name="selectedPeakId" value={selectedFit.peakId} onChange={(event) => onPeakChange(event.target.value)}>
-            {result.fits.map((fit) => <option key={fit.peakId} value={fit.peakId}>{peakName(fit.labelIndex)}</option>)}
-          </select>
-        </label>
-        <label>{copy.scanRate}
-          <select name="selectedPeakSeriesIndex" value={selectedSeriesIndex} onChange={(event) => onSeriesChange(Number(event.target.value))}>
-            {series.map((item, index) => <option key={`${item.label}-${index}`} value={index}>{item.scanRate} mV/s</option>)}
-          </select>
-        </label>
-      </div>
-      <div className="cv-peak-point-actions" data-peak-control-row="point-actions">
-        <button type="button" onClick={onConfirm}>{copy.confirm}</button>
-        <button type="button" onClick={onExclude}>{copy.exclude}</button>
-        <button type="button" onClick={onRestore}>{copy.restore}</button>
-      </div>
+      {selectedFit && <>
+        <div className="cv-peak-selector-row" data-peak-control-row="selectors">
+          <label>{copy.peak}
+            <select name="selectedPeakId" value={selectedFit.peakId} onChange={(event) => onPeakChange(event.target.value)}>
+              {result.fits.map((fit) => <option key={fit.peakId} value={fit.peakId}>{peakName(fit.labelIndex)}</option>)}
+            </select>
+          </label>
+          <label>{copy.scanRate}
+            <select name="selectedPeakSeriesIndex" value={selectedSeriesIndex} onChange={(event) => onSeriesChange(Number(event.target.value))}>
+              {series.map((item, index) => <option key={`${item.label}-${index}`} value={index}>{item.scanRate} mV/s</option>)}
+            </select>
+          </label>
+        </div>
+        <div className="cv-peak-point-actions" data-peak-control-row="point-actions">
+          <button type="button" onClick={onConfirm}>{copy.confirm}</button>
+          <button type="button" onClick={onExclude}>{copy.exclude}</button>
+          <button type="button" onClick={onRestore}>{copy.restore}</button>
+        </div>
+      </>}
       <div className="cv-peak-management-actions" data-peak-control-row="peak-actions">
         <button
           type="button"
@@ -116,7 +114,7 @@ export function CvPeakAnalysisPanel({
           disabled={result.fits.length >= result.maximumPeakCount}
           aria-pressed={pendingAdd}
         >{copy.add}</button>
-        <button type="button" className="secondary-button" onClick={onRemovePeak}>{copy.remove}</button>
+        <button type="button" className="secondary-button" onClick={onRemovePeak} disabled={!selectedFit}>{copy.remove}</button>
       </div>
     </div>
 
@@ -125,7 +123,7 @@ export function CvPeakAnalysisPanel({
       <CvPeakOverviewChart
         series={series}
         fits={result.fits}
-        selectedPeakId={selectedFit.peakId}
+        selectedPeakId={selectedFit?.peakId ?? null}
         selectedSeriesIndex={selectedSeriesIndex}
         onSelectPotential={onPotentialSelect}
         onSelectPeakPoint={(peakId, seriesIndex) => {
@@ -144,6 +142,7 @@ export function CvPeakAnalysisPanel({
       />
     </article>
 
+    {selectedFit && <>
     <article className="cv-analysis-card">
       <h3>{copy.regression}</h3>
       <CvPeakRegressionChart
@@ -224,6 +223,7 @@ export function CvPeakAnalysisPanel({
         }))}</tbody>
       </table>
     </article>
+    </>}
   </div>;
 }
 
