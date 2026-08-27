@@ -70,17 +70,33 @@ export function optimizeSharedFraction(
     meanFidelity: number;
     meanRoughness: number;
   }> = [];
-  let warmStart = initializedTarget;
+  let warmStart = weightedAffineInitial(
+    initializedTarget,
+    normalizedWeight,
+    normalizedPotentials
+  );
 
-  for (const baseLambda of BASE_LAMBDA_CANDIDATES) {
+  for (const baseLambda of [...BASE_LAMBDA_CANDIDATES].reverse()) {
     try {
+      const directInitial = solveUnconstrainedBanded(
+        initializedTarget,
+        normalizedWeight,
+        baseLambda,
+        operator
+      );
+      const candidateInitial = directInitial
+        && objective(directInitial, initializedTarget, normalizedWeight, baseLambda, operator)
+          < objective(warmStart, initializedTarget, normalizedWeight, baseLambda, operator)
+        ? directInitial
+        : warmStart;
       const solution = solveProjected(
         initializedTarget,
         normalizedWeight,
         baseLambda,
         operator,
         CANDIDATE_OPTIMALITY_TOLERANCE,
-        warmStart
+        candidateInitial,
+        MAX_ITERATIONS
       );
       warmStart = solution.g;
       const candidate = {
@@ -102,15 +118,28 @@ export function optimizeSharedFraction(
   }
 
   if (candidates.length === 0) throw new CvAnalysisError("reconstructionFailed");
+  candidates.sort((left, right) => left.baseLambda - right.baseLambda);
   const selected = candidates[selectLCurveIndex(candidates)];
   const lambda = selected.baseLambda * smoothingMultiplier;
+  const directFinalInitial = solveUnconstrainedBanded(
+    initializedTarget,
+    normalizedWeight,
+    lambda,
+    operator
+  );
+  const finalInitial = directFinalInitial
+    && objective(directFinalInitial, initializedTarget, normalizedWeight, lambda, operator)
+      < objective(selected.solution.g, initializedTarget, normalizedWeight, lambda, operator)
+    ? directFinalInitial
+    : selected.solution.g;
   const solution = solveProjected(
     initializedTarget,
     normalizedWeight,
     lambda,
     operator,
     OPTIMALITY_TOLERANCE,
-    selected.solution.g
+    finalInitial,
+    MAX_ITERATIONS
   );
   return {
     g: solution.g,
@@ -299,13 +328,112 @@ function initializeMissingTargets(target: number[], weight: number[]): number[] 
   return initialized.map((value) => Math.min(1, Math.max(0, value)));
 }
 
+function weightedAffineInitial(
+  target: number[],
+  weight: number[],
+  normalizedPotentials: number[]
+): number[] {
+  let meanPotential = 0;
+  let meanTarget = 0;
+  for (let index = 0; index < target.length; index += 1) {
+    meanPotential += weight[index] * normalizedPotentials[index];
+    meanTarget += weight[index] * target[index];
+  }
+
+  let potentialVariance = 0;
+  let covariance = 0;
+  for (let index = 0; index < target.length; index += 1) {
+    const centeredPotential = normalizedPotentials[index] - meanPotential;
+    potentialVariance += weight[index] * centeredPotential * centeredPotential;
+    covariance += weight[index] * centeredPotential * (target[index] - meanTarget);
+  }
+  const slope = potentialVariance > Number.EPSILON ? covariance / potentialVariance : 0;
+  return normalizedPotentials.map((potential) => Math.min(1, Math.max(
+    0,
+    meanTarget + slope * (potential - meanPotential)
+  )));
+}
+
+function solveUnconstrainedBanded(
+  target: number[],
+  weight: number[],
+  lambda: number,
+  operator: SecondDifferenceOperator
+): number[] | null {
+  const pointCount = target.length;
+  const diagonal = [...weight];
+  const firstOffDiagonal = new Array<number>(Math.max(0, pointCount - 1)).fill(0);
+  const secondOffDiagonal = new Array<number>(Math.max(0, pointCount - 2)).fill(0);
+  const rightHandSide = weight.map((value, index) => value * target[index]);
+
+  for (const row of operator.rows) {
+    const [firstIndex, middleIndex, lastIndex] = row.indices;
+    const [first, middle, last] = row.coefficients;
+    diagonal[firstIndex] += lambda * first * first;
+    diagonal[middleIndex] += lambda * middle * middle;
+    diagonal[lastIndex] += lambda * last * last;
+    firstOffDiagonal[firstIndex] += lambda * first * middle;
+    firstOffDiagonal[middleIndex] += lambda * middle * last;
+    secondOffDiagonal[firstIndex] += lambda * first * last;
+  }
+
+  const choleskyDiagonal = new Array<number>(pointCount).fill(0);
+  const firstSubDiagonal = new Array<number>(pointCount).fill(0);
+  const secondSubDiagonal = new Array<number>(pointCount).fill(0);
+  for (let index = 0; index < pointCount; index += 1) {
+    if (index >= 2) {
+      secondSubDiagonal[index] = secondOffDiagonal[index - 2] / choleskyDiagonal[index - 2];
+    }
+    if (index >= 1) {
+      const overlap = index >= 2
+        ? secondSubDiagonal[index] * firstSubDiagonal[index - 1]
+        : 0;
+      firstSubDiagonal[index] = (firstOffDiagonal[index - 1] - overlap)
+        / choleskyDiagonal[index - 1];
+    }
+    const pivot = diagonal[index]
+      - firstSubDiagonal[index] * firstSubDiagonal[index]
+      - secondSubDiagonal[index] * secondSubDiagonal[index];
+    if (!Number.isFinite(pivot) || pivot <= 0) return null;
+    choleskyDiagonal[index] = Math.sqrt(pivot);
+  }
+
+  const transformed = new Array<number>(pointCount).fill(0);
+  for (let index = 0; index < pointCount; index += 1) {
+    const firstContribution = index >= 1
+      ? firstSubDiagonal[index] * transformed[index - 1]
+      : 0;
+    const secondContribution = index >= 2
+      ? secondSubDiagonal[index] * transformed[index - 2]
+      : 0;
+    transformed[index] = (rightHandSide[index] - firstContribution - secondContribution)
+      / choleskyDiagonal[index];
+  }
+
+  const solution = new Array<number>(pointCount).fill(0);
+  for (let index = pointCount - 1; index >= 0; index -= 1) {
+    const firstContribution = index + 1 < pointCount
+      ? firstSubDiagonal[index + 1] * solution[index + 1]
+      : 0;
+    const secondContribution = index + 2 < pointCount
+      ? secondSubDiagonal[index + 2] * solution[index + 2]
+      : 0;
+    const value = (transformed[index] - firstContribution - secondContribution)
+      / choleskyDiagonal[index];
+    if (!Number.isFinite(value)) return null;
+    solution[index] = Math.min(1, Math.max(0, value));
+  }
+  return solution;
+}
+
 function solveProjected(
   target: number[],
   weight: number[],
   lambda: number,
   operator: SecondDifferenceOperator,
   tolerance: number,
-  initial: number[]
+  initial: number[],
+  maximumIterations: number
 ): ProjectedSolution {
   const maxWeight = weight.reduce((max, value) => Math.max(max, value), 0);
   let localLipschitz = 2 * maxWeight + lambda * operator.lipschitzBound + Number.EPSILON;
@@ -316,16 +444,16 @@ function solveProjected(
   let accelerated = [...g];
   let momentum = 1;
   const gradient = new Array<number>(g.length).fill(0);
-  const next = new Array<number>(g.length).fill(0);
+  let next = new Array<number>(g.length).fill(0);
   let previousObjective = objective(g, target, weight, lambda, operator);
   if (!Number.isFinite(previousObjective)) throw new CvAnalysisError("reconstructionFailed");
 
-  let residual = optimalityResidual(g, target, weight, lambda, operator);
+  let residual = optimalityResidual(g, target, weight, lambda, operator, gradient);
   if (residual <= tolerance) {
     return { g, iterations: 0, converged: true, optimalityResidual: residual };
   }
 
-  for (let iterations = 1; iterations <= MAX_ITERATIONS; iterations += 1) {
+  for (let iterations = 1; iterations <= maximumIterations; iterations += 1) {
     gradient.fill(0);
     addFidelityGradient(accelerated, target, weight, gradient);
     addRoughnessGradient(accelerated, lambda, operator, gradient);
@@ -334,9 +462,7 @@ function solveProjected(
     while (!majorizesObjective(
       next,
       accelerated,
-      gradient,
       localLipschitz,
-      target,
       weight,
       lambda,
       operator
@@ -348,8 +474,9 @@ function solveProjected(
 
     const nextObjective = objective(next, target, weight, lambda, operator);
     if (!Number.isFinite(nextObjective)) throw new CvAnalysisError("reconstructionFailed");
-    if (nextObjective > previousObjective) {
-      accelerated = [...g];
+    const objectiveTolerance = 1e-12 * Math.max(1, Math.abs(previousObjective));
+    if (nextObjective > previousObjective + objectiveTolerance) {
+      copyValues(g, accelerated);
       momentum = 1;
       continue;
     }
@@ -358,12 +485,16 @@ function solveProjected(
     const restart = dotDifference(next, g, accelerated, next) > 0;
     momentum = restart ? 1 : (1 + Math.sqrt(1 + 4 * momentum * momentum)) / 2;
     const extrapolation = restart ? 0 : (previousMomentum - 1) / momentum;
-    accelerated = next.map((value, index) => value + extrapolation * (value - g[index]));
-    g = [...next];
+    for (let index = 0; index < next.length; index += 1) {
+      accelerated[index] = next[index] + extrapolation * (next[index] - g[index]);
+    }
+    const previousG = g;
+    g = next;
+    next = previousG;
     previousObjective = nextObjective;
 
     if (iterations % 10 === 0) {
-      residual = optimalityResidual(g, target, weight, lambda, operator);
+      residual = optimalityResidual(g, target, weight, lambda, operator, gradient);
       if (residual <= tolerance) {
         return { g, iterations, converged: true, optimalityResidual: residual };
       }
@@ -387,32 +518,42 @@ function projectGradientStep(
 function majorizesObjective(
   next: number[],
   accelerated: number[],
-  gradient: number[],
   localLipschitz: number,
-  target: number[],
   weight: number[],
   lambda: number,
   operator: SecondDifferenceOperator
 ): boolean {
-  let gradientTerm = 0;
+  let quadraticRemainder = 0;
   let squaredDistance = 0;
   for (let index = 0; index < next.length; index += 1) {
     const difference = next[index] - accelerated[index];
-    gradientTerm += gradient[index] * difference;
+    quadraticRemainder += weight[index] * difference * difference;
     squaredDistance += difference * difference;
   }
-  const nextObjective = objective(next, target, weight, lambda, operator);
-  const quadraticBound = objective(accelerated, target, weight, lambda, operator)
-    + gradientTerm
-    + localLipschitz * squaredDistance / 2;
+  for (const row of operator.rows) {
+    const secondDifference = row.coefficients[0]
+      * (next[row.indices[0]] - accelerated[row.indices[0]])
+      + row.coefficients[1]
+      * (next[row.indices[1]] - accelerated[row.indices[1]])
+      + row.coefficients[2]
+      * (next[row.indices[2]] - accelerated[row.indices[2]]);
+    quadraticRemainder += lambda * secondDifference * secondDifference;
+  }
+  const quadraticBound = localLipschitz * squaredDistance / 2;
   const roundingTolerance = 1e-12 * Math.max(
     1,
-    Math.abs(nextObjective),
+    Math.abs(quadraticRemainder),
     Math.abs(quadraticBound)
   );
-  return Number.isFinite(nextObjective)
+  return Number.isFinite(quadraticRemainder)
     && Number.isFinite(quadraticBound)
-    && nextObjective <= quadraticBound + roundingTolerance;
+    && quadraticRemainder <= quadraticBound + roundingTolerance;
+}
+
+function copyValues(source: number[], destination: number[]) {
+  for (let index = 0; index < source.length; index += 1) {
+    destination[index] = source[index];
+  }
 }
 
 function dotDifference(a: number[], b: number[], c: number[], d: number[]): number {
@@ -456,9 +597,10 @@ function optimalityResidual(
   target: number[],
   weight: number[],
   lambda: number,
-  operator: SecondDifferenceOperator
+  operator: SecondDifferenceOperator,
+  gradient = new Array<number>(g.length).fill(0)
 ): number {
-  const gradient = new Array<number>(g.length).fill(0);
+  gradient.fill(0);
   addFidelityGradient(g, target, weight, gradient);
   addRoughnessGradient(g, lambda, operator, gradient);
 

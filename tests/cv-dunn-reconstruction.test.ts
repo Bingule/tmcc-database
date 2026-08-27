@@ -84,6 +84,38 @@ it("is stable when the same noisy function is sampled on coarse and dense grids"
   }
 });
 
+it("solves a production-sized shared fraction grid within the regression budget", () => {
+  const pointCount = 871;
+  const potentials = Array.from({ length: pointCount }, (_value, index) => index / (pointCount - 1));
+  const fractions = {
+    forward: potentials.map((x) => point(Math.min(1, Math.max(0,
+      0.46
+      + 0.18 * Math.sin(2 * Math.PI * x)
+      + 0.05 * Math.cos(6 * Math.PI * x)
+      + 0.03 * Math.sin(70 * Math.PI * x)
+    )), 0.75)),
+    reverse: potentials.map((x) => point(Math.min(1, Math.max(0,
+      0.44
+      + 0.18 * Math.sin(2 * Math.PI * x)
+      + 0.05 * Math.cos(6 * Math.PI * x)
+      - 0.03 * Math.sin(70 * Math.PI * x)
+    )), 0.7))
+  };
+  const startedAt = performance.now();
+
+  const result = optimizeSharedFraction(fractions, potentials, 12);
+  const elapsedMilliseconds = performance.now() - startedAt;
+
+  expect(result.g).toHaveLength(pointCount);
+  expect(result.g.every((value) => value >= 0 && value <= 1)).toBe(true);
+  expect(result.diagnostics.baseLambda).toBe(1e-4);
+  expect(result.diagnostics.optimalityResidual).toBeLessThanOrEqual(1e-6);
+  expect(result.diagnostics.roughness).toBeLessThan(secondDifferenceRoughness(
+    fractions.forward.map(({ fraction }) => fraction!)
+  ));
+  expect(elapsedMilliseconds).toBeLessThan(6_000);
+}, 30_000);
+
 it("preserves a linear normalized-potential ramp on a nonuniform grid", () => {
   const potentials = [0, 0.25, 1];
   const result = optimizeSharedFraction({
