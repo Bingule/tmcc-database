@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { normalizeAlignedCvCycles } from "../src/lib/cvCycle";
-import { analyzePeakBValues, detectPeakCandidates, fitPeakGroups } from "../src/lib/cvPeakAnalysis";
+import { analyzePeakBValues, detectPeakCandidates, fitPeakGroups, matchPeakCandidates } from "../src/lib/cvPeakAnalysis";
 import type { CvBranchKind, CvPeakCandidate, CvSeries } from "../src/lib/cvTypes";
-import { makeManyPeakSeries, makePartialPeakSeries, makeThreePeakNcpLikeSeries } from "./fixtures/cvPeakData";
+import {
+  makeManyPeakSeries,
+  makePartialPeakSeries,
+  makeRecoverablePeakSeries,
+  makeThreePeakNcpLikeSeries
+} from "./fixtures/cvPeakData";
 
 describe("detectPeakCandidates", () => {
   it("finds two oxidation and one reduction candidates in NCP-like loops", () => {
@@ -35,6 +40,28 @@ it("fits a peak present at only three rates and discloses partial coverage", () 
   expect(partial.coverageStatus).toBe("partial");
   expect(partial.pointCount).toBe(3);
   expect(partial.fitStatus).toBe("valid");
+});
+
+it("recovers coherent weak peak-family members from original branch points", () => {
+  const series = makeRecoverablePeakSeries();
+  const cycles = normalizeAlignedCvCycles(series);
+  const strict = matchPeakCandidates(detectPeakCandidates(series, cycles), series.map((item) => item.scanRate));
+  expect(strict.map((group) => group.candidates.size)).toEqual([5, 4, 3]);
+
+  const result = analyzePeakBValues(series, cycles, 0);
+  expect(result.fits.map((fit) => fit.coverageCount)).toEqual([5, 5, 5]);
+  for (const fit of result.fits) {
+    for (const point of fit.points) {
+      expect(point.candidate).not.toBeNull();
+      const candidate = point.candidate!;
+      const original = series[point.seriesIndex]!.points[candidate.sourceIndex]!;
+      expect(candidate.potential).toBe(original.potential);
+      expect(candidate.current).toBe(original.current);
+      expect(candidate.branch).toBe(fit.branch);
+      expect(cycles[point.seriesIndex]!.forward.points.some((item) => item.sourceIndex === candidate.sourceIndex)).toBe(true);
+      expect(cycles[point.seriesIndex]!.reverse.points.some((item) => item.sourceIndex === candidate.sourceIndex)).toBe(false);
+    }
+  }
 });
 
 it("caps automatically matched peak groups at ten", () => {

@@ -7,6 +7,7 @@ type PeakDefinition = {
   exponent: number;
   amplitude: number;
   shiftPerLogRate: number;
+  strengthByRate?: Readonly<Record<number, number>>;
 };
 
 export function makeThreePeakNcpLikeSeries(): CvSeries[] {
@@ -22,6 +23,41 @@ export function makePartialPeakSeries(): CvSeries[] {
     { branch: "forward", center: -0.3, width: 0.07, exponent: 0.75, amplitude: 1, shiftPerLogRate: 0.01 },
     { branch: "reverse", center: 0.2, width: 0.06, exponent: 0.6, amplitude: 0.7, shiftPerLogRate: -0.01 }
   ], new Set(["reverse:2", "reverse:20"]));
+}
+
+export function makeRecoverablePeakSeries(): CvSeries[] {
+  const series = makePeakSeries([
+    { branch: "forward", center: -0.56, width: 0.06, exponent: 0.72, amplitude: 1.1, shiftPerLogRate: 0.008 },
+    {
+      branch: "forward",
+      center: -0.12,
+      width: 0.06,
+      exponent: 0.68,
+      amplitude: 1.25,
+      shiftPerLogRate: 0.006,
+      strengthByRate: { 20: 0.003 }
+    },
+    {
+      branch: "forward",
+      center: 0.34,
+      width: 0.06,
+      exponent: 0.64,
+      amplitude: 1.05,
+      shiftPerLogRate: -0.006,
+      strengthByRate: { 10: 0.003, 20: 0.003 }
+    }
+  ]);
+  return series.map((item) => ({
+    ...item,
+    points: item.points.map((point, index) => {
+      if (index === item.points.length - 1) return { ...point, current: item.points[0]!.current };
+      if (index > 400) return {
+        ...point,
+        current: (0.04 + 0.015 * point.potential) * Math.sqrt(item.scanRate)
+      };
+      return point;
+    })
+  }));
 }
 
 export function makeManyPeakSeries(count = 12): CvSeries[] {
@@ -51,7 +87,8 @@ function makePeakSeries(definitions: PeakDefinition[], missing = new Set<string>
         .reduce((sum, peak) => {
           const center = peak.center + peak.shiftPerLogRate * Math.log(scanRate);
           const shape = Math.exp(-Math.pow((potential - center) / peak.width, 2));
-          return sum + sign * peak.amplitude * Math.pow(scanRate, peak.exponent) * shape;
+          return sum + sign * peak.amplitude * (peak.strengthByRate?.[scanRate] ?? 1)
+            * Math.pow(scanRate, peak.exponent) * shape;
         }, 0);
       const ripple = 1e-5 * Math.sin((pointIndex + 1) * (seriesIndex + 2));
       return { potential, current: baseline + peakCurrent + ripple };

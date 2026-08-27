@@ -38,7 +38,8 @@ export function analyzePeakBValues(
     throw new CvAnalysisError("invalidRSquaredThreshold");
   }
   const candidates = detectPeakCandidates(series, cycles);
-  const groups = matchPeakCandidates(candidates, series.map((item) => item.scanRate));
+  const strictGroups = matchPeakCandidates(candidates, series.map((item) => item.scanRate));
+  const groups = recoverMissingPeakCandidates(strictGroups, series, cycles);
   return { candidates, fits: fitPeakGroups(groups, series, threshold, cycles), maximumPeakCount: 10 };
 }
 
@@ -51,8 +52,8 @@ export function matchPeakCandidates(candidates: CvPeakCandidate[], scanRates: nu
     const local = candidates.filter((candidate) => candidate.branch === branch && candidate.kind === kind);
     if (local.length === 0) continue;
     const span = Math.max(Number.EPSILON, ...local.map((candidate) => candidate.branchSpan));
-    const referencePosition = Math.floor(seriesOrder.length / 2);
-    const reference = seriesOrder[referencePosition]!;
+    const reference = chooseReferenceSeries(local, seriesOrder);
+    const referencePosition = seriesOrder.findIndex((item) => item.seriesIndex === reference.seriesIndex);
     const builders: Array<Omit<CvPeakGroup, "peakId" | "labelIndex">> = local
       .filter((candidate) => candidate.seriesIndex === reference.seriesIndex)
       .sort((left, right) => left.potential - right.potential)
@@ -71,6 +72,145 @@ export function matchPeakCandidates(candidates: CvPeakCandidate[], scanRates: nu
       || median([...left.candidates.values()].map((candidate) => candidate.potential))
         - median([...right.candidates.values()].map((candidate) => candidate.potential)))
     .map((group, index) => ({ ...group, peakId: `peak-${index + 1}`, labelIndex: index + 1 }));
+}
+
+export function recoverMissingPeakCandidates(
+  groups: CvPeakGroup[],
+  series: CvSeries[],
+  cycles: NormalizedCvCycle[]
+): CvPeakGroup[] {
+  if (series.length !== cycles.length) throw new CvAnalysisError("invalidDataShape");
+  const recovered = groups.map((group) => ({ ...group, candidates: new Map(group.candidates) }));
+  for (let seriesIndex = 0; seriesIndex < series.length; seriesIndex += 1) {
+    const item = series[seriesIndex]!;
+    const cycle = cycles[seriesIndex]!;
+    const pending = recovered
+      .filter((group) => group.candidates.size >= 3 && !group.candidates.has(seriesIndex))
+      .sort((left, right) => predictPotentialAtRate(left, item.scanRate) - predictPotentialAtRate(right, item.scanRate));
+    for (const group of pending) {
+      const branchPoints = group.branch === "forward" ? cycle.forward.points : cycle.reverse.points;
+      const branchSpan = Math.max(
+        Number.EPSILON,
+        ...[...group.candidates.values()].map((candidate) => candidate.branchSpan)
+      );
+      const predicted = predictPotentialAtRate(group, item.scanRate);
+      const halfWindow = Math.min(
+        0.12 * branchSpan,
+        Math.max(4 * cycle.nativePotentialInterval, 0.06 * branchSpan)
+      );
+      const candidate = recoverLocalExtremum(branchPoints, predicted, halfWindow, group.kind, branchSpan);
+      if (candidate === null || !isSeparatedFromFamily(candidate.point, group, recovered, seriesIndex, branchSpan)) continue;
+      group.candidates.set(seriesIndex, {
+        seriesIndex,
+        scanRate: item.scanRate,
+        branch: group.branch,
+        kind: group.kind,
+        sourceIndex: candidate.point.sourceIndex,
+        potential: item.points[candidate.point.sourceIndex]!.potential,
+        current: item.points[candidate.point.sourceIndex]!.current,
+        branchSpan,
+        prominence: candidate.prominence,
+        normalizedProminence: candidate.normalizedProminence,
+        confidence: candidate.confidence
+      });
+    }
+  }
+  return recovered;
+}
+
+function chooseReferenceSeries(
+  local: CvPeakCandidate[],
+  seriesOrder: Array<{ scanRate: number; seriesIndex: number }>
+) {
+  return [...seriesOrder].sort((left, right) => {
+    const leftCandidates = local.filter((item) => item.seriesIndex === left.seriesIndex);
+    const rightCandidates = local.filter((item) => item.seriesIndex === right.seriesIndex);
+    return rightCandidates.length - leftCandidates.length
+      || sumConfidence(rightCandidates) - sumConfidence(leftCandidates)
+      || left.scanRate - right.scanRate;
+  })[0]!;
+}
+
+function sumConfidence(candidates: CvPeakCandidate[]): number {
+  return candidates.reduce((sum, candidate) => sum + candidate.confidence, 0);
+}
+
+function predictPotentialAtRate(group: Pick<CvPeakGroup, "candidates">, scanRate: number): number {
+  const candidates = [...group.candidates.values()]
+    .filter((candidate) => candidate.scanRate > 0 && Number.isFinite(candidate.potential));
+  if (candidates.length === 0) return Number.NaN;
+  if (candidates.length === 1 || !Number.isFinite(scanRate) || scanRate <= 0) return candidates[0]!.potential;
+  const regression = linearRegression(candidates.map((candidate) => ({
+    x: Math.log(candidate.scanRate),
+    y: candidate.potential
+  })));
+  return regression !== null && Number.isFinite(regression.slope) && Number.isFinite(regression.intercept)
+    ? regression.intercept + regression.slope * Math.log(scanRate)
+    : candidates[0]!.potential;
+}
+
+function recoverLocalExtremum(
+  branchPoints: CvSweepPoint[],
+  predicted: number,
+  halfWindow: number,
+  kind: CvPeakKind,
+  branchSpan: number
+): { point: CvSweepPoint; prominence: number; normalizedProminence: number; confidence: number } | null {
+  if (!Number.isFinite(predicted) || !Number.isFinite(halfWindow) || halfWindow <= 0) return null;
+  const points = ascendingUnique(branchPoints)
+    .filter((point) => Math.abs(point.potential - predicted) <= halfWindow);
+  if (points.length < 7) return null;
+  const currents = points.map((point) => point.current);
+  const smoothed = smoothLocalQuadratic(currents, Math.min(7, largestOdd(points.length)));
+  const extrema = smoothed.flatMap((value, index) => {
+    if (index === 0 || index === smoothed.length - 1) return [];
+    const expectedDirection = kind === "oxidation"
+      ? value > smoothed[index - 1]! && value >= smoothed[index + 1]!
+      : value < smoothed[index - 1]! && value <= smoothed[index + 1]!;
+    return expectedDirection ? [index] : [];
+  });
+  if (extrema.length === 0) return null;
+  const index = extrema.reduce((best, candidate) =>
+    Math.abs(points[candidate]!.potential - predicted) < Math.abs(points[best]!.potential - predicted)
+      ? candidate
+      : best
+  );
+  const point = points[index]!;
+  const left = currents.slice(0, index);
+  const right = currents.slice(index + 1);
+  if (left.length === 0 || right.length === 0) return null;
+  const isOriginalExtremum = kind === "oxidation"
+    ? point.current > currents[index - 1]! && point.current >= currents[index + 1]!
+    : point.current < currents[index - 1]! && point.current <= currents[index + 1]!;
+  if (!isOriginalExtremum) return null;
+  const prominence = kind === "oxidation"
+    ? point.current - Math.max(Math.min(...left), Math.min(...right))
+    : Math.min(Math.max(...left), Math.max(...right)) - point.current;
+  const localSpan = Math.max(Number.EPSILON, Math.max(...currents) - Math.min(...currents));
+  const residualMad = median(currents.map((value, itemIndex) => Math.abs(value - smoothed[itemIndex]!)));
+  const prominenceFloor = Math.max(4 * residualMad, 0.005 * localSpan, Number.EPSILON);
+  if (!Number.isFinite(prominence) || prominence < prominenceFloor) return null;
+  return {
+    point,
+    prominence,
+    normalizedProminence: prominence / Math.max(Number.EPSILON, branchSpan),
+    confidence: Math.min(0.49, Math.max(0.05, 0.1 * prominence / prominenceFloor))
+  };
+}
+
+function isSeparatedFromFamily(
+  point: CvSweepPoint,
+  group: CvPeakGroup,
+  groups: CvPeakGroup[],
+  seriesIndex: number,
+  branchSpan: number
+): boolean {
+  const minimumSeparation = 0.03 * branchSpan;
+  return groups
+    .filter((other) => other.branch === group.branch && other.kind === group.kind && other !== group)
+    .map((other) => other.candidates.get(seriesIndex))
+    .filter((candidate): candidate is CvPeakCandidate => candidate !== undefined)
+    .every((candidate) => Math.abs(candidate.potential - point.potential) >= minimumSeparation);
 }
 
 export function fitPeakGroups(
