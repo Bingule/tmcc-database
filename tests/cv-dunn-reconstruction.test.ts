@@ -35,6 +35,55 @@ it("calculates roughness in normalized-potential units", () => {
   expect(secondDifferenceRoughness([0, 0.25, 1])).toBeGreaterThan(0);
 });
 
+it("integrates curvature independently of potential-grid density", () => {
+  const coarseX = [0, 0.01, 0.5, 0.99, 1];
+  const denseX = Array.from({ length: 101 }, (_value, index) => index / 100);
+
+  expect(secondDifferenceRoughness(
+    coarseX.map((x) => x * x), coarseX
+  )).toBeCloseTo(secondDifferenceRoughness(
+    denseX.map((x) => x * x), denseX
+  ), 3);
+});
+
+it("applies the stabilization smoothing multiplier to the selected base lambda", () => {
+  const potentials = Array.from({ length: 51 }, (_value, index) => index / 50);
+  const raw = potentials.map((x) => Math.min(1, Math.max(0,
+    0.5 + 0.2 * Math.sin(2 * Math.PI * x) + 0.12 * Math.sin(22 * Math.PI * x)
+  )));
+  const fractions = {
+    forward: raw.map((value) => point(value, 0.6)),
+    reverse: raw.map((value) => point(value, 0.6))
+  };
+
+  const base = optimizeSharedFraction(fractions, potentials, 1);
+  const strong = optimizeSharedFraction(fractions, potentials, 20);
+
+  expect(strong.diagnostics.lambda).toBeCloseTo(strong.diagnostics.baseLambda * 20, 12);
+  expect(strong.diagnostics.roughness).toBeLessThan(base.diagnostics.roughness);
+});
+
+it("is stable when the same noisy function is sampled on coarse and dense grids", () => {
+  const solve = (pointCount: number) => {
+    const potentials = Array.from({ length: pointCount }, (_value, index) => index / (pointCount - 1));
+    const raw = potentials.map((x) => Math.min(1, Math.max(0,
+      0.45 + 0.22 * Math.sin(2 * Math.PI * x) + 0.08 * Math.sin(34 * Math.PI * x)
+    )));
+    return optimizeSharedFraction({
+      forward: raw.map((value) => point(value, 0.7)),
+      reverse: raw.map((value) => point(value, 0.7))
+    }, potentials, 1).g;
+  };
+  const coarse = solve(51);
+  const dense = solve(501);
+
+  for (const position of [0, 0.25, 0.5, 0.75, 1]) {
+    expect(Math.abs(
+      sampleNormalized(coarse, position) - sampleNormalized(dense, position)
+    )).toBeLessThan(0.02);
+  }
+});
+
 it("preserves a linear normalized-potential ramp on a nonuniform grid", () => {
   const potentials = [0, 0.25, 1];
   const result = optimizeSharedFraction({
@@ -75,3 +124,30 @@ it("rejects invalid reconstruction inputs", () => {
     reverse: [point(0.2), point(0.3)]
   }, [0, Number.NaN])).toThrow("invalidDataShape");
 });
+
+it("rejects reconstruction without positive confidence", () => {
+  const missing = { fraction: null, confidence: 0, rSquared: null, trustedAnchor: false };
+  expect(() => optimizeSharedFraction({
+    forward: [missing, missing, missing],
+    reverse: [missing, missing, missing]
+  }, [0, 0.5, 1])).toThrow("reconstructionFailed");
+});
+
+it("rejects smoothing multipliers outside the stabilization range", () => {
+  const fractions = {
+    forward: [point(0.2), point(0.8)],
+    reverse: [point(0.2), point(0.8)]
+  };
+  expect(() => optimizeSharedFraction(fractions, [0, 1], 0.99)).toThrow("invalidDataShape");
+  expect(() => optimizeSharedFraction(fractions, [0, 1], 30.01)).toThrow("invalidDataShape");
+  expect(() => optimizeSharedFraction(fractions, [0, 1], Number.NaN)).toThrow("invalidDataShape");
+});
+
+function sampleNormalized(values: number[], position: number): number {
+  const scaledIndex = position * (values.length - 1);
+  const leftIndex = Math.floor(scaledIndex);
+  const rightIndex = Math.ceil(scaledIndex);
+  if (leftIndex === rightIndex) return values[leftIndex];
+  const fraction = scaledIndex - leftIndex;
+  return values[leftIndex] + fraction * (values[rightIndex] - values[leftIndex]);
+}

@@ -193,7 +193,9 @@ export interface DunnStabilizationResult {
 }
 
 export interface DunnRegularizationDiagnostics {
+  baseLambda: number;
   lambda: number;
+  smoothingMultiplier: number;
   iterations: number;
   converged: boolean;
   optimalityResidual: number;
