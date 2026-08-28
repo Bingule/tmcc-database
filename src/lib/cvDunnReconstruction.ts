@@ -24,7 +24,9 @@ const SOFT_ENVELOPE_ENDPOINT_FIDELITY_WEIGHT = 0.25;
 const SOFT_ENVELOPE_SMOOTHNESS_RATIO = 1e-4;
 const SOFT_ENVELOPE_LAMBDA = 8;
 const SOFT_ENVELOPE_TOLERANCE_SCALE = 1e-10;
-const SOFT_ENVELOPE_ENDPOINT_RECONNECTION_WIDTH = 0.05;
+const ENDPOINT_SHAPE_WINDOW = 0.05;
+const ENDPOINT_DIRECTION_TOLERANCE_SCALE = 1e-10;
+const ENDPOINT_PROJECTION_TOLERANCE = 1e-10;
 const SOFT_ENVELOPE_MAXIMUM_ACTIVE_SET_ITERATIONS = 50;
 const SOFT_ENVELOPE_MAXIMUM_SUPPORT_POINTS = 1_001;
 
@@ -216,7 +218,7 @@ export function refineSharedFractionWithSoftEnvelope(
     reverse,
     normalizedTolerance
   ) === 0) {
-    const g = reconnectSharedFractionEndpoints(
+    const g = refineEndpointMorphology(
       input.baselineG,
       normalizedPotentials,
       forward,
@@ -256,8 +258,15 @@ export function refineSharedFractionWithSoftEnvelope(
       baselineLambda: input.baselineLambda
     });
     const supportPotentials = supportIndices.map((index) => input.potentials[index]!);
-    const g = pchipInterpolate(supportPotentials, support.g, input.potentials)
+    const interpolated = pchipInterpolate(supportPotentials, support.g, input.potentials)
       .map((value) => Math.min(1, Math.max(0, value)));
+    const g = refineEndpointMorphology(
+      interpolated,
+      normalizedPotentials,
+      forward,
+      reverse,
+      normalizedTolerance
+    );
     return {
       baselineG: [...input.baselineG],
       g,
@@ -316,7 +325,7 @@ export function refineSharedFractionWithSoftEnvelope(
       operator
     );
     if (residual <= OPTIMALITY_TOLERANCE) {
-      const reconnected = reconnectSharedFractionEndpoints(
+      const refined = refineEndpointMorphology(
         g,
         normalizedPotentials,
         forward,
@@ -324,7 +333,7 @@ export function refineSharedFractionWithSoftEnvelope(
         normalizedTolerance
       );
       const diagnostics = makeSoftEnvelopeDiagnostics(
-        reconnected,
+        refined,
         input.baselineG,
         forward,
         reverse,
@@ -335,11 +344,70 @@ export function refineSharedFractionWithSoftEnvelope(
         totalIterations,
         residual
       );
-      return { baselineG: [...input.baselineG], g: reconnected, diagnostics };
+      return { baselineG: [...input.baselineG], g: refined, diagnostics };
     }
   }
 
   throw new CvAnalysisError("reconstructionFailed");
+}
+
+function refineEndpointMorphology(
+  incomingG: number[],
+  normalizedPotentials: number[],
+  forward: number[],
+  reverse: number[],
+  tolerance: number
+): number[] {
+  if (incomingG.length === 1) {
+    const [lower, upper] = feasibleFractionInterval(forward[0]!, reverse[0]!);
+    return [Math.min(upper, Math.max(lower, incomingG[0]!))];
+  }
+
+  const legacyReconnected = reconnectSharedFractionEndpoints(
+    incomingG,
+    normalizedPotentials,
+    forward,
+    reverse,
+    tolerance
+  );
+  if (!hasAddedEndpointDirectionReversal(
+    legacyReconnected,
+    normalizedPotentials,
+    forward,
+    reverse,
+    tolerance
+  )) {
+    return legacyReconnected;
+  }
+
+  const refined = [...legacyReconnected];
+
+  for (const endpointIndex of [0, refined.length - 1]) {
+    const [lower, upper] = feasibleFractionInterval(
+      forward[endpointIndex]!,
+      reverse[endpointIndex]!
+    );
+    refined[endpointIndex] = Math.min(
+      upper,
+      Math.max(lower, incomingG[endpointIndex]!)
+    );
+  }
+  enforceEndpointDirectionsSequentially(
+    refined,
+    normalizedPotentials,
+    forward,
+    reverse,
+    tolerance
+  );
+
+  validateEndpointMorphology(
+    refined,
+    normalizedPotentials,
+    forward,
+    reverse,
+    tolerance
+  );
+  return refined;
 }
 
 function reconnectSharedFractionEndpoints(
@@ -371,8 +439,8 @@ function reconnectSharedFractionEndpoints(
 
     for (let pointIndex = 0; pointIndex < g.length; pointIndex += 1) {
       const distance = endpoint.distance(normalizedPotentials[pointIndex]!);
-      if (distance < 0 || distance > SOFT_ENVELOPE_ENDPOINT_RECONNECTION_WIDTH) continue;
-      const progress = distance / SOFT_ENVELOPE_ENDPOINT_RECONNECTION_WIDTH;
+      if (distance < 0 || distance > ENDPOINT_SHAPE_WINDOW) continue;
+      const progress = distance / ENDPOINT_SHAPE_WINDOW;
       const smoothstep = progress * progress * (3 - 2 * progress);
       const endpointWeight = 1 - smoothstep;
       reconnected[pointIndex] = Math.min(1, Math.max(
@@ -382,6 +450,192 @@ function reconnectSharedFractionEndpoints(
     }
   }
   return reconnected;
+}
+
+function hasAddedEndpointDirectionReversal(
+  g: number[],
+  normalizedPotentials: number[],
+  forward: number[],
+  reverse: number[],
+  normalizedTolerance: number
+): boolean {
+  let reversalCount = 0;
+  for (let index = 0; index < g.length - 1; index += 1) {
+    const inEndpointWindow = normalizedPotentials[index + 1]! <= ENDPOINT_SHAPE_WINDOW
+      || normalizedPotentials[index]! >= 1 - ENDPOINT_SHAPE_WINDOW;
+    if (!inEndpointWindow) continue;
+    for (const raw of [forward, reverse]) {
+      const rawLeft = raw[index]!;
+      const rawRight = raw[index + 1]!;
+      const scale = Math.max(1, Math.abs(rawLeft), Math.abs(rawRight));
+      const directionTolerance = Math.max(
+        normalizedTolerance,
+        ENDPOINT_DIRECTION_TOLERANCE_SCALE * scale
+      );
+      const rawDelta = rawRight - rawLeft;
+      const capacitiveDelta = g[index + 1]! * rawRight - g[index]! * rawLeft;
+      if (Math.abs(rawDelta) > directionTolerance
+        && Math.abs(capacitiveDelta) > directionTolerance
+        && rawDelta * capacitiveDelta < 0) {
+        reversalCount += 1;
+      }
+    }
+  }
+  return reversalCount >= 2;
+}
+
+function enforceEndpointDirectionsSequentially(
+  g: number[],
+  normalizedPotentials: number[],
+  forward: number[],
+  reverse: number[],
+  normalizedTolerance: number
+) {
+  for (let rightIndex = 1;
+    rightIndex < g.length
+      && normalizedPotentials[rightIndex]! <= ENDPOINT_SHAPE_WINDOW + Number.EPSILON;
+    rightIndex += 1) {
+    g[rightIndex] = closestFeasibleNeighborFraction(
+      g[rightIndex]!,
+      g[rightIndex - 1]!,
+      forward[rightIndex - 1]!,
+      forward[rightIndex]!,
+      reverse[rightIndex - 1]!,
+      reverse[rightIndex]!,
+      "right",
+      normalizedTolerance
+    );
+  }
+
+  for (let leftIndex = g.length - 2;
+    leftIndex >= 0
+      && normalizedPotentials[leftIndex]! >= 1 - ENDPOINT_SHAPE_WINDOW - Number.EPSILON;
+    leftIndex -= 1) {
+    g[leftIndex] = closestFeasibleNeighborFraction(
+      g[leftIndex]!,
+      g[leftIndex + 1]!,
+      forward[leftIndex]!,
+      forward[leftIndex + 1]!,
+      reverse[leftIndex]!,
+      reverse[leftIndex + 1]!,
+      "left",
+      normalizedTolerance
+    );
+  }
+}
+
+function closestFeasibleNeighborFraction(
+  preferred: number,
+  fixedFraction: number,
+  forwardLeft: number,
+  forwardRight: number,
+  reverseLeft: number,
+  reverseRight: number,
+  variableSide: "left" | "right",
+  normalizedTolerance: number
+): number {
+  let lower = 0;
+  let upper = 1;
+  for (const [rawLeft, rawRight] of [
+    [forwardLeft, forwardRight],
+    [reverseLeft, reverseRight]
+  ] as const) {
+    const rawDelta = rawRight - rawLeft;
+    const scale = Math.max(1, Math.abs(rawLeft), Math.abs(rawRight));
+    const directionTolerance = Math.max(
+      normalizedTolerance,
+      ENDPOINT_DIRECTION_TOLERANCE_SCALE * scale
+    );
+    if (Math.abs(rawDelta) <= directionTolerance) continue;
+    const direction = Math.sign(rawDelta);
+    const coefficient = variableSide === "right"
+      ? direction * rawRight
+      : -direction * rawLeft;
+    const fixedTerm = variableSide === "right"
+      ? -direction * fixedFraction * rawLeft
+      : direction * fixedFraction * rawRight;
+    if (Math.abs(coefficient) <= Number.EPSILON) {
+      if (fixedTerm < -directionTolerance) {
+        throw new CvAnalysisError("reconstructionFailed");
+      }
+      continue;
+    }
+    const boundary = -fixedTerm / coefficient;
+    if (coefficient > 0) lower = Math.max(lower, boundary);
+    else upper = Math.min(upper, boundary);
+  }
+  if (lower > upper + ENDPOINT_PROJECTION_TOLERANCE) {
+    throw new CvAnalysisError("reconstructionFailed");
+  }
+  return Math.min(upper, Math.max(lower, preferred));
+}
+
+function feasibleFractionInterval(forward: number, reverse: number): [number, number] {
+  const lowerCurrent = Math.min(forward, reverse);
+  const upperCurrent = Math.max(forward, reverse);
+  let lowerFraction = 0;
+  let upperFraction = 1;
+  for (const raw of [forward, reverse]) {
+    if (Math.abs(raw) <= Number.EPSILON) {
+      if (lowerCurrent > 0 || upperCurrent < 0) {
+        throw new CvAnalysisError("reconstructionFailed");
+      }
+      continue;
+    }
+    const first = lowerCurrent / raw;
+    const second = upperCurrent / raw;
+    lowerFraction = Math.max(lowerFraction, Math.min(first, second));
+    upperFraction = Math.min(upperFraction, Math.max(first, second));
+  }
+  lowerFraction = Math.max(0, lowerFraction);
+  upperFraction = Math.min(1, upperFraction);
+  if (lowerFraction > upperFraction + ENDPOINT_PROJECTION_TOLERANCE) {
+    throw new CvAnalysisError("reconstructionFailed");
+  }
+  return [lowerFraction, upperFraction];
+}
+
+function validateEndpointMorphology(
+  g: number[],
+  normalizedPotentials: number[],
+  forward: number[],
+  reverse: number[],
+  normalizedTolerance: number
+) {
+  if (g.some((value) => !Number.isFinite(value) || value < 0 || value > 1)) {
+    throw new CvAnalysisError("reconstructionFailed");
+  }
+  for (const endpointIndex of [0, g.length - 1]) {
+    const [lower, upper] = feasibleFractionInterval(
+      forward[endpointIndex]!,
+      reverse[endpointIndex]!
+    );
+    if (g[endpointIndex]! < lower - ENDPOINT_PROJECTION_TOLERANCE
+      || g[endpointIndex]! > upper + ENDPOINT_PROJECTION_TOLERANCE) {
+      throw new CvAnalysisError("reconstructionFailed");
+    }
+  }
+
+  for (let index = 0; index < g.length - 1; index += 1) {
+    const inEndpointWindow = normalizedPotentials[index + 1]! <= ENDPOINT_SHAPE_WINDOW + Number.EPSILON
+      || normalizedPotentials[index]! >= 1 - ENDPOINT_SHAPE_WINDOW - Number.EPSILON;
+    if (!inEndpointWindow) continue;
+    for (const raw of [forward, reverse]) {
+      const rawLeft = raw[index]!;
+      const rawRight = raw[index + 1]!;
+      const rawDelta = rawRight - rawLeft;
+      const scale = Math.max(1, Math.abs(rawLeft), Math.abs(rawRight));
+      const directionTolerance = Math.max(
+        normalizedTolerance,
+        ENDPOINT_DIRECTION_TOLERANCE_SCALE * scale
+      );
+      if (Math.abs(rawDelta) <= directionTolerance) continue;
+      const capacitiveDelta = g[index + 1]! * rawRight - g[index]! * rawLeft;
+      if (Math.sign(rawDelta) * capacitiveDelta < -2 * directionTolerance) {
+        throw new CvAnalysisError("reconstructionFailed");
+      }
+    }
+  }
 }
 
 function selectSoftEnvelopeSupportIndices(
@@ -1032,8 +1286,8 @@ function optimalityResidual(
 
   let residual = 0;
   for (let index = 0; index < g.length; index += 1) {
-    const value = g[index];
-    const component = gradient[index];
+    const value = g[index]!;
+    const component = gradient[index]!;
     const violation = value === 0
       ? Math.min(0, component)
       : value === 1
