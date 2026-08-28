@@ -56,7 +56,7 @@ describe("Rate Performance routes", () => {
     expect(view.querySelectorAll(".rate-performance-nav a")).toHaveLength(8);
     expect(view.querySelector('.rate-performance-nav a[aria-current="page"]')?.getAttribute("href"))
       .toBe("/tools/rate-performance");
-    expect(view.querySelector('[role="status"]')?.textContent).toContain("coming soon");
+    expect(view.querySelector('[role="status"]')?.textContent).toContain("Ready for analysis");
   });
 
   it("adds Rate Performance to the existing Tools cards", async () => {
