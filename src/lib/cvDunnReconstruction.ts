@@ -24,6 +24,7 @@ const SOFT_ENVELOPE_ENDPOINT_FIDELITY_WEIGHT = 0.25;
 const SOFT_ENVELOPE_SMOOTHNESS_RATIO = 1e-4;
 const SOFT_ENVELOPE_LAMBDA = 8;
 const SOFT_ENVELOPE_TOLERANCE_SCALE = 1e-10;
+const SOFT_ENVELOPE_ENDPOINT_RECONNECTION_WIDTH = 0.05;
 const SOFT_ENVELOPE_MAXIMUM_ACTIVE_SET_ITERATIONS = 50;
 const SOFT_ENVELOPE_MAXIMUM_SUPPORT_POINTS = 1_001;
 
@@ -215,7 +216,13 @@ export function refineSharedFractionWithSoftEnvelope(
     reverse,
     normalizedTolerance
   ) === 0) {
-    const g = [...input.baselineG];
+    const g = reconnectSharedFractionEndpoints(
+      input.baselineG,
+      normalizedPotentials,
+      forward,
+      reverse,
+      normalizedTolerance
+    );
     return {
       baselineG: [...input.baselineG],
       g,
@@ -309,8 +316,15 @@ export function refineSharedFractionWithSoftEnvelope(
       operator
     );
     if (residual <= OPTIMALITY_TOLERANCE) {
-      const diagnostics = makeSoftEnvelopeDiagnostics(
+      const reconnected = reconnectSharedFractionEndpoints(
         g,
+        normalizedPotentials,
+        forward,
+        reverse,
+        normalizedTolerance
+      );
+      const diagnostics = makeSoftEnvelopeDiagnostics(
+        reconnected,
         input.baselineG,
         forward,
         reverse,
@@ -321,11 +335,53 @@ export function refineSharedFractionWithSoftEnvelope(
         totalIterations,
         residual
       );
-      return { baselineG: [...input.baselineG], g, diagnostics };
+      return { baselineG: [...input.baselineG], g: reconnected, diagnostics };
     }
   }
 
   throw new CvAnalysisError("reconstructionFailed");
+}
+
+function reconnectSharedFractionEndpoints(
+  g: number[],
+  normalizedPotentials: number[],
+  forward: number[],
+  reverse: number[],
+  tolerance: number
+): number[] {
+  const reconnected = [...g];
+  const lastIndex = g.length - 1;
+  const endpoints = [
+    { index: 0, distance: (potential: number) => potential },
+    { index: lastIndex, distance: (potential: number) => 1 - potential }
+  ] as const;
+
+  for (const endpoint of endpoints) {
+    const index = endpoint.index;
+    const lower = Math.min(forward[index]!, reverse[index]!);
+    const upper = Math.max(forward[index]!, reverse[index]!);
+    const fraction = g[index]!;
+    const forwardCurrent = fraction * forward[index]!;
+    const reverseCurrent = fraction * reverse[index]!;
+    const isContained = forwardCurrent >= lower - tolerance
+      && forwardCurrent <= upper + tolerance
+      && reverseCurrent >= lower - tolerance
+      && reverseCurrent <= upper + tolerance;
+    if (isContained) continue;
+
+    for (let pointIndex = 0; pointIndex < g.length; pointIndex += 1) {
+      const distance = endpoint.distance(normalizedPotentials[pointIndex]!);
+      if (distance < 0 || distance > SOFT_ENVELOPE_ENDPOINT_RECONNECTION_WIDTH) continue;
+      const progress = distance / SOFT_ENVELOPE_ENDPOINT_RECONNECTION_WIDTH;
+      const smoothstep = progress * progress * (3 - 2 * progress);
+      const endpointWeight = 1 - smoothstep;
+      reconnected[pointIndex] = Math.min(1, Math.max(
+        0,
+        reconnected[pointIndex]! + endpointWeight * (1 - reconnected[pointIndex]!)
+      ));
+    }
+  }
+  return reconnected;
 }
 
 function selectSoftEnvelopeSupportIndices(

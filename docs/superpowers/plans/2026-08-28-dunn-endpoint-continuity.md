@@ -139,7 +139,7 @@ Run: `git commit -m "fix: retain Dunn endpoint neighborhoods in plots"`
 
 - [ ] **Step 1: Write failing endpoint tests**
 
-Assert that a same-sign collapsed envelope returns `g = 1` at both endpoints, remains bounded and shared, has no envelope residual in each 5% endpoint neighborhood, and leaves points outside those neighborhoods unchanged when the baseline already satisfies the interior envelope.
+Assert that a same-sign collapsed envelope returns `g = 1` at both endpoints, remains bounded and shared, decays smoothly across each 5% endpoint neighborhood, and leaves points outside those neighborhoods unchanged when the baseline already satisfies the interior envelope.
 
 - [ ] **Step 2: Verify RED**
 
@@ -151,7 +151,7 @@ Compute the feasible shared-fraction interval at each endpoint from both raw cur
 
 - [ ] **Step 4: Verify GREEN and visual invariants**
 
-Run focused tests, then the real NCP 50 and 2 mV/s page flows. Require exact endpoint containment, no branch crossing in the endpoint neighborhoods, continuous full-range SVG paths, and visually clean PNGs.
+Run focused tests, then the real NCP 50 and 2 mV/s page flows. Require exact endpoint containment, no reconstruction-created branch crossing, continuous full-range SVG paths, and visually clean PNGs. Preserve any subpixel crossing already present in the original measured branches.
 
 ---
 

@@ -47,11 +47,42 @@ it("softly corrects same-sign envelope violations without forcing a hard boundar
     baselineLambda: 1e-4
   });
 
-  expect(result.g.every((value) => value > 0.7 && value < 1)).toBe(true);
+  expect(result.g[0]).toBe(1);
+  expect(result.g.at(-1)).toBe(1);
+  expect(result.g.slice(1, -1).every((value) => value > 0.7 && value <= 1)).toBe(true);
   expect(result.g.some((value, index) =>
     Math.abs(value * forwardCurrents[index] - forwardCurrents[index]) > 1e-6
   )).toBe(true);
   expect(result.diagnostics.maximumSharedFractionAdjustment).toBeGreaterThan(0);
+});
+
+it("smoothly reconnects a collapsed same-sign endpoint envelope on the shared fraction", () => {
+  const potentials = Array.from({ length: 101 }, (_value, index) => index / 100);
+  const baselineG = potentials.map(() => 0.5);
+  const forwardCurrents = potentials.map(() => 2);
+  const reverseCurrents = potentials.map((_potential, index) =>
+    index === 0 || index === potentials.length - 1 ? 2 : -2);
+  const result = refineSharedFractionWithSoftEnvelope({
+    baselineG,
+    potentials,
+    forwardCurrents,
+    reverseCurrents,
+    baselineLambda: 1e-4
+  });
+
+  expect(result.g[0]).toBe(1);
+  expect(result.g.at(-1)).toBe(1);
+  expect(result.g[1]).toBeGreaterThan(result.g[2]!);
+  expect(result.g[2]).toBeGreaterThan(result.g[3]!);
+  expect(result.g[3]).toBeGreaterThan(result.g[4]!);
+  expect(result.g[4]).toBeGreaterThan(result.g[5]!);
+  expect(result.g[5]).toBeCloseTo(0.5, 12);
+  expect(result.g[6]).toBeCloseTo(0.5, 12);
+  expect(result.g.at(-6)).toBeCloseTo(0.5, 12);
+  expect(result.g.at(-7)).toBeCloseTo(0.5, 12);
+  expect(result.g.every((value) => value >= 0 && value <= 1)).toBe(true);
+  expect(result.g[0]! * forwardCurrents[0]!).toBe(forwardCurrents[0]);
+  expect(result.g.at(-1)! * reverseCurrents.at(-1)!).toBe(reverseCurrents.at(-1));
 });
 
 it("uses a tolerance dead zone and a quadratic envelope penalty", () => {

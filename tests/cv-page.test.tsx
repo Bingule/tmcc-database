@@ -933,6 +933,39 @@ describe("CV kinetics page", () => {
     ].join("\n"));
     await click(view, "Run analysis");
 
+    expect(view.querySelector('[aria-live="polite"]')?.textContent).toBe("");
+    const chart = view.querySelector('[data-export-id="cv-dunn-chart"]')!;
+    const originalXs = pathXs(chart.querySelector<SVGPathElement>('[data-series-id="original"]')?.getAttribute("d") ?? "");
+    const expectedMinimum = Math.min(...originalXs);
+    const expectedMaximum = Math.max(...originalXs);
+    for (const id of ["capacitive-forward", "capacitive-reverse"]) {
+      const boundaryXs = pathXs(
+        chart.querySelector<SVGPathElement>(`[data-series-id="${id}"]`)?.getAttribute("d") ?? ""
+      );
+      expect(Math.min(...boundaryXs)).toBeCloseTo(expectedMinimum, 10);
+      expect(Math.max(...boundaryXs)).toBeCloseTo(expectedMaximum, 10);
+    }
+  });
+
+  it("shares a terminal reversal with the initial branch across the cycle seam", async () => {
+    const view = await renderPage();
+    await chooseRadio(view, "cv-layout", "pairedPotentialCurrent");
+    const potentials = [
+      0.0001,
+      ...Array.from({ length: 10 }, (_value, index) => (index + 1) / 10),
+      ...Array.from({ length: 10 }, (_value, index) => (9 - index) / 10)
+    ];
+    await upload(view, [
+      "V1,Current 1 mV/s,V2,Current 4 mV/s,V3,Current 9 mV/s",
+      ...potentials.map((potential) => [
+        potential, 2 + potential,
+        potential, 2 * (2 + potential),
+        potential, 3 * (2 + potential)
+      ].join(","))
+    ].join("\n"));
+    await click(view, "Run analysis");
+
+    expect(view.querySelector('[aria-live="polite"]')?.textContent).toBe("");
     const chart = view.querySelector('[data-export-id="cv-dunn-chart"]')!;
     const originalXs = pathXs(chart.querySelector<SVGPathElement>('[data-series-id="original"]')?.getAttribute("d") ?? "");
     const expectedMinimum = Math.min(...originalXs);
@@ -1054,7 +1087,7 @@ describe("CV kinetics page", () => {
     expect(view.querySelector('[data-export-id="cv-dunn-chart"] [data-selected-x="1"]')).not.toBeNull();
     const rows = [...view.querySelectorAll<HTMLTableRowElement>('[data-table-id="cv-dunn-current-table"] tbody tr')];
     const selected = rows.find((row) => row.cells[0].textContent === "1")!;
-    expect([...selected.cells].map((cell) => cell.textContent)).toEqual(["1", "-9", "-9", "-4.5", "-4.5"]);
+    expect([...selected.cells].map((cell) => cell.textContent)).toEqual(["1", "-9", "-9", "-9", "0"]);
     const chart = view.querySelector('[data-export-id="cv-dunn-chart"]')!;
     expect(chart.querySelectorAll('[data-series-id]')).toHaveLength(3);
     expect(chart.querySelector('[data-series-id="original"]')?.getAttribute("data-render-point-count")).toBe("6");

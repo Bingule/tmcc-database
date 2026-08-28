@@ -1005,18 +1005,28 @@ function makeBranchBoundaryPoints(
     }
     if (!insideRun) {
       if (points.length > 0) points.push({ x: point.potential, y: null });
-      const turning = plotPath[index - 1];
+      const turningIndex = (index - 1 + plotPath.length) % plotPath.length;
+      const turning = plotPath[turningIndex];
       if (turning
         && turning.branch !== branch
-        && isDisplaySharedTurningPoint(plotPath[index - 2], turning, point)) {
+        && isDisplaySharedTurningPoint(
+          plotPath[(turningIndex - 1 + plotPath.length) % plotPath.length],
+          turning,
+          point
+        )) {
         points.push({ x: turning.potential, y: turning.capacitiveCurrent });
       }
     }
     points.push({ x: point.potential, y: point.capacitiveCurrent });
-    const turning = plotPath[index + 1];
+    const turningIndex = (index + 1) % plotPath.length;
+    const turning = plotPath[turningIndex];
     if (turning
       && turning.branch !== branch
-      && isDisplaySharedTurningPoint(point, turning, plotPath[index + 2])) {
+      && isDisplaySharedTurningPoint(
+        point,
+        turning,
+        plotPath[(turningIndex + 1) % plotPath.length]
+      )) {
       points.push({ x: turning.potential, y: turning.capacitiveCurrent });
     }
     insideRun = true;

@@ -249,8 +249,21 @@ describe("constrained Dunn regression datasets", () => {
         contribution.diagnostics.baseLambda * contribution.diagnostics.smoothingMultiplier,
         12
       );
-      expect(secondDifferenceRoughness(contribution.g, contribution.potentialGrid)).toBeLessThan(
-        secondDifferenceRoughness(rawTarget, contribution.potentialGrid)
+      const minimum = contribution.potentialGrid[0]!;
+      const maximum = contribution.potentialGrid.at(-1)!;
+      const centralIndices = contribution.potentialGrid.flatMap((potential, index) => {
+        const normalized = (potential - minimum) / (maximum - minimum);
+        return normalized > 0.05 && normalized < 0.95 ? [index] : [];
+      });
+      const centralPotentials = centralIndices.map((index) => contribution.potentialGrid[index]!);
+      expect(secondDifferenceRoughness(
+        centralIndices.map((index) => contribution.g[index]!),
+        centralPotentials
+      )).toBeLessThan(
+        secondDifferenceRoughness(
+          centralIndices.map((index) => rawTarget[index]!),
+          centralPotentials
+        )
       );
     }
   });
@@ -350,6 +363,33 @@ describe("constrained Dunn regression datasets", () => {
       const highest = result.contributions.reduce((best, item) => item.scanRate > best.scanRate ? item : best);
       expect(highest.diagnostics.maximumAbsoluteEnvelopeViolation).toBeGreaterThanOrEqual(0);
       expect(Number.isFinite(highest.diagnostics.maximumAbsoluteEnvelopeViolation)).toBe(true);
+    }
+  });
+
+  it("keeps both NCP capacitive branches inside the endpoint neighborhoods", () => {
+    for (const dunnConfidenceMode of ["threshold", "weighted"] as const) {
+      const result = analyzeCvWorkflow(makeNcpRegressionSeries(), { ...settings, dunnConfidenceMode });
+      for (const contribution of result.contributions) {
+        const minimum = contribution.potentialGrid[0]!;
+        const maximum = contribution.potentialGrid.at(-1)!;
+        const span = maximum - minimum;
+        contribution.potentialGrid.forEach((potential, index) => {
+          const normalized = (potential - minimum) / span;
+          if (normalized > 0.05 + 1e-12 && normalized < 0.95 - 1e-12) return;
+          const forward = contribution.originalForward[index]!;
+          const reverse = contribution.originalReverse[index]!;
+          const lower = Math.min(forward, reverse);
+          const upper = Math.max(forward, reverse);
+          const tolerance = 1e-10 * Math.max(1, Math.abs(forward), Math.abs(reverse));
+          for (const capacitive of [
+            contribution.capacitiveForward[index]!,
+            contribution.capacitiveReverse[index]!
+          ]) {
+            expect(capacitive).toBeGreaterThanOrEqual(lower - tolerance);
+            expect(capacitive).toBeLessThanOrEqual(upper + tolerance);
+          }
+        });
+      }
     }
   });
 });
