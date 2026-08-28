@@ -370,6 +370,16 @@ describe("constrained Dunn regression datasets", () => {
     for (const dunnConfidenceMode of ["threshold", "weighted"] as const) {
       const result = analyzeCvWorkflow(makeNcpRegressionSeries(), { ...settings, dunnConfidenceMode });
       for (const contribution of result.contributions) {
+        for (const [raw, capacitive] of [
+          [contribution.originalForward, contribution.capacitiveForward],
+          [contribution.originalReverse, contribution.capacitiveReverse]
+        ] as const) {
+          expect(countAddedEndpointDirectionReversals(
+            raw,
+            capacitive,
+            contribution.potentialGrid
+          )).toBe(0);
+        }
         const minimum = contribution.potentialGrid[0]!;
         const maximum = contribution.potentialGrid.at(-1)!;
         const span = maximum - minimum;
@@ -453,4 +463,26 @@ function evaluateG(potentials: number[], g: number[], potential: number): number
   if (potential <= potentials[0]!) return g[0]!;
   if (potential >= potentials.at(-1)!) return g.at(-1)!;
   return pchipInterpolate(potentials, g, [potential])[0]!;
+}
+
+function countAddedEndpointDirectionReversals(
+  raw: number[],
+  reconstructed: number[],
+  potentials: number[]
+): number {
+  const minimum = potentials[0]!;
+  const maximum = potentials.at(-1)!;
+  const span = maximum - minimum;
+  const tolerance = 1e-10 * Math.max(1, ...raw.map(Math.abs));
+  let count = 0;
+  for (let index = 0; index < raw.length - 1; index += 1) {
+    const left = (potentials[index]! - minimum) / span;
+    const right = (potentials[index + 1]! - minimum) / span;
+    if (right > 0.05 && left < 0.95) continue;
+    const rawDelta = raw[index + 1]! - raw[index]!;
+    const reconstructedDelta = reconstructed[index + 1]! - reconstructed[index]!;
+    if (Math.abs(rawDelta) <= tolerance || Math.abs(reconstructedDelta) <= tolerance) continue;
+    if (rawDelta * reconstructedDelta < 0) count += 1;
+  }
+  return count;
 }

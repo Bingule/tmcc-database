@@ -56,33 +56,58 @@ it("softly corrects same-sign envelope violations without forcing a hard boundar
   expect(result.diagnostics.maximumSharedFractionAdjustment).toBeGreaterThan(0);
 });
 
-it("smoothly reconnects a collapsed same-sign endpoint envelope on the shared fraction", () => {
-  const potentials = Array.from({ length: 101 }, (_value, index) => index / 100);
-  const baselineG = potentials.map(() => 0.5);
-  const forwardCurrents = potentials.map(() => 2);
-  const reverseCurrents = potentials.map((_potential, index) =>
-    index === 0 || index === potentials.length - 1 ? 2 : -2);
+it("reaches a collapsed endpoint without adding a hook to a monotone raw tail", () => {
+  const potentials = Array.from({ length: 201 }, (_value, index) => index / 200);
+  const forwardCurrents = potentials.map((potential) => 2 - potential);
+  const reverseCurrents = potentials.map((potential, index) =>
+    index === 0 || index === potentials.length - 1 ? 2 - potential : potential - 2);
   const result = refineSharedFractionWithSoftEnvelope({
-    baselineG,
+    baselineG: potentials.map(() => 0.95),
     potentials,
     forwardCurrents,
     reverseCurrents,
     baselineLambda: 1e-4
   });
+  const capacitiveForward = result.g.map((fraction, index) => fraction * forwardCurrents[index]!);
 
   expect(result.g[0]).toBe(1);
   expect(result.g.at(-1)).toBe(1);
-  expect(result.g[1]).toBeGreaterThan(result.g[2]!);
-  expect(result.g[2]).toBeGreaterThan(result.g[3]!);
-  expect(result.g[3]).toBeGreaterThan(result.g[4]!);
-  expect(result.g[4]).toBeGreaterThan(result.g[5]!);
-  expect(result.g[5]).toBeCloseTo(0.5, 12);
-  expect(result.g[6]).toBeCloseTo(0.5, 12);
-  expect(result.g.at(-6)).toBeCloseTo(0.5, 12);
-  expect(result.g.at(-7)).toBeCloseTo(0.5, 12);
   expect(result.g.every((value) => value >= 0 && value <= 1)).toBe(true);
-  expect(result.g[0]! * forwardCurrents[0]!).toBe(forwardCurrents[0]);
-  expect(result.g.at(-1)! * reverseCurrents.at(-1)!).toBe(reverseCurrents.at(-1));
+  expect(countAddedDirectionReversals(
+    forwardCurrents,
+    capacitiveForward,
+    potentials,
+    "right"
+  )).toBe(0);
+});
+
+it("preserves a genuine endpoint-tail extremum instead of forcing global monotonicity", () => {
+  const potentials = Array.from({ length: 201 }, (_value, index) => index / 200);
+  const forwardCurrents = potentials.map((potential) =>
+    1 + (1 - potential) + 0.025 * Math.exp(-(((potential - 0.975) / 0.006) ** 2)));
+  const reverseCurrents = potentials.map((_potential, index) =>
+    index === potentials.length - 1 ? forwardCurrents[index]! : -forwardCurrents[index]!);
+  const result = refineSharedFractionWithSoftEnvelope({
+    baselineG: potentials.map(() => 0.95),
+    potentials,
+    forwardCurrents,
+    reverseCurrents,
+    baselineLambda: 1e-4
+  });
+  const capacitiveForward = result.g.map((fraction, index) => fraction * forwardCurrents[index]!);
+
+  expect(countAddedDirectionReversals(
+    forwardCurrents,
+    capacitiveForward,
+    potentials,
+    "right"
+  )).toBe(0);
+  expect(capacitiveForward.some((value, index, values) =>
+    index > 0 && index < values.length - 1
+      && potentials[index]! >= 0.95
+      && value > values[index - 1]!
+      && value > values[index + 1]!
+  )).toBe(true);
 });
 
 it("uses a tolerance dead zone and a quadratic envelope penalty", () => {
@@ -311,4 +336,28 @@ function sampleNormalized(values: number[], position: number): number {
   if (leftIndex === rightIndex) return values[leftIndex];
   const fraction = scaledIndex - leftIndex;
   return values[leftIndex] + fraction * (values[rightIndex] - values[leftIndex]);
+}
+
+function countAddedDirectionReversals(
+  raw: number[],
+  reconstructed: number[],
+  potentials: number[],
+  side: "left" | "right"
+): number {
+  const minimum = potentials[0]!;
+  const maximum = potentials.at(-1)!;
+  const span = maximum - minimum;
+  const tolerance = 1e-10 * Math.max(1, ...raw.map(Math.abs));
+  let count = 0;
+  for (let index = 0; index < raw.length - 1; index += 1) {
+    const left = (potentials[index]! - minimum) / span;
+    const right = (potentials[index + 1]! - minimum) / span;
+    const inWindow = side === "left" ? right <= 0.05 : left >= 0.95;
+    if (!inWindow) continue;
+    const rawDelta = raw[index + 1]! - raw[index]!;
+    const reconstructedDelta = reconstructed[index + 1]! - reconstructed[index]!;
+    if (Math.abs(rawDelta) <= tolerance || Math.abs(reconstructedDelta) <= tolerance) continue;
+    if (rawDelta * reconstructedDelta < 0) count += 1;
+  }
+  return count;
 }
