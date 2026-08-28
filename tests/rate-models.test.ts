@@ -55,6 +55,23 @@ describe("Tian characteristic-time rate equation", () => {
     expect(values.every((value) => value >= 0 && value <= parameters.qM)).toBe(true);
   });
 
+  it("does not underflow a representable capacity when x rounds to the smallest subnormal", () => {
+    const parameters = {
+      qM: Number.MAX_VALUE,
+      tau: 1,
+      n: 1.048828125,
+    };
+    const evaluated = evaluateTianRate(Number.MAX_VALUE, parameters);
+    const logHighRateApproximation = Math.log(parameters.qM)
+      - parameters.n * Math.log(Number.MAX_VALUE)
+      - Math.LN2;
+    const approximation = Math.exp(logHighRateApproximation);
+
+    expect(Number.isFinite(evaluated)).toBe(true);
+    expect(evaluated).toBeGreaterThan(0);
+    expect(evaluated / approximation).toBeCloseTo(1, 12);
+  });
+
   it.each([
     [0, { qM: 300, tau: 1, n: 0.5 }],
     [-1, { qM: 300, tau: 1, n: 0.5 }],
@@ -64,6 +81,11 @@ describe("Tian characteristic-time rate equation", () => {
     [1, { qM: 300, tau: 1, n: Number.NaN }],
   ])("rejects invalid rate or parameters (%s, %o)", (rate, parameters) => {
     expect(() => evaluateTianRate(rate, parameters)).toThrow(RangeError);
+  });
+
+  it("rejects a transition rate below the representable positive range", () => {
+    expect(() => transitionRate({ tau: 1, n: Number.MIN_VALUE }))
+      .toThrow(RangeError);
   });
 });
 
@@ -153,42 +175,116 @@ describe("rate-model registry validation gate", () => {
 
     expect(getRateModel("not-a-model")).toBeUndefined();
   });
+
+  it("limits the rational model to the first capacity-decay plateau", () => {
+    const limitations = getRateModel("rational-characteristic-time")?.limitations.join(" ") ?? "";
+
+    expect(limitations).toContain("conventional capacity plateau");
+    expect(limitations).toContain("first capacity-decay regime");
+    expect(limitations).toContain("second high-rate decay");
+    expect(limitations).toContain("two-term model");
+  });
 });
 
 describe("verified rate references", () => {
-  it("contains the exact approved DOI records", () => {
-    expect(listRateReferences().map((reference) => reference.doi)).toEqual([
-      "10.1038/s41467-019-09792-9",
-      "10.1016/j.jpowsour.2020.228220",
-      "10.1016/j.coelec.2019.12.003",
-      "10.1016/j.jpowsour.2018.01.077",
-      "10.1016/j.jpowsour.2018.06.087",
+  it("contains complete verified metadata for every approved DOI record", () => {
+    expect(listRateReferences()).toEqual([
+      {
+        id: "tian-2019-rate-performance",
+        authors: [
+          "Ruiyuan Tian",
+          "Sang-Hoon Park",
+          "Paul J. King",
+          "Graeme Cunningham",
+          "João Coelho",
+          "Valeria Nicolosi",
+          "Jonathan N. Coleman",
+        ],
+        title: "Quantifying the factors limiting rate performance in battery electrodes",
+        journal: "Nature Communications",
+        year: 2019,
+        volume: "10",
+        articleNumber: "1933",
+        doi: "10.1038/s41467-019-09792-9",
+        url: "https://doi.org/10.1038/s41467-019-09792-9",
+        role: "primary-model-source",
+      },
+      {
+        id: "tian-2020-chronoamperometry",
+        authors: [
+          "Ruiyuan Tian",
+          "Paul J. King",
+          "João Coelho",
+          "Sang-Hoon Park",
+          "Dominik V. Horvath",
+          "Valeria Nicolosi",
+          "Colm O'Dwyer",
+          "Jonathan N. Coleman",
+        ],
+        title: "Using chronoamperometry to rapidly measure and quantitatively analyse rate-performance in battery electrodes",
+        journal: "Journal of Power Sources",
+        year: 2020,
+        volume: "468",
+        articleNumber: "228220",
+        doi: "10.1016/j.jpowsour.2020.228220",
+        url: "https://doi.org/10.1016/j.jpowsour.2020.228220",
+        role: "primary-model-source",
+      },
+      {
+        id: "coleman-tian-2020-model-review",
+        authors: ["Jonathan N. Coleman", "Ruiyuan Tian"],
+        title: "Developing models to fit capacity–rate data in battery systems",
+        journal: "Current Opinion in Electrochemistry",
+        year: 2020,
+        volume: "21",
+        pages: "1-6",
+        doi: "10.1016/j.coelec.2019.12.003",
+        url: "https://doi.org/10.1016/j.coelec.2019.12.003",
+        role: "review",
+      },
+      {
+        id: "heubner-2018-master-curve",
+        authors: [
+          "C. Heubner",
+          "J. Seeba",
+          "T. Liebmann",
+          "A. Nickol",
+          "S. Börner",
+          "M. Fritsch",
+          "K. Nikolowski",
+          "M. Wolter",
+          "M. Schneider",
+          "A. Michaelis",
+        ],
+        title: "Semi-empirical master curve concept describing the rate capability of lithium insertion electrodes",
+        journal: "Journal of Power Sources",
+        year: 2018,
+        volume: "380",
+        pages: "83-91",
+        doi: "10.1016/j.jpowsour.2018.01.077",
+        url: "https://doi.org/10.1016/j.jpowsour.2018.01.077",
+        role: "candidate-model-source",
+      },
+      {
+        id: "heubner-2018-chronoamperometry",
+        authors: [
+          "C. Heubner",
+          "C. Lämmel",
+          "A. Nickol",
+          "T. Liebmann",
+          "M. Schneider",
+          "A. Michaelis",
+        ],
+        title: "Comparison of chronoamperometric response and rate-performance of porous insertion electrodes: Towards an accelerated rate capability test",
+        journal: "Journal of Power Sources",
+        year: 2018,
+        volume: "397",
+        pages: "11-15",
+        doi: "10.1016/j.jpowsour.2018.06.087",
+        url: "https://doi.org/10.1016/j.jpowsour.2018.06.087",
+        role: "chronoamperometry-context",
+      },
     ]);
-
-    expect(getRateReference("tian-2019-rate-performance")).toMatchObject({
-      authors: [
-        "Ruiyuan Tian",
-        "Sang-Hoon Park",
-        "Paul J. King",
-        "Graeme Cunningham",
-        "João Coelho",
-        "Valeria Nicolosi",
-        "Jonathan N. Coleman",
-      ],
-      journal: "Nature Communications",
-      year: 2019,
-      volume: "10",
-      articleNumber: "1933",
-      doi: "10.1038/s41467-019-09792-9",
-    });
-
-    expect(getRateReference("tian-2020-chronoamperometry")).toMatchObject({
-      journal: "Journal of Power Sources",
-      year: 2020,
-      volume: "468",
-      articleNumber: "228220",
-      doi: "10.1016/j.jpowsour.2020.228220",
-    });
   });
 
   it("keeps candidate Heubner provenance distinct from validated equations", () => {

@@ -114,7 +114,8 @@ const rateModels: ReadonlyArray<Readonly<RateModelDefinition>> = Object.freeze([
       "Q_M, tau, and n are positive finite effective model parameters.",
     ]),
     limitations: Object.freeze([
-      "The rational equation is used only in the rate-performance context established by the cited chronoamperometry work.",
+      "The single rational term applies to the conventional capacity plateau and the first capacity-decay regime established by the cited chronoamperometry work.",
+      "If a second high-rate decay is present, restrict the fitting range to the first decay or use the original publication's two-term model.",
       "The fitted characteristic time is model-dependent and is not by itself a direct microscopic measurement.",
     ]),
     referenceIds: Object.freeze([

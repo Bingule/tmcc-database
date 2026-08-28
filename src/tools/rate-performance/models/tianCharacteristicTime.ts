@@ -2,6 +2,11 @@ import type { CharacteristicTimeRateParameters } from "./types";
 
 export type TianRateParameters = CharacteristicTimeRateParameters;
 
+// The first omitted relative term of the series is x^5 / 2520. Below this
+// bound, the five-term series is accurate to machine precision and avoids the
+// cancellation in 1 - (1 - exp(-x)) / x.
+const HIGH_RATE_SERIES_LIMIT = Math.pow(2520 * Number.EPSILON, 1 / 5);
+
 function assertPositiveFinite(name: string, value: number): void {
   if (!Number.isFinite(value) || value <= 0) {
     throw new RangeError(`${name} must be a positive finite number.`);
@@ -18,21 +23,10 @@ function validateRateModelInput(
   assertPositiveFinite("n", n);
 }
 
-function highRateCapacityFraction(inversePower: number): number {
-  if (inversePower === 0) {
-    return 0;
-  }
-
-  // 1 - (1 - exp(-x)) / x loses all significant digits as x approaches zero.
-  if (inversePower < 1e-3) {
-    const x = inversePower;
-    return x * (
-      1 / 2
-      + x * (-1 / 6 + x * (1 / 24 + x * (-1 / 120 + x / 720)))
-    );
-  }
-
-  return 1 + Math.expm1(-inversePower) / inversePower;
+function highRateSeriesFactor(inversePower: number): number {
+  const x = inversePower;
+  return 1 / 2
+    + x * (-1 / 6 + x * (1 / 24 + x * (-1 / 120 + x / 720)));
 }
 
 /**
@@ -56,9 +50,16 @@ export function evaluateTianRate(
   }
 
   const inversePower = Math.exp(logInversePower);
+  if (inversePower < HIGH_RATE_SERIES_LIMIT) {
+    const logCapacity = Math.log(parameters.qM)
+      + logInversePower
+      + Math.log(highRateSeriesFactor(inversePower));
+    return Math.min(parameters.qM, Math.exp(logCapacity));
+  }
+
   const capacityFraction = inversePower === Number.POSITIVE_INFINITY
     ? 1
-    : highRateCapacityFraction(inversePower);
+    : 1 + Math.expm1(-inversePower) / inversePower;
 
   // Roundoff near either limit must not create a negative capacity or exceed Q_M.
   return parameters.qM * Math.min(1, Math.max(0, capacityFraction));
@@ -71,8 +72,9 @@ export function transitionRate(
   assertPositiveFinite("tau", tau);
   assertPositiveFinite("n", n);
 
-  const result = Math.exp(-Math.LN2 / n - Math.log(tau));
-  if (!Number.isFinite(result)) {
+  const logResult = -Math.LN2 / n - Math.log(tau);
+  const result = Math.exp(logResult);
+  if (!Number.isFinite(logResult) || !Number.isFinite(result) || result <= 0) {
     throw new RangeError("transition rate is outside the finite numeric range.");
   }
   return result;
