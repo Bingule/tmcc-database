@@ -4,7 +4,7 @@ import { fitDunnBranches } from "./cvDunnFit";
 import { reconstructDunnContribution } from "./cvDunnQuality";
 import {
   optimizeSharedFraction,
-  refineSharedFractionWithSoftEnvelope
+  preserveOptimizedSharedFraction
 } from "./cvDunnReconstruction";
 import { stabilizeDunnFractions } from "./cvDunnStabilization";
 import { alignCvBranches, toSequentialGrid } from "./cvInterpolation";
@@ -46,13 +46,10 @@ export function analyzeCvWorkflow(series: CvSeries[], settings: CvAnalysisSettin
           alignedGrid.potentials,
           stabilized.diagnostics.smoothingMultiplier
         );
-        const refined = refineSharedFractionWithSoftEnvelope({
-          baselineG: optimized.g,
-          potentials: alignedGrid.potentials,
-          forwardCurrents: alignedGrid.forwardCurrents[seriesIndex]!,
-          reverseCurrents: alignedGrid.reverseCurrents[seriesIndex]!,
-          baselineLambda: optimized.diagnostics.lambda
-        });
+        const refined = preserveOptimizedSharedFraction(
+          optimized.g,
+          alignedGrid.potentials
+        );
         return reconstructDunnContribution({
           alignedGrid,
           dunnRecords,

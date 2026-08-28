@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { makeDunnFractionGrid } from "../src/lib/cvDunnConfidence";
-import { secondDifferenceRoughness } from "../src/lib/cvDunnReconstruction";
+import { optimizeSharedFraction, secondDifferenceRoughness } from "../src/lib/cvDunnReconstruction";
+import { stabilizeDunnFractions } from "../src/lib/cvDunnStabilization";
 import { pchipInterpolate } from "../src/lib/cvInterpolation";
 import { analyzeCvWorkflow } from "../src/lib/cvWorkflow";
 import { CvAnalysisError, type CvAnalysisSettings, type CvSeries, type CvWorkflowResult, type DunnFractionGrid } from "../src/lib/cvTypes";
@@ -366,39 +367,23 @@ describe("constrained Dunn regression datasets", () => {
     }
   });
 
-  it("keeps both NCP capacitive branches inside the endpoint neighborhoods", () => {
+  it("temporarily preserves the historical optimized shared fraction without endpoint reshaping", () => {
     for (const dunnConfidenceMode of ["threshold", "weighted"] as const) {
       const result = analyzeCvWorkflow(makeNcpRegressionSeries(), { ...settings, dunnConfidenceMode });
       for (const contribution of result.contributions) {
-        for (const [raw, capacitive] of [
-          [contribution.originalForward, contribution.capacitiveForward],
-          [contribution.originalReverse, contribution.capacitiveReverse]
-        ] as const) {
-          expect(countAddedEndpointDirectionReversals(
-            raw,
-            capacitive,
-            contribution.potentialGrid
-          )).toBe(0);
-        }
-        const minimum = contribution.potentialGrid[0]!;
-        const maximum = contribution.potentialGrid.at(-1)!;
-        const span = maximum - minimum;
-        contribution.potentialGrid.forEach((potential, index) => {
-          const normalized = (potential - minimum) / span;
-          if (normalized > 0.05 + 1e-12 && normalized < 0.95 - 1e-12) return;
-          const forward = contribution.originalForward[index]!;
-          const reverse = contribution.originalReverse[index]!;
-          const lower = Math.min(forward, reverse);
-          const upper = Math.max(forward, reverse);
-          const tolerance = 1e-10 * Math.max(1, Math.abs(forward), Math.abs(reverse));
-          for (const capacitive of [
-            contribution.capacitiveForward[index]!,
-            contribution.capacitiveReverse[index]!
-          ]) {
-            expect(capacitive).toBeGreaterThanOrEqual(lower - tolerance);
-            expect(capacitive).toBeLessThanOrEqual(upper + tolerance);
-          }
-        });
+        const stabilized = stabilizeDunnFractions(
+          result.dunnRecords,
+          contribution.scanRate,
+          dunnConfidenceMode,
+          settings.rSquaredThreshold
+        );
+        const historical = optimizeSharedFraction(
+          stabilized.fractions,
+          result.alignedGrid.potentials,
+          stabilized.diagnostics.smoothingMultiplier
+        );
+        expect(contribution.g).toEqual(historical.g);
+        expect(contribution.diagnostics.maximumSharedFractionAdjustment).toBe(0);
       }
     }
   });

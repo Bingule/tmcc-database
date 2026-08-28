@@ -195,6 +195,34 @@ export function envelopePenalty(
   return upperViolation * upperViolation + lowerViolation * lowerViolation;
 }
 
+export function preserveOptimizedSharedFraction(
+  baselineG: number[],
+  potentials: number[]
+): DunnSoftEnvelopeResult {
+  const roughness = secondDifferenceRoughness(baselineG, potentials);
+  if (baselineG.some((fraction) =>
+    !Number.isFinite(fraction) || fraction < 0 || fraction > 1)) {
+    throw new CvAnalysisError("reconstructionFailed");
+  }
+  return {
+    baselineG: [...baselineG],
+    g: [...baselineG],
+    diagnostics: {
+      fidelityWeight: 1,
+      smoothnessLambda: 0,
+      envelopeLambda: 0,
+      envelopeTolerance: 0,
+      iterations: 0,
+      converged: true,
+      optimalityResidual: 0,
+      fidelity: 0,
+      roughness,
+      envelopePenalty: 0,
+      maximumSharedFractionAdjustment: 0
+    }
+  };
+}
+
 export function refineSharedFractionWithSoftEnvelope(
   input: DunnSoftEnvelopeInput
 ): DunnSoftEnvelopeResult {
