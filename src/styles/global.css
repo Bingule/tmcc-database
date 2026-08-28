@@ -2915,6 +2915,247 @@ td button {
 .cv-table-copy-toolbar button { margin: 0; }
 .cv-table-copy-toolbar [role="status"] { flex-basis: 100%; min-height: 1.4em; }
 
+.rate-data-input {
+  display: grid;
+  gap: 14px;
+}
+
+.rate-input-mode,
+.rate-column-mapping {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 14px;
+  margin: 0;
+  padding: 14px;
+  border: 1px solid #d6dfdc;
+  border-radius: 7px;
+}
+
+.rate-input-mode legend,
+.rate-column-mapping legend {
+  padding: 0 5px;
+  color: #263f49;
+  font-weight: 800;
+}
+
+.rate-input-mode label,
+.rate-confirmation {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rate-input-mode input,
+.rate-confirmation input {
+  width: auto;
+  min-height: 18px;
+  margin: 0;
+}
+
+.rate-unit-controls,
+.rate-theoretical-capacity,
+.rate-column-mapping {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 14px;
+}
+
+.rate-unit-notice,
+.rate-paste-field small,
+.rate-chart-sampling-notice {
+  margin: 0;
+  color: #607078;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.rate-manual-input,
+.rate-file-import {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.rate-manual-toolbar,
+.rate-input-actions,
+.rate-export-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.rate-data-input :is(.rate-manual-toolbar, .rate-input-actions, .rate-export-actions) button {
+  margin: 0;
+}
+
+.rate-table-frame-scroll {
+  max-height: calc(61px * 7);
+  overflow-x: auto;
+  overflow-y: auto;
+}
+
+.rate-table-frame-scroll table {
+  min-width: 650px;
+}
+
+.rate-table-frame-scroll thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f5f7f6;
+}
+
+.rate-table-frame-scroll th,
+.rate-table-frame-scroll td {
+  height: 61px;
+  box-sizing: border-box;
+}
+
+.rate-table-frame-scroll input {
+  min-width: 130px;
+}
+
+.rate-paste-field textarea {
+  min-height: 92px;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.rate-file-label input[type="file"] {
+  padding: 7px;
+}
+
+.rate-import-summary {
+  padding: 14px;
+  border-left: 4px solid #366c75;
+  border-radius: 7px;
+  background: #f6faf8;
+}
+
+.rate-import-summary h3,
+.rate-import-summary p {
+  margin: 0;
+}
+
+.rate-import-summary dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 18px;
+  margin: 12px 0;
+}
+
+.rate-import-summary dl > div {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.8fr) minmax(0, 1.2fr);
+  gap: 8px;
+}
+
+.rate-import-summary dt {
+  color: #52666e;
+  font-weight: 700;
+}
+
+.rate-import-summary dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.rate-import-counts {
+  color: #284b57;
+  font-weight: 750;
+}
+
+.rate-result-badge {
+  width: fit-content;
+  margin: 0 0 10px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  color: #234b57;
+  background: #e4efec;
+  font-size: 0.75rem;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+}
+
+.rate-results-example .rate-result-badge {
+  color: #6c5420;
+  background: #fff4d7;
+}
+
+.rate-result-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.rate-result-card {
+  padding: 14px;
+  border: 1px solid #dce2df;
+  border-radius: 7px;
+  background: #fff;
+}
+
+.rate-result-card dt {
+  color: #52666e;
+  font-weight: 700;
+}
+
+.rate-result-card dd {
+  margin: 6px 0 0;
+  color: #17242a;
+  font-size: 1.35rem;
+  font-weight: 800;
+}
+
+.rate-result-card p,
+.rate-results-empty {
+  margin: 6px 0 0;
+  color: #607078;
+  font-size: 0.86rem;
+}
+
+.rate-fit-status {
+  padding: 12px 14px;
+  border-left: 4px solid #607d8b;
+  border-radius: 6px;
+  background: #f5f8f6;
+}
+
+.rate-fit-status-loading { border-left-color: #2f6f7f; }
+.rate-fit-status-converged { border-left-color: #3f7652; }
+.rate-fit-status-failed { border-left-color: #a6423f; }
+
+.rate-fit-status p,
+.rate-fit-status ul {
+  margin: 6px 0 0;
+}
+
+.rate-equation {
+  padding: 12px 14px;
+  overflow-x: auto;
+  border: 1px solid #d6dfdc;
+  border-radius: 6px;
+  color: #183f49;
+  background: #f6faf8;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.rate-theory-section ul,
+.rate-reference-list ol {
+  color: #52666e;
+  line-height: 1.55;
+}
+
+.rate-reference-list li + li {
+  margin-top: 10px;
+}
+
+.rate-chart-sampling-notice {
+  padding-left: 10px;
+  border-left: 3px solid #6c8d8c;
+}
+
 .scientific-chart-shell {
   width: 100%;
   margin: 14px 0;
@@ -3088,6 +3329,13 @@ sub {
 
   .tool-section-wide {
     grid-column: auto;
+  }
+
+  .rate-unit-controls,
+  .rate-theoretical-capacity,
+  .rate-column-mapping,
+  .rate-import-summary dl {
+    grid-template-columns: 1fr;
   }
 
   .cv-import {
