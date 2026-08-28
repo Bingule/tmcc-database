@@ -79,6 +79,13 @@ export interface ModelComparatorDependencies {
 /** Relative/absolute tolerance used when information-criterion values tie. */
 export const MODEL_COMPARISON_TIE_TOLERANCE = 1e-9;
 
+class CapturedFitRejection {
+  constructor(
+    readonly reason: unknown,
+    readonly cancelledAtRejection: boolean,
+  ) {}
+}
+
 /**
  * Compare validated registry models against the same complete scientific data.
  * Model IDs are fully gated before any optimizer work begins.
@@ -92,21 +99,39 @@ export function createRateModelComparator(
 ) => Promise<ModelComparisonResult> {
   return async (data, modelIds, options = {}) => {
     const models = validateSelection(modelIds, dependencies.resolveModel);
-    const settled = await Promise.allSettled(models.map((model) => Promise.resolve().then(() => (
-      dependencies.fit(data, {
-        modelId: model.id,
-        signal: options.signal,
-      })
-    ))));
+    const settled = await Promise.allSettled(models.map((model) => invokeFitSafely(
+      dependencies.fit,
+      data,
+      model.id,
+      options.signal,
+    )));
     const fits = settled.map((outcome, index): RateFitResult => outcome.status === "fulfilled"
       ? outcome.value
-      : rejectedFit(models[index].id, outcome.reason, options.signal));
+      : rejectedFit(models[index].id, outcome.reason));
     return buildComparisonResult(data.length, models, fits);
   };
 }
 
-function rejectedFit(modelId: string, reason: unknown, signal?: AbortSignal): RateFitResult {
-  const cancelled = signal?.aborted === true;
+function invokeFitSafely(
+  fit: ComparisonFitter,
+  data: ReadonlyArray<RateFitPoint>,
+  modelId: string,
+  signal: AbortSignal | undefined,
+): Promise<RateFitResult> {
+  try {
+    return fit(data, { modelId, signal }).catch((reason: unknown) => {
+      throw new CapturedFitRejection(reason, signal?.aborted === true);
+    });
+  } catch (reason) {
+    return Promise.reject(new CapturedFitRejection(reason, signal?.aborted === true));
+  }
+}
+
+function rejectedFit(modelId: string, captured: unknown): RateFitResult {
+  const rejection = captured instanceof CapturedFitRejection
+    ? captured
+    : new CapturedFitRejection(captured, false);
+  const cancelled = rejection.cancelledAtRejection;
   return {
     status: "failed",
     modelId,
@@ -114,8 +139,8 @@ function rejectedFit(modelId: string, reason: unknown, signal?: AbortSignal): Ra
       code: cancelled ? "cancelled" : "optimizer-error",
       message: cancelled
         ? "The shared comparison was cancelled."
-        : reason instanceof Error
-          ? reason.message
+        : rejection.reason instanceof Error
+          ? rejection.reason.message
           : "The model fitter rejected without an Error value.",
     },
     iterations: 0,
@@ -213,17 +238,18 @@ function buildComparisonResult(
   });
 
   // Competition ranking: ties share a rank and the next rank skips the tied places (1, 1, 3).
-  let previousCriterion: number | null = null;
-  let previousRank = 0;
+  let groupAnchorCriterion: number | null = null;
+  let groupRank = 0;
   let rankedCount = 0;
   const rankedRows = rows.map(({ row, criterionValue }) => {
     if (criterionValue === null) return row;
     rankedCount += 1;
-    const rank = previousCriterion !== null && criterionTie(previousCriterion, criterionValue)
-      ? previousRank
-      : rankedCount;
-    previousCriterion = criterionValue;
-    previousRank = rank;
+    const tiedToGroup = groupAnchorCriterion !== null && criterionTie(groupAnchorCriterion, criterionValue);
+    const rank = tiedToGroup ? groupRank : rankedCount;
+    if (!tiedToGroup) {
+      groupAnchorCriterion = criterionValue;
+      groupRank = rank;
+    }
     return { ...row, rank };
   });
   const recommendation = recommendationFor(rankedRows, models.length);

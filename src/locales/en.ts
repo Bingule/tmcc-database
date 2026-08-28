@@ -343,6 +343,7 @@ export const en = {
   "rate.modelComparison.cancelled": "Comparison cancelled. No stale results were reported.",
   "rate.modelComparison.completed": "Comparison completed using all {{points}} valid points.",
   "rate.modelComparison.partial": "Partial results: {{converged}} of {{selected}} selected models converged using all {{points}} valid points.",
+  "rate.modelComparison.allFailed": "All selected models failed to converge ({{selected}} models using {{points}} valid points). No numerical recommendation is available.",
   "rate.modelComparison.resultsTitle": "Comparison Results",
   "rate.modelComparison.criterionUsed": "All ranked rows use {{criterion}}; criteria are never mixed between rows.",
   "rate.modelComparison.table.model": "Model",

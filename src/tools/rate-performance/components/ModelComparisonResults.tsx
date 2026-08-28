@@ -5,8 +5,8 @@ import { getRateModel } from "../models/registry";
 import type { NormalizedRatePoint } from "../models/types";
 import { createSmoothRateFitPoints, formatOptionalRateValue, formatRateValue, normalizedRateExtent } from "../utils/rateAnalysisPresentation";
 import { sampleRateChartPoints } from "../utils/chartSampling";
-import { serializeModelComparisonCsv, serializeModelComparisonResidualsCsv } from "../utils/rateComparisonExports";
-import { serializeNormalizedRateCsv, serializeOriginalRateCsv, type RateExportMetadata } from "../utils/rateExports";
+import { createModelComparisonExportMetadata, serializeModelComparisonCsv, serializeModelComparisonResidualsCsv } from "../utils/rateComparisonExports";
+import { serializeNormalizedRateCsv, serializeOriginalRateCsv } from "../utils/rateExports";
 import { translatedRateModelFamily, translatedRateModelName } from "../utils/rateModelPresentation";
 import { ExportToolbar, type RateCsvExportItem } from "./ExportToolbar";
 import { RateChartPanel } from "./RateChartPanel";
@@ -30,16 +30,7 @@ export function ModelComparisonResults({ input, normalized, result, chart, onCha
   const unavailable = t("rate.analysis.notEstimable");
   const criterion = result.criterion ?? unavailable;
   const fitData = normalized.map(({ analysisRate: rate, analysisCapacity: capacity }) => ({ rate, capacity }));
-  const metadata: RateExportMetadata = {
-    modelId: "model-comparison",
-    rateDefinition: "Measured rate R in h^-1",
-    originalRateUnits: uniqueUnits(input.points.map(({ rateUnit }) => rateUnit)),
-    originalCapacityUnits: uniqueUnits(input.points.map(({ capacityUnit }) => capacityUnit)),
-    analysisRateUnit: "h-1",
-    analysisCapacityUnit: "mAh-g-1",
-    normalizationBasis: "R in h^-1; Q in mAh g^-1",
-    settings: { criterion, weighting: "unweighted", usedPointCount: result.usedPointCount },
-  };
+  const metadata = createModelComparisonExportMetadata(normalized, input.normalizationContext, result);
   const csvItems: RateCsvExportItem[] = [
     { id: "original", label: t("rate.analysis.exportOriginal"), filename: "rate-comparison-original.csv", csv: serializeOriginalRateCsv(input.points.filter(({ rate, capacity }) => rate !== null || capacity !== null), metadata) },
     { id: "processed", label: t("rate.analysis.exportProcessed"), filename: "rate-comparison-processed.csv", csv: serializeNormalizedRateCsv(normalized, metadata) },
@@ -84,10 +75,6 @@ export function ModelComparisonResults({ input, normalized, result, chart, onCha
     </section>
     <ExportToolbar csvItems={csvItems} figureExportId="rate-model-comparison-chart" figureFilename={`rate-model-comparison-${chart}`} onError={onExportError} />
   </div>;
-}
-
-function uniqueUnits(units: ReadonlyArray<string>): string {
-  return [...new Set(units)].sort().join("|");
 }
 
 function ComparisonChartPanel({ chart, rows, normalized, visibleModels }: {

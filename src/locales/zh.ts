@@ -345,6 +345,7 @@ export const zh = {
   "rate.modelComparison.cancelled": "比较已取消，未报告过期结果。",
   "rate.modelComparison.completed": "已使用全部 {{points}} 个有效点完成比较。",
   "rate.modelComparison.partial": "部分结果：所选 {{selected}} 个模型中有 {{converged}} 个收敛，且均使用全部 {{points}} 个有效点。",
+  "rate.modelComparison.allFailed": "所有所选模型均未收敛（{{selected}} 个模型，使用 {{points}} 个有效点）。无法提供数值推荐。",
   "rate.modelComparison.resultsTitle": "比较结果",
   "rate.modelComparison.criterionUsed": "所有排名行统一使用 {{criterion}}；绝不在不同行间混用准则。",
   "rate.modelComparison.table.model": "模型",

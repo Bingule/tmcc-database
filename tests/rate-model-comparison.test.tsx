@@ -19,6 +19,7 @@ import ModelComparisonPage from "../src/tools/rate-performance/pages/ModelCompar
 import { ModelComparisonResults, type ComparisonChart } from "../src/tools/rate-performance/components/ModelComparisonResults";
 import type { NormalizedRatePoint } from "../src/tools/rate-performance/models/types";
 import {
+  createModelComparisonExportMetadata,
   serializeModelComparisonCsv,
   serializeModelComparisonResidualsCsv,
 } from "../src/tools/rate-performance/utils/rateComparisonExports";
@@ -214,6 +215,29 @@ describe("compareRateModels", () => {
     expect(result.rows.every((row) => row.failureCode === "cancelled")).toBe(true);
   });
 
+  it("classifies each rejected fit using the signal state at rejection time", async () => {
+    const controller = new AbortController();
+    const later = deferred<RateFitResult>();
+    const fit = vi.fn((_points, options: { modelId: string }) => options.modelId.startsWith("tian")
+      ? Promise.reject(new Error("failed before cancellation"))
+      : later.promise);
+    const comparison = createRateModelComparator({ fit, resolveModel: getRateModel })(data, [
+      "tian-characteristic-time",
+      "rational-characteristic-time",
+    ], { signal: controller.signal });
+
+    await Promise.resolve();
+    await Promise.resolve();
+    controller.abort();
+    later.resolve(converged("rational-characteristic-time"));
+    const result = await comparison;
+
+    expect(result.rows.find(({ modelId }) => modelId === "tian-characteristic-time")?.failureCode)
+      .toBe("optimizer-error");
+    expect(result.rows.find(({ modelId }) => modelId === "rational-characteristic-time")?.convergence)
+      .toBe("converged");
+  });
+
   it("uses tolerant competition ranking for exact and near criterion ties", async () => {
     const thirdModel = { ...getRateModel("tian-characteristic-time")!, id: "third-validated-model" };
     const models = new Map([
@@ -255,6 +279,30 @@ describe("compareRateModels", () => {
     expect(exact.recommendation).toBeNull();
   });
 
+  it("anchors a tie group to its first criterion instead of chaining adjacent near ties", async () => {
+    const ids = ["anchor-a", "anchor-b", "anchor-c"] as const;
+    const base = getRateModel("tian-characteristic-time")!;
+    const models = new Map<string, (typeof base)>(ids.map((id) => [id, { ...base, id }]));
+    const scores = new Map<string, number>([
+      [ids[0], 10],
+      [ids[1], 10 + 7.5e-9],
+      [ids[2], 10 + 15e-9],
+    ]);
+    const fit = vi.fn(async (_points, options: { modelId: string }) => converged(options.modelId, {
+      aic: scores.get(options.modelId),
+      aicc: scores.get(options.modelId),
+    }));
+    const result = await createRateModelComparator({ fit, resolveModel: (id) => models.get(id) })(data, ids);
+
+    expect(result.rows.map(({ modelId, rank }) => [modelId, rank])).toEqual([
+      [ids[0], 1],
+      [ids[1], 1],
+      [ids[2], 3],
+    ]);
+    expect(result.recommendation).toBeNull();
+    expect(result.recommendationReason).toBe("insufficientEvidence");
+  });
+
   it("serializes comparison statistics and observation-aligned residuals without inventing failed values", async () => {
     const fit = vi.fn(async (_points, options: { modelId: string }) => options.modelId.startsWith("tian")
       ? converged(options.modelId, { aic: 5, aicc: 29 })
@@ -285,6 +333,57 @@ describe("compareRateModels", () => {
     expect(residuals.split("\r\n")[0]).toBe("model_id,criterion,rate,observed_capacity,predicted_capacity,residual,rate_unit,capacity_unit,rate_definition,original_rate_units,original_capacity_units,analysis_rate_unit,analysis_capacity_unit,normalization_basis,settings");
     expect(residuals).toContain("tian-characteristic-time,AICc,0.1,300,298,2,h-1,mAh-g-1,measured discharge rate,C-rate|mA-g-1,mAh-g-1,h-1,mAh-g-1,active material,criterion=AICc;usedPointCount=6;weighting=unweighted");
     expect(residuals).not.toContain("rational-characteristic-time");
+  });
+
+  it("builds comparison export provenance from registry definitions and normalization context", async () => {
+    const fit = vi.fn(async (_points, options: { modelId: string }) => converged(options.modelId));
+    const result = await createRateModelComparator({ fit, resolveModel: getRateModel })(data, [
+      "tian-characteristic-time",
+      "rational-characteristic-time",
+    ]);
+    const normalizedFor = (theoreticalCapacity: number): NormalizedRatePoint[] => data.map((point, index) => ({
+      id: `c-rate-${index}`,
+      analysisRate: point.rate / theoreticalCapacity,
+      analysisRateUnit: "h-1",
+      analysisCapacity: point.capacity,
+      analysisCapacityUnit: "mAh-g-1",
+      originalRate: point.rate,
+      originalRateUnit: "C-rate",
+      originalCapacity: point.capacity,
+      originalCapacityUnit: "mAh-g-1",
+      normalization: { method: "c-rate", theoreticalCapacity, theoreticalCapacityUnit: "mAh-g-1" },
+    }));
+    const metadata100 = createModelComparisonExportMetadata(normalizedFor(100), {
+      theoreticalCapacity: { value: 100, unit: "mAh-g-1" },
+    }, result);
+    const metadata200 = createModelComparisonExportMetadata(normalizedFor(200), {
+      theoreticalCapacity: { value: 200, unit: "mAh-g-1" },
+    }, result);
+
+    expect(metadata100).toEqual({
+      modelId: "model-comparison",
+      rateDefinition: "R (measured rate, h^-1): Applied specific current divided by the measured capacity at that rate; equivalently inverse measured discharge time.",
+      originalRateUnits: "C-rate",
+      originalCapacityUnits: "mAh-g-1",
+      analysisRateUnit: "h-1",
+      analysisCapacityUnit: "mAh-g-1",
+      normalizationBasis: "methods=c-rate; measuredRateConfirmed=false; theoreticalCapacity=100 mAh-g-1",
+      settings: {
+        criterion: "AICc",
+        measuredRateConfirmed: false,
+        modelIds: "tian-characteristic-time|rational-characteristic-time",
+        normalizationMethods: "c-rate",
+        theoreticalCapacity: 100,
+        theoreticalCapacityUnit: "mAh-g-1",
+        usedPointCount: 6,
+        weighting: "unweighted",
+      },
+    });
+    const csv100 = serializeModelComparisonCsv(result, metadata100);
+    const csv200 = serializeModelComparisonCsv(result, metadata200);
+    expect(csv100).toContain("theoreticalCapacity=100;theoreticalCapacityUnit=mAh-g-1");
+    expect(csv200).toContain("theoreticalCapacity=200;theoreticalCapacityUnit=mAh-g-1");
+    expect(csv100).not.toBe(csv200);
   });
 });
 
@@ -333,6 +432,8 @@ describe("ModelComparisonPage", () => {
 
     expect(fitRatePerformance).toHaveBeenCalledTimes(2);
     expect(view.textContent).toContain("Comparison Results");
+    expect(view.querySelector(".rate-fit-status-converged")).not.toBeNull();
+    expect(view.textContent).toContain("Comparison completed");
     for (const heading of ["Model", "Equation type", "Parameters", "Count", "R²", "Adjusted R²", "RMSE", "AIC", "AICc", "BIC", "ΔAICc", "Convergence", "Rank"]) {
       expect(view.textContent).toContain(heading);
     }
@@ -379,6 +480,22 @@ describe("ModelComparisonPage", () => {
     expect(view.querySelector(".rate-fit-status-partial")).not.toBeNull();
     expect(view.textContent).toContain("Partial results");
     expect(view.textContent).not.toContain("Comparison completed");
+  });
+
+  it("reports zero converged models as a typed all-failed state in English and Chinese", async () => {
+    fitRatePerformance.mockImplementation(async (_points, options: { modelId: string }) => failed(options.modelId));
+    const english = await render(<ModelComparisonPage />);
+    await click(button(english, "Load example"));
+    await click(button(english, "Compare Models"));
+    expect(english.querySelector(".rate-fit-status-failed")).not.toBeNull();
+    expect(english.querySelector(".rate-fit-status-partial")).toBeNull();
+    expect(english.textContent).toContain("All selected models failed to converge");
+
+    const chinese = await render(<ModelComparisonPage />, "zh");
+    await click(button(chinese, "载入示例"));
+    await click(button(chinese, "比较模型"));
+    expect(chinese.querySelector(".rate-fit-status-failed")).not.toBeNull();
+    expect(chinese.textContent).toContain("所有所选模型均未收敛");
   });
 
   it("uses pressed buttons instead of incomplete tabs for chart selection", async () => {

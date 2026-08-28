@@ -4,6 +4,8 @@ import type {
   ModelComparisonRow,
 } from "../analysis/compareRateModels";
 import type { RateFitPoint } from "../analysis/fitRatePerformance";
+import { getRateModel } from "../models/registry";
+import type { NormalizedRatePoint, RateNormalizationContext } from "../models/types";
 import {
   RATE_EXPORT_METADATA_HEADERS,
   rateExportMetadataColumns,
@@ -11,6 +13,57 @@ import {
 } from "./rateExports";
 
 const provenanceHeaders = RATE_EXPORT_METADATA_HEADERS.slice(1);
+
+export function createModelComparisonExportMetadata(
+  normalized: ReadonlyArray<Readonly<NormalizedRatePoint>>,
+  normalizationContext: Readonly<RateNormalizationContext>,
+  result: Readonly<ModelComparisonResult>,
+): RateExportMetadata {
+  const modelIds = result.rows.map(({ modelId }) => modelId);
+  const rateDefinitions = unique(modelIds.map((modelId) => {
+    const variable = getRateModel(modelId)?.independentVariable;
+    return variable
+      ? `${variable.symbol} (${variable.name}, ${variable.unit}): ${variable.definition}`
+      : `Unregistered model ${modelId}`;
+  }));
+  const normalizationMethods = unique(normalized.map(({ normalization }) => normalization.method));
+  const measuredRateConfirmed = normalizationContext.confirmHInverseMeasuredRate === true
+    || normalized.some(({ normalization }) => normalization.measuredRateConfirmed === true);
+  const normalizedTheoretical = normalized.find(({ normalization }) => (
+    normalization.theoreticalCapacity !== undefined
+  ))?.normalization;
+  const theoreticalCapacity = normalizationContext.theoreticalCapacity?.value
+    ?? normalizedTheoretical?.theoreticalCapacity;
+  const theoreticalCapacityUnit = normalizationContext.theoreticalCapacity?.unit
+    ?? normalizedTheoretical?.theoreticalCapacityUnit;
+  const settings: Record<string, string | number | boolean> = {
+    criterion: result.criterion ?? "unavailable",
+    measuredRateConfirmed,
+    modelIds: modelIds.join("|"),
+    normalizationMethods: normalizationMethods.join("|"),
+    usedPointCount: result.usedPointCount,
+    weighting: "unweighted",
+  };
+  if (theoreticalCapacity !== undefined) settings.theoreticalCapacity = theoreticalCapacity;
+  if (theoreticalCapacityUnit !== undefined) settings.theoreticalCapacityUnit = theoreticalCapacityUnit;
+  const theoreticalBasis = theoreticalCapacity !== undefined && theoreticalCapacityUnit
+    ? `; theoreticalCapacity=${theoreticalCapacity} ${theoreticalCapacityUnit}`
+    : "";
+  return {
+    modelId: "model-comparison",
+    rateDefinition: rateDefinitions.join(" | "),
+    originalRateUnits: unique(normalized.map(({ originalRateUnit }) => originalRateUnit)).join("|"),
+    originalCapacityUnits: unique(normalized.map(({ originalCapacityUnit }) => originalCapacityUnit)).join("|"),
+    analysisRateUnit: unique(normalized.map(({ analysisRateUnit }) => analysisRateUnit)).join("|"),
+    analysisCapacityUnit: unique(normalized.map(({ analysisCapacityUnit }) => analysisCapacityUnit)).join("|"),
+    normalizationBasis: `methods=${normalizationMethods.join("|")}; measuredRateConfirmed=${String(measuredRateConfirmed)}${theoreticalBasis}`,
+    settings,
+  };
+}
+
+function unique(values: ReadonlyArray<string>): string[] {
+  return [...new Set(values)].sort();
+}
 
 export function serializeModelComparisonCsv(
   result: Readonly<ModelComparisonResult>,

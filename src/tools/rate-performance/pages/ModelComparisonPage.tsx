@@ -123,16 +123,22 @@ export default function ModelComparisonPage() {
     setError("rate.modelComparison.cancelled");
   }
 
-  const failed = result?.rows.some(({ convergence }) => convergence === "failed") ?? false;
-  const status = pending ? "loading" : result ? failed ? "partial" : "converged" : error ? "failed" : "idle";
+  const convergedCount = result?.rows.filter(({ convergence }) => convergence === "converged").length ?? 0;
+  const hasFailed = result?.rows.some(({ convergence }) => convergence === "failed") ?? false;
+  const allFailed = result !== null && convergedCount === 0;
+  const status = pending ? "loading" : result
+    ? allFailed ? "failed" : hasFailed ? "partial" : "converged"
+    : error ? "failed" : "idle";
   const statusMessage = error
     ? t(error, error === "rate.analysis.error.tooManyPoints" ? { max: MAX_SYNC_RATE_FIT_POINTS.toLocaleString("en-US") } : undefined)
     : pending
       ? t("rate.modelComparison.loading")
       : result
-        ? failed
+        ? allFailed
+          ? t("rate.modelComparison.allFailed", { selected: result.rows.length, points: result.usedPointCount })
+          : hasFailed
           ? t("rate.modelComparison.partial", {
-            converged: result.rows.filter(({ convergence }) => convergence === "converged").length,
+            converged: convergedCount,
             selected: result.rows.length,
             points: result.usedPointCount,
           })
