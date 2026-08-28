@@ -68,6 +68,10 @@ export function RateAnalysisResults({
   const metadata: RateExportMetadata = {
     modelId: result.modelId,
     rateDefinition: model.independentVariable.definition,
+    originalRateUnits: uniqueUnits(input.points.map(({ rateUnit }) => rateUnit)),
+    originalCapacityUnits: uniqueUnits(input.points.map(({ capacityUnit }) => capacityUnit)),
+    analysisRateUnit: "h-1",
+    analysisCapacityUnit: "mAh-g-1",
     normalizationBasis: "R in h^-1; Q in mAh g^-1",
     settings: { weighting: "unweighted", usedPointCount: result.usedPointCount },
   };
@@ -116,6 +120,10 @@ export function RateAnalysisResults({
       onError={onExportError}
     />
   </>;
+}
+
+function uniqueUnits(units: ReadonlyArray<string>): string {
+  return [...new Set(units)].sort().join("|");
 }
 
 const chartTabs: ReadonlyArray<Readonly<{ id: RateAnalysisChartTab; label: TranslationKey }>> = [

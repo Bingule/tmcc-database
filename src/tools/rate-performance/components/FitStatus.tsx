@@ -1,6 +1,6 @@
 import { useI18n } from "../../../i18n/I18nProvider";
 
-export type RateFitUiStatus = "idle" | "loading" | "converged" | "failed";
+export type RateFitUiStatus = "idle" | "loading" | "converged" | "partial" | "failed";
 
 export function FitStatus({
   status,

@@ -4,13 +4,24 @@ import type {
   ModelComparisonRow,
 } from "../analysis/compareRateModels";
 import type { RateFitPoint } from "../analysis/fitRatePerformance";
+import {
+  RATE_EXPORT_METADATA_HEADERS,
+  rateExportMetadataColumns,
+  type RateExportMetadata,
+} from "./rateExports";
 
-export function serializeModelComparisonCsv(result: Readonly<ModelComparisonResult>): string {
+const provenanceHeaders = RATE_EXPORT_METADATA_HEADERS.slice(1);
+
+export function serializeModelComparisonCsv(
+  result: Readonly<ModelComparisonResult>,
+  metadata: Readonly<RateExportMetadata>,
+): string {
+  const provenance = rateExportMetadataColumns(metadata).slice(1);
   return rowsToCsv(
     [
       "model_id", "equation_type", "parameters", "parameter_count", "r_squared",
       "adjusted_r_squared", "rmse", "aic", "aicc", "bic", "criterion",
-      "delta_criterion", "convergence", "rank", "failure_code",
+      "delta_criterion", "convergence", "rank", "failure_code", ...provenanceHeaders,
     ],
     result.rows.map((row) => [
       row.modelId,
@@ -28,6 +39,7 @@ export function serializeModelComparisonCsv(result: Readonly<ModelComparisonResu
       row.convergence,
       row.rank,
       row.failureCode ?? "",
+      ...provenance,
     ]),
   );
 }
@@ -35,18 +47,22 @@ export function serializeModelComparisonCsv(result: Readonly<ModelComparisonResu
 export function serializeModelComparisonResidualsCsv(
   data: ReadonlyArray<Readonly<RateFitPoint>>,
   result: Readonly<ModelComparisonResult>,
+  metadata: Readonly<RateExportMetadata>,
 ): string {
+  const provenance = rateExportMetadataColumns(metadata).slice(1);
   return rowsToCsv(
-    ["model_id", "rate", "observed_capacity", "predicted_capacity", "residual", "rate_unit", "capacity_unit"],
+    ["model_id", "criterion", "rate", "observed_capacity", "predicted_capacity", "residual", "rate_unit", "capacity_unit", ...provenanceHeaders],
     result.rows.flatMap((row) => row.predictions && row.residuals
       ? data.map((point, index) => [
         row.modelId,
+        result.criterion ?? "",
         point.rate,
         point.capacity,
         row.predictions?.[index] ?? null,
         row.residuals?.[index] ?? null,
-        "h-1",
-        "mAh-g-1",
+        metadata.analysisRateUnit,
+        metadata.analysisCapacityUnit,
+        ...provenance,
       ])
       : []),
   );
@@ -54,5 +70,5 @@ export function serializeModelComparisonResidualsCsv(
 
 function serializeParameters(row: Readonly<ModelComparisonRow>): string {
   if (!row.parameters) return "";
-  return `Q_M=${row.parameters.qM};tau=${row.parameters.tau};n=${row.parameters.n}`;
+  return `Q_M=${row.parameters.qM} [mAh-g-1];tau=${row.parameters.tau} [h];n=${row.parameters.n} [dimensionless]`;
 }

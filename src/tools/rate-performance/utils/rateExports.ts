@@ -6,6 +6,10 @@ import type { NormalizedRatePoint, RatePoint } from "../models/types";
 export interface RateExportMetadata {
   readonly modelId: string;
   readonly rateDefinition: string;
+  readonly originalRateUnits: string;
+  readonly originalCapacityUnits: string;
+  readonly analysisRateUnit: string;
+  readonly analysisCapacityUnit: string;
   readonly normalizationBasis: string;
   readonly settings?: Readonly<Record<string, string | number | boolean>>;
 }
@@ -40,10 +44,14 @@ export interface RateParameterExportSummary {
   readonly warnings: ReadonlyArray<RateFitWarning>;
 }
 
-function metadataColumns(metadata: RateExportMetadata): Array<string> {
+export function rateExportMetadataColumns(metadata: RateExportMetadata): Array<string> {
   return [
     metadata.modelId,
     metadata.rateDefinition,
+    metadata.originalRateUnits,
+    metadata.originalCapacityUnits,
+    metadata.analysisRateUnit,
+    metadata.analysisCapacityUnit,
     metadata.normalizationBasis,
     Object.entries(metadata.settings ?? {})
       .sort(([left], [right]) => left.localeCompare(right))
@@ -52,15 +60,24 @@ function metadataColumns(metadata: RateExportMetadata): Array<string> {
   ];
 }
 
-const metadataHeaders = ["model_id", "rate_definition", "normalization_basis", "settings"];
+export const RATE_EXPORT_METADATA_HEADERS = [
+  "model_id",
+  "rate_definition",
+  "original_rate_units",
+  "original_capacity_units",
+  "analysis_rate_unit",
+  "analysis_capacity_unit",
+  "normalization_basis",
+  "settings",
+] as const;
 
 export function serializeOriginalRateCsv(
   points: ReadonlyArray<Readonly<RatePoint>>,
   metadata: RateExportMetadata,
 ): string {
-  const suffix = metadataColumns(metadata);
+  const suffix = rateExportMetadataColumns(metadata);
   return rowsToCsv(
-    ["point_id", "rate", "rate_unit", "capacity", "capacity_unit", ...metadataHeaders],
+    ["point_id", "rate", "rate_unit", "capacity", "capacity_unit", ...RATE_EXPORT_METADATA_HEADERS],
     points.map((point) => [
       point.id,
       point.rate,
@@ -76,7 +93,7 @@ export function serializeNormalizedRateCsv(
   points: ReadonlyArray<Readonly<NormalizedRatePoint>>,
   metadata: RateExportMetadata,
 ): string {
-  const suffix = metadataColumns(metadata);
+  const suffix = rateExportMetadataColumns(metadata);
   return rowsToCsv(
     [
       "point_id",
@@ -92,7 +109,7 @@ export function serializeNormalizedRateCsv(
       "measured_rate_confirmed",
       "theoretical_capacity",
       "theoretical_capacity_unit",
-      ...metadataHeaders,
+      ...RATE_EXPORT_METADATA_HEADERS,
     ],
     points.map((point) => [
       point.id,
@@ -117,9 +134,9 @@ export function serializeRateFittedCurveCsv(
   points: ReadonlyArray<Readonly<RateFittedCurveExportPoint>>,
   metadata: RateExportMetadata,
 ): string {
-  const suffix = metadataColumns(metadata);
+  const suffix = rateExportMetadataColumns(metadata);
   return rowsToCsv(
-    ["rate", "fitted_capacity", "rate_unit", "capacity_unit", ...metadataHeaders],
+    ["rate", "fitted_capacity", "rate_unit", "capacity_unit", ...RATE_EXPORT_METADATA_HEADERS],
     points.map((point) => [point.rate, point.fittedCapacity, "h-1", "mAh-g-1", ...suffix]),
   );
 }
@@ -128,7 +145,7 @@ export function serializeRateResidualsCsv(
   points: ReadonlyArray<Readonly<RateFitExportPoint>>,
   metadata: RateExportMetadata,
 ): string {
-  const suffix = metadataColumns(metadata);
+  const suffix = rateExportMetadataColumns(metadata);
   return rowsToCsv(
     [
       "rate",
@@ -137,7 +154,7 @@ export function serializeRateResidualsCsv(
       "residual",
       "rate_unit",
       "capacity_unit",
-      ...metadataHeaders,
+      ...RATE_EXPORT_METADATA_HEADERS,
     ],
     points.map((point) => [
       point.rate,
@@ -155,7 +172,7 @@ export function serializeRateFitCsv(
   points: ReadonlyArray<Readonly<RateFitExportPoint>>,
   metadata: RateExportMetadata,
 ): string {
-  const suffix = metadataColumns(metadata);
+  const suffix = rateExportMetadataColumns(metadata);
   return rowsToCsv(
     [
       "rate",
@@ -164,7 +181,7 @@ export function serializeRateFitCsv(
       "residual",
       "rate_unit",
       "capacity_unit",
-      ...metadataHeaders,
+      ...RATE_EXPORT_METADATA_HEADERS,
     ],
     points.map((point) => [
       point.rate,
@@ -183,14 +200,14 @@ export function serializeRateParametersCsv(
   metadata: RateExportMetadata,
   summary?: Readonly<RateParameterExportSummary>,
 ): string {
-  const suffix = metadataColumns(metadata);
+  const suffix = rateExportMetadataColumns(metadata);
   const statistics = summary?.statistics;
   const warnings = summary ? serializeWarnings(summary.warnings) : "";
   return rowsToCsv(
     [
       "parameter", "value", "unit", "parameter_type", "standard_error", "ci95_lower", "ci95_upper",
       "sse", "rmse", "r_squared", "adjusted_r_squared", "aic", "aicc", "bic",
-      "convergence_status", "iterations", "iteration_count_exact", "warnings", ...metadataHeaders,
+      "convergence_status", "iterations", "iteration_count_exact", "warnings", ...RATE_EXPORT_METADATA_HEADERS,
     ],
     parameters.map((parameter) => [
       parameter.name,

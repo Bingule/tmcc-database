@@ -528,7 +528,7 @@ describe("shared Rate Performance presentation", () => {
       originalCapacityUnit: "mAh-g-1",
       normalization: { method: "specific-current" },
     }];
-    const metadata = { modelId: "tian-characteristic-time", rateDefinition: "measured-rate", normalizationBasis: "active-material" };
+    const metadata = { modelId: "tian-characteristic-time", rateDefinition: "measured-rate", originalRateUnits: "mA-g-1", originalCapacityUnits: "mAh-g-1", analysisRateUnit: "h-1", analysisCapacityUnit: "mAh-g-1", normalizationBasis: "active-material" };
 
     expect(serializeOriginalRateCsv(raw, metadata)).toContain("p1,10,mA-g-1,200,mAh-g-1");
     expect(serializeNormalizedRateCsv(normalized, metadata)).toContain("p1,0.05,h-1,200,mAh-g-1,10,mA-g-1");
@@ -541,7 +541,7 @@ describe("shared Rate Performance presentation", () => {
   });
 
   it("keeps smooth fitted curves and observed residuals as distinct exact CSV contracts", () => {
-    const metadata = { modelId: "tian-characteristic-time", rateDefinition: "measured-rate", normalizationBasis: "active-material" };
+    const metadata = { modelId: "tian-characteristic-time", rateDefinition: "measured-rate", originalRateUnits: "h-1", originalCapacityUnits: "mAh-g-1", analysisRateUnit: "h-1", analysisCapacityUnit: "mAh-g-1", normalizationBasis: "active-material" };
     const fitted = serializeRateFittedCurveCsv([
       { rate: 0.01, fittedCapacity: 201 },
       { rate: 0.02, fittedCapacity: 199 },
@@ -550,15 +550,15 @@ describe("shared Rate Performance presentation", () => {
       { rate: 0.01, observedCapacity: 200, fittedCapacity: 201, residual: -1 },
     ], metadata);
 
-    expect(fitted.split("\r\n")[0]).toBe("rate,fitted_capacity,rate_unit,capacity_unit,model_id,rate_definition,normalization_basis,settings");
-    expect(residuals.split("\r\n")[0]).toBe("rate,observed_capacity,predicted_capacity,residual,rate_unit,capacity_unit,model_id,rate_definition,normalization_basis,settings");
+    expect(fitted.split("\r\n")[0]).toBe("rate,fitted_capacity,rate_unit,capacity_unit,model_id,rate_definition,original_rate_units,original_capacity_units,analysis_rate_unit,analysis_capacity_unit,normalization_basis,settings");
+    expect(residuals.split("\r\n")[0]).toBe("rate,observed_capacity,predicted_capacity,residual,rate_unit,capacity_unit,model_id,rate_definition,original_rate_units,original_capacity_units,analysis_rate_unit,analysis_capacity_unit,normalization_basis,settings");
     expect(fitted.split("\r\n")).toHaveLength(3);
     expect(residuals.split("\r\n")).toHaveLength(2);
     expect(fitted).not.toBe(residuals);
   });
 
   it("serializes complete normalized provenance and complete fit parameter diagnostics", () => {
-    const metadata = { modelId: "tian-characteristic-time", rateDefinition: "measured-rate", normalizationBasis: "active-material" };
+    const metadata = { modelId: "tian-characteristic-time", rateDefinition: "measured-rate", originalRateUnits: "mA-g-1", originalCapacityUnits: "mAh-g-1", analysisRateUnit: "h-1", analysisCapacityUnit: "mAh-g-1", normalizationBasis: "active-material" };
     const normalized: NormalizedRatePoint[] = [{
       id: "p1", analysisRate: 0.05, analysisRateUnit: "h-1", analysisCapacity: 200,
       analysisCapacityUnit: "mAh-g-1", originalRate: 10, originalRateUnit: "mA-g-1",
@@ -566,7 +566,7 @@ describe("shared Rate Performance presentation", () => {
       normalization: { method: "specific-current" },
     }];
     const processed = serializeNormalizedRateCsv(normalized, metadata);
-    expect(processed.split("\r\n")[0]).toBe("point_id,analysis_rate,analysis_rate_unit,analysis_capacity,analysis_capacity_unit,original_rate,original_rate_unit,original_capacity,original_capacity_unit,normalization_method,measured_rate_confirmed,theoretical_capacity,theoretical_capacity_unit,model_id,rate_definition,normalization_basis,settings");
+    expect(processed.split("\r\n")[0]).toBe("point_id,analysis_rate,analysis_rate_unit,analysis_capacity,analysis_capacity_unit,original_rate,original_rate_unit,original_capacity,original_capacity_unit,normalization_method,measured_rate_confirmed,theoretical_capacity,theoretical_capacity_unit,model_id,rate_definition,original_rate_units,original_capacity_units,analysis_rate_unit,analysis_capacity_unit,normalization_basis,settings");
     expect(processed.split("\r\n")[1]).toContain("specific-current,,,,tian-characteristic-time");
 
     const parameters = serializeRateParametersCsv([{
@@ -577,7 +577,7 @@ describe("shared Rate Performance presentation", () => {
       convergenceStatus: "converged", iterations: 37, iterationCountExact: true,
       warnings: [{ code: "duplicate-rate", rate: 0.05 }],
     });
-    expect(parameters.split("\r\n")[0]).toBe("parameter,value,unit,parameter_type,standard_error,ci95_lower,ci95_upper,sse,rmse,r_squared,adjusted_r_squared,aic,aicc,bic,convergence_status,iterations,iteration_count_exact,warnings,model_id,rate_definition,normalization_basis,settings");
+    expect(parameters.split("\r\n")[0]).toBe("parameter,value,unit,parameter_type,standard_error,ci95_lower,ci95_upper,sse,rmse,r_squared,adjusted_r_squared,aic,aicc,bic,convergence_status,iterations,iteration_count_exact,warnings,model_id,rate_definition,original_rate_units,original_capacity_units,analysis_rate_unit,analysis_capacity_unit,normalization_basis,settings");
     expect(parameters).toContain("Q_M,320,mAh g^-1,fitted,2,314.9,325.1,76,3.5,0.99,0.98,21,45,20,converged,37,true,duplicate-rate:0.05");
   });
 
@@ -591,7 +591,9 @@ describe("shared Rate Performance presentation", () => {
     const smooth = createSmoothRateFitPoints(normalized, { qM: 200, tau: 1, n: 1 }, (rate) => 200 / (1 + rate), 161);
     expect(smooth).toHaveLength(161);
     const csv = serializeNormalizedRateCsv(normalized, {
-      modelId: "tian-characteristic-time", rateDefinition: "measured-rate", normalizationBasis: "active-material",
+      modelId: "tian-characteristic-time", rateDefinition: "measured-rate", originalRateUnits: "h-1",
+      originalCapacityUnits: "mAh-g-1", analysisRateUnit: "h-1", analysisCapacityUnit: "mAh-g-1",
+      normalizationBasis: "active-material",
     });
     expect(csv.startsWith("point_id,analysis_rate")).toBe(true);
     expect(csv).toContain("p124999,125000");

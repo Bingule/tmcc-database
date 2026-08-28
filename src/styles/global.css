@@ -3125,6 +3125,7 @@ td button {
 
 .rate-fit-status-loading { border-left-color: #2f6f7f; }
 .rate-fit-status-converged { border-left-color: #3f7652; }
+.rate-fit-status-partial { border-left-color: #b7791f; background: #fff9eb; }
 .rate-fit-status-failed { border-left-color: #a6423f; }
 
 .rate-fit-status p,

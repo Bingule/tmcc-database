@@ -124,13 +124,19 @@ export default function ModelComparisonPage() {
   }
 
   const failed = result?.rows.some(({ convergence }) => convergence === "failed") ?? false;
-  const status = pending ? "loading" : result ? failed ? "failed" : "converged" : error ? "failed" : "idle";
+  const status = pending ? "loading" : result ? failed ? "partial" : "converged" : error ? "failed" : "idle";
   const statusMessage = error
     ? t(error, error === "rate.analysis.error.tooManyPoints" ? { max: MAX_SYNC_RATE_FIT_POINTS.toLocaleString("en-US") } : undefined)
     : pending
       ? t("rate.modelComparison.loading")
       : result
-        ? t("rate.modelComparison.completed", { points: result.usedPointCount })
+        ? failed
+          ? t("rate.modelComparison.partial", {
+            converged: result.rows.filter(({ convergence }) => convergence === "converged").length,
+            selected: result.rows.length,
+            points: result.usedPointCount,
+          })
+          : t("rate.modelComparison.completed", { points: result.usedPointCount })
         : undefined;
 
   return <section className="tools-page">

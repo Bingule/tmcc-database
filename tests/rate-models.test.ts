@@ -159,6 +159,7 @@ describe("rate-model registry validation gate", () => {
       expect(model.equation.length).toBeGreaterThan(0);
       expect(model.assumptions.length).toBeGreaterThan(0);
       expect(model.limitations.length).toBeGreaterThan(0);
+      expect(model.applicability.length).toBeGreaterThan(0);
     }
 
     for (const id of ["tian-characteristic-time", "rational-characteristic-time"] as const) {

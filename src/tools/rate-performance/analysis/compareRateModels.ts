@@ -76,6 +76,9 @@ export interface ModelComparatorDependencies {
   readonly resolveModel: (id: string) => Readonly<RateModelDefinition> | undefined;
 }
 
+/** Relative/absolute tolerance used when information-criterion values tie. */
+export const MODEL_COMPARISON_TIE_TOLERANCE = 1e-9;
+
 /**
  * Compare validated registry models against the same complete scientific data.
  * Model IDs are fully gated before any optimizer work begins.
@@ -89,11 +92,35 @@ export function createRateModelComparator(
 ) => Promise<ModelComparisonResult> {
   return async (data, modelIds, options = {}) => {
     const models = validateSelection(modelIds, dependencies.resolveModel);
-    const fits = await Promise.all(models.map((model) => dependencies.fit(data, {
-      modelId: model.id,
-      signal: options.signal,
-    })));
+    const settled = await Promise.allSettled(models.map((model) => Promise.resolve().then(() => (
+      dependencies.fit(data, {
+        modelId: model.id,
+        signal: options.signal,
+      })
+    ))));
+    const fits = settled.map((outcome, index): RateFitResult => outcome.status === "fulfilled"
+      ? outcome.value
+      : rejectedFit(models[index].id, outcome.reason, options.signal));
     return buildComparisonResult(data.length, models, fits);
+  };
+}
+
+function rejectedFit(modelId: string, reason: unknown, signal?: AbortSignal): RateFitResult {
+  const cancelled = signal?.aborted === true;
+  return {
+    status: "failed",
+    modelId,
+    failure: {
+      code: cancelled ? "cancelled" : "optimizer-error",
+      message: cancelled
+        ? "The shared comparison was cancelled."
+        : reason instanceof Error
+          ? reason.message
+          : "The model fitter rejected without an Error value.",
+    },
+    iterations: 0,
+    iterationCountExact: true,
+    warnings: [],
   };
 }
 
@@ -185,10 +212,20 @@ function buildComparisonResult(
     return left.selectionIndex - right.selectionIndex;
   });
 
-  let nextRank = 1;
-  const rankedRows = rows.map(({ row, criterionValue }) => criterionValue === null
-    ? row
-    : { ...row, rank: nextRank++ });
+  // Competition ranking: ties share a rank and the next rank skips the tied places (1, 1, 3).
+  let previousCriterion: number | null = null;
+  let previousRank = 0;
+  let rankedCount = 0;
+  const rankedRows = rows.map(({ row, criterionValue }) => {
+    if (criterionValue === null) return row;
+    rankedCount += 1;
+    const rank = previousCriterion !== null && criterionTie(previousCriterion, criterionValue)
+      ? previousRank
+      : rankedCount;
+    previousCriterion = criterionValue;
+    previousRank = rank;
+    return { ...row, rank };
+  });
   const recommendation = recommendationFor(rankedRows, models.length);
   return {
     rows: rankedRows,
@@ -210,12 +247,19 @@ function recommendationFor(
   if (rows.some(({ rank, deltaCriterion }) => rank === null || deltaCriterion === null)) {
     return { modelId: null, reason: "criterionUnavailable" };
   }
-  const best = rows.find(({ rank }) => rank === 1);
+  const bestRows = rows.filter(({ rank }) => rank === 1);
+  if (bestRows.length !== 1) return { modelId: null, reason: "insufficientEvidence" };
+  const best = bestRows[0];
   const runnerUp = rows.find(({ rank }) => rank === 2);
   if (!best || !runnerUp || (runnerUp.deltaCriterion ?? 0) < 2) {
     return { modelId: null, reason: "insufficientEvidence" };
   }
   return { modelId: best.modelId, reason: "recommended" };
+}
+
+function criterionTie(left: number, right: number): boolean {
+  return Math.abs(left - right) <= MODEL_COMPARISON_TIE_TOLERANCE
+    * Math.max(1, Math.abs(left), Math.abs(right));
 }
 
 function finite(value: number | null): value is number {

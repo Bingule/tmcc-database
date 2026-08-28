@@ -185,11 +185,11 @@ describe("RatePerformanceAnalysisPage", () => {
     }
     expect(created).toHaveLength(5);
     const exports = await Promise.all(created.map(readBlob));
-    expect(exports[0].split("\r\n")[0]).toBe("point_id,rate,rate_unit,capacity,capacity_unit,model_id,rate_definition,normalization_basis,settings");
-    expect(exports[1].split("\r\n")[0]).toBe("point_id,analysis_rate,analysis_rate_unit,analysis_capacity,analysis_capacity_unit,original_rate,original_rate_unit,original_capacity,original_capacity_unit,normalization_method,measured_rate_confirmed,theoretical_capacity,theoretical_capacity_unit,model_id,rate_definition,normalization_basis,settings");
-    expect(exports[2].split("\r\n")[0]).toBe("rate,fitted_capacity,rate_unit,capacity_unit,model_id,rate_definition,normalization_basis,settings");
-    expect(exports[3].split("\r\n")[0]).toBe("parameter,value,unit,parameter_type,standard_error,ci95_lower,ci95_upper,sse,rmse,r_squared,adjusted_r_squared,aic,aicc,bic,convergence_status,iterations,iteration_count_exact,warnings,model_id,rate_definition,normalization_basis,settings");
-    expect(exports[4].split("\r\n")[0]).toBe("rate,observed_capacity,predicted_capacity,residual,rate_unit,capacity_unit,model_id,rate_definition,normalization_basis,settings");
+    expect(exports[0].split("\r\n")[0]).toBe("point_id,rate,rate_unit,capacity,capacity_unit,model_id,rate_definition,original_rate_units,original_capacity_units,analysis_rate_unit,analysis_capacity_unit,normalization_basis,settings");
+    expect(exports[1].split("\r\n")[0]).toBe("point_id,analysis_rate,analysis_rate_unit,analysis_capacity,analysis_capacity_unit,original_rate,original_rate_unit,original_capacity,original_capacity_unit,normalization_method,measured_rate_confirmed,theoretical_capacity,theoretical_capacity_unit,model_id,rate_definition,original_rate_units,original_capacity_units,analysis_rate_unit,analysis_capacity_unit,normalization_basis,settings");
+    expect(exports[2].split("\r\n")[0]).toBe("rate,fitted_capacity,rate_unit,capacity_unit,model_id,rate_definition,original_rate_units,original_capacity_units,analysis_rate_unit,analysis_capacity_unit,normalization_basis,settings");
+    expect(exports[3].split("\r\n")[0]).toBe("parameter,value,unit,parameter_type,standard_error,ci95_lower,ci95_upper,sse,rmse,r_squared,adjusted_r_squared,aic,aicc,bic,convergence_status,iterations,iteration_count_exact,warnings,model_id,rate_definition,original_rate_units,original_capacity_units,analysis_rate_unit,analysis_capacity_unit,normalization_basis,settings");
+    expect(exports[4].split("\r\n")[0]).toBe("rate,observed_capacity,predicted_capacity,residual,rate_unit,capacity_unit,model_id,rate_definition,original_rate_units,original_capacity_units,analysis_rate_unit,analysis_capacity_unit,normalization_basis,settings");
     expect(exports[2].split("\r\n")).toHaveLength(162);
     expect(exports[4].split("\r\n")).toHaveLength(7);
     expect(exports[2]).not.toBe(exports[4]);

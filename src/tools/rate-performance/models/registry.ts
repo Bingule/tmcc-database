@@ -66,6 +66,9 @@ function pendingModel(
     equation: "Pending validation; no executable equation is registered.",
     independentVariable: unconfirmedRate,
     parameters: Object.freeze([]),
+    applicability: Object.freeze([
+      "Applicability range remains unverified until the primary-source model is validated.",
+    ]),
     assumptions: Object.freeze([
       "No scientific assumptions are accepted until the exact primary-source equation is verified.",
     ]),
@@ -86,6 +89,9 @@ const rateModels: ReadonlyArray<Readonly<RateModelDefinition>> = Object.freeze([
     equation: "Q(R) = Q_M [1 - (R tau)^n (1 - exp(-(R tau)^(-n)))]",
     independentVariable: measuredRate,
     parameters: characteristicTimeParameters,
+    applicability: Object.freeze([
+      "Positive measured-rate capacity data spanning the low-rate plateau and rate-dependent capacity decline.",
+    ]),
     assumptions: Object.freeze([
       "R is the positive finite measured rate defined from measured discharge time, not an unconverted nominal C-rate.",
       "Q_M, tau, and n are positive finite effective model parameters.",
@@ -109,6 +115,9 @@ const rateModels: ReadonlyArray<Readonly<RateModelDefinition>> = Object.freeze([
     equation: "Q(R) = Q_M / [1 + 2 (R tau)^n]",
     independentVariable: measuredRate,
     parameters: characteristicTimeParameters,
+    applicability: Object.freeze([
+      "The conventional capacity plateau and first capacity-decay regime of positive measured-rate data.",
+    ]),
     assumptions: Object.freeze([
       "R is the positive finite measured rate defined from measured discharge time, not an unconverted nominal C-rate.",
       "Q_M, tau, and n are positive finite effective model parameters.",
