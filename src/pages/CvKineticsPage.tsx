@@ -50,6 +50,7 @@ const csvFiles = [
 export const MAX_CHART_POINTS = 2_000;
 const MAX_CHART_GAP_RUNS = 500;
 export const MAX_CHART_OUTPUT_POINTS = 4_000;
+const DUNN_ENDPOINT_NEIGHBORHOOD_POINT_COUNT = 8;
 const MAX_TABLE_ROWS = 500;
 export const MAX_VISIBLE_TABLE_ROWS = 12;
 const initialDraft: CvImportDraft = {
@@ -1072,8 +1073,8 @@ export function sampleDunnPlotPath(
   let runStart = 0;
   for (let index = 1; index <= plotPath.length; index += 1) {
     if (index === plotPath.length || plotPath[index]!.branch !== plotPath[runStart]!.branch) {
-      selected.add(runStart);
-      selected.add(index - 1);
+      reserveDunnEndpointNeighborhood(selected, plotPath, runStart, index - 1, 1);
+      reserveDunnEndpointNeighborhood(selected, plotPath, index - 1, runStart, -1);
       runStart = index;
     }
   }
@@ -1092,6 +1093,21 @@ export function sampleDunnPlotPath(
     selected.add(extremeIndex);
   }
   return [...selected].sort((left, right) => left - right).slice(0, MAX_CHART_OUTPUT_POINTS).map((index) => plotPath[index]!);
+}
+
+function reserveDunnEndpointNeighborhood(
+  selected: Set<number>,
+  plotPath: DunnContribution["plotPath"],
+  start: number,
+  end: number,
+  step: 1 | -1
+) {
+  let retainedOriginalCount = 0;
+  for (let index = start; step > 0 ? index <= end : index >= end; index += step) {
+    selected.add(index);
+    if (!plotPath[index]!.synthetic) retainedOriginalCount += 1;
+    if (retainedOriginalCount >= DUNN_ENDPOINT_NEIGHBORHOOD_POINT_COUNT) break;
+  }
 }
 
 function addEvenlySampledIndexes(selected: Set<number>, candidates: number[], count: number) {

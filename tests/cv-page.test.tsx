@@ -1179,6 +1179,7 @@ describe("CV kinetics page", () => {
 
     const sampled = sampleDunnPlotPath(plotPath, MAX_CHART_POINTS);
     const sampledSourceIndexes = sampled.flatMap((record) => record.synthetic ? [] : [record.sourceIndex]);
+    const retainedSourceIndexes = new Set(sampledSourceIndexes);
     const sourcePositions = new Map(plotPath.map((record, index) => [record, index]));
     const syntheticPositions = sampled.filter((record) => record.synthetic).map((record) => sourcePositions.get(record)!);
 
@@ -1188,6 +1189,17 @@ describe("CV kinetics page", () => {
     expect(syntheticPositions.at(-1)).toBeGreaterThanOrEqual(plotPath.length - 4);
     expect(syntheticPositions.some((position) => Math.abs(position - Math.floor(plotPath.length / 2)) <= 3)).toBe(true);
     expect(Math.max(...syntheticPositions.slice(1).map((position, index) => position - syntheticPositions[index]!))).toBeLessThanOrEqual(4);
+    const expectedEndpointNeighborhoods = [
+      [0, 7],
+      [forwardOriginalCount - 8, forwardOriginalCount - 1],
+      [forwardOriginalCount, forwardOriginalCount + 7],
+      [originalCount - 8, originalCount - 1]
+    ] as const;
+    for (const [start, end] of expectedEndpointNeighborhoods) {
+      for (let sourceIndex = start; sourceIndex <= end; sourceIndex += 1) {
+        expect(retainedSourceIndexes.has(sourceIndex)).toBe(true);
+      }
+    }
   });
 
   it("clears stale validation on edit and ignores an older import finishing last", async () => {
