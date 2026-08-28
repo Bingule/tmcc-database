@@ -5,13 +5,14 @@ import type { RateFitResult } from "../analysis/fitRatePerformance";
 import { getRateModel } from "../models/registry";
 import { transitionRate } from "../models/tianCharacteristicTime";
 import type { NormalizedRatePoint, RateModelDefinition, RateModelFitFunction } from "../models/types";
-import { createSmoothRateFitPoints, formatOptionalRateValue, formatRateValue } from "../utils/rateAnalysisPresentation";
+import { createSmoothRateFitPoints, formatOptionalRateValue, formatRateValue, normalizedRateExtent, type SmoothRateFitPoint } from "../utils/rateAnalysisPresentation";
 import { sampleRateChartPoints } from "../utils/chartSampling";
 import {
   serializeNormalizedRateCsv,
   serializeOriginalRateCsv,
-  serializeRateFitCsv,
+  serializeRateFittedCurveCsv,
   serializeRateParametersCsv,
+  serializeRateResidualsCsv,
   type RateExportMetadata,
   type RateFitExportPoint,
 } from "../utils/rateExports";
@@ -70,26 +71,25 @@ export function RateAnalysisResults({
     normalizationBasis: "R in h^-1; Q in mAh g^-1",
     settings: { weighting: "unweighted", usedPointCount: result.usedPointCount },
   };
+  const smoothFit = createSmoothRateFitPoints(normalized, result.parameters, model.fit, SMOOTH_FIT_POINT_COUNT);
   const parameterRows = [
-    { name: "Q_M", value: result.parameters.qM, unit: "mAh g^-1", type: "fitted" },
-    { name: "tau", value: result.parameters.tau, unit: "h", type: "fitted" },
-    { name: "n", value: result.parameters.n, unit: "dimensionless", type: "fitted" },
+    parameterExportRow("Q_M", "qM", "mAh g^-1", result),
+    parameterExportRow("tau", "tau", "h", result),
+    parameterExportRow("n", "n", "dimensionless", result),
     { name: "R_T", value: rt, unit: "h^-1", type: "derived" },
-    { name: "R_squared", value: result.statistics.rSquared, unit: "dimensionless", type: "statistic" },
-    { name: "RMSE", value: result.statistics.rmse, unit: "mAh g^-1", type: "statistic" },
-    { name: "adjusted_R_squared", value: result.statistics.adjustedRSquared, unit: "dimensionless", type: "statistic" },
-    { name: "SSE", value: result.statistics.sse, unit: "(mAh g^-1)^2", type: "statistic" },
-    { name: "AIC", value: result.statistics.aic, unit: "dimensionless", type: "statistic" },
-    { name: "AICc", value: result.statistics.aicc, unit: "dimensionless", type: "statistic" },
-    { name: "BIC", value: result.statistics.bic, unit: "dimensionless", type: "statistic" },
   ];
-  const fitCsv = serializeRateFitCsv(fitRows, metadata);
   const csvItems: RateCsvExportItem[] = [
     { id: "original", label: t("rate.analysis.exportOriginal"), filename: "rate-original.csv", csv: serializeOriginalRateCsv(input.points.filter(({ rate, capacity }) => rate !== null || capacity !== null), metadata) },
     { id: "processed", label: t("rate.analysis.exportProcessed"), filename: "rate-processed.csv", csv: serializeNormalizedRateCsv(normalized, metadata) },
-    { id: "fitted", label: t("rate.analysis.exportFitted"), filename: "rate-fitted.csv", csv: fitCsv },
-    { id: "parameters", label: t("rate.analysis.exportParameters"), filename: "rate-parameters.csv", csv: serializeRateParametersCsv(parameterRows, metadata) },
-    { id: "residuals", label: t("rate.analysis.exportResiduals"), filename: "rate-residuals.csv", csv: fitCsv },
+    { id: "fitted", label: t("rate.analysis.exportFitted"), filename: "rate-fitted.csv", csv: serializeRateFittedCurveCsv(smoothFit.map(({ x: rate, y: fittedCapacity }) => ({ rate, fittedCapacity })), metadata) },
+    { id: "parameters", label: t("rate.analysis.exportParameters"), filename: "rate-parameters.csv", csv: serializeRateParametersCsv(parameterRows, metadata, {
+      statistics: result.statistics,
+      convergenceStatus: result.status,
+      iterations: result.iterations,
+      iterationCountExact: result.iterationCountExact,
+      warnings: result.warnings,
+    }) },
+    { id: "residuals", label: t("rate.analysis.exportResiduals"), filename: "rate-residuals.csv", csv: serializeRateResidualsCsv(fitRows, metadata) },
   ];
 
   return <>
@@ -107,7 +107,7 @@ export function RateAnalysisResults({
         key={tab.id}
         onClick={() => onVisibleChartChange(tab.id)}
       >{t(tab.label)}</button>)}</div>
-      <AnalysisChart tab={visibleChart} normalized={normalized} result={result} />
+      <AnalysisChart tab={visibleChart} normalized={normalized} result={result} smoothFit={smoothFit} />
     </section>
     <ExportToolbar
       csvItems={csvItems}
@@ -129,10 +129,12 @@ function AnalysisChart({
   tab,
   normalized,
   result,
+  smoothFit,
 }: {
   tab: RateAnalysisChartTab;
   normalized: ReadonlyArray<Readonly<NormalizedRatePoint>>;
   result: Extract<RateFitResult, { status: "converged" }>;
+  smoothFit: ReadonlyArray<Readonly<SmoothRateFitPoint>>;
 }) {
   const { t } = useI18n();
   const observed = sampleRateChartPoints(normalized.map((point) => ({
@@ -140,17 +142,15 @@ function AnalysisChart({
     x: point.analysisRate,
     y: point.analysisCapacity,
   })), DISPLAY_POINT_LIMIT);
-  const fit = createSmoothRateFitPoints(normalized, result.parameters, model.fit, SMOOTH_FIT_POINT_COUNT);
   const residuals = sampleRateChartPoints(normalized.map((point, index) => ({
     id: point.id,
     x: point.analysisRate,
     y: result.residuals[index],
   })), DISPLAY_POINT_LIMIT);
-  const minimumRate = Math.min(...normalized.map(({ analysisRate }) => analysisRate));
-  const maximumRate = Math.max(...normalized.map(({ analysisRate }) => analysisRate));
+  const { minimum: minimumRate, maximum: maximumRate } = normalizedRateExtent(normalized);
   const capacitySeries: ChartSeries[] = [
     { id: "rate-observed", label: t("rate.analysis.observed"), points: observed, color: "#2f6f7f", mode: "points" },
-    { id: "rate-fit", label: t("rate.analysis.fittedCurve"), points: fit, color: "#a45d2b", mode: "line" },
+    { id: "rate-fit", label: t("rate.analysis.fittedCurve"), points: [...smoothFit], color: "#a45d2b", mode: "line" },
   ];
   const residualSeries: ChartSeries[] = [
     { id: "rate-residuals", label: t("rate.analysis.residualSeries"), points: residuals, color: "#2f6f7f", mode: "points" },
@@ -182,6 +182,7 @@ function AdvancedStatistics({ result }: { result: Extract<RateFitResult, { statu
     return {
       id: parameter,
       label: parameter === "qM" ? "Q_M" : parameter === "tau" ? "τ" : "n",
+      unit: parameter === "qM" ? "mAh g^-1" : parameter === "tau" ? "h" : "dimensionless",
       standardError: formatOptionalRateValue(uncertainty.standardError, unavailable),
       interval: uncertainty.confidenceInterval95
         ? `${formatRateValue(uncertainty.confidenceInterval95.lower)} – ${formatRateValue(uncertainty.confidenceInterval95.upper)}`
@@ -206,12 +207,31 @@ function AdvancedStatistics({ result }: { result: Extract<RateFitResult, { statu
     <h3>{t("rate.analysis.uncertaintyTitle")}</h3>
     <div className="tool-table-wrap"><table><thead><tr>
       <th>{t("rate.analysis.parameter")}</th>
+      <th>{t("rate.analysis.unit")}</th>
       <th>{t("rate.analysis.standardError")}</th>
       <th>{t("rate.analysis.confidenceInterval")}</th>
     </tr></thead><tbody>{uncertaintyRows.map((row) => <tr key={row.id}>
-      <th scope="row">{row.label}</th><td>{row.standardError}</td><td>{row.interval}</td>
+      <th scope="row">{row.label}</th><td>{row.unit}</td><td>{row.standardError}</td><td>{row.interval}</td>
     </tr>)}</tbody></table></div>
   </section>;
+}
+
+function parameterExportRow(
+  name: string,
+  id: "qM" | "tau" | "n",
+  unit: string,
+  result: Extract<RateFitResult, { status: "converged" }>,
+) {
+  const uncertainty = result.uncertainty.parameters[id];
+  return {
+    name,
+    value: result.parameters[id],
+    unit,
+    type: "fitted",
+    standardError: uncertainty.standardError,
+    confidenceInterval95Lower: uncertainty.confidenceInterval95?.lower ?? null,
+    confidenceInterval95Upper: uncertainty.confidenceInterval95?.upper ?? null,
+  };
 }
 
 function chartPresentation(tab: RateAnalysisChartTab, t: ReturnType<typeof useI18n>["t"]) {

@@ -4,6 +4,7 @@ import { useI18n } from "../../../i18n/I18nProvider";
 import type { TranslationKey } from "../../../locales/en";
 import {
   fitRatePerformance,
+  MAX_SYNC_RATE_FIT_POINTS,
   type RateFitFailureCode,
   type RateFitResult,
   type RateFitWarning,
@@ -105,6 +106,12 @@ export default function RatePerformanceAnalysisPage() {
       setUiError(normalizationErrorKey(error));
       return;
     }
+    if (analysisPoints.length > MAX_SYNC_RATE_FIT_POINTS) {
+      setNormalized(null);
+      setFitResult(null);
+      setUiError("rate.analysis.error.tooManyPoints");
+      return;
+    }
 
     const token = fitGeneration.current + 1;
     fitGeneration.current = token;
@@ -155,7 +162,7 @@ export default function RatePerformanceAnalysisPage() {
         ? "failed"
         : "idle";
   const statusMessage = uiError
-    ? t(uiError)
+    ? t(uiError, uiError === "rate.analysis.error.tooManyPoints" ? { max: MAX_SYNC_RATE_FIT_POINTS.toLocaleString("en-US") } : undefined)
     : converged
       ? t("rate.analysis.convergedMessage", { iterations: converged.iterations, points: converged.usedPointCount })
       : undefined;
@@ -288,6 +295,7 @@ function fitFailureKey(code: RateFitFailureCode): UiErrorKey {
     case "timeout": return "rate.analysis.error.timeout";
     case "maximum-iterations": return "rate.analysis.error.maximumIterations";
     case "insufficient-data": return "rate.analysis.error.insufficientData";
+    case "too-many-points": return "rate.analysis.error.tooManyPoints";
     case "model-not-found":
     case "model-not-validated": return "rate.analysis.error.modelUnavailable";
     case "invalid-data": return "rate.analysis.error.invalidData";

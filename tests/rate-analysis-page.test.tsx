@@ -12,6 +12,7 @@ const { fitRatePerformance } = vi.hoisted(() => ({
 
 vi.mock("../src/tools/rate-performance/analysis/fitRatePerformance", () => ({
   fitRatePerformance,
+  MAX_SYNC_RATE_FIT_POINTS: 20_000,
 }));
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -183,11 +184,20 @@ describe("RatePerformanceAnalysisPage", () => {
       await click(button(view, label));
     }
     expect(created).toHaveLength(5);
-    expect(await readBlob(created[0])).toContain("rate_unit");
-    expect(await readBlob(created[1])).toContain("normalization_method");
-    expect(await readBlob(created[2])).toContain("fitted_capacity");
-    expect(await readBlob(created[3])).toContain("parameter_type");
-    expect(await readBlob(created[4])).toContain("residual");
+    const exports = await Promise.all(created.map(readBlob));
+    expect(exports[0].split("\r\n")[0]).toBe("point_id,rate,rate_unit,capacity,capacity_unit,model_id,rate_definition,normalization_basis,settings");
+    expect(exports[1].split("\r\n")[0]).toBe("point_id,analysis_rate,analysis_rate_unit,analysis_capacity,analysis_capacity_unit,original_rate,original_rate_unit,original_capacity,original_capacity_unit,normalization_method,measured_rate_confirmed,theoretical_capacity,theoretical_capacity_unit,model_id,rate_definition,normalization_basis,settings");
+    expect(exports[2].split("\r\n")[0]).toBe("rate,fitted_capacity,rate_unit,capacity_unit,model_id,rate_definition,normalization_basis,settings");
+    expect(exports[3].split("\r\n")[0]).toBe("parameter,value,unit,parameter_type,standard_error,ci95_lower,ci95_upper,sse,rmse,r_squared,adjusted_r_squared,aic,aicc,bic,convergence_status,iterations,iteration_count_exact,warnings,model_id,rate_definition,normalization_basis,settings");
+    expect(exports[4].split("\r\n")[0]).toBe("rate,observed_capacity,predicted_capacity,residual,rate_unit,capacity_unit,model_id,rate_definition,normalization_basis,settings");
+    expect(exports[2].split("\r\n")).toHaveLength(162);
+    expect(exports[4].split("\r\n")).toHaveLength(7);
+    expect(exports[2]).not.toBe(exports[4]);
+    expect(exports[3]).toContain("Q_M,320,mAh g^-1,fitted,2,314.9,325.1");
+    expect(exports[3]).toContain("R_T,0.12500000000000003,h^-1,derived");
+    expect(exports[3]).toContain(",76,3.559026,0.9912,0.9824,21.2,45.2,20.6,converged,37,true,");
+    const uncertaintyTable = view.querySelector(".rate-analysis-advanced table")!;
+    for (const unit of ["mAh g^-1", "h", "dimensionless"]) expect(uncertaintyTable.textContent).toContain(unit);
     expect(button(view, "Export SVG")).toBeTruthy();
     expect(button(view, "Export PNG")).toBeTruthy();
   });
@@ -246,6 +256,78 @@ describe("RatePerformanceAnalysisPage", () => {
     expect(fitRatePerformance).toHaveBeenCalledTimes(2);
     expect(view.textContent).toContain("USER RESULTS");
   });
+
+  it("does not fit when normalization units are not confirmed", async () => {
+    const view = await renderPage();
+    await click(button(view, "Try Example Dataset"));
+    await change(view.querySelector<HTMLSelectElement>('[aria-label="Rate unit"]')!, "h-1");
+    await click(button(view, "Analyze Data"));
+
+    expect(fitRatePerformance).not.toHaveBeenCalled();
+    expect(view.textContent).toContain("Confirm that h^-1 values use the measured-discharge-time rate definition");
+  });
+
+  it("aborts stale fits when the unit or input mode changes", async () => {
+    const first = deferred<RateFitResult>();
+    const second = deferred<RateFitResult>();
+    fitRatePerformance.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+    const view = await renderPage();
+    await click(button(view, "Try Example Dataset"));
+    await click(button(view, "Analyze Data"));
+    const unitSignal = fitRatePerformance.mock.calls[0][1].signal as AbortSignal;
+    await change(view.querySelector<HTMLSelectElement>('[aria-label="Rate unit"]')!, "A-g-1");
+    expect(unitSignal.aborted).toBe(true);
+
+    await click(button(view, "Analyze Data"));
+    const modeSignal = fitRatePerformance.mock.calls[1][1].signal as AbortSignal;
+    await click(view.querySelector<HTMLInputElement>('input[value="upload"]')!);
+    expect(modeSignal.aborted).toBe(true);
+
+    first.resolve(convergedResult);
+    second.resolve(convergedResult);
+    await act(async () => { await Promise.all([first.promise, second.promise]); });
+    expect(view.querySelector(".rate-results-user")).toBeNull();
+  });
+
+  it("reports a rejected fit promise and aborts a pending fit on unmount", async () => {
+    fitRatePerformance.mockRejectedValueOnce(new Error("worker failed"));
+    const view = await renderPage();
+    await click(button(view, "Try Example Dataset"));
+    await click(button(view, "Analyze Data"));
+    expect(view.textContent).toContain("unexpected fitting error");
+    expect(view.querySelector(".rate-results-user")).toBeNull();
+
+    const pending = deferred<RateFitResult>();
+    fitRatePerformance.mockReturnValueOnce(pending.promise);
+    await click(button(view, "Analyze Data"));
+    const signal = fitRatePerformance.mock.calls.at(-1)?.[1].signal as AbortSignal;
+    const root = roots.pop()!;
+    await act(async () => root.unmount());
+    expect(signal.aborted).toBe(true);
+    pending.resolve(convergedResult);
+    await act(async () => { await pending.promise; });
+  });
+
+  it("blocks oversized synchronous fits explicitly without discarding imported data", async () => {
+    const view = await renderPage();
+    await click(view.querySelector<HTMLInputElement>('input[value="upload"]')!);
+    await click(view.querySelector<HTMLInputElement>('[aria-label="Confirm measured-rate definition"]')!);
+    const fileInput = view.querySelector<HTMLInputElement>('input[type="file"]')!;
+    const rows = ["rate,capacity", ...Array.from({ length: 20_001 }, (_, index) => `${index + 1},100`)].join("\n");
+    const file = new File([rows], "large.csv", { type: "text/csv" });
+    Object.defineProperty(fileInput, "files", { configurable: true, value: [file] });
+    await act(async () => {
+      fileInput.dispatchEvent(new Event("change", { bubbles: true }));
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+    expect(view.textContent).toContain("Rows20001");
+    await click(button(view, "Analyze Data"));
+
+    expect(fitRatePerformance).not.toHaveBeenCalled();
+    expect(view.textContent).toContain("20,000");
+    expect(view.textContent).toMatch(/select or filter/i);
+    expect(view.textContent).toContain("Rows20001");
+  }, 30_000);
 
   it("switches all primary workflow copy and result labels between English and Chinese", async () => {
     fitRatePerformance.mockResolvedValue(convergedResult);

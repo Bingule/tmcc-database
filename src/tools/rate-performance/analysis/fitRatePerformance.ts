@@ -23,6 +23,7 @@ export type RateFitFailureCode =
   | "model-not-validated"
   | "invalid-data"
   | "insufficient-data"
+  | "too-many-points"
   | "invalid-options"
   | "cancelled"
   | "timeout"
@@ -116,6 +117,7 @@ export interface RateFitDependencies {
 }
 
 const parameterIds = ["qM", "tau", "n"] as const;
+export const MAX_SYNC_RATE_FIT_POINTS = 20_000;
 const defaultMaxIterations = 240;
 const defaultTimeoutMs = 2_000;
 
@@ -142,9 +144,14 @@ function finitePositiveBound(value: number): number {
 }
 
 function deriveBounds(data: ReadonlyArray<RateFitPoint>): CharacteristicTimeParameterBounds {
-  const maximumCapacity = Math.max(...data.map(({ capacity }) => capacity), 1);
-  const minimumRate = Math.min(...data.map(({ rate }) => rate));
-  const maximumRate = Math.max(...data.map(({ rate }) => rate));
+  let maximumCapacity = 1;
+  let minimumRate = Number.POSITIVE_INFINITY;
+  let maximumRate = Number.NEGATIVE_INFINITY;
+  for (const { rate, capacity } of data) {
+    if (capacity > maximumCapacity) maximumCapacity = capacity;
+    if (rate < minimumRate) minimumRate = rate;
+    if (rate > maximumRate) maximumRate = rate;
+  }
 
   return {
     qM: {
@@ -188,7 +195,10 @@ function deterministicStarts(
   bounds: CharacteristicTimeParameterBounds,
 ): CharacteristicTimeRateParameters[] {
   const sortedRates = data.map(({ rate }) => rate).sort((left, right) => left - right);
-  const maximumCapacity = Math.max(...data.map(({ capacity }) => capacity), bounds.qM.minimum);
+  let maximumCapacity = bounds.qM.minimum;
+  for (const { capacity } of data) {
+    if (capacity > maximumCapacity) maximumCapacity = capacity;
+  }
   const targetCapacity = maximumCapacity / 2;
   const transitionPoint = data.reduce((best, point) => (
     Math.abs(point.capacity - targetCapacity) < Math.abs(best.capacity - targetCapacity) ? point : best
@@ -264,7 +274,12 @@ function encodedJacobian(evaluate: RateModelFitFunction) {
 }
 
 function relativeParameterMovement(previous: ReadonlyArray<number>, current: ReadonlyArray<number>): number {
-  return Math.max(...current.map((value, index) => Math.abs(value - previous[index])));
+  let largest = 0;
+  for (let index = 0; index < current.length; index++) {
+    const movement = Math.abs(current[index] - previous[index]);
+    if (movement > largest) largest = movement;
+  }
+  return largest;
 }
 
 function relativeSseImprovement(previous: number, current: number): number {
@@ -453,6 +468,13 @@ async function fitRatePerformanceWithDependencies(
   }
   if (data.length <= parameterIds.length) {
     return failed(modelId, "insufficient-data", "More observations than fitted parameters are required.");
+  }
+  if (data.length > MAX_SYNC_RATE_FIT_POINTS) {
+    return failed(
+      modelId,
+      "too-many-points",
+      `Synchronous fitting is limited to ${MAX_SYNC_RATE_FIT_POINTS} observations.`,
+    );
   }
 
   const maxIterations = options.maxIterations ?? defaultMaxIterations;

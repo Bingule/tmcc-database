@@ -38,10 +38,18 @@ export function ExportToolbar({
     }
   }
 
+  function csv(item: Readonly<RateCsvExportItem>) {
+    try {
+      onCsvExport(item.filename, item.csv);
+    } catch (error) {
+      onError?.(error);
+    }
+  }
+
   return <section className="tool-section rate-export-toolbar">
     <h2>{t("rate.export.title")}</h2>
     <div className="rate-export-actions">
-      {csvItems.map((item) => <button type="button" key={item.id} onClick={() => onCsvExport(item.filename, item.csv)}>{item.label}</button>)}
+      {csvItems.map((item) => <button type="button" key={item.id} onClick={() => csv(item)}>{item.label}</button>)}
       {figureExportId ? <>
         <button type="button" onClick={() => figure("svg")}>{t("rate.export.svg")}</button>
         <button type="button" onClick={() => figure("png")}>{t("rate.export.png")}</button>

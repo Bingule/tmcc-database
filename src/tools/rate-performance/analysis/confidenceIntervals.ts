@@ -122,14 +122,17 @@ function inverseScaledCrossProduct(
   const normalizedInverse = invertMatrix(normalizedCrossProduct);
   if (!normalizedInverse) return null;
 
-  const identityError = normalizedCrossProduct.reduce((largest, row, rowIndex) => (
-    Math.max(largest, ...normalizedInverse[rowIndex].map((_, columnIndex) => {
+  let identityError = 0;
+  for (let rowIndex = 0; rowIndex < normalizedCrossProduct.length; rowIndex++) {
+    const row = normalizedCrossProduct[rowIndex];
+    for (let columnIndex = 0; columnIndex < normalizedInverse[rowIndex].length; columnIndex++) {
       const product = row.reduce((sum, value, inner) => (
         sum + value * normalizedInverse[inner][columnIndex]
       ), 0);
-      return Math.abs(product - Number(rowIndex === columnIndex));
-    }))
-  ), 0);
+      const error = Math.abs(product - Number(rowIndex === columnIndex));
+      if (error > identityError) identityError = error;
+    }
+  }
   if (!Number.isFinite(identityError) || identityError > 1e-7) return null;
 
   return normalizedInverse.map((row, rowIndex) => row.map((value, columnIndex) => (
@@ -143,7 +146,13 @@ function invertMatrix(matrix: ReadonlyArray<ReadonlyArray<number>>): number[][] 
     ...row,
     ...Array.from({ length: size }, (_, columnIndex) => Number(rowIndex === columnIndex)),
   ]);
-  const scale = Math.max(...matrix.flat().map(Math.abs));
+  let scale = 0;
+  for (const row of matrix) {
+    for (const value of row) {
+      const magnitude = Math.abs(value);
+      if (magnitude > scale) scale = magnitude;
+    }
+  }
   if (!Number.isFinite(scale) || scale === 0) return null;
 
   for (let column = 0; column < size; column++) {

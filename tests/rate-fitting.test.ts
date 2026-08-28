@@ -9,6 +9,7 @@ import {
 import {
   createRatePerformanceFitter,
   fitRatePerformance,
+  MAX_SYNC_RATE_FIT_POINTS,
   type RateOptimizer,
   type RateFitFailure,
   type RateFitPoint,
@@ -79,6 +80,25 @@ describe("fit statistics", () => {
 });
 
 describe("bounded characteristic-time fitting", () => {
+  it("rejects datasets above the explicit synchronous point gate before loading the optimizer", async () => {
+    let optimizerLoaded = false;
+    const fit = createRatePerformanceFitter({
+      loadOptimizer: async () => {
+        optimizerLoaded = true;
+        throw new Error("must not load");
+      },
+    });
+    const data = Array.from({ length: MAX_SYNC_RATE_FIT_POINTS + 1 }, (_, index) => ({
+      rate: index + 1,
+      capacity: 100,
+    }));
+
+    const result = await fit(data, { modelId: "tian-characteristic-time" });
+
+    expectFailureWithoutParameters(result, "too-many-points");
+    expect(optimizerLoaded).toBe(false);
+  });
+
   it("recovers noiseless Tian parameters with an asynchronous fit", async () => {
     const pending = fitRatePerformance(
       syntheticData(evaluateTianRate, { qM: 325, tau: 0.8, n: 0.62 }),

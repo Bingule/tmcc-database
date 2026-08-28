@@ -18,9 +18,12 @@ import { sampleRateChartPoints } from "../src/tools/rate-performance/utils/chart
 import {
   serializeNormalizedRateCsv,
   serializeOriginalRateCsv,
+  serializeRateFittedCurveCsv,
   serializeRateParametersCsv,
   serializeRateFitCsv,
+  serializeRateResidualsCsv,
 } from "../src/tools/rate-performance/utils/rateExports";
+import { createSmoothRateFitPoints } from "../src/tools/rate-performance/utils/rateAnalysisPresentation";
 import type { TabularSheet } from "../src/lib/tabularParsing";
 import type { NormalizedRatePoint, RatePoint } from "../src/tools/rate-performance/models/types";
 import { rateReferences } from "../src/tools/rate-performance/references/rateReferences";
@@ -537,6 +540,63 @@ describe("shared Rate Performance presentation", () => {
       .toContain("tau,2.5,h,fitted");
   });
 
+  it("keeps smooth fitted curves and observed residuals as distinct exact CSV contracts", () => {
+    const metadata = { modelId: "tian-characteristic-time", rateDefinition: "measured-rate", normalizationBasis: "active-material" };
+    const fitted = serializeRateFittedCurveCsv([
+      { rate: 0.01, fittedCapacity: 201 },
+      { rate: 0.02, fittedCapacity: 199 },
+    ], metadata);
+    const residuals = serializeRateResidualsCsv([
+      { rate: 0.01, observedCapacity: 200, fittedCapacity: 201, residual: -1 },
+    ], metadata);
+
+    expect(fitted.split("\r\n")[0]).toBe("rate,fitted_capacity,rate_unit,capacity_unit,model_id,rate_definition,normalization_basis,settings");
+    expect(residuals.split("\r\n")[0]).toBe("rate,observed_capacity,predicted_capacity,residual,rate_unit,capacity_unit,model_id,rate_definition,normalization_basis,settings");
+    expect(fitted.split("\r\n")).toHaveLength(3);
+    expect(residuals.split("\r\n")).toHaveLength(2);
+    expect(fitted).not.toBe(residuals);
+  });
+
+  it("serializes complete normalized provenance and complete fit parameter diagnostics", () => {
+    const metadata = { modelId: "tian-characteristic-time", rateDefinition: "measured-rate", normalizationBasis: "active-material" };
+    const normalized: NormalizedRatePoint[] = [{
+      id: "p1", analysisRate: 0.05, analysisRateUnit: "h-1", analysisCapacity: 200,
+      analysisCapacityUnit: "mAh-g-1", originalRate: 10, originalRateUnit: "mA-g-1",
+      originalCapacity: 200, originalCapacityUnit: "mAh-g-1",
+      normalization: { method: "specific-current" },
+    }];
+    const processed = serializeNormalizedRateCsv(normalized, metadata);
+    expect(processed.split("\r\n")[0]).toBe("point_id,analysis_rate,analysis_rate_unit,analysis_capacity,analysis_capacity_unit,original_rate,original_rate_unit,original_capacity,original_capacity_unit,normalization_method,measured_rate_confirmed,theoretical_capacity,theoretical_capacity_unit,model_id,rate_definition,normalization_basis,settings");
+    expect(processed.split("\r\n")[1]).toContain("specific-current,,,,tian-characteristic-time");
+
+    const parameters = serializeRateParametersCsv([{
+      name: "Q_M", value: 320, unit: "mAh g^-1", type: "fitted",
+      standardError: 2, confidenceInterval95Lower: 314.9, confidenceInterval95Upper: 325.1,
+    }], metadata, {
+      statistics: { sse: 76, rmse: 3.5, rSquared: 0.99, adjustedRSquared: 0.98, aic: 21, aicc: 45, bic: 20 },
+      convergenceStatus: "converged", iterations: 37, iterationCountExact: true,
+      warnings: [{ code: "duplicate-rate", rate: 0.05 }],
+    });
+    expect(parameters.split("\r\n")[0]).toBe("parameter,value,unit,parameter_type,standard_error,ci95_lower,ci95_upper,sse,rmse,r_squared,adjusted_r_squared,aic,aicc,bic,convergence_status,iterations,iteration_count_exact,warnings,model_id,rate_definition,normalization_basis,settings");
+    expect(parameters).toContain("Q_M,320,mAh g^-1,fitted,2,314.9,325.1,76,3.5,0.99,0.98,21,45,20,converged,37,true,duplicate-rate:0.05");
+  });
+
+  it("handles 125,000 presentation and processed-export points without argument spreading", () => {
+    const normalized: NormalizedRatePoint[] = Array.from({ length: 125_000 }, (_, index) => ({
+      id: `p${index}`, analysisRate: index + 1, analysisRateUnit: "h-1",
+      analysisCapacity: 200, analysisCapacityUnit: "mAh-g-1", originalRate: index + 1,
+      originalRateUnit: "h-1", originalCapacity: 200, originalCapacityUnit: "mAh-g-1",
+      normalization: { method: "measured-rate-direct", measuredRateConfirmed: true },
+    }));
+    const smooth = createSmoothRateFitPoints(normalized, { qM: 200, tau: 1, n: 1 }, (rate) => 200 / (1 + rate), 161);
+    expect(smooth).toHaveLength(161);
+    const csv = serializeNormalizedRateCsv(normalized, {
+      modelId: "tian-characteristic-time", rateDefinition: "measured-rate", normalizationBasis: "active-material",
+    });
+    expect(csv.startsWith("point_id,analysis_rate")).toBe(true);
+    expect(csv).toContain("p124999,125000");
+  });
+
   it("renders modular result, status, theory, reference, chart, and export components", async () => {
     const onCsv = vi.fn();
     const view = await render(<>
@@ -594,6 +654,30 @@ describe("shared Rate Performance presentation", () => {
     await click(pngButtons[1]);
     await act(async () => { await Promise.resolve(); await Promise.resolve(); });
     expect(rejectedExport).toHaveBeenCalledOnce();
+  });
+
+  it("reports synchronous CSV exporter failures and targets the requested SVG for both figure callbacks", async () => {
+    const csvError = new Error("csv failed");
+    const onError = vi.fn();
+    const onFigure = vi.fn();
+    const view = await render(<>
+      <svg data-export-id="rate-analysis-chart" />
+      <ExportToolbar
+        csvItems={[{ id: "processed", label: "Processed data", filename: "processed.csv", csv: "a\r\n1" }]}
+        figureExportId="rate-analysis-chart"
+        figureFilename="rate-capacity"
+        onCsvExport={() => { throw csvError; }}
+        onFigureExport={onFigure}
+        onError={onError}
+      />
+    </>);
+    await click(button(view, "Processed data"));
+    expect(onError).toHaveBeenCalledWith(csvError);
+    await click(button(view, "Export SVG"));
+    await click(button(view, "Export PNG"));
+    const target = view.querySelector('svg[data-export-id="rate-analysis-chart"]');
+    expect(onFigure).toHaveBeenNthCalledWith(1, target, "svg", "rate-capacity.svg");
+    expect(onFigure).toHaveBeenNthCalledWith(2, target, "png", "rate-capacity.png");
   });
 
   it("localizes example and user result labels distinctly in Chinese", async () => {
