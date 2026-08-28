@@ -803,7 +803,7 @@ describe("CV kinetics page", () => {
     const capacitiveForwardXs = pathXs(chart.querySelector<SVGPathElement>('[data-series-id="capacitive-forward"]')?.getAttribute("d") ?? "");
     const capacitiveReverseXs = pathXs(chart.querySelector<SVGPathElement>('[data-series-id="capacitive-reverse"]')?.getAttribute("d") ?? "");
     expect(capacitiveForwardXs).toHaveLength(3);
-    expect(capacitiveReverseXs).toHaveLength(2);
+    expect(capacitiveReverseXs).toHaveLength(3);
     expect(capacitiveForwardXs).toEqual([...capacitiveForwardXs].sort((left, right) => left - right));
     expect(capacitiveReverseXs).toEqual([...capacitiveReverseXs].sort((left, right) => right - left));
     expect(capacitiveAreas.map((path) => path.dataset.renderPointCount)).toEqual(["5"]);
