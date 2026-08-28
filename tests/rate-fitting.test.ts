@@ -339,6 +339,82 @@ describe("bounded characteristic-time fitting", () => {
     );
 
     expectFailureWithoutParameters(result, "optimizer-error");
+    expect(result.iterations).toBe(0);
+    expect(result.iterationCountExact).toBe(true);
+  });
+
+  it("immediately fails with an inexact lower bound when a batch throws after unreported work", async () => {
+    let optimizerCalls = 0;
+    let hiddenIterations = 0;
+    const throwingOptimizer: RateOptimizer = () => {
+      optimizerCalls += 1;
+      hiddenIterations += 3;
+      throw new Error("matrix solve failed after partial work");
+    };
+    const fit = createRatePerformanceFitter({
+      loadOptimizer: async () => ({ levenbergMarquardt: throwingOptimizer }),
+      yieldToMacrotask: async () => undefined,
+    });
+    const result = await fit(
+      syntheticData(evaluateTianRate, { qM: 325, tau: 0.8, n: 0.62 }),
+      { modelId: "tian-characteristic-time", maxIterations: 80 },
+    );
+
+    expectFailureWithoutParameters(result, "optimizer-error");
+    expect(result.iterations).toBe(0);
+    expect(result.iterationCountExact).toBe(false);
+    expect(optimizerCalls).toBe(1);
+    expect(hiddenIterations).toBe(3);
+  });
+
+  it("does not try a later start that could converge after the first batch throws", async () => {
+    let optimizerCalls = 0;
+    const failThenConverge: RateOptimizer = (_data, _fit, optimizerOptions) => {
+      optimizerCalls += 1;
+      if (optimizerCalls === 1) throw new Error("first start failed mid-batch");
+      return {
+        parameterValues: Array.from(optimizerOptions.initialValues),
+        parameterError: 0,
+        iterations: 0,
+      };
+    };
+    const fit = createRatePerformanceFitter({
+      loadOptimizer: async () => ({ levenbergMarquardt: failThenConverge }),
+      yieldToMacrotask: async () => undefined,
+    });
+    const result = await fit(
+      syntheticData(evaluateTianRate, { qM: 325, tau: 0.8, n: 0.62 }),
+      { modelId: "tian-characteristic-time", maxIterations: 80 },
+    );
+
+    expectFailureWithoutParameters(result, "optimizer-error");
+    expect(result.iterationCountExact).toBe(false);
+    expect(optimizerCalls).toBe(1);
+  });
+
+  it("treats an illegal returned iteration count as unknown and stops immediately", async () => {
+    let optimizerCalls = 0;
+    const invalidCountOptimizer: RateOptimizer = (_data, _fit, optimizerOptions) => {
+      optimizerCalls += 1;
+      return {
+        parameterValues: Array.from(optimizerOptions.initialValues),
+        parameterError: 1,
+        iterations: optimizerOptions.maxIterations + 1,
+      };
+    };
+    const fit = createRatePerformanceFitter({
+      loadOptimizer: async () => ({ levenbergMarquardt: invalidCountOptimizer }),
+      yieldToMacrotask: async () => undefined,
+    });
+    const result = await fit(
+      syntheticData(evaluateTianRate, { qM: 325, tau: 0.8, n: 0.62 }),
+      { modelId: "tian-characteristic-time", maxIterations: 80 },
+    );
+
+    expectFailureWithoutParameters(result, "optimizer-error");
+    expect(result.iterations).toBe(0);
+    expect(result.iterationCountExact).toBe(false);
+    expect(optimizerCalls).toBe(1);
   });
 
   it("marks iteration count as a lower bound when the native optimizer times out inside a batch", async () => {

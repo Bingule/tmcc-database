@@ -358,7 +358,7 @@ async function optimizeStart(
         status: "failed",
         code: "optimizer-error",
         iterations: totalIterations,
-        iterationCountExact: true,
+        iterationCountExact: false,
       };
     }
     totalIterations += optimized.iterations;
@@ -513,11 +513,20 @@ async function fitRatePerformanceWithDependencies(
       : optimized.iterations;
     if (optimized.status === "failed") {
       lastFailure = optimized.code;
-      if (optimized.code === "timeout" || optimized.code === "cancelled") {
+      if (
+        optimized.code === "timeout"
+        || optimized.code === "cancelled"
+        || !optimized.iterationCountExact
+      ) {
+        const message = optimized.code === "cancelled"
+          ? "The fit was cancelled."
+          : optimized.code === "timeout"
+            ? "The fit timed out inside an optimizer batch."
+            : "The optimizer failed inside a batch before reporting its iteration count.";
         return failed(
           modelId,
           optimized.code,
-          `The fit was ${optimized.code}.`,
+          message,
           totalIterations,
           inputWarnings,
           optimized.iterationCountExact,
