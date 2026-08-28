@@ -3157,6 +3157,142 @@ td button {
   border-left: 3px solid #6c8d8c;
 }
 
+.rate-model-selection-list,
+.rate-model-library {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.rate-model-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 11px 12px;
+  border: 1px solid #d6dfdc;
+  border-radius: 7px;
+  background: #fff;
+}
+
+.rate-model-option input,
+.rate-comparison-curve-toggles input {
+  width: auto;
+  min-height: 18px;
+  margin: 2px 0 0;
+}
+
+.rate-model-option span,
+.rate-model-option small {
+  display: block;
+}
+
+.rate-model-option small {
+  margin-top: 4px;
+  color: #607078;
+}
+
+.rate-model-option-pending-validation {
+  background: #f4f5f4;
+}
+
+.rate-comparison-table {
+  min-width: 1450px;
+}
+
+.rate-comparison-curve-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid #d6dfdc;
+  border-radius: 7px;
+}
+
+.rate-comparison-curve-toggles legend {
+  padding: 0 5px;
+  color: #263f49;
+  font-weight: 800;
+}
+
+.rate-comparison-curve-toggles label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.rate-comparison-recommendation {
+  border-left: 4px solid #366c75;
+}
+
+.rate-model-library {
+  margin-top: 18px;
+}
+
+.rate-model-card {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  margin: 0;
+}
+
+.rate-model-card > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.rate-model-card h2,
+.rate-model-card h3,
+.rate-model-card p {
+  margin: 0;
+}
+
+.rate-model-card header p,
+.rate-model-card section p {
+  color: #52666e;
+}
+
+.rate-model-card h3 {
+  margin-bottom: 5px;
+  font-size: 0.92rem;
+}
+
+.rate-model-status {
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  border-radius: 4px;
+  color: #28553a;
+  background: #e5f1e8;
+  font-size: 0.76rem;
+}
+
+.rate-model-card-pending-validation .rate-model-status {
+  color: #6c5420;
+  background: #fff4d7;
+}
+
+.rate-model-card-pending-validation {
+  background: #f8f8f6;
+}
+
+.rate-model-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.rate-model-card-actions a {
+  padding: 8px 11px;
+  border: 1px solid #2f6f7f;
+  border-radius: 5px;
+  color: #285d69;
+  font-weight: 750;
+  text-decoration: none;
+}
+
 .scientific-chart-shell {
   width: 100%;
   margin: 14px 0;
