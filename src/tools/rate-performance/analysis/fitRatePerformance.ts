@@ -1,5 +1,9 @@
 import { getRateModel } from "../models/registry";
-import type { CharacteristicTimeRateParameters, RateModelFitFunction } from "../models/types";
+import type {
+  CharacteristicTimeRateParameters,
+  RateModelDefinition,
+  RateModelFitFunction,
+} from "../models/types";
 import {
   estimateConfidenceIntervals,
   type CharacteristicTimeParameterBounds,
@@ -45,6 +49,7 @@ export interface RateFitConverged {
   readonly residuals: ReadonlyArray<number>;
   readonly statistics: Readonly<FitStatistics>;
   readonly uncertainty: Readonly<ConfidenceIntervalResult>;
+  /** Actual optimizer iterations consumed globally across every attempted start. */
   readonly iterations: number;
   readonly usedPointCount: number;
   readonly warnings: ReadonlyArray<RateFitWarning>;
@@ -54,6 +59,7 @@ export interface RateFitFailure {
   readonly status: "failed";
   readonly modelId: string;
   readonly failure: Readonly<{ code: RateFitFailureCode; message: string }>;
+  /** Actual optimizer iterations consumed before failure across every attempted start. */
   readonly iterations: number;
   readonly warnings: ReadonlyArray<RateFitWarning>;
 }
@@ -64,8 +70,12 @@ interface OptimizedStart {
   readonly parameters: CharacteristicTimeRateParameters;
   readonly sse: number;
   readonly iterations: number;
-  readonly converged: boolean;
 }
+
+type OptimizedStartOutcome =
+  | Readonly<{ status: "converged"; result: OptimizedStart }>
+  | Readonly<{ status: "exhausted"; iterations: number }>
+  | Readonly<{ status: "failed"; code: RateFitFailureCode; iterations: number }>;
 
 interface OptimizerResult {
   readonly parameterValues: number[];
@@ -83,11 +93,17 @@ interface OptimizerOptions {
   readonly jacobianFunction: (parameters: number[]) => (rate: number) => number[];
 }
 
-type OptimizerFunction = (
+export type RateOptimizer = (
   data: Readonly<{ x: ReadonlyArray<number>; y: ReadonlyArray<number> }>,
   parameterizedFunction: (parameters: number[]) => (rate: number) => number,
   options: OptimizerOptions,
 ) => OptimizerResult;
+
+export interface RateFitDependencies {
+  readonly loadOptimizer: () => Promise<Readonly<{ levenbergMarquardt: RateOptimizer }>>;
+  readonly resolveModel: (id: string) => Readonly<RateModelDefinition> | undefined;
+  readonly yieldToMacrotask: () => Promise<void>;
+}
 
 const parameterIds = ["qM", "tau", "n"] as const;
 const defaultMaxIterations = 240;
@@ -238,7 +254,7 @@ function relativeSseImprovement(previous: number, current: number): number {
 }
 
 async function optimizeStart(
-  optimizer: OptimizerFunction,
+  optimizer: RateOptimizer,
   data: ReadonlyArray<RateFitPoint>,
   evaluate: RateModelFitFunction,
   start: CharacteristicTimeRateParameters,
@@ -246,7 +262,8 @@ async function optimizeStart(
   maxIterations: number,
   deadline: number,
   signal: AbortSignal | undefined,
-): Promise<OptimizedStart | RateFitFailureCode> {
+  yieldToMacrotask: () => Promise<void>,
+): Promise<OptimizedStartOutcome> {
   const observed = data.map(({ capacity }) => capacity);
   const x = data.map(({ rate }) => rate);
   const energyScale = observed.reduce((sum, value) => sum + value * value, 0);
@@ -255,16 +272,18 @@ async function optimizeStart(
   const encodedMaximum = parameterIds.map((parameter) => Math.log(bounds[parameter].maximum));
   let encoded = encodeParameters(start);
   const initialPredictions = predictionsFor(data, start, evaluate);
-  if (!initialPredictions) return "non-finite-prediction";
+  if (!initialPredictions) {
+    return { status: "failed", code: "non-finite-prediction", iterations: 0 };
+  }
   let previousSse = sumSquaredError(observed, initialPredictions);
   let totalIterations = 0;
   let confirmations = 0;
 
   while (totalIterations < maxIterations) {
-    if (signal?.aborted) return "cancelled";
+    if (signal?.aborted) return { status: "failed", code: "cancelled", iterations: totalIterations };
     const remainingMs = deadline - Date.now();
-    if (remainingMs <= 0) return "timeout";
-    const batchIterations = Math.min(24, maxIterations - totalIterations);
+    if (remainingMs <= 0) return { status: "failed", code: "timeout", iterations: totalIterations };
+    const batchIterations = Math.min(8, maxIterations - totalIterations);
     let optimized: OptimizerResult;
     try {
       optimized = optimizer(
@@ -285,22 +304,36 @@ async function optimizeStart(
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : "";
-      return message.includes("execution time") ? "timeout" : "optimizer-error";
+      return {
+        status: "failed",
+        code: message.includes("execution time") ? "timeout" : "optimizer-error",
+        iterations: totalIterations,
+      };
+    }
+    if (
+      !Number.isInteger(optimized.iterations)
+      || optimized.iterations < 0
+      || optimized.iterations > batchIterations
+    ) {
+      return { status: "failed", code: "optimizer-error", iterations: totalIterations };
     }
     totalIterations += optimized.iterations;
-    if (signal?.aborted) return "cancelled";
     if (!optimized.parameterValues.every(Number.isFinite) || !Number.isFinite(optimized.parameterError)) {
-      return "non-finite-result";
+      return { status: "failed", code: "non-finite-result", iterations: totalIterations };
     }
 
     const parameters = decodeParameters(optimized.parameterValues);
     if (!parameterIds.every((parameter) => Number.isFinite(parameters[parameter]))) {
-      return "non-finite-result";
+      return { status: "failed", code: "non-finite-result", iterations: totalIterations };
     }
     const predictions = predictionsFor(data, parameters, evaluate);
-    if (!predictions) return "non-finite-prediction";
+    if (!predictions) {
+      return { status: "failed", code: "non-finite-prediction", iterations: totalIterations };
+    }
     const currentSse = sumSquaredError(observed, predictions);
-    if (!Number.isFinite(currentSse)) return "non-finite-result";
+    if (!Number.isFinite(currentSse)) {
+      return { status: "failed", code: "non-finite-result", iterations: totalIterations };
+    }
 
     const optimizerReportedConvergence = optimized.iterations < batchIterations;
     const stable = relativeSseImprovement(previousSse, currentSse) <= 1e-10
@@ -309,18 +342,19 @@ async function optimizeStart(
     encoded = [...optimized.parameterValues];
     previousSse = currentSse;
 
-    if (optimizerReportedConvergence || confirmations >= 1) {
-      return { parameters, sse: currentSse, iterations: totalIterations, converged: true };
+    if ((optimizerReportedConvergence && stable) || confirmations >= 2) {
+      return {
+        status: "converged",
+        result: { parameters, sse: currentSse, iterations: totalIterations },
+      };
     }
-    if (optimized.iterations === 0) break;
+    if (optimized.iterations === 0) {
+      return { status: "failed", code: "optimizer-error", iterations: totalIterations };
+    }
+    if (totalIterations < maxIterations) await yieldToMacrotask();
   }
 
-  return {
-    parameters: decodeParameters(encoded),
-    sse: previousSse,
-    iterations: totalIterations,
-    converged: false,
-  };
+  return { status: "exhausted", iterations: totalIterations };
 }
 
 /**
@@ -330,12 +364,13 @@ async function optimizeStart(
  * optimizer batches. The optimizer itself is synchronous, so its timeout option
  * is also passed through to provide an in-loop execution gate.
  */
-export async function fitRatePerformance(
+async function fitRatePerformanceWithDependencies(
   data: ReadonlyArray<RateFitPoint>,
   options: RateFitOptions,
+  dependencies: RateFitDependencies,
 ): Promise<RateFitResult> {
   const { modelId } = options;
-  const model = getRateModel(modelId);
+  const model = dependencies.resolveModel(modelId);
   if (!model) return failed(modelId, "model-not-found", "The requested rate model is not registered.");
   if (model.status !== "validated" || !model.fit) {
     return failed(modelId, "model-not-validated", "The requested rate model has not passed the validation gate.");
@@ -370,58 +405,79 @@ export async function fitRatePerformance(
   const inputWarnings: RateFitWarning[] = [...duplicateRates].map((rate) => ({ code: "duplicate-rate", rate }));
   const deadline = Date.now() + timeoutMs;
 
-  // Kept inside the fit path so opening a Rate page does not load the optimizer chunk.
-  // The package's ESM exports resolve in Vite and Node, but this repository's
-  // legacy `moduleResolution: "Node"` cannot follow its exports-only typings.
-  // Keep the suppression local and validate the exact used 5.1.0 surface above.
-  // @ts-expect-error -- package export-map types require node16/bundler resolution.
-  const optimizerModule: { levenbergMarquardt: OptimizerFunction } = await import("ml-levenberg-marquardt");
+  let optimizerModule: Readonly<{ levenbergMarquardt: RateOptimizer }>;
+  try {
+    optimizerModule = await dependencies.loadOptimizer();
+  } catch {
+    return failed(modelId, "optimizer-error", "The optimizer module could not be loaded.", 0, inputWarnings);
+  }
   const { levenbergMarquardt } = optimizerModule;
+  if (typeof levenbergMarquardt !== "function") {
+    return failed(modelId, "optimizer-error", "The optimizer module has an invalid API.", 0, inputWarnings);
+  }
   const candidates: OptimizedStart[] = [];
-  let exhaustedIterations = 0;
+  let totalIterations = 0;
   let lastFailure: RateFitFailureCode = "maximum-iterations";
+  const starts = deterministicStarts(data, bounds);
 
-  for (const start of deterministicStarts(data, bounds)) {
+  for (const [startIndex, start] of starts.entries()) {
+    const remainingBudget = maxIterations - totalIterations;
+    if (remainingBudget <= 0) break;
+    const remainingStarts = starts.length - startIndex;
+    const startBudget = Math.ceil(remainingBudget / remainingStarts);
     const optimized = await optimizeStart(
       levenbergMarquardt,
       data,
       model.fit,
       start,
       bounds,
-      maxIterations,
+      startBudget,
       deadline,
       options.signal,
+      dependencies.yieldToMacrotask,
     );
-    if (typeof optimized === "string") {
-      lastFailure = optimized;
-      if (optimized === "timeout" || optimized === "cancelled") {
-        return failed(modelId, optimized, `The fit was ${optimized}.`, exhaustedIterations, inputWarnings);
+    totalIterations += optimized.status === "converged"
+      ? optimized.result.iterations
+      : optimized.iterations;
+    if (optimized.status === "failed") {
+      lastFailure = optimized.code;
+      if (optimized.code === "timeout" || optimized.code === "cancelled") {
+        return failed(modelId, optimized.code, `The fit was ${optimized.code}.`, totalIterations, inputWarnings);
       }
-      continue;
+    } else if (optimized.status === "converged") {
+      candidates.push(optimized.result);
     }
-    exhaustedIterations += optimized.iterations;
-    if (optimized.converged) candidates.push(optimized);
+
+    if (startIndex < starts.length - 1 && totalIterations < maxIterations) {
+      await dependencies.yieldToMacrotask();
+      if (options.signal?.aborted) {
+        return failed(modelId, "cancelled", "The fit was cancelled.", totalIterations, inputWarnings);
+      }
+      if (Date.now() >= deadline) {
+        return failed(modelId, "timeout", "The fit timed out.", totalIterations, inputWarnings);
+      }
+    }
   }
 
   if (candidates.length === 0) {
     const code = lastFailure === "maximum-iterations" ? "maximum-iterations" : lastFailure;
-    return failed(modelId, code, "No deterministic start produced a finite converged solution.", exhaustedIterations, inputWarnings);
+    return failed(modelId, code, "No deterministic start produced a finite converged solution.", totalIterations, inputWarnings);
   }
 
   const best = candidates.reduce((current, candidate) => candidate.sse < current.sse ? candidate : current);
   const predictions = predictionsFor(data, best.parameters, model.fit);
   if (!predictions) {
-    return failed(modelId, "non-finite-prediction", "The fitted model produced a non-finite prediction.", best.iterations, inputWarnings);
+    return failed(modelId, "non-finite-prediction", "The fitted model produced a non-finite prediction.", totalIterations, inputWarnings);
   }
   const observed = data.map(({ capacity }) => capacity);
   const residuals = observed.map((value, index) => value - predictions[index]);
   if (!residuals.every(Number.isFinite)) {
-    return failed(modelId, "non-finite-result", "The fitted residuals are not finite.", best.iterations, inputWarnings);
+    return failed(modelId, "non-finite-result", "The fitted residuals are not finite.", totalIterations, inputWarnings);
   }
 
   const statistics = calculateFitStatistics(observed, predictions, parameterIds.length);
   if (statistics.sse === null) {
-    return failed(modelId, "non-finite-result", "The fitted sum of squared errors is not finite.", best.iterations, inputWarnings);
+    return failed(modelId, "non-finite-result", "The fitted sum of squared errors is not finite.", totalIterations, inputWarnings);
   }
   const uncertainty = estimateConfidenceIntervals(data, best.parameters, model.fit, bounds, statistics.sse);
 
@@ -433,8 +489,32 @@ export async function fitRatePerformance(
     residuals,
     statistics,
     uncertainty,
-    iterations: best.iterations,
+    // This is the actual global optimizer work across every attempted start.
+    iterations: totalIterations,
     usedPointCount: data.length,
     warnings: [...inputWarnings, ...uncertainty.warnings],
   };
 }
+
+const defaultDependencies: RateFitDependencies = {
+  // Kept inside the fit path so opening a Rate page does not load the optimizer chunk.
+  // The package's ESM exports resolve in Vite and Node, but this repository's
+  // legacy `moduleResolution: "Node"` cannot follow its exports-only typings.
+  // Keep the suppression local and validate the exact used 5.1.0 surface above.
+  loadOptimizer: async () => {
+    // @ts-expect-error -- package export-map types require node16/bundler resolution.
+    const module: { levenbergMarquardt: RateOptimizer } = await import("ml-levenberg-marquardt");
+    return module;
+  },
+  resolveModel: getRateModel,
+  yieldToMacrotask: () => new Promise((resolve) => setTimeout(resolve, 0)),
+};
+
+export function createRatePerformanceFitter(
+  overrides: Partial<RateFitDependencies> = {},
+): (data: ReadonlyArray<RateFitPoint>, options: RateFitOptions) => Promise<RateFitResult> {
+  const dependencies: RateFitDependencies = { ...defaultDependencies, ...overrides };
+  return (data, options) => fitRatePerformanceWithDependencies(data, options, dependencies);
+}
+
+export const fitRatePerformance = createRatePerformanceFitter();

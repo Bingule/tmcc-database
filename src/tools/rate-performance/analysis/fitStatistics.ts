@@ -60,9 +60,9 @@ export function calculateFitStatistics(
     ? finiteOrNull(1 - sse / totalSumOfSquares)
     : null;
 
-  const adjustedDenominator = observationCount - parameterCount - 1;
-  const adjustedRSquared = rSquared !== null && adjustedDenominator > 0
-    ? finiteOrNull(1 - (1 - rSquared) * (observationCount - 1) / adjustedDenominator)
+  const residualDegreesOfFreedom = observationCount - parameterCount;
+  const adjustedRSquared = rSquared !== null && residualDegreesOfFreedom > 0
+    ? finiteOrNull(1 - (1 - rSquared) * (observationCount - 1) / residualDegreesOfFreedom)
     : null;
 
   const likelihoodTerm = sse > 0
@@ -71,8 +71,9 @@ export function calculateFitStatistics(
   const aic = likelihoodTerm === null
     ? null
     : finiteOrNull(likelihoodTerm + 2 * parameterCount);
-  const aicc = aic !== null && adjustedDenominator > 0
-    ? finiteOrNull(aic + 2 * parameterCount * (parameterCount + 1) / adjustedDenominator)
+  const aiccDenominator = observationCount - parameterCount - 1;
+  const aicc = aic !== null && aiccDenominator > 0
+    ? finiteOrNull(aic + 2 * parameterCount * (parameterCount + 1) / aiccDenominator)
     : null;
   const bic = likelihoodTerm === null
     ? null

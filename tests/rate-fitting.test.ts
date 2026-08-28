@@ -1,15 +1,19 @@
 import { describe, expect, it } from "vitest";
 import {
   estimateConfidenceIntervals,
+  studentTCritical95,
 } from "../src/tools/rate-performance/analysis/confidenceIntervals";
 import {
   calculateFitStatistics,
 } from "../src/tools/rate-performance/analysis/fitStatistics";
 import {
+  createRatePerformanceFitter,
   fitRatePerformance,
+  type RateOptimizer,
   type RateFitFailure,
   type RateFitPoint,
 } from "../src/tools/rate-performance/analysis/fitRatePerformance";
+import { getRateModel } from "../src/tools/rate-performance/models/registry";
 import { evaluateRationalRate } from "../src/tools/rate-performance/models/rationalCharacteristicTime";
 import { evaluateTianRate } from "../src/tools/rate-performance/models/tianCharacteristicTime";
 import type { CharacteristicTimeRateParameters } from "../src/tools/rate-performance/models/types";
@@ -46,7 +50,7 @@ describe("fit statistics", () => {
     expect(statistics.sse).toBe(2);
     expect(statistics.rmse).toBeCloseTo(Math.sqrt(2 / 3), 14);
     expect(statistics.rSquared).toBe(0);
-    expect(statistics.adjustedRSquared).toBe(-1);
+    expect(statistics.adjustedRSquared).toBe(0);
     expect(statistics.aic).toBeCloseTo(3 * Math.log(2 / 3) + 2, 14);
     expect(statistics.aicc).toBeCloseTo(3 * Math.log(2 / 3) + 6, 14);
     expect(statistics.bic).toBeCloseTo(3 * Math.log(2 / 3) + Math.log(3), 14);
@@ -62,6 +66,15 @@ describe("fit statistics", () => {
     expect(exact).toMatchObject({ aic: null, aicc: null, bic: null });
     expect(constant.rSquared).toBeNull();
     expect(Object.values(nonFinite).every((value) => value === null)).toBe(true);
+  });
+
+  it("uses n - k for adjusted R-squared while AICc independently requires n - k - 1", () => {
+    const statistics = calculateFitStatistics([1, 2, 3, 4], [1, 2, 2, 5], 3);
+    const rSquared = 1 - 2 / 5;
+
+    expect(statistics.rSquared).toBeCloseTo(rSquared, 14);
+    expect(statistics.adjustedRSquared).toBeCloseTo(1 - (1 - rSquared) * 3 / 1, 14);
+    expect(statistics.aicc).toBeNull();
   });
 });
 
@@ -154,6 +167,54 @@ describe("bounded characteristic-time fitting", () => {
     expectFailureWithoutParameters(result, "maximum-iterations");
   });
 
+  it.each([
+    ["tian-characteristic-time", evaluateTianRate, { qM: 325, tau: 0.8, n: 0.62 }],
+    ["rational-characteristic-time", evaluateRationalRate, { qM: 280, tau: 1.3, n: 0.72 }],
+  ] as const)("does not accept one stagnant maxIterations=2 batch for %s", async (modelId, evaluate, parameters) => {
+    let spentIterations = 0;
+    const stagnantOptimizer: RateOptimizer = (_data, _fit, optimizerOptions) => {
+      spentIterations += optimizerOptions.maxIterations;
+      return {
+        parameterValues: Array.from(optimizerOptions.initialValues),
+        parameterError: 1,
+        iterations: optimizerOptions.maxIterations,
+      };
+    };
+    const fit = createRatePerformanceFitter({
+      loadOptimizer: async () => ({ levenbergMarquardt: stagnantOptimizer }),
+      yieldToMacrotask: async () => undefined,
+    });
+
+    const result = await fit(syntheticData(evaluate, parameters), { modelId, maxIterations: 2 });
+
+    expectFailureWithoutParameters(result, "maximum-iterations");
+    expect(result.iterations).toBe(2);
+    expect(spentIterations).toBe(2);
+  });
+
+  it("treats maxIterations as one global budget across deterministic starts", async () => {
+    let spentIterations = 0;
+    const optimizer: RateOptimizer = (_data, _fit, optimizerOptions) => {
+      spentIterations += optimizerOptions.maxIterations;
+      return {
+        parameterValues: Array.from(optimizerOptions.initialValues),
+        parameterError: 1,
+        iterations: optimizerOptions.maxIterations,
+      };
+    };
+    const fit = createRatePerformanceFitter({
+      loadOptimizer: async () => ({ levenbergMarquardt: optimizer }),
+      yieldToMacrotask: async () => undefined,
+    });
+    const result = await fit(
+      syntheticData(evaluateTianRate, { qM: 325, tau: 0.8, n: 0.62 }),
+      { modelId: "tian-characteristic-time", maxIterations: 7 },
+    );
+
+    expect(spentIterations).toBe(7);
+    expect(result.iterations).toBe(7);
+  });
+
   it("provides timeout and cancellation gates without leaking parameters", async () => {
     const data = syntheticData(evaluateTianRate, { qM: 325, tau: 0.8, n: 0.62 });
     const controller = new AbortController();
@@ -167,6 +228,88 @@ describe("bounded characteristic-time fitting", () => {
       await fitRatePerformance(data, { modelId: "tian-characteristic-time", signal: controller.signal }),
       "cancelled",
     );
+  });
+
+  it("yields to a macrotask so a timer can cancel a running fit between optimizer batches", async () => {
+    let optimizerCalls = 0;
+    const movingOptimizer: RateOptimizer = (_data, _fit, optimizerOptions) => {
+      optimizerCalls += 1;
+      return {
+        parameterValues: Array.from(optimizerOptions.initialValues, (value) => value + 0.01),
+        parameterError: 1,
+        iterations: optimizerOptions.maxIterations,
+      };
+    };
+    const fit = createRatePerformanceFitter({
+      loadOptimizer: async () => ({ levenbergMarquardt: movingOptimizer }),
+    });
+    const data = syntheticData(evaluateTianRate, { qM: 325, tau: 0.8, n: 0.62 });
+
+    await fit(data, { modelId: "tian-characteristic-time", maxIterations: 2 });
+    optimizerCalls = 0;
+    const controller = new AbortController();
+    const pending = fit(data, {
+      modelId: "tian-characteristic-time",
+      maxIterations: 100,
+      signal: controller.signal,
+    });
+    setTimeout(() => controller.abort(), 0);
+    const result = await pending;
+
+    expectFailureWithoutParameters(result, "cancelled");
+    expect(optimizerCalls).toBeGreaterThan(0);
+    expect(result.iterations).toBeGreaterThan(0);
+    expect(result.iterations).toBeLessThan(100);
+  });
+
+  it("enforces a positive timeout after yielding between synchronous batches", async () => {
+    const movingOptimizer: RateOptimizer = (_data, _fit, optimizerOptions) => ({
+      parameterValues: Array.from(optimizerOptions.initialValues, (value) => value + 0.01),
+      parameterError: 1,
+      iterations: optimizerOptions.maxIterations,
+    });
+    const fit = createRatePerformanceFitter({
+      loadOptimizer: async () => ({ levenbergMarquardt: movingOptimizer }),
+      yieldToMacrotask: () => new Promise((resolve) => setTimeout(resolve, 5)),
+    });
+    const result = await fit(
+      syntheticData(evaluateTianRate, { qM: 325, tau: 0.8, n: 0.62 }),
+      { modelId: "tian-characteristic-time", maxIterations: 100, timeoutMs: 1 },
+    );
+
+    expectFailureWithoutParameters(result, "timeout");
+    expect(result.iterations).toBeGreaterThan(0);
+    expect(result.iterations).toBeLessThan(100);
+  });
+
+  it("returns a typed failure when the dynamic optimizer import rejects", async () => {
+    const fit = createRatePerformanceFitter({
+      loadOptimizer: async () => {
+        throw new Error("chunk unavailable");
+      },
+    });
+    const result = await fit(
+      syntheticData(evaluateTianRate, { qM: 325, tau: 0.8, n: 0.62 }),
+      { modelId: "tian-characteristic-time" },
+    );
+
+    expectFailureWithoutParameters(result, "optimizer-error");
+  });
+
+  it("returns a fitting-level typed failure for non-finite model predictions", async () => {
+    const tian = getRateModel("tian-characteristic-time");
+    expect(tian).toBeDefined();
+    const fit = createRatePerformanceFitter({
+      resolveModel: (id) => id === "non-finite-test-model" && tian
+        ? { ...tian, id, fit: () => Number.POSITIVE_INFINITY }
+        : getRateModel(id),
+    });
+    const result = await fit(
+      syntheticData(evaluateTianRate, { qM: 325, tau: 0.8, n: 0.62 }),
+      { modelId: "non-finite-test-model" },
+    );
+
+    expectFailureWithoutParameters(result, "non-finite-prediction");
   });
 });
 
@@ -230,5 +373,42 @@ describe("Jacobian covariance and confidence intervals", () => {
     expect(result.covariance).toBeNull();
     expect(result.warnings).toContainEqual(expect.objectContaining({ code: "non-finite-jacobian" }));
     expect(Object.values(result.parameters).every(({ confidenceInterval95 }) => confidenceInterval95 === null)).toBe(true);
+  });
+
+  it("uses a non-narrow Student-t critical value immediately above df=30", () => {
+    expect(studentTCritical95(31)).toBeGreaterThanOrEqual(2.0395);
+    expect(studentTCritical95(31)).toBeLessThanOrEqual(2.0421);
+  });
+
+  it("keeps confidence intervals estimable under equivalent tau rescaling", () => {
+    const baseParameters = { qM: 300, tau: 1, n: 0.6 };
+    const scaledParameters = { ...baseParameters, tau: 1e-6 };
+    const baseRates = rates;
+    const scaledRates = rates.map((rate) => rate * 1e6);
+    const noise = [0.3, -0.2, 0.1, -0.1];
+    const base = estimateConfidenceIntervals(
+      syntheticData(evaluateTianRate, baseParameters, noise, baseRates),
+      baseParameters,
+      evaluateTianRate,
+      bounds,
+      0.225,
+    );
+    const scaled = estimateConfidenceIntervals(
+      syntheticData(evaluateTianRate, scaledParameters, noise, scaledRates),
+      scaledParameters,
+      evaluateTianRate,
+      {
+        ...bounds,
+        tau: { minimum: 1e-12, maximum: 1 },
+      },
+      0.225,
+    );
+
+    expect(base.covariance).not.toBeNull();
+    expect(scaled.covariance).not.toBeNull();
+    expect(base.parameters.tau.standardError).not.toBeNull();
+    expect(scaled.parameters.tau.standardError).not.toBeNull();
+    expect((scaled.parameters.tau.standardError as number) / scaledParameters.tau)
+      .toBeCloseTo((base.parameters.tau.standardError as number) / baseParameters.tau, 5);
   });
 });
