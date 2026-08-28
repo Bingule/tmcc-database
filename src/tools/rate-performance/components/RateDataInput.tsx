@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from "react";
+import { useId, useLayoutEffect, useRef, useState } from "react";
 import { useI18n } from "../../../i18n/I18nProvider";
 import type { TabularSheet } from "../../../lib/tabularParsing";
 import { RATE_PERFORMANCE_EXAMPLE } from "../data/rateExamples";
@@ -37,15 +37,16 @@ export function RateDataInput({
   const latestValue = useRef(value);
   const previousValue = useRef(value);
   const lastEmittedValue = useRef<RateDataInputValue | null>(null);
-  const externalRevision = useRef(0);
-  if (previousValue.current !== value) {
+
+  useLayoutEffect(() => {
+    latestValue.current = value;
+    if (previousValue.current === value) return;
     const originatedHere = lastEmittedValue.current !== null
       && equalRateDataInputValue(lastEmittedValue.current, value);
     previousValue.current = value;
     lastEmittedValue.current = null;
-    if (!originatedHere && value.mode === "upload") externalRevision.current += 1;
-  }
-  latestValue.current = value;
+    if (!originatedHere && value.mode === "upload") setImportSession((session) => session + 1);
+  }, [value]);
 
   const rateUnit: RateUnit = value.points[0]?.rateUnit ?? "h-1";
   const capacityUnit: CapacityUnit = value.points[0]?.capacityUnit ?? "mAh-g-1";
@@ -72,22 +73,26 @@ export function RateDataInput({
   }
 
   function setRateUnit(next: RateUnit) {
+    invalidateImport();
+    const current = latestValue.current;
     const normalizationContext: RateNormalizationContext = next === "h-1"
-      ? { confirmHInverseMeasuredRate: value.normalizationContext.confirmHInverseMeasuredRate }
+      ? { confirmHInverseMeasuredRate: current.normalizationContext.confirmHInverseMeasuredRate }
       : next === "C-rate"
-        ? { theoreticalCapacity: value.normalizationContext.theoreticalCapacity }
+        ? { theoreticalCapacity: current.normalizationContext.theoreticalCapacity }
         : {};
     emit({
-      ...value,
-      points: value.points.map((point) => ({ ...point, rateUnit: next })),
+      ...current,
+      points: current.points.map((point) => ({ ...point, rateUnit: next })),
       normalizationContext,
     });
   }
 
   function setCapacityUnit(next: CapacityUnit) {
+    invalidateImport();
+    const current = latestValue.current;
     emit({
-      ...value,
-      points: value.points.map((point) => ({ ...point, capacityUnit: next })),
+      ...current,
+      points: current.points.map((point) => ({ ...point, capacityUnit: next })),
     });
   }
 
@@ -193,7 +198,7 @@ export function RateDataInput({
     {value.mode === "manual"
       ? <ManualRateTable points={value.points} rateUnit={rateUnit} capacityUnit={capacityUnit} onChange={points} />
       : <RateFileImport
-        key={`${importSession}-${externalRevision.current}`}
+        key={importSession}
         rateUnit={rateUnit}
         capacityUnit={capacityUnit}
         onImport={importedPoints}

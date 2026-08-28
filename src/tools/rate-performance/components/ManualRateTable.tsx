@@ -60,6 +60,7 @@ export function ManualRateTable({
       className="tool-table-wrap rate-table-frame-scroll"
       data-rate-table-viewport="true"
       data-visible-rows="6"
+      role="region"
       tabIndex={0}
       aria-label={t("rate.input.tableViewport")}
     >

@@ -76,6 +76,16 @@ function CloningInputHarness({ parseFile }: { parseFile: (file: File) => Promise
   </>;
 }
 
+function RerenderingInputHarness({ parseFile }: { parseFile: (file: File) => Promise<TabularSheet[]> }) {
+  const [value, setValue] = useState(createInitialRateDataInputValue());
+  const [, setRevision] = useState(0);
+  return <>
+    <RateDataInput value={value} onChange={setValue} parseFile={parseFile} />
+    <button type="button" onClick={() => setRevision((revision) => revision + 1)}>Rerender parent</button>
+    <output data-testid="rate-input-value">{JSON.stringify(value)}</output>
+  </>;
+}
+
 async function render(ui: React.ReactNode, language: "en" | "zh" = "en") {
   localStorage.setItem("tmcc-language", language);
   const container = document.createElement("div");
@@ -140,6 +150,7 @@ describe("RateDataInput", () => {
     const viewport = view.querySelector('[data-rate-table-viewport="true"]');
 
     expect(viewport?.getAttribute("data-visible-rows")).toBe("6");
+    expect(viewport?.getAttribute("role")).toBe("region");
     expect(viewport?.getAttribute("tabindex")).toBe("0");
     expect(viewport?.getAttribute("aria-label")).toBe("Scrollable rate data table");
     expect(view.querySelectorAll('input[type="number"][name^="rate-"]')).toHaveLength(6);
@@ -335,6 +346,48 @@ describe("RateDataInput", () => {
     expect(readValue(view).points[0]).toMatchObject({ rate: 2, capacity: 20 });
     expect(view.textContent).toContain("New");
     expect(view.textContent).not.toContain("Old");
+  });
+
+  it("invalidates a pending upload when the rate unit changes", async () => {
+    const pending = deferred<TabularSheet[]>();
+    const view = await render(<InputHarness parseFile={() => pending.promise} />);
+    await click(view.querySelector<HTMLInputElement>('input[value="upload"]')!);
+    await upload(view, new File(["ignored"], "old-rate-unit.csv"));
+
+    await change(view.querySelector<HTMLSelectElement>('select[aria-label="Rate unit"]')!, "C-rate");
+    pending.resolve([{ name: "Old rate unit", rows: [["Rate", "Capacity"], [7, 70]] }]);
+    await act(async () => { await pending.promise; await Promise.resolve(); });
+
+    expect(readValue(view).points.every(({ rate, rateUnit }) => rate === null && rateUnit === "C-rate")).toBe(true);
+    expect(view.textContent).not.toContain("Old rate unit");
+  });
+
+  it("invalidates a pending upload when the capacity unit changes", async () => {
+    const pending = deferred<TabularSheet[]>();
+    const view = await render(<InputHarness parseFile={() => pending.promise} />);
+    await click(view.querySelector<HTMLInputElement>('input[value="upload"]')!);
+    await upload(view, new File(["ignored"], "old-capacity-unit.csv"));
+
+    await change(view.querySelector<HTMLSelectElement>('select[aria-label="Capacity unit"]')!, "Ah-kg-1");
+    pending.resolve([{ name: "Old capacity unit", rows: [["Rate", "Capacity"], [7, 70]] }]);
+    await act(async () => { await pending.promise; await Promise.resolve(); });
+
+    expect(readValue(view).points.every(({ capacity, capacityUnit }) => capacity === null && capacityUnit === "Ah-kg-1")).toBe(true);
+    expect(view.textContent).not.toContain("Old capacity unit");
+  });
+
+  it("does not invalidate a pending upload for an unrelated parent rerender", async () => {
+    const pending = deferred<TabularSheet[]>();
+    const view = await render(<RerenderingInputHarness parseFile={() => pending.promise} />);
+    await click(view.querySelector<HTMLInputElement>('input[value="upload"]')!);
+    await upload(view, new File(["ignored"], "current.csv"));
+    await click(button(view, "Rerender parent"));
+
+    pending.resolve([{ name: "Current", rows: [["Rate", "Capacity"], [2, 20]] }]);
+    await act(async () => { await pending.promise; await Promise.resolve(); });
+
+    expect(readValue(view).points[0]).toMatchObject({ rate: 2, capacity: 20, rateUnit: "h-1", capacityUnit: "mAh-g-1" });
+    expect(view.textContent).toContain("Current");
   });
 
   it("clears stale mapping controls when the parent value is externally replaced", async () => {

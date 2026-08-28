@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import {
   parseTabularFile,
   TabularParseError,
@@ -39,9 +39,12 @@ export function RateFileImport({
   const generation = useRef(0);
   const mounted = useRef(true);
   const latestOnImport = useRef(onImport);
-  latestOnImport.current = onImport;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    latestOnImport.current = onImport;
+  }, [onImport]);
+
+  useLayoutEffect(() => {
     mounted.current = true;
     return () => {
       mounted.current = false;
