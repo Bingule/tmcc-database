@@ -331,27 +331,32 @@ function reconstructOriginalOrderPath(input: DunnContributionInput): DunnContrib
     owned.forEach(({ sourceIndex }, index) => oppositeBySourceIndex.set(sourceIndex, opposite[index]!));
   }
 
+  const minimumPotential = input.alignedGrid.potentials[0]!;
+  const maximumPotential = input.alignedGrid.potentials.at(-1)!;
+  const interpolationPotentials = cycle.originalPoints.map((point) =>
+    Math.min(maximumPotential, Math.max(minimumPotential, point.potential)));
+  const baselineFractions = pchipInterpolate(
+    input.alignedGrid.potentials,
+    input.refined.baselineG,
+    interpolationPotentials
+  ).map(validateFraction);
+  const fractions = pchipInterpolate(
+    input.alignedGrid.potentials,
+    input.refined.g,
+    interpolationPotentials
+  ).map(validateFraction);
+
   const records = cycle.originalPoints.map((point, sourceIndex) => {
     const branch = branchBySourceIndex.get(sourceIndex);
     const oppositeCurrent = oppositeBySourceIndex.get(sourceIndex);
     if (branch === undefined || oppositeCurrent === undefined) throw new CvAnalysisError("invalidDataShape");
-    const baselineFraction = evaluateSharedFraction(
-      input.alignedGrid.potentials,
-      input.refined.baselineG,
-      point.potential
-    );
-    const fraction = evaluateSharedFraction(
-      input.alignedGrid.potentials,
-      input.refined.g,
-      point.potential
-    );
     return makeOrderedRecord(
       point,
       branch,
       sourceIndex,
       oppositeCurrent,
-      baselineFraction,
-      fraction
+      baselineFractions[sourceIndex]!,
+      fractions[sourceIndex]!
     );
   });
   return insertSharedZeroCrossings(records);
