@@ -79,3 +79,63 @@ export interface RateValidationReport {
   readonly invalidPoints: RatePoint[];
   readonly hasErrors: boolean;
 }
+
+export type RateModelStatus = "validated" | "pending-validation";
+
+export type RateModelParameterType =
+  | "measured"
+  | "user-input"
+  | "fitted"
+  | "derived"
+  | "assumed";
+
+export interface RateModelParameterBounds {
+  readonly minimum?: number;
+  readonly maximum?: number;
+  readonly minimumExclusive?: boolean;
+  readonly maximumExclusive?: boolean;
+}
+
+export interface RateModelParameterDefinition {
+  readonly id: string;
+  readonly symbol: string;
+  readonly name: string;
+  readonly description: string;
+  readonly unit: string;
+  readonly type: RateModelParameterType;
+  readonly bounds?: Readonly<RateModelParameterBounds>;
+  readonly initialization?: string;
+}
+
+export interface RateModelIndependentVariableDefinition {
+  readonly symbol: string;
+  readonly name: string;
+  readonly unit: string;
+  readonly definition: string;
+}
+
+export interface CharacteristicTimeRateParameters {
+  readonly qM: number;
+  readonly tau: number;
+  readonly n: number;
+}
+
+export type RateModelFitFunction = (
+  rate: number,
+  parameters: CharacteristicTimeRateParameters,
+) => number;
+
+export interface RateModelDefinition {
+  readonly id: string;
+  readonly name: string;
+  readonly family: string;
+  readonly status: RateModelStatus;
+  readonly equation: string;
+  readonly independentVariable: Readonly<RateModelIndependentVariableDefinition>;
+  readonly parameters: ReadonlyArray<Readonly<RateModelParameterDefinition>>;
+  readonly assumptions: ReadonlyArray<string>;
+  readonly limitations: ReadonlyArray<string>;
+  readonly referenceIds: ReadonlyArray<string>;
+  readonly validationNote: string;
+  readonly fit?: RateModelFitFunction;
+}
