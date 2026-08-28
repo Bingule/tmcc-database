@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   MAX_FILE_BYTES,
   MAX_XLSX_COMPRESSION_RATIO,
@@ -8,6 +8,12 @@ import {
   parseTabularFile,
   type TabularParseErrorCode
 } from "../src/lib/tabularParsing";
+
+const xlsxModuleState = vi.hoisted(() => ({ loads: 0 }));
+vi.mock("read-excel-file/browser", async (importOriginal) => {
+  xlsxModuleState.loads += 1;
+  return importOriginal();
+});
 
 function expectParseError(action: () => unknown, code: TabularParseErrorCode, detail?: Record<string, unknown>) {
   try {
@@ -69,6 +75,12 @@ describe("parseDelimitedTable", () => {
 });
 
 describe("parseTabularFile", () => {
+  it("does not load the XLSX implementation along the text-file path", async () => {
+    expect(xlsxModuleState.loads).toBe(0);
+    await parseTabularFile(new File(["Rate,Capacity\n0.1,325"], "rate.csv"));
+    expect(xlsxModuleState.loads).toBe(0);
+  });
+
   it("decodes UTF-16 TXT and returns a single raw sheet", async () => {
     const file = new File([encodeUtf16("Rate\tCapacity\n0.1\t325", "le")], "rate.txt");
 

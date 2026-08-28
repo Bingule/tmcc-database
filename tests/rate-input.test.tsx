@@ -13,6 +13,7 @@ import { ModelTheoryPanel } from "../src/tools/rate-performance/components/Model
 import { ReferenceList } from "../src/tools/rate-performance/components/ReferenceList";
 import { RateChartPanel } from "../src/tools/rate-performance/components/RateChartPanel";
 import { ExportToolbar } from "../src/tools/rate-performance/components/ExportToolbar";
+import { RateFileImport } from "../src/tools/rate-performance/components/RateFileImport";
 import { sampleRateChartPoints } from "../src/tools/rate-performance/utils/chartSampling";
 import {
   serializeNormalizedRateCsv,
@@ -46,6 +47,31 @@ function InputHarness({
   const [value, setValue] = useState(initial);
   return <>
     <RateDataInput value={value} onChange={setValue} parseFile={parseFile} />
+    <output data-testid="rate-input-value">{JSON.stringify(value)}</output>
+  </>;
+}
+
+function ExternallyMutableInputHarness({ parseFile }: { parseFile: (file: File) => Promise<TabularSheet[]> }) {
+  const [value, setValue] = useState(createInitialRateDataInputValue());
+  return <>
+    <RateDataInput value={value} onChange={setValue} parseFile={parseFile} />
+    <button type="button" onClick={() => setValue({
+      mode: "upload",
+      points: [{ id: "external", rate: 9, rateUnit: "h-1", capacity: 99, capacityUnit: "mAh-g-1" }],
+      normalizationContext: { confirmHInverseMeasuredRate: true },
+    })}>Replace parent value</button>
+    <output data-testid="rate-input-value">{JSON.stringify(value)}</output>
+  </>;
+}
+
+function CloningInputHarness({ parseFile }: { parseFile: (file: File) => Promise<TabularSheet[]> }) {
+  const [value, setValue] = useState(createInitialRateDataInputValue());
+  return <>
+    <RateDataInput value={value} onChange={(next) => setValue({
+      ...next,
+      points: next.points.map((point) => ({ ...point })),
+      normalizationContext: { ...next.normalizationContext },
+    })} parseFile={parseFile} />
     <output data-testid="rate-input-value">{JSON.stringify(value)}</output>
   </>;
 }
@@ -86,6 +112,17 @@ function readValue(view: HTMLElement): RateDataInputValue {
   return JSON.parse(view.querySelector('[data-testid="rate-input-value"]')?.textContent ?? "null") as RateDataInputValue;
 }
 
+function summaryValue(view: HTMLElement, label: string) {
+  const term = [...view.querySelectorAll("dt")].find((candidate) => candidate.textContent === label);
+  return term?.nextElementSibling?.textContent;
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((next) => { resolve = next; });
+  return { promise, resolve };
+}
+
 async function upload(view: HTMLElement, file: File) {
   const input = view.querySelector<HTMLInputElement>('input[type="file"]');
   if (!input) throw new Error("File input unavailable");
@@ -103,6 +140,8 @@ describe("RateDataInput", () => {
     const viewport = view.querySelector('[data-rate-table-viewport="true"]');
 
     expect(viewport?.getAttribute("data-visible-rows")).toBe("6");
+    expect(viewport?.getAttribute("tabindex")).toBe("0");
+    expect(viewport?.getAttribute("aria-label")).toBe("Scrollable rate data table");
     expect(view.querySelectorAll('input[type="number"][name^="rate-"]')).toHaveLength(6);
     expect(view.querySelectorAll('input[type="number"][name^="capacity-"]')).toHaveLength(6);
     expect(view.querySelector('input[name="rate-rate-row-1"]')?.getAttribute("aria-label")).toContain("row 1");
@@ -123,6 +162,16 @@ describe("RateDataInput", () => {
     await click(button(view, "Clear"));
     expect(readValue(view).points).toHaveLength(6);
     expect(readValue(view).points.every(({ rate, capacity }) => rate === null && capacity === null)).toBe(true);
+  });
+
+  it("scopes the radio group name to each RateDataInput instance", async () => {
+    const view = await render(<><InputHarness /><InputHarness /></>);
+    const radios = [...view.querySelectorAll<HTMLInputElement>('input[type="radio"][value="manual"], input[type="radio"][value="upload"]')];
+    const names = new Set(radios.map(({ name }) => name));
+
+    expect(radios).toHaveLength(4);
+    expect(names.size).toBe(2);
+    expect([...names].every((name) => name.startsWith("rate-input-mode-"))).toBe(true);
   });
 
   it("accepts direct Excel-compatible two-column paste without losing raw units", async () => {
@@ -197,7 +246,8 @@ describe("RateDataInput", () => {
     expect(view.textContent).toContain("Missing values");
     expect(view.textContent).toContain("1");
     expect(view.textContent).toContain("0.1–2");
-    expect(view.textContent).toContain("200–300");
+    expect(view.textContent).toContain("0.1–2 h-1");
+    expect(view.textContent).toContain("200–300 mAh-g-1");
 
     const imported = readValue(view).points;
     expect(imported[0]).toMatchObject({
@@ -215,6 +265,136 @@ describe("RateDataInput", () => {
     expect(view.textContent).toContain("4 invalid rows");
   });
 
+  it("does not swallow a mixed numeric and N/A first data row as a header", async () => {
+    const parseFile = vi.fn(async () => [{
+      name: "Data",
+      rows: [[0.1, "N/A"], [1, 200]],
+    } satisfies TabularSheet]);
+    const view = await render(<InputHarness parseFile={parseFile} />);
+
+    await click(view.querySelector<HTMLInputElement>('input[value="upload"]')!);
+    await upload(view, new File(["ignored"], "mixed.csv"));
+
+    expect(summaryValue(view, "Rows")).toBe("2");
+    expect(summaryValue(view, "Valid points")).toBe("1");
+    expect(summaryValue(view, "Invalid rows")).toBe("1");
+  });
+
+  it("lets users explicitly classify an unrecognized first row as headers or data", async () => {
+    const parseFile = vi.fn(async () => [{
+      name: "Data",
+      rows: [["X", "Y"], [1, 200]],
+    } satisfies TabularSheet]);
+    const view = await render(<InputHarness parseFile={parseFile} />);
+
+    await click(view.querySelector<HTMLInputElement>('input[value="upload"]')!);
+    await upload(view, new File(["ignored"], "unknown.csv"));
+    expect(summaryValue(view, "Rows")).toBe("2");
+
+    const headerSelect = view.querySelector<HTMLSelectElement>('select[aria-label="Header handling"]');
+    expect(headerSelect).not.toBeNull();
+    await change(headerSelect!, "header");
+    expect(summaryValue(view, "Rows")).toBe("1");
+    expect(summaryValue(view, "Valid points")).toBe("1");
+  });
+
+  it.each([
+    ["Clear", "clear"],
+    ["Load example", "example"],
+    ["Manual entry", "manual"],
+  ] as const)("ignores a deferred upload completion after %s invalidates the import session", async (label, action) => {
+    const pending = deferred<TabularSheet[]>();
+    const view = await render(<InputHarness parseFile={() => pending.promise} />);
+    await click(view.querySelector<HTMLInputElement>('input[value="upload"]')!);
+    await upload(view, new File(["ignored"], "slow.csv"));
+
+    if (action === "manual") await click(view.querySelector<HTMLInputElement>('input[value="manual"]')!);
+    else await click(button(view, label));
+    pending.resolve([{ name: "Slow", rows: [["Rate", "Capacity"], [7, 70]] }]);
+    await act(async () => { await pending.promise; await Promise.resolve(); });
+
+    if (action === "example") expect(readValue(view).points[0].id).toBe("rate-example-1");
+    else expect(readValue(view).points.some(({ rate }) => rate === 7)).toBe(false);
+    expect(view.textContent).not.toContain("Slow");
+  });
+
+  it("ignores an older upload when a newer file finishes first", async () => {
+    const first = deferred<TabularSheet[]>();
+    const second = deferred<TabularSheet[]>();
+    const parseFile = vi.fn((file: File) => file.name === "first.csv" ? first.promise : second.promise);
+    const view = await render(<InputHarness parseFile={parseFile} />);
+    await click(view.querySelector<HTMLInputElement>('input[value="upload"]')!);
+    await upload(view, new File(["ignored"], "first.csv"));
+    await upload(view, new File(["ignored"], "second.csv"));
+
+    second.resolve([{ name: "New", rows: [["Rate", "Capacity"], [2, 20]] }]);
+    await act(async () => { await second.promise; await Promise.resolve(); });
+    first.resolve([{ name: "Old", rows: [["Rate", "Capacity"], [1, 10]] }]);
+    await act(async () => { await first.promise; await Promise.resolve(); });
+
+    expect(readValue(view).points[0]).toMatchObject({ rate: 2, capacity: 20 });
+    expect(view.textContent).toContain("New");
+    expect(view.textContent).not.toContain("Old");
+  });
+
+  it("clears stale mapping controls when the parent value is externally replaced", async () => {
+    const parseFile = vi.fn(async () => [{ name: "Mapped", rows: [["Rate", "Capacity"], [1, 200]] }]);
+    const view = await render(<ExternallyMutableInputHarness parseFile={parseFile} />);
+    await click(view.querySelector<HTMLInputElement>('input[value="upload"]')!);
+    await upload(view, new File(["ignored"], "mapped.csv"));
+    expect(view.querySelector('select[aria-label="Rate column"]')).not.toBeNull();
+
+    await click(button(view, "Replace parent value"));
+
+    expect(readValue(view).points[0].id).toBe("external");
+    expect(view.querySelector('select[aria-label="Rate column"]')).toBeNull();
+  });
+
+  it("invalidates a pending upload immediately when the parent value is externally replaced", async () => {
+    const pending = deferred<TabularSheet[]>();
+    const view = await render(<ExternallyMutableInputHarness parseFile={() => pending.promise} />);
+    await click(view.querySelector<HTMLInputElement>('input[value="upload"]')!);
+    await upload(view, new File(["ignored"], "slow.csv"));
+    await click(button(view, "Replace parent value"));
+
+    pending.resolve([{ name: "Slow", rows: [["Rate", "Capacity"], [1, 10]] }]);
+    await act(async () => { await pending.promise; await Promise.resolve(); });
+
+    expect(readValue(view).points[0].id).toBe("external");
+    expect(view.textContent).not.toContain("Slow");
+  });
+
+  it("keeps an import draft when a controlled parent clones emitted values", async () => {
+    const parseFile = vi.fn(async () => [{ name: "Cloned", rows: [["Rate", "Capacity"], [1, 200]] }]);
+    const view = await render(<CloningInputHarness parseFile={parseFile} />);
+    await click(view.querySelector<HTMLInputElement>('input[value="upload"]')!);
+    await upload(view, new File(["ignored"], "cloned.csv"));
+
+    expect(readValue(view).points[0]).toMatchObject({ rate: 1, capacity: 200 });
+    expect(view.querySelector('select[aria-label="Rate column"]')).not.toBeNull();
+    expect(view.textContent).toContain("Cloned");
+  });
+
+  it("inspects and summarizes 125,000 mapped rows without argument spreading or stack overflow", async () => {
+    const rows = Array.from({ length: 125_000 }, (_, index) => [index + 1, index + 2]);
+    const sheet = { name: "Large", rows } satisfies TabularSheet;
+    const onImport = vi.fn();
+    const view = await render(<RateFileImport
+      rateUnit="h-1"
+      capacityUnit="mAh-g-1"
+      onImport={onImport}
+      parseFile={async () => [sheet]}
+    />);
+
+    await upload(view, new File(["ignored"], "large.csv"));
+
+    expect(onImport).toHaveBeenCalledOnce();
+    expect(onImport.mock.calls[0][0]).toHaveLength(125_000);
+    expect(summaryValue(view, "Rows")).toBe("125000");
+    expect(view.textContent).toContain("1–125000 h-1");
+    expect(view.textContent).toContain("2–125001 mAh-g-1");
+  });
+
   it("renders fully labeled Chinese manual and upload controls", async () => {
     const view = await render(<InputHarness />, "zh");
     expect(view.textContent).toContain("手动输入");
@@ -223,6 +403,7 @@ describe("RateDataInput", () => {
     expect(view.textContent).toContain("载入示例");
     expect(view.querySelector('select[aria-label="倍率单位"]')).not.toBeNull();
     expect(view.querySelector('textarea[aria-label="粘贴倍率和容量两列数据"]')).not.toBeNull();
+    expect(view.querySelector('[data-rate-table-viewport="true"]')?.getAttribute("aria-label")).toBe("可滚动倍率数据表");
   });
 });
 
@@ -304,6 +485,24 @@ describe("shared Rate Performance presentation", () => {
     expect(view.textContent).toContain("10 raw points; 1 displayed");
     await click(button(view, "Original data"));
     expect(onCsv).toHaveBeenCalledWith("original.csv", "x,y\r\n1,2");
+  });
+
+  it("contains invalid figure selectors and rejected async exporters even without an error callback", async () => {
+    const invalidSelectorError = vi.fn();
+    const rejectedExport = vi.fn(() => Promise.reject(new Error("png failed")));
+    const view = await render(<>
+      <ExportToolbar csvItems={[]} figureExportId={'"'} onError={invalidSelectorError} />
+      <svg data-export-id="chart" />
+      <ExportToolbar csvItems={[]} figureExportId="chart" onFigureExport={rejectedExport} />
+    </>);
+    const svgButtons = [...view.querySelectorAll("button")].filter(({ textContent }) => textContent === "Export SVG");
+    const pngButtons = [...view.querySelectorAll("button")].filter(({ textContent }) => textContent === "Export PNG");
+
+    await click(svgButtons[0]);
+    expect(invalidSelectorError).toHaveBeenCalledOnce();
+    await click(pngButtons[1]);
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+    expect(rejectedExport).toHaveBeenCalledOnce();
   });
 
   it("localizes example and user result labels distinctly in Chinese", async () => {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   parseTabularFile,
   TabularParseError,
@@ -16,6 +16,8 @@ interface ParsedRateFile {
   readonly sheets: ReadonlyArray<Readonly<TabularSheet>>;
 }
 
+type RateHeaderMode = "auto" | "header" | "data";
+
 export function RateFileImport({
   rateUnit,
   capacityUnit,
@@ -31,30 +33,46 @@ export function RateFileImport({
   const [parsed, setParsed] = useState<ParsedRateFile | null>(null);
   const [sheetIndex, setSheetIndex] = useState(0);
   const [mapping, setMapping] = useState<RateColumnMappingValue>({ rateColumn: 0, capacityColumn: 1 });
+  const [headerMode, setHeaderMode] = useState<RateHeaderMode>("auto");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const generation = useRef(0);
+  const mounted = useRef(true);
+  const latestOnImport = useRef(onImport);
+  latestOnImport.current = onImport;
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      generation.current += 1;
+    };
+  }, []);
 
   const sheet = parsed?.sheets[sheetIndex];
-  const structure = sheet ? inspectSheet(sheet, (column) => t("rate.import.column", { column })) : null;
+  const structure = sheet ? inspectSheet(sheet, (column) => t("rate.import.column", { column }), headerMode) : null;
   const result = parsed && sheet && structure
     ? adaptRateSheet(parsed.fileName, sheet, structure.dataRows, structure.headers, mapping, rateUnit, capacityUnit)
     : null;
 
   async function selectFile(file: File | undefined) {
     if (!file) return;
+    const token = generation.current + 1;
+    generation.current = token;
     setBusy(true);
     setError("");
     try {
       const sheets = await parseFile(file);
+      if (!mounted.current || generation.current !== token) return;
       const usable = sheets.filter(({ rows }) => rows.length > 0);
       if (usable.length === 0) throw new TabularParseError("emptyFile");
       const nextSheet = usable[0];
-      const detected = inspectSheet(nextSheet, (column) => t("rate.import.column", { column }));
+      const detected = inspectSheet(nextSheet, (column) => t("rate.import.column", { column }), headerMode);
       const nextMapping = detectMapping(detected.headers);
       setParsed({ fileName: file.name, sheets: usable });
       setSheetIndex(0);
       setMapping(nextMapping);
-      onImport(adaptRateSheet(
+      latestOnImport.current(adaptRateSheet(
         file.name,
         nextSheet,
         detected.dataRows,
@@ -64,30 +82,48 @@ export function RateFileImport({
         capacityUnit,
       ).points);
     } catch (caught) {
+      if (!mounted.current || generation.current !== token) return;
       setParsed(null);
       setError(t(caught instanceof TabularParseError && caught.code === "resourceLimitExceeded"
         ? "rate.import.resourceLimit"
         : "rate.import.parseError"));
     } finally {
-      setBusy(false);
+      if (mounted.current && generation.current === token) setBusy(false);
     }
   }
 
   function applyMapping(next: RateColumnMappingValue) {
     setMapping(next);
     if (parsed && sheet && structure) {
-      onImport(adaptRateSheet(parsed.fileName, sheet, structure.dataRows, structure.headers, next, rateUnit, capacityUnit).points);
+      latestOnImport.current(adaptRateSheet(parsed.fileName, sheet, structure.dataRows, structure.headers, next, rateUnit, capacityUnit).points);
     }
   }
 
   function applySheet(nextIndex: number) {
     if (!parsed) return;
     const nextSheet = parsed.sheets[nextIndex];
-    const inspected = inspectSheet(nextSheet, (column) => t("rate.import.column", { column }));
+    const inspected = inspectSheet(nextSheet, (column) => t("rate.import.column", { column }), headerMode);
     const nextMapping = detectMapping(inspected.headers);
     setSheetIndex(nextIndex);
     setMapping(nextMapping);
-    onImport(adaptRateSheet(parsed.fileName, nextSheet, inspected.dataRows, inspected.headers, nextMapping, rateUnit, capacityUnit).points);
+    latestOnImport.current(adaptRateSheet(parsed.fileName, nextSheet, inspected.dataRows, inspected.headers, nextMapping, rateUnit, capacityUnit).points);
+  }
+
+  function applyHeaderMode(next: RateHeaderMode) {
+    setHeaderMode(next);
+    if (!parsed || !sheet) return;
+    const inspected = inspectSheet(sheet, (column) => t("rate.import.column", { column }), next);
+    const nextMapping = detectMapping(inspected.headers);
+    setMapping(nextMapping);
+    latestOnImport.current(adaptRateSheet(
+      parsed.fileName,
+      sheet,
+      inspected.dataRows,
+      inspected.headers,
+      nextMapping,
+      rateUnit,
+      capacityUnit,
+    ).points);
   }
 
   return <section className="rate-file-import">
@@ -108,6 +144,17 @@ export function RateFileImport({
           {parsed.sheets.map((item, index) => <option key={`${index}-${item.name}`} value={index}>{item.name}</option>)}
         </select>
       </label> : null}
+      <label>{t("rate.import.headerMode")}
+        <select
+          aria-label={t("rate.import.headerMode")}
+          value={headerMode}
+          onChange={(event) => applyHeaderMode(event.target.value as RateHeaderMode)}
+        >
+          <option value="auto">{t("rate.import.headerAuto")}</option>
+          <option value="header">{t("rate.import.headerPresent")}</option>
+          <option value="data">{t("rate.import.headerAbsent")}</option>
+        </select>
+      </label>
       <ColumnMapping headers={structure.headers} value={mapping} onChange={applyMapping} />
       <DatasetSummary summary={result.summary} />
     </> : null}
@@ -151,18 +198,38 @@ export function adaptRateSheet(
       missingValues,
       rateRange: range(validRates),
       capacityRange: range(validCapacities),
+      rateUnit,
+      capacityUnit,
     },
   };
 }
 
-function inspectSheet(sheet: Readonly<TabularSheet>, columnLabel: (column: number) => string) {
-  const width = Math.max(0, ...sheet.rows.map((row) => row.length));
+function inspectSheet(
+  sheet: Readonly<TabularSheet>,
+  columnLabel: (column: number) => string,
+  headerMode: RateHeaderMode,
+) {
+  let width = 0;
+  for (const row of sheet.rows) width = Math.max(width, row.length);
   const first = sheet.rows[0] ?? [];
-  const hasHeader = first.some((cell) => typeof cell === "string" && cell.trim() !== "");
+  const hasHeader = headerMode === "header" || (headerMode === "auto" && looksLikeHeader(first));
   const headers = Array.from({ length: width }, (_, index) => hasHeader
     ? String(first[index] ?? columnLabel(index + 1)).trim() || columnLabel(index + 1)
     : columnLabel(index + 1));
   return { headers, dataRows: hasHeader ? sheet.rows.slice(1) : sheet.rows };
+}
+
+function looksLikeHeader(row: ReadonlyArray<TabularCell>) {
+  let numericCells = 0;
+  let recognizedLabels = 0;
+  for (const cell of row) {
+    if (typeof cell === "number" || (typeof cell === "string" && cell.trim() !== "" && Number.isFinite(Number(cell)))) {
+      numericCells += 1;
+    } else if (typeof cell === "string" && /(?:^|\b)(?:rate|current|c-rate|capacity|capacit)(?:\b|$)|倍率|电流|容量/i.test(cell.trim())) {
+      recognizedLabels += 1;
+    }
+  }
+  return numericCells === 0 && recognizedLabels > 0;
 }
 
 function detectMapping(headers: ReadonlyArray<string>): RateColumnMappingValue {
@@ -185,7 +252,14 @@ function isMissing(cell: TabularCell | undefined) {
 }
 
 function range(values: ReadonlyArray<number>): readonly [number, number] | null {
-  return values.length === 0 ? null : [Math.min(...values), Math.max(...values)];
+  if (values.length === 0) return null;
+  let minimum = values[0];
+  let maximum = values[0];
+  for (let index = 1; index < values.length; index += 1) {
+    minimum = Math.min(minimum, values[index]);
+    maximum = Math.max(maximum, values[index]);
+  }
+  return [minimum, maximum];
 }
 
 function safeId(value: string) {

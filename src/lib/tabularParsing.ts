@@ -1,5 +1,3 @@
-import readXlsxFile from "read-excel-file/browser";
-
 export const MAX_FILE_BYTES = 20 * 1024 * 1024;
 export const MAX_SHEETS = 50;
 export const MAX_ROWS = 200_000;
@@ -93,6 +91,7 @@ export async function parseTabularFileWithTextParser(
   try {
     const workbookBuffer = await readFileArrayBuffer(file);
     preflightXlsxArchive(workbookBuffer);
+    const { default: readXlsxFile } = await import("read-excel-file/browser");
     const sheets = await readXlsxFile(workbookBuffer);
     if (sheets.length > MAX_SHEETS) throwResourceLimit("sheets", MAX_SHEETS, sheets.length);
     let workbookCells = 0;

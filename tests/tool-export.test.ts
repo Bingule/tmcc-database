@@ -31,6 +31,18 @@ describe("rowsToCsv", () => {
     );
     expect(localeSpy).not.toHaveBeenCalled();
   });
+
+  it("neutralizes spreadsheet formulas in strings while preserving real negative numbers", () => {
+    const csv = rowsToCsv(
+      ["formula", "spaced", "tabbed", "carriage", "plus", "minus text", "at", "number"],
+      [["=1+1", "  =SUM(A1:A2)", "\t+cmd", "\r-evil", "+2", "-2", "@name", -2]],
+    );
+
+    expect(csv).toBe(
+      "formula,spaced,tabbed,carriage,plus,minus text,at,number\r\n"
+      + "'=1+1,'  =SUM(A1:A2),'\t+cmd,\"'\r-evil\",'+2,'-2,'@name,-2",
+    );
+  });
 });
 
 describe("browser downloads", () => {

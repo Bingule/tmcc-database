@@ -2989,6 +2989,7 @@ td button {
 }
 
 .rate-table-frame-scroll {
+  height: calc(61px * 7);
   max-height: calc(61px * 7);
   overflow-x: auto;
   overflow-y: auto;

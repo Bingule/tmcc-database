@@ -13,29 +13,26 @@ export function ExportToolbar({
   figureExportId,
   figureFilename = figureExportId,
   onCsvExport = downloadCsv,
+  onFigureExport = defaultFigureExport,
   onError,
 }: {
   csvItems: ReadonlyArray<Readonly<RateCsvExportItem>>;
   figureExportId?: string;
   figureFilename?: string;
   onCsvExport?: (filename: string, csv: string) => void;
+  onFigureExport?: (svg: SVGSVGElement, type: "svg" | "png", filename: string) => void | Promise<void>;
   onError?: (error: unknown) => void;
 }) {
   const { t } = useI18n();
 
   function figure(type: "svg" | "png") {
-    const svg = figureExportId
-      ? document.querySelector<SVGSVGElement>(`svg[data-export-id="${figureExportId}"]`)
-      : null;
-    if (!svg) {
-      onError?.(new Error("chartUnavailable"));
-      return;
-    }
     try {
-      const task = type === "svg"
-        ? downloadSvg(svg, `${figureFilename}.svg`)
-        : downloadPng(svg, `${figureFilename}.png`);
-      if (task instanceof Promise) task.catch(onError);
+      const svg = figureExportId
+        ? document.querySelector<SVGSVGElement>(`svg[data-export-id="${figureExportId}"]`)
+        : null;
+      if (!svg) throw new Error("chartUnavailable");
+      const task = onFigureExport(svg, type, `${figureFilename}.${type}`);
+      Promise.resolve(task).catch((error: unknown) => { onError?.(error); });
     } catch (error) {
       onError?.(error);
     }
@@ -51,4 +48,8 @@ export function ExportToolbar({
       </> : null}
     </div>
   </section>;
+}
+
+function defaultFigureExport(svg: SVGSVGElement, type: "svg" | "png", filename: string) {
+  return type === "svg" ? downloadSvg(svg, filename) : downloadPng(svg, filename);
 }

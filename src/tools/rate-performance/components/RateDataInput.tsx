@@ -1,3 +1,4 @@
+import { useId, useRef, useState } from "react";
 import { useI18n } from "../../../i18n/I18nProvider";
 import type { TabularSheet } from "../../../lib/tabularParsing";
 import { RATE_PERFORMANCE_EXAMPLE } from "../data/rateExamples";
@@ -30,11 +31,44 @@ export function RateDataInput({
   parseFile?: (file: File) => Promise<TabularSheet[]>;
 }) {
   const { t } = useI18n();
+  const inputId = useId();
+  const radioName = `rate-input-mode-${inputId}`;
+  const [importSession, setImportSession] = useState(0);
+  const latestValue = useRef(value);
+  const previousValue = useRef(value);
+  const lastEmittedValue = useRef<RateDataInputValue | null>(null);
+  const externalRevision = useRef(0);
+  if (previousValue.current !== value) {
+    const originatedHere = lastEmittedValue.current !== null
+      && equalRateDataInputValue(lastEmittedValue.current, value);
+    previousValue.current = value;
+    lastEmittedValue.current = null;
+    if (!originatedHere && value.mode === "upload") externalRevision.current += 1;
+  }
+  latestValue.current = value;
+
   const rateUnit: RateUnit = value.points[0]?.rateUnit ?? "h-1";
   const capacityUnit: CapacityUnit = value.points[0]?.capacityUnit ?? "mAh-g-1";
 
+  function emit(next: RateDataInputValue) {
+    latestValue.current = next;
+    lastEmittedValue.current = next;
+    onChange(next);
+  }
+
+  function invalidateImport() {
+    setImportSession((session) => session + 1);
+  }
+
   function points(next: ReadonlyArray<Readonly<RatePoint>>) {
-    onChange({ ...value, points: next.map((point) => ({ ...point })) });
+    const current = latestValue.current;
+    emit({ ...current, points: next.map((point) => ({ ...point })) });
+  }
+
+  function importedPoints(next: ReadonlyArray<Readonly<RatePoint>>) {
+    const current = latestValue.current;
+    if (current.mode !== "upload") return;
+    emit({ ...current, points: next.map((point) => ({ ...point })) });
   }
 
   function setRateUnit(next: RateUnit) {
@@ -43,7 +77,7 @@ export function RateDataInput({
       : next === "C-rate"
         ? { theoreticalCapacity: value.normalizationContext.theoreticalCapacity }
         : {};
-    onChange({
+    emit({
       ...value,
       points: value.points.map((point) => ({ ...point, rateUnit: next })),
       normalizationContext,
@@ -51,19 +85,21 @@ export function RateDataInput({
   }
 
   function setCapacityUnit(next: CapacityUnit) {
-    onChange({
+    emit({
       ...value,
       points: value.points.map((point) => ({ ...point, capacityUnit: next })),
     });
   }
 
   function clear() {
+    invalidateImport();
     const blank = createBlankRatePoints().map((point) => ({ ...point, rateUnit, capacityUnit }));
-    onChange({ ...value, points: blank });
+    emit({ ...latestValue.current, points: blank });
   }
 
   function example() {
-    onChange({
+    invalidateImport();
+    emit({
       mode: "manual",
       points: RATE_PERFORMANCE_EXAMPLE.points.map((point) => ({ ...point })),
       normalizationContext: RATE_PERFORMANCE_EXAMPLE.normalizationContext ?? {},
@@ -76,17 +112,23 @@ export function RateDataInput({
       <legend>{t("rate.input.source")}</legend>
       <label><input
         type="radio"
-        name="rate-input-mode"
+        name={radioName}
         value="manual"
         checked={value.mode === "manual"}
-        onChange={() => onChange({ ...value, mode: "manual" })}
+        onChange={() => {
+          invalidateImport();
+          emit({ ...latestValue.current, mode: "manual" });
+        }}
       />{t("rate.input.manual")}</label>
       <label><input
         type="radio"
-        name="rate-input-mode"
+        name={radioName}
         value="upload"
         checked={value.mode === "upload"}
-        onChange={() => onChange({ ...value, mode: "upload" })}
+        onChange={() => {
+          invalidateImport();
+          emit({ ...latestValue.current, mode: "upload" });
+        }}
       />{t("rate.input.upload")}</label>
     </fieldset>
     <div className="rate-unit-controls">
@@ -109,7 +151,7 @@ export function RateDataInput({
       type="checkbox"
       aria-label={t("rate.input.confirmMeasured")}
       checked={value.normalizationContext.confirmHInverseMeasuredRate === true}
-      onChange={(event) => onChange({
+      onChange={(event) => emit({
         ...value,
         normalizationContext: { confirmHInverseMeasuredRate: event.target.checked },
       })}
@@ -121,7 +163,7 @@ export function RateDataInput({
           step="any"
           aria-label={t("rate.input.theoreticalCapacity")}
           value={value.normalizationContext.theoreticalCapacity?.value ?? ""}
-          onChange={(event) => onChange({
+          onChange={(event) => emit({
             ...value,
             normalizationContext: event.target.value === "" ? {} : {
               theoreticalCapacity: {
@@ -135,7 +177,7 @@ export function RateDataInput({
       <label>{t("rate.input.theoreticalUnit")}
         <select
           value={value.normalizationContext.theoreticalCapacity?.unit ?? capacityUnit}
-          onChange={(event) => onChange({
+          onChange={(event) => emit({
             ...value,
             normalizationContext: value.normalizationContext.theoreticalCapacity ? {
               theoreticalCapacity: { ...value.normalizationContext.theoreticalCapacity, unit: event.target.value as CapacityUnit },
@@ -150,10 +192,33 @@ export function RateDataInput({
     <p className="rate-unit-notice">{t("rate.input.unitNotice")}</p>
     {value.mode === "manual"
       ? <ManualRateTable points={value.points} rateUnit={rateUnit} capacityUnit={capacityUnit} onChange={points} />
-      : <RateFileImport rateUnit={rateUnit} capacityUnit={capacityUnit} onImport={points} parseFile={parseFile} />}
+      : <RateFileImport
+        key={`${importSession}-${externalRevision.current}`}
+        rateUnit={rateUnit}
+        capacityUnit={capacityUnit}
+        onImport={importedPoints}
+        parseFile={parseFile}
+      />}
     <div className="rate-input-actions">
       <button type="button" onClick={clear}>{t("rate.input.clear")}</button>
       <button type="button" onClick={example}>{t("rate.input.loadExample")}</button>
     </div>
   </section>;
+}
+
+function equalRateDataInputValue(left: Readonly<RateDataInputValue>, right: Readonly<RateDataInputValue>) {
+  if (left.mode !== right.mode || left.points.length !== right.points.length) return false;
+  if (left.normalizationContext.confirmHInverseMeasuredRate !== right.normalizationContext.confirmHInverseMeasuredRate) return false;
+  const leftTheoretical = left.normalizationContext.theoreticalCapacity;
+  const rightTheoretical = right.normalizationContext.theoreticalCapacity;
+  if (!Object.is(leftTheoretical?.value, rightTheoretical?.value) || leftTheoretical?.unit !== rightTheoretical?.unit) return false;
+  return left.points.every((point, index) => {
+    const candidate = right.points[index];
+    return candidate !== undefined
+      && point.id === candidate.id
+      && Object.is(point.rate, candidate.rate)
+      && point.rateUnit === candidate.rateUnit
+      && Object.is(point.capacity, candidate.capacity)
+      && point.capacityUnit === candidate.capacityUnit;
+  });
 }

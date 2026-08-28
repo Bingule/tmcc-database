@@ -38,7 +38,9 @@ export async function downloadPng(svg: SVGSVGElement, filename: string): Promise
 function csvCell(value: string | number | null): string {
   let text = "";
   if (typeof value === "number") text = Number.isFinite(value) ? String(value) : "";
-  else if (value !== null) text = value;
+  else if (value !== null) {
+    text = /^[=+\-@]/.test(value.trimStart()) ? `'${value}` : value;
+  }
   return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 

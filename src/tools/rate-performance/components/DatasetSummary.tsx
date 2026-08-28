@@ -1,4 +1,5 @@
 import { useI18n } from "../../../i18n/I18nProvider";
+import type { CapacityUnit, RateUnit } from "../models/types";
 
 export interface RateImportSummary {
   readonly fileName: string;
@@ -12,12 +13,14 @@ export interface RateImportSummary {
   readonly missingValues: number;
   readonly rateRange: readonly [number, number] | null;
   readonly capacityRange: readonly [number, number] | null;
+  readonly rateUnit: RateUnit;
+  readonly capacityUnit: CapacityUnit;
 }
 
 export function DatasetSummary({ summary }: { summary: Readonly<RateImportSummary> }) {
   const { t } = useI18n();
-  const range = (value: readonly [number, number] | null) => value
-    ? `${format(value[0])}–${format(value[1])}`
+  const range = (value: readonly [number, number] | null, unit: string) => value
+    ? `${format(value[0])}–${format(value[1])} ${unit}`
     : t("rate.import.noRange");
   return <section className="rate-import-summary" aria-live="polite">
     <h3>{t("rate.import.summary")}</h3>
@@ -31,8 +34,8 @@ export function DatasetSummary({ summary }: { summary: Readonly<RateImportSummar
       <SummaryItem label={t("rate.import.valid")} value={summary.validPoints} />
       <SummaryItem label={t("rate.import.invalid")} value={summary.invalidRows} />
       <SummaryItem label={t("rate.import.missing")} value={summary.missingValues} />
-      <SummaryItem label={t("rate.import.rateRange")} value={range(summary.rateRange)} />
-      <SummaryItem label={t("rate.import.capacityRange")} value={range(summary.capacityRange)} />
+      <SummaryItem label={t("rate.import.rateRange")} value={range(summary.rateRange, summary.rateUnit)} />
+      <SummaryItem label={t("rate.import.capacityRange")} value={range(summary.capacityRange, summary.capacityUnit)} />
     </dl>
     <p className="rate-import-counts">
       {t("rate.import.counts", {

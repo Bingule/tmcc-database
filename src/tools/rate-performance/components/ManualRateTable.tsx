@@ -56,7 +56,13 @@ export function ManualRateTable({
     <div className="rate-manual-toolbar">
       <button type="button" onClick={() => onChange([...points.map((point) => ({ ...point })), blankNext(points, rateUnit, capacityUnit)])}>{t("rate.input.addRow")}</button>
     </div>
-    <div className="tool-table-wrap rate-table-frame-scroll" data-rate-table-viewport="true" data-visible-rows="6" tabIndex={0}>
+    <div
+      className="tool-table-wrap rate-table-frame-scroll"
+      data-rate-table-viewport="true"
+      data-visible-rows="6"
+      tabIndex={0}
+      aria-label={t("rate.input.tableViewport")}
+    >
       <table>
         <thead><tr>
           <th>{t("rate.input.row")}</th>
