@@ -86,6 +86,27 @@ function RerenderingInputHarness({ parseFile }: { parseFile: (file: File) => Pro
   </>;
 }
 
+function RecreatedValueInputHarness({
+  parseFile,
+  deep,
+}: {
+  parseFile: (file: File) => Promise<TabularSheet[]>;
+  deep: boolean;
+}) {
+  const [stored, setStored] = useState(createInitialRateDataInputValue());
+  const [, setRevision] = useState(0);
+  const value: RateDataInputValue = {
+    ...stored,
+    points: deep ? stored.points.map((point) => ({ ...point })) : stored.points,
+    normalizationContext: deep ? { ...stored.normalizationContext } : stored.normalizationContext,
+  };
+  return <>
+    <RateDataInput value={value} onChange={setStored} parseFile={parseFile} />
+    <button type="button" onClick={() => setRevision((revision) => revision + 1)}>Rerender parent</button>
+    <output data-testid="rate-input-value">{JSON.stringify(stored)}</output>
+  </>;
+}
+
 async function render(ui: React.ReactNode, language: "en" | "zh" = "en") {
   localStorage.setItem("tmcc-language", language);
   const container = document.createElement("div");
@@ -388,6 +409,23 @@ describe("RateDataInput", () => {
 
     expect(readValue(view).points[0]).toMatchObject({ rate: 2, capacity: 20, rateUnit: "h-1", capacityUnit: "mAh-g-1" });
     expect(view.textContent).toContain("Current");
+  });
+
+  it.each([
+    ["new outer value with shared nested references", false],
+    ["deep-equivalent controlled clone", true],
+  ] as const)("keeps a pending upload across an unrelated rerender using a %s", async (_label, deep) => {
+    const pending = deferred<TabularSheet[]>();
+    const view = await render(<RecreatedValueInputHarness parseFile={() => pending.promise} deep={deep} />);
+    await click(view.querySelector<HTMLInputElement>('input[value="upload"]')!);
+    await upload(view, new File(["ignored"], "semantic-current.csv"));
+    await click(button(view, "Rerender parent"));
+
+    pending.resolve([{ name: "Semantic current", rows: [["Rate", "Capacity"], [3, 30]] }]);
+    await act(async () => { await pending.promise; await Promise.resolve(); });
+
+    expect(readValue(view).points[0]).toMatchObject({ rate: 3, capacity: 30 });
+    expect(view.textContent).toContain("Semantic current");
   });
 
   it("clears stale mapping controls when the parent value is externally replaced", async () => {

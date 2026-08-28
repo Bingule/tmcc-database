@@ -41,11 +41,15 @@ export function RateDataInput({
   useLayoutEffect(() => {
     latestValue.current = value;
     if (previousValue.current === value) return;
-    const originatedHere = lastEmittedValue.current !== null
-      && equalRateDataInputValue(lastEmittedValue.current, value);
+    const semanticallyChanged = !sameRateInputValue(previousValue.current, value);
+    const originatedHere = semanticallyChanged
+      && lastEmittedValue.current !== null
+      && sameRateInputValue(lastEmittedValue.current, value);
     previousValue.current = value;
     lastEmittedValue.current = null;
-    if (!originatedHere && value.mode === "upload") setImportSession((session) => session + 1);
+    if (semanticallyChanged && !originatedHere && value.mode === "upload") {
+      setImportSession((session) => session + 1);
+    }
   }, [value]);
 
   const rateUnit: RateUnit = value.points[0]?.rateUnit ?? "h-1";
@@ -211,19 +215,32 @@ export function RateDataInput({
   </section>;
 }
 
-function equalRateDataInputValue(left: Readonly<RateDataInputValue>, right: Readonly<RateDataInputValue>) {
+function sameRateInputValue(left: Readonly<RateDataInputValue>, right: Readonly<RateDataInputValue>) {
+  if (left === right) return true;
   if (left.mode !== right.mode || left.points.length !== right.points.length) return false;
-  if (left.normalizationContext.confirmHInverseMeasuredRate !== right.normalizationContext.confirmHInverseMeasuredRate) return false;
-  const leftTheoretical = left.normalizationContext.theoreticalCapacity;
-  const rightTheoretical = right.normalizationContext.theoreticalCapacity;
-  if (!Object.is(leftTheoretical?.value, rightTheoretical?.value) || leftTheoretical?.unit !== rightTheoretical?.unit) return false;
+  if (!sameNormalizationContext(left.normalizationContext, right.normalizationContext)) return false;
+  if (left.points === right.points) return true;
   return left.points.every((point, index) => {
     const candidate = right.points[index];
-    return candidate !== undefined
+    return point === candidate || (candidate !== undefined
       && point.id === candidate.id
       && Object.is(point.rate, candidate.rate)
       && point.rateUnit === candidate.rateUnit
       && Object.is(point.capacity, candidate.capacity)
-      && point.capacityUnit === candidate.capacityUnit;
+      && point.capacityUnit === candidate.capacityUnit);
   });
+}
+
+function sameNormalizationContext(
+  left: Readonly<RateNormalizationContext>,
+  right: Readonly<RateNormalizationContext>,
+) {
+  if (left === right) return true;
+  if (left.confirmHInverseMeasuredRate !== right.confirmHInverseMeasuredRate) return false;
+  const leftTheoretical = left.theoreticalCapacity;
+  const rightTheoretical = right.theoreticalCapacity;
+  return leftTheoretical === rightTheoretical || (
+    Object.is(leftTheoretical?.value, rightTheoretical?.value)
+    && leftTheoretical?.unit === rightTheoretical?.unit
+  );
 }
