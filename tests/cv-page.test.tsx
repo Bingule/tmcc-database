@@ -935,10 +935,15 @@ describe("CV kinetics page", () => {
 
     const chart = view.querySelector('[data-export-id="cv-dunn-chart"]')!;
     const originalXs = pathXs(chart.querySelector<SVGPathElement>('[data-series-id="original"]')?.getAttribute("d") ?? "");
-    const boundaryXs = ["capacitive-forward", "capacitive-reverse"].flatMap((id) =>
-      pathXs(chart.querySelector<SVGPathElement>(`[data-series-id="${id}"]`)?.getAttribute("d") ?? ""));
-    expect(Math.min(...boundaryXs)).toBeCloseTo(Math.min(...originalXs), 10);
-    expect(Math.max(...boundaryXs)).toBeCloseTo(Math.max(...originalXs), 10);
+    const expectedMinimum = Math.min(...originalXs);
+    const expectedMaximum = Math.max(...originalXs);
+    for (const id of ["capacitive-forward", "capacitive-reverse"]) {
+      const boundaryXs = pathXs(
+        chart.querySelector<SVGPathElement>(`[data-series-id="${id}"]`)?.getAttribute("d") ?? ""
+      );
+      expect(Math.min(...boundaryXs)).toBeCloseTo(expectedMinimum, 10);
+      expect(Math.max(...boundaryXs)).toBeCloseTo(expectedMaximum, 10);
+    }
   });
 
   it("retains quality counts when every R-squared value is below 0.95", async () => {

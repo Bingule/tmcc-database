@@ -1002,11 +1002,36 @@ function makeBranchBoundaryPoints(
       insideRun = false;
       continue;
     }
-    if (!insideRun && points.length > 0) points.push({ x: point.potential, y: null });
+    if (!insideRun) {
+      if (points.length > 0) points.push({ x: point.potential, y: null });
+      const turning = plotPath[index - 1];
+      if (turning
+        && turning.branch !== branch
+        && isDisplaySharedTurningPoint(plotPath[index - 2], turning, point)) {
+        points.push({ x: turning.potential, y: turning.capacitiveCurrent });
+      }
+    }
     points.push({ x: point.potential, y: point.capacitiveCurrent });
+    const turning = plotPath[index + 1];
+    if (turning
+      && turning.branch !== branch
+      && isDisplaySharedTurningPoint(point, turning, plotPath[index + 2])) {
+      points.push({ x: turning.potential, y: turning.capacitiveCurrent });
+    }
     insideRun = true;
   }
   return points;
+}
+
+function isDisplaySharedTurningPoint(
+  previous: DunnContribution["plotPath"][number] | undefined,
+  turning: DunnContribution["plotPath"][number],
+  next: DunnContribution["plotPath"][number] | undefined
+): boolean {
+  if (!previous || !next || turning.synthetic || previous.branch === next.branch) return false;
+  const incoming = turning.potential - previous.potential;
+  const outgoing = next.potential - turning.potential;
+  return incoming !== 0 && outgoing !== 0 && incoming * outgoing < 0;
 }
 
 export function makeDunnPolygons(
