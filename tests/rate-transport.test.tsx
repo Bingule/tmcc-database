@@ -1,11 +1,12 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it } from "vitest";
-import { I18nProvider } from "../src/i18n/I18nProvider";
+import { I18nProvider, useI18n } from "../src/i18n/I18nProvider";
 import {
   calculateTransportTimes,
   calculateUnresolvedTime,
   createTransportSensitivitySeries,
+  getTransportInputDefinition,
   type TaggedTransportQuantity,
   type TransportTimeInput,
   type TransportInputKey,
@@ -47,6 +48,21 @@ async function changeInput(target: HTMLInputElement, value: string) {
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(target, value);
     target.dispatchEvent(new Event("change", { bubbles: true }));
   });
+}
+
+async function changeSelect(target: HTMLSelectElement, value: string) {
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")?.set?.call(target, value);
+    target.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+}
+
+function LanguageSwitchHarness({ children }: { children: React.ReactNode }) {
+  const { setLanguage } = useI18n();
+  return <>
+    <button type="button" onClick={() => setLanguage("zh")}>Switch to Chinese</button>
+    {children}
+  </>;
 }
 
 function quantity<Unit extends TransportUnit>(
@@ -133,6 +149,7 @@ describe("Tian Eq. 5a-6a transport times", () => {
     const result = calculateTransportTimes({});
     expect(result.complete).toBe(false);
     expect(result.relativeContributions).toBeUndefined();
+    expect(result.terms.every((term) => term.invalidInputs.length === 0)).toBe(true);
     expect(result.terms.map((term) => [term.id, term.status, term.missingInputs])).toEqual([
       ["electrode-electronic", "unavailable", ["electrodeThickness", "effectiveVolumetricCapacitance", "electrodeConductivity"]],
       ["pore-ionic-electrical", "unavailable", ["electrodeThickness", "effectiveVolumetricCapacitance", "bulkElectrolyteConductivity", "electrodePorosity"]],
@@ -153,16 +170,68 @@ describe("Tian Eq. 5a-6a transport times", () => {
       activeMaterialDiffusivity: quantity(Number.NaN, "m2-s-1"),
     });
     expect(result.invalidInputs).toEqual([
-      "electrodeConductivity",
-      "separatorPorosity",
-      "activeMaterialDiffusivity",
+      { key: "electrodeConductivity", reason: "non-positive" },
+      { key: "separatorPorosity", reason: "out-of-range" },
+      { key: "activeMaterialDiffusivity", reason: "non-finite" },
     ]);
-    expect(result.terms.find(({ id }) => id === "electrode-electronic")?.missingInputs)
-      .toContain("electrodeConductivity");
-    expect(result.terms.find(({ id }) => id === "separator-diffusion")?.missingInputs)
-      .toContain("separatorPorosity");
-    expect(result.terms.find(({ id }) => id === "active-material-diffusion")?.missingInputs)
-      .toContain("activeMaterialDiffusivity");
+    expect(result.terms.find(({ id }) => id === "electrode-electronic")).toMatchObject({
+      status: "unavailable",
+      missingInputs: [],
+      invalidInputs: [{ key: "electrodeConductivity", reason: "non-positive" }],
+      unavailabilityReason: "invalid-inputs",
+    });
+    expect(result.terms.find(({ id }) => id === "separator-diffusion")).toMatchObject({
+      missingInputs: [],
+      invalidInputs: [{ key: "separatorPorosity", reason: "out-of-range" }],
+    });
+    expect(result.terms.find(({ id }) => id === "active-material-diffusion")).toMatchObject({
+      missingInputs: [],
+      invalidInputs: [{ key: "activeMaterialDiffusivity", reason: "non-finite" }],
+    });
+  });
+
+  it("records SI-conversion overflow separately from missing inputs", () => {
+    const result = calculateTransportTimes({
+      ...completeInput(),
+      effectiveVolumetricCapacitance: quantity(1e308, "F-cm-3"),
+    });
+    expect(result.invalidInputs).toContainEqual({
+      key: "effectiveVolumetricCapacitance",
+      reason: "numerical-overflow",
+    });
+    expect(result.terms.find(({ id }) => id === "electrode-electronic")).toMatchObject({
+      status: "unavailable",
+      missingInputs: [],
+      invalidInputs: [{ key: "effectiveVolumetricCapacitance", reason: "numerical-overflow" }],
+      unavailabilityReason: "invalid-inputs",
+    });
+  });
+
+  it("never exposes nonfinite or underflowed term results as available", () => {
+    const overflow = calculateTransportTimes({
+      ...completeInput(),
+      electrodeThickness: quantity(1e200, "m"),
+      effectiveVolumetricCapacitance: quantity(1, "F-m-3"),
+      electrodeConductivity: quantity(1, "S-m-1"),
+    }).terms.find(({ id }) => id === "electrode-electronic");
+    expect(overflow).toMatchObject({
+      status: "unavailable",
+      missingInputs: [],
+      invalidInputs: [],
+      unavailabilityReason: "numerical-overflow",
+    });
+
+    const underflow = calculateTransportTimes({
+      ...completeInput(),
+      activeMaterialLength: quantity(Number.MIN_VALUE, "m"),
+      activeMaterialDiffusivity: quantity(1, "m2-s-1"),
+    }).terms.find(({ id }) => id === "active-material-diffusion");
+    expect(underflow).toMatchObject({
+      status: "unavailable",
+      missingInputs: [],
+      invalidInputs: [],
+      unavailabilityReason: "numerical-underflow",
+    });
   });
 
   it("creates relative contributions only for a complete positive finite decomposition", () => {
@@ -188,8 +257,25 @@ describe("Tian Eq. 5a-6a transport times", () => {
     });
     expect(result.terms.every(({ status }) => status === "available")).toBe(true);
     expect(result.complete).toBe(false);
-    expect(result.aggregates.calculatedTotal.status).toBe("unavailable");
+    expect(result.aggregates.calculatedTotal).toMatchObject({
+      status: "unavailable",
+      unavailabilityReason: "numerical-overflow",
+    });
     expect(result.relativeContributions).toBeUndefined();
+  });
+
+  it("provides a dedicated partial sum with included term IDs and partial-only provenance", () => {
+    const result = calculateTransportTimes({
+      kineticTime: quantity(25, "s", "user-input", "Kinetic estimate"),
+    });
+    expect(result.aggregates.availablePartialSum).toMatchObject({
+      status: "available",
+      value: 25,
+      includedTermIds: ["kinetic"],
+    });
+    expect(result.aggregates.availablePartialSum.provenance).toContain("term 7");
+    expect(result.aggregates.availablePartialSum.provenance).not.toContain("all seven");
+    expect(result.aggregates.calculatedTotal.status).toBe("unavailable");
   });
 });
 
@@ -229,14 +315,59 @@ describe("unresolved fitted characteristic time", () => {
     expect(calculateUnresolvedTime(undefined, calculateTransportTimes({}).terms)).toEqual({
       status: "unavailable",
       missingInputs: ["fittedTau"],
+      invalidInputs: [],
+      unavailabilityReason: "missing-inputs",
       unit: "s",
       type: "derived",
       provenance: "Difference between fitted tau and the sum of available Tian et al. (2019), Eq. 6a components.",
     });
   });
+
+  it("rejects fitted-time conversion and component-sum overflow with typed reasons", () => {
+    expect(calculateUnresolvedTime(
+      quantity(1e308, "h", "user-input", "User comparison time"),
+      calculateTransportTimes(completeInput()).terms,
+    )).toMatchObject({
+      status: "unavailable",
+      missingInputs: [],
+      invalidInputs: [{ key: "fittedTau", reason: "numerical-overflow" }],
+      unavailabilityReason: "invalid-inputs",
+    });
+
+    const overflowingComponents = calculateTransportTimes({
+      ...completeInput(),
+      activeMaterialLength: quantity(1, "m"),
+      activeMaterialDiffusivity: quantity(1e-308, "m2-s-1"),
+      kineticTime: quantity(1e308, "s"),
+    }).terms;
+    expect(calculateUnresolvedTime(
+      quantity(1, "s", "user-input", "User comparison time"),
+      overflowingComponents,
+    )).toMatchObject({
+      status: "unavailable",
+      missingInputs: [],
+      invalidInputs: [],
+      unavailabilityReason: "numerical-overflow",
+    });
+  });
 });
 
 describe("deterministic one-at-a-time sensitivity", () => {
+  it("publishes physical bounds and adapts a P_E=0.9 sweep to five valid deterministic points", () => {
+    expect(getTransportInputDefinition("electrodePorosity").bounds).toEqual({
+      exclusiveMinimum: 0,
+      inclusiveMaximum: 1,
+    });
+    const input = { ...completeInput(), electrodePorosity: quantity(0.9, "fraction") };
+    const series = createTransportSensitivitySeries(input, "electrodePorosity");
+    expect(series.requestedRange).toEqual({ minimumFactor: 0.5, maximumFactor: 1.5, steps: 5 });
+    expect(series.range.minimumFactor).toBe(0.5);
+    expect(series.range.maximumFactor).toBeCloseTo(1 / 0.9, 12);
+    expect(series.points).toHaveLength(5);
+    expect(series.points.every((point) => point.status === "available" && Number.isFinite(point.totalSeconds))).toBe(true);
+    expect(series.points.map(({ inputValue }) => inputValue).every((value) => value > 0 && value <= 1)).toBe(true);
+  });
+
   it("discloses its baseline and range and changes only one input", () => {
     const input = completeInput();
     const series = createTransportSensitivitySeries(input, "electrodeThickness", {
@@ -296,8 +427,23 @@ describe("transport and characteristic-time pages", () => {
     expect(view.textContent).toContain("Illustrative example; replace with measured values");
     expect(view.textContent).toContain("Relative contributions — complete model only");
     expect(view.textContent).toContain("Deterministic one-at-a-time sensitivity");
-    expect(view.textContent).toContain("50% to 150% of the disclosed baseline");
+    expect(view.textContent).toContain("physically valid range");
+    expect(view.textContent).toContain("50%–150%");
+    expect(view.querySelector(".rate-transport-dynamic[aria-live='polite']")).not.toBeNull();
+    expect(view.querySelector(".rate-transport-dynamic .rate-results-example")).not.toBeNull();
+    expect(view.querySelector(".rate-transport-dynamic .rate-results-user")).toBeNull();
     expect(view.querySelector("svg")).not.toBeNull();
+    await unmount();
+  });
+
+  it("marks the hard-coded comparison time as an assumed example", async () => {
+    const { view, unmount } = await renderPage(<CharacteristicTimePage />);
+    await click(view, "Try Example Inputs");
+    const comparisonCard = [...view.querySelectorAll(".rate-result-card")]
+      .find((card) => card.querySelector("dt")?.textContent === "Comparison total τ");
+    expect(comparisonCard?.textContent).toContain("Assumed");
+    expect(comparisonCard?.textContent).toContain("Illustrative example");
+    expect(comparisonCard?.textContent).not.toContain("Fitted");
     await unmount();
   });
 
@@ -307,9 +453,76 @@ describe("transport and characteristic-time pages", () => {
     if (!electrodeThickness) throw new Error("Electrode thickness input not found.");
     await changeInput(electrodeThickness, "100");
     await click(view, "Calculate Times");
-    expect(view.textContent).toContain("Unavailable — missing");
+    expect(view.textContent).toContain("Unavailable — Missing");
     expect(view.textContent).not.toContain("Relative contributions — complete model only");
     expect(view.textContent).not.toMatch(/\d+(?:\.\d+)?%/);
+    await unmount();
+  });
+
+  it("labels manual comparison time as user input", async () => {
+    const { view, unmount } = await renderPage(<CharacteristicTimePage />);
+    await changeInput(view.querySelector("input[name='fittedTau']") as HTMLInputElement, "0.5");
+    await changeInput(view.querySelector("input[name='kineticTime']") as HTMLInputElement, "25");
+    await click(view, "Calculate Times");
+    const comparisonCard = [...view.querySelectorAll(".rate-result-card")]
+      .find((card) => card.querySelector("dt")?.textContent === "Comparison total τ");
+    expect(comparisonCard?.textContent).toContain("User Input");
+    expect(comparisonCard?.textContent).toContain("Value entered in this tool");
+    expect(comparisonCard?.textContent).not.toContain("Fitted");
+    expect(view.querySelector(".rate-transport-dynamic .rate-results-user")).not.toBeNull();
+    await unmount();
+  });
+
+  it("gives partial sums dedicated provenance with included term IDs", async () => {
+    const { view, unmount } = await renderPage(<TransportLimitationPage />);
+    await changeInput(view.querySelector("input[name='kineticTime']") as HTMLInputElement, "25");
+    await click(view, "Calculate Times");
+    const partialCard = [...view.querySelectorAll(".rate-result-card")]
+      .find((card) => card.querySelector("dt")?.textContent === "Sum of available components");
+    expect(partialCard?.textContent).toContain("Included Eq. 6a terms: 7");
+    expect(partialCard?.textContent).not.toContain("all seven");
+    await unmount();
+  });
+
+  it("distinguishes missing and invalid term inputs in the UI", async () => {
+    const { view, unmount } = await renderPage(<TransportLimitationPage />);
+    await changeInput(view.querySelector("input[name='electrodeConductivity']") as HTMLInputElement, "0");
+    await click(view, "Calculate Times");
+    const row = view.querySelector("[data-transport-term='electrode-electronic']");
+    expect(row?.textContent).toContain("Missing:");
+    expect(row?.textContent).toContain("Electrode thickness L_E");
+    expect(row?.textContent).toContain("Invalid:");
+    expect(row?.textContent).toContain("must be positive");
+    await unmount();
+  });
+
+  it("adapts porosity sensitivity to five valid points and puts the selected unit on the x-axis", async () => {
+    const { view, unmount } = await renderPage(<CharacteristicTimePage />);
+    await click(view, "Try Example Inputs");
+    await changeInput(view.querySelector("input[name='electrodePorosity']") as HTMLInputElement, "0.9");
+    await click(view, "Calculate Times");
+    const select = view.querySelector(".rate-transport-sensitivity select") as HTMLSelectElement;
+    await changeSelect(select, "electrodePorosity");
+    const sensitivity = view.querySelector(".rate-transport-sensitivity");
+    expect(sensitivity?.textContent).toContain("50%–111.111%");
+    expect(sensitivity?.textContent).toContain("5/5 valid points");
+    expect(sensitivity?.textContent).toContain("Selected input value (1)");
+    expect(sensitivity?.textContent).not.toContain("50% to 150%");
+    await unmount();
+  });
+
+  it("discloses the step and reason when a numerical OAT point is unavailable", async () => {
+    const { view, unmount } = await renderPage(<CharacteristicTimePage />);
+    await click(view, "Try Example Inputs");
+    await changeInput(view.querySelector("input[name='activeMaterialLength']") as HTMLInputElement, "1000000");
+    await changeInput(view.querySelector("input[name='activeMaterialDiffusivity']") as HTMLInputElement, "2e-308");
+    await changeInput(view.querySelector("input[name='kineticTime']") as HTMLInputElement, "1.1e308");
+    await click(view, "Calculate Times");
+    await changeSelect(view.querySelector(".rate-transport-sensitivity select") as HTMLSelectElement, "kineticTime");
+    const sensitivity = view.querySelector(".rate-transport-sensitivity");
+    expect(sensitivity?.textContent).toContain("Unavailable sensitivity points");
+    expect(sensitivity?.textContent).toContain("Step 4");
+    expect(sensitivity?.textContent).toContain("numerical overflow");
     await unmount();
   });
 
@@ -324,7 +537,8 @@ describe("transport and characteristic-time pages", () => {
   it("shows only literature-defined characteristic aggregates and marks tau C/tau D unavailable", async () => {
     const { view, unmount } = await renderPage(<CharacteristicTimePage />);
     await click(view, "Try Example Inputs");
-    expect(view.textContent).toContain("Fitted total τ");
+    expect(view.textContent).toContain("Comparison total τ");
+    expect(view.textContent).not.toContain("Fitted total τ");
     expect(view.textContent).toContain("Electrical aggregate τ_Electrical");
     expect(view.textContent).toContain("Diffusive aggregate τ_Diffusive");
     expect(view.textContent).toContain("τ_C and τ_D: unavailable");
@@ -354,14 +568,20 @@ describe("transport and characteristic-time pages", () => {
     if (!fittedTau) throw new Error("Fitted tau input not found.");
     await changeInput(fittedTau, "-1");
     await click(view, "Calculate Times");
-    expect(view.textContent).toContain("Fitted total τNot estimable");
-    expect(view.textContent).not.toContain("Fitted total τ-3600 s");
+    expect(view.textContent).toContain("Comparison total τNot estimable");
+    expect(view.textContent).not.toContain("Comparison total τ-3600 s");
     await unmount();
   });
 
   it("shows the complete verified Eq. 6a form and marks relative and sensitivity outputs as derived", async () => {
     const { view, unmount } = await renderPage(<TransportLimitationPage />);
     expect(view.textContent).toContain("L_E^2 [C_V,eff / (2 sigma_E)");
+    expect(view.textContent).toContain("Eq. 5a: τ = τ_Electrical + τ_Diffusive + t_c");
+    expect(view.textContent).toContain("Eq. 5b: τ_Diffusive = L_E^2 / D_P + L_S^2 / D_S + L_AM^2 / D_AM");
+    expect(view.textContent).toContain("Eq. 5c: τ_Electrical = C_eff (R_E,E + R_I,P + R_I,S)");
+    expect(view.textContent).toContain("Eq. 5d: τ = C_eff (R_E,E + R_I,P + R_I,S)");
+    expect(view.textContent).toContain("s (reported as h where converted)");
+    expect(view.textContent).toContain("L_E^2, L_E, and L_E-independent constant contributions");
     await click(view, "Try Example Inputs");
     const relative = view.querySelector(".rate-transport-relative");
     expect(relative?.textContent).toContain("Derived");
@@ -369,6 +589,20 @@ describe("transport and characteristic-time pages", () => {
     const sensitivity = view.querySelector(".rate-transport-sensitivity");
     expect(sensitivity?.textContent).toContain("Derived");
     expect(sensitivity?.textContent).toContain("one selected input changes");
+    await unmount();
+  });
+
+  it("relocalizes cached example result provenance after an in-place language switch", async () => {
+    const { view, unmount } = await renderPage(
+      <LanguageSwitchHarness><CharacteristicTimePage /></LanguageSwitchHarness>,
+    );
+    await click(view, "Try Example Inputs");
+    expect(view.querySelector(".rate-transport-dynamic")?.textContent).toContain("Illustrative example");
+    await click(view, "Switch to Chinese");
+    const dynamic = view.querySelector(".rate-transport-dynamic");
+    expect(dynamic?.textContent).toContain("说明性示例");
+    expect(dynamic?.textContent).not.toContain("Illustrative example");
+    expect(dynamic?.textContent).not.toContain("Fitted with the validated Tian rate model");
     await unmount();
   });
 
@@ -385,10 +619,12 @@ describe("transport and characteristic-time pages", () => {
     expect(characteristic.view.textContent).toContain("有效且依赖模型的估计值");
     await click(characteristic.view, "试用示例输入");
     expect(characteristic.view.textContent).toContain("Tian 等（2019）方程 5c 与 6a 的电学项");
-    expect(characteristic.view.textContent).toContain("拟合 τ 与可用方程 6a 分量之和的差值");
+    expect(characteristic.view.textContent).toContain("对比 τ 与可用方程 6a 分量之和的差值");
     expect(characteristic.view.textContent).toContain("5 个步骤");
     expect(characteristic.view.textContent).toContain("P_E (1)");
-    expect(characteristic.view.textContent).toContain("h / s");
+    expect(characteristic.view.textContent).toContain("s（换算显示时报告为 h）");
+    expect(characteristic.view.textContent).not.toContain("拟合总时间 τ");
+    expect(characteristic.view.textContent).not.toContain("在本分解之外使用经验证的 Tian 倍率模型拟合");
     expect(characteristic.view.textContent).not.toContain("steps.");
     expect(characteristic.view.textContent).not.toContain("dimensionless");
     expect(characteristic.view.textContent).not.toContain("Sum of all seven Tian et al.");

@@ -31,6 +31,7 @@ export interface FormState {
 }
 
 export interface CompletedTransportAnalysis {
+  readonly origin: "example" | "user";
   readonly input: Readonly<TransportTimeInput>;
   readonly fittedTau?: Readonly<TaggedTransportQuantity<TimeUnit>>;
   readonly transport: Readonly<TransportTimeResult>;
@@ -79,8 +80,10 @@ export function buildFittedTau(
   return value === undefined ? undefined : {
     value,
     unit: "h",
-    type: "fitted",
-    provenance: t("rate.transport.provenance.fitted"),
+    type: form.fittedTau.type,
+    provenance: t(form.fittedTau.type === "assumed"
+      ? "rate.transport.provenance.example"
+      : "rate.transport.provenance.user"),
   };
 }
 
@@ -107,7 +110,7 @@ export function exampleTransportForm(): FormState {
   };
   return {
     fields: Object.fromEntries(FIELD_DEFINITIONS.map(({ key }) => [key, { text: values[key], type: "assumed" }])) as Record<TransportInputKey, FieldValue>,
-    fittedTau: { text: "0.5", type: "user-input" },
+    fittedTau: { text: "0.5", type: "assumed" },
   };
 }
 

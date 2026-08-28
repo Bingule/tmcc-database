@@ -1,5 +1,5 @@
 import { useI18n } from "../../../i18n/I18nProvider";
-import type { TransportInputKey } from "../analysis/transportTimes";
+import { getTransportInputDefinition, type TransportInputKey } from "../analysis/transportTimes";
 import {
   displayTransportUnit,
   FIELD_DEFINITIONS,
@@ -32,7 +32,9 @@ export function TransportInputForm({
         label={t("rate.transport.fittedTau")}
         unit="h"
         value={form.fittedTau}
-        provenance={t("rate.transport.provenance.fitted")}
+        provenance={t(form.fittedTau.type === "assumed"
+          ? "rate.transport.provenance.example"
+          : "rate.transport.provenance.user")}
         onChange={onFittedTauChange}
       />
       {FIELD_DEFINITIONS.map((definition) => <TransportInputField
@@ -40,7 +42,8 @@ export function TransportInputForm({
         name={definition.key}
         label={t(definition.label)}
         unit={displayTransportUnit(definition.unit)}
-        value={form.fields[definition.key]}
+      value={form.fields[definition.key]}
+      maximum={getTransportInputDefinition(definition.key).bounds.inclusiveMaximum}
         provenance={t(form.fields[definition.key].type === "assumed"
           ? "rate.transport.provenance.example"
           : "rate.transport.provenance.user")}
@@ -60,6 +63,7 @@ function TransportInputField({
   label,
   unit,
   value,
+  maximum,
   provenance,
   onChange,
 }: {
@@ -67,11 +71,11 @@ function TransportInputField({
   label: string;
   unit: string;
   value: Readonly<FieldValue>;
+  maximum?: number;
   provenance: string;
   onChange: (text: string) => void;
 }) {
   const { t } = useI18n();
-  const type = name === "fittedTau" ? "fitted" : value.type;
   return <label>
     <span>{label} ({unit})</span>
     <input
@@ -79,10 +83,11 @@ function TransportInputField({
       type="number"
       inputMode="decimal"
       min="0"
+      max={maximum}
       step="any"
       value={value.text}
       onChange={(event) => onChange(event.currentTarget.value)}
     />
-    <small>{t(`rate.parameterType.${type}`)} · {provenance}</small>
+    <small>{t(`rate.parameterType.${value.type}`)} · {provenance}</small>
   </label>;
 }

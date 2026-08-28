@@ -38,9 +38,10 @@ export function TransportTimeWorkspace({ mode }: { mode: TransportWorkspaceMode 
     setAnalysis(null);
   }
 
-  function run(nextForm = form) {
+  function run(nextForm = form, origin: CompletedTransportAnalysis["origin"] = "user") {
     const input = buildTransportInput(nextForm, t);
     setAnalysis({
+      origin,
       input,
       fittedTau: buildFittedTau(nextForm, t),
       transport: calculateTransportTimes(input),
@@ -50,7 +51,7 @@ export function TransportTimeWorkspace({ mode }: { mode: TransportWorkspaceMode 
   function loadExample() {
     const example = exampleTransportForm();
     setForm(example);
-    run(example);
+    run(example, "example");
   }
 
   function clear() {
@@ -82,14 +83,16 @@ export function TransportTimeWorkspace({ mode }: { mode: TransportWorkspaceMode 
         </> : null}
       </section>
     </div>
-    {analysis
-      ? <TransportTimeResults analysis={analysis} mode={mode} />
-      : <TransportEmptyState onTryExample={loadExample} />}
-    {sensitivity ? <TransportSensitivityPanel
-      parameter={sensitivityParameter}
-      onParameterChange={setSensitivityParameter}
-      series={sensitivity}
-    /> : null}
+    <div className="rate-transport-dynamic" aria-live="polite">
+      {analysis
+        ? <TransportTimeResults analysis={analysis} mode={mode} />
+        : <TransportEmptyState onTryExample={loadExample} />}
+      {sensitivity ? <TransportSensitivityPanel
+        parameter={sensitivityParameter}
+        onParameterChange={setSensitivityParameter}
+        series={sensitivity}
+      /> : null}
+    </div>
     <TransportTheorySection />
   </>;
 }

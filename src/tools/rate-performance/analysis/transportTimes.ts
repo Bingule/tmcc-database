@@ -36,6 +36,39 @@ export interface TransportTimeInput {
 }
 
 export type TransportInputKey = keyof TransportTimeInput;
+export type TransportQuantityKey = TransportInputKey | "fittedTau";
+
+export type TransportInvalidReason =
+  | "non-finite"
+  | "non-positive"
+  | "out-of-range"
+  | "missing-provenance"
+  | "numerical-overflow"
+  | "numerical-underflow";
+
+export interface TransportInvalidInput<Key extends TransportQuantityKey = TransportQuantityKey> {
+  readonly key: Key;
+  readonly reason: TransportInvalidReason;
+}
+
+export type TransportUnavailabilityReason =
+  | "missing-inputs"
+  | "invalid-inputs"
+  | "missing-and-invalid-inputs"
+  | "numerical-overflow"
+  | "numerical-underflow"
+  | "unavailable-terms"
+  | "no-available-terms";
+
+export interface TransportParameterBounds {
+  readonly exclusiveMinimum: number;
+  readonly inclusiveMaximum?: number;
+}
+
+export interface TransportInputDefinition {
+  readonly key: TransportInputKey;
+  readonly bounds: Readonly<TransportParameterBounds>;
+}
 
 export type TransportTermId =
   | "electrode-electronic"
@@ -57,29 +90,35 @@ interface TransportTermBase {
   readonly type: RateModelParameterType;
   readonly provenance: string;
   readonly missingInputs: ReadonlyArray<TransportInputKey>;
+  readonly invalidInputs: ReadonlyArray<Readonly<TransportInvalidInput<TransportInputKey>>>;
 }
 
 export interface AvailableTransportTerm extends TransportTermBase {
   readonly status: "available";
   readonly value: number;
   readonly missingInputs: readonly [];
+  readonly invalidInputs: readonly [];
 }
 
 export interface UnavailableTransportTerm extends TransportTermBase {
   readonly status: "unavailable";
   readonly missingInputs: ReadonlyArray<TransportInputKey>;
+  readonly invalidInputs: ReadonlyArray<Readonly<TransportInvalidInput<TransportInputKey>>>;
+  readonly unavailabilityReason: TransportUnavailabilityReason;
 }
 
 export type TransportTerm = AvailableTransportTerm | UnavailableTransportTerm;
 
 export interface TransportAggregate {
-  readonly id: "electrical" | "diffusive" | "calculated-total";
+  readonly id: "electrical" | "diffusive" | "calculated-total" | "available-partial-sum";
   readonly status: "available" | "unavailable";
   readonly value?: number;
   readonly unit: "s";
   readonly type: "derived";
   readonly provenance: string;
   readonly missingTermIds: ReadonlyArray<TransportTermId>;
+  readonly includedTermIds: ReadonlyArray<TransportTermId>;
+  readonly unavailabilityReason?: TransportUnavailabilityReason;
 }
 
 export interface TransportRelativeContribution {
@@ -97,11 +136,12 @@ export interface TransportTimeResult {
     readonly electrical: Readonly<TransportAggregate>;
     readonly diffusive: Readonly<TransportAggregate>;
     readonly calculatedTotal: Readonly<TransportAggregate>;
+    readonly availablePartialSum: Readonly<TransportAggregate>;
   };
-  readonly availableSum: number;
+  readonly availableSum?: number;
   readonly unit: "s";
   readonly complete: boolean;
-  readonly invalidInputs: ReadonlyArray<TransportInputKey>;
+  readonly invalidInputs: ReadonlyArray<Readonly<TransportInvalidInput<TransportInputKey>>>;
   readonly relativeContributions?: ReadonlyArray<Readonly<TransportRelativeContribution>>;
 }
 
@@ -131,6 +171,22 @@ const INPUT_KEYS: ReadonlyArray<TransportInputKey> = Object.freeze([
   "activeMaterialDiffusivity",
   "kineticTime",
 ]);
+
+const INPUT_DEFINITIONS: Readonly<Record<TransportInputKey, Readonly<TransportInputDefinition>>> = Object.freeze(
+  Object.fromEntries(INPUT_KEYS.map((key) => [key, Object.freeze({
+    key,
+    bounds: Object.freeze({
+      exclusiveMinimum: 0,
+      ...((key === "electrodePorosity" || key === "separatorPorosity")
+        ? { inclusiveMaximum: 1 }
+        : {}),
+    }),
+  })])) as Record<TransportInputKey, Readonly<TransportInputDefinition>>,
+);
+
+export function getTransportInputDefinition(key: TransportInputKey): Readonly<TransportInputDefinition> {
+  return INPUT_DEFINITIONS[key];
+}
 
 const TERM_DEFINITIONS: ReadonlyArray<Readonly<TermDefinition>> = Object.freeze([
   defineTerm({
@@ -211,34 +267,55 @@ const DIFFUSIVE_TERM_IDS: ReadonlyArray<TransportTermId> = Object.freeze([
  * Input quantities retain their declared unit, type, and provenance; outputs are seconds.
  */
 export function calculateTransportTimes(input: Readonly<TransportTimeInput>): TransportTimeResult {
-  const invalidInputs = INPUT_KEYS.filter((key) => input[key] !== undefined && !isUsableInput(key, input[key]));
+  const invalidInputs: Array<Readonly<TransportInvalidInput<TransportInputKey>>> = [];
   const values = {} as Record<TransportInputKey, number>;
   for (const key of INPUT_KEYS) {
     const quantity = input[key];
-    if (quantity && !invalidInputs.includes(key)) values[key] = toSi(quantity);
+    if (!quantity) continue;
+    const validation = validateAndConvertQuantity(key, quantity);
+    if (validation.status === "invalid") invalidInputs.push(validation.invalidInput);
+    else values[key] = validation.siValue;
   }
 
   const terms = TERM_DEFINITIONS.map((definition): TransportTerm => {
-    const missingInputs = definition.required.filter((key) => values[key] === undefined);
+    const missingInputs = definition.required.filter((key) => input[key] === undefined);
+    const termInvalidInputs = invalidInputs.filter(({ key }) => definition.required.includes(key));
     const provenance = definition.id === "kinetic"
       ? `${input.kineticTime?.provenance ?? "User-supplied kinetic time"}; Tian et al. (2019), Eq. 6a term 7`
       : `Derived from Tian et al. (2019), Eq. 6a term ${definition.equationTerm} using SI-converted inputs.`;
     const type = definition.id === "kinetic" ? input.kineticTime?.type ?? "user-input" : "derived";
 
-    if (missingInputs.length > 0) {
+    if (missingInputs.length > 0 || termInvalidInputs.length > 0) {
       return {
         ...definitionMetadata(definition, type, provenance),
         status: "unavailable",
         missingInputs,
+        invalidInputs: termInvalidInputs,
+        unavailabilityReason: missingInputs.length > 0 && termInvalidInputs.length > 0
+          ? "missing-and-invalid-inputs"
+          : missingInputs.length > 0
+            ? "missing-inputs"
+            : "invalid-inputs",
       };
     }
 
     const value = definition.calculate(values);
-    if (!Number.isFinite(value) || value <= 0) {
+    if (!Number.isFinite(value)) {
       return {
         ...definitionMetadata(definition, type, provenance),
         status: "unavailable",
-        missingInputs: definition.required,
+        missingInputs: [],
+        invalidInputs: [],
+        unavailabilityReason: "numerical-overflow",
+      };
+    }
+    if (value <= 0) {
+      return {
+        ...definitionMetadata(definition, type, provenance),
+        status: "unavailable",
+        missingInputs: [],
+        invalidInputs: [],
+        unavailabilityReason: "numerical-underflow",
       };
     }
     return {
@@ -246,15 +323,16 @@ export function calculateTransportTimes(input: Readonly<TransportTimeInput>): Tr
       status: "available",
       value,
       missingInputs: [],
+      invalidInputs: [],
     };
   });
 
   const available = terms.filter((term): term is AvailableTransportTerm => term.status === "available");
-  const availableSum = available.reduce((sum, term) => sum + term.value, 0);
+  const availableSumResult = sumPositiveFinite(available.map(({ value }) => value));
+  const availableSum = availableSumResult.status === "available" ? availableSumResult.value : undefined;
   const complete = available.length === TERM_DEFINITIONS.length
     && available.every(({ value }) => Number.isFinite(value) && value > 0)
-    && Number.isFinite(availableSum)
-    && availableSum > 0;
+    && availableSum !== undefined;
   const electrical = aggregateTerms("electrical", terms, ELECTRICAL_TERM_IDS, "Tian et al. (2019), Eqs. 5c and 6a electrical terms 1, 2, and 4.");
   const diffusive = aggregateTerms("diffusive", terms, DIFFUSIVE_TERM_IDS, "Tian et al. (2019), Eqs. 5b and 6a diffusive terms 3, 5, and 6.");
   const calculatedTotal = aggregateTerms(
@@ -263,15 +341,16 @@ export function calculateTransportTimes(input: Readonly<TransportTimeInput>): Tr
     TERM_DEFINITIONS.map(({ id }) => id),
     "Sum of all seven Tian et al. (2019), Eq. 6a components.",
   );
+  const availablePartialSum = aggregateAvailableTerms(terms);
 
   return {
     terms,
-    aggregates: { electrical, diffusive, calculatedTotal },
+    aggregates: { electrical, diffusive, calculatedTotal, availablePartialSum },
     availableSum,
     unit: "s",
     complete,
     invalidInputs,
-    relativeContributions: complete
+    relativeContributions: complete && availableSum !== undefined
       ? available.map((term) => ({
         termId: term.id,
         value: term.value,
@@ -287,13 +366,17 @@ export function calculateTransportTimes(input: Readonly<TransportTimeInput>): Tr
 export type UnresolvedTimeResult =
   | {
     readonly status: "unavailable";
-    readonly missingInputs: readonly ["fittedTau"];
+    readonly missingInputs: ReadonlyArray<"fittedTau">;
+    readonly invalidInputs: ReadonlyArray<Readonly<TransportInvalidInput<"fittedTau">>>;
+    readonly unavailabilityReason: TransportUnavailabilityReason;
     readonly unit: "s";
     readonly type: "derived";
     readonly provenance: string;
   }
   | {
     readonly status: "available";
+    readonly missingInputs: readonly [];
+    readonly invalidInputs: readonly [];
     readonly fittedTotal: number;
     readonly availableComponentSum: number;
     readonly difference: number;
@@ -312,16 +395,61 @@ export function calculateUnresolvedTime(
   components: ReadonlyArray<Readonly<TransportTerm>>,
 ): UnresolvedTimeResult {
   const provenance = "Difference between fitted tau and the sum of available Tian et al. (2019), Eq. 6a components.";
-  if (!fittedTau || !isUsableQuantity(fittedTau)) {
-    return { status: "unavailable", missingInputs: ["fittedTau"], unit: "s", type: "derived", provenance };
+  if (!fittedTau) {
+    return {
+      status: "unavailable",
+      missingInputs: ["fittedTau"],
+      invalidInputs: [],
+      unavailabilityReason: "missing-inputs",
+      unit: "s",
+      type: "derived",
+      provenance,
+    };
   }
-  const fittedTotal = toSi(fittedTau);
+  const fittedValidation = validateAndConvertQuantity("fittedTau", fittedTau);
+  if (fittedValidation.status === "invalid") {
+    return {
+      status: "unavailable",
+      missingInputs: [],
+      invalidInputs: [fittedValidation.invalidInput],
+      unavailabilityReason: "invalid-inputs",
+      unit: "s",
+      type: "derived",
+      provenance,
+    };
+  }
+  const fittedTotal = fittedValidation.siValue;
   const available = components.filter((component): component is AvailableTransportTerm => component.status === "available");
-  const availableComponentSum = available.reduce((sum, component) => sum + component.value, 0);
+  const componentSum = sumPositiveFinite(available.map(({ value }) => value));
+  if (componentSum.status === "unavailable") {
+    return {
+      status: "unavailable",
+      missingInputs: [],
+      invalidInputs: [],
+      unavailabilityReason: componentSum.reason,
+      unit: "s",
+      type: "derived",
+      provenance,
+    };
+  }
+  const availableComponentSum = componentSum.value;
   const difference = fittedTotal - availableComponentSum;
+  if (!Number.isFinite(difference)) {
+    return {
+      status: "unavailable",
+      missingInputs: [],
+      invalidInputs: [],
+      unavailabilityReason: "numerical-overflow",
+      unit: "s",
+      type: "derived",
+      provenance,
+    };
+  }
   const consistencyWarning = difference < 0;
   return {
     status: "available",
+    missingInputs: [],
+    invalidInputs: [],
     fittedTotal,
     availableComponentSum,
     difference,
@@ -346,6 +474,8 @@ export interface TransportSensitivityPoint {
   readonly inputValue: number;
   readonly variedInput: Readonly<TransportTimeInput>;
   readonly result: Readonly<TransportTimeResult>;
+  readonly status: "available" | "unavailable";
+  readonly unavailableReason?: TransportUnavailabilityReason;
   readonly totalSeconds?: number;
 }
 
@@ -353,6 +483,7 @@ export interface TransportSensitivitySeries {
   readonly method: "deterministic-one-at-a-time";
   readonly parameter: TransportInputKey;
   readonly baseline: Readonly<TaggedTransportQuantity>;
+  readonly requestedRange: Readonly<TransportSensitivityOptions>;
   readonly range: Readonly<TransportSensitivityOptions>;
   readonly points: ReadonlyArray<Readonly<TransportSensitivityPoint>>;
   readonly interpretation: string;
@@ -371,7 +502,8 @@ export function createTransportSensitivitySeries(
   options: Readonly<TransportSensitivityOptions> = DEFAULT_SENSITIVITY,
 ): TransportSensitivitySeries {
   const baseline = input[parameter];
-  if (!baseline || !isUsableInput(parameter, baseline)) {
+  const baselineValidation = baseline ? validateAndConvertQuantity(parameter, baseline) : undefined;
+  if (!baseline || baselineValidation?.status !== "valid") {
     throw new RangeError(`${parameter} requires a positive finite baseline before sensitivity analysis.`);
   }
   if (!Number.isFinite(options.minimumFactor) || options.minimumFactor <= 0
@@ -380,20 +512,38 @@ export function createTransportSensitivitySeries(
     throw new RangeError("Sensitivity range must be positive, ordered, and contain 2 to 101 integer steps.");
   }
 
-  const points = Array.from({ length: options.steps }, (_, index): TransportSensitivityPoint => {
-    const fraction = index / (options.steps - 1);
-    const factor = options.minimumFactor + (options.maximumFactor - options.minimumFactor) * fraction;
-    const variedQuantity = { ...baseline, value: baseline.value * factor };
+  const definition = getTransportInputDefinition(parameter);
+  const maximumFactor = definition.bounds.inclusiveMaximum === undefined
+    ? options.maximumFactor
+    : Math.min(options.maximumFactor, definition.bounds.inclusiveMaximum / baseline.value);
+  if (!Number.isFinite(maximumFactor) || maximumFactor < options.minimumFactor) {
+    throw new RangeError(`${parameter} sensitivity range contains no valid bounded sweep.`);
+  }
+  const range = { ...options, maximumFactor };
+
+  const points = Array.from({ length: range.steps }, (_, index): TransportSensitivityPoint => {
+    const fraction = index / (range.steps - 1);
+    const factor = range.minimumFactor + (range.maximumFactor - range.minimumFactor) * fraction;
+    const variedQuantity = {
+      ...baseline,
+      value: definition.bounds.inclusiveMaximum === undefined
+        ? baseline.value * factor
+        : Math.min(baseline.value * factor, definition.bounds.inclusiveMaximum),
+    };
     const variedInput = { ...input, [parameter]: variedQuantity };
     const result = calculateTransportTimes(variedInput);
+    const total = result.aggregates.calculatedTotal;
     return {
       factor,
       inputValue: variedQuantity.value,
       variedInput,
       result,
-      ...(result.complete && result.aggregates.calculatedTotal.value !== undefined
-        ? { totalSeconds: result.aggregates.calculatedTotal.value }
-        : {}),
+      ...(result.complete && total.status === "available" && total.value !== undefined
+        ? { status: "available" as const, totalSeconds: total.value }
+        : {
+          status: "unavailable" as const,
+          unavailableReason: total.unavailabilityReason ?? "unavailable-terms",
+        }),
     };
   });
 
@@ -401,7 +551,8 @@ export function createTransportSensitivitySeries(
     method: "deterministic-one-at-a-time",
     parameter,
     baseline,
-    range: { ...options },
+    requestedRange: { ...options },
+    range,
     points,
     interpretation: "No mechanism is inferred; each point changes only the selected input while all other inputs remain at baseline.",
   };
@@ -421,6 +572,7 @@ function definitionMetadata(
     type,
     provenance,
     missingInputs: [],
+    invalidInputs: [],
   };
 }
 
@@ -432,31 +584,131 @@ function aggregateTerms(
 ): TransportAggregate {
   const selected = requiredIds.map((termId) => terms.find(({ id: candidateId }) => candidateId === termId));
   const missingTermIds = selected.flatMap((term, index) => term?.status === "available" ? [] : [requiredIds[index]]);
+  const includedTermIds = selected.flatMap((term, index) => term?.status === "available" ? [requiredIds[index]] : []);
   if (missingTermIds.length > 0) {
-    return { id, status: "unavailable", unit: "s", type: "derived", provenance, missingTermIds };
+    return {
+      id,
+      status: "unavailable",
+      unit: "s",
+      type: "derived",
+      provenance,
+      missingTermIds,
+      includedTermIds,
+      unavailabilityReason: "unavailable-terms",
+    };
   }
-  const value = selected.reduce((sum, term) => sum + (term?.status === "available" ? term.value : 0), 0);
-  if (!Number.isFinite(value) || value <= 0) {
-    return { id, status: "unavailable", unit: "s", type: "derived", provenance, missingTermIds: [] };
+  const sum = sumPositiveFinite(selected.flatMap((term) => term?.status === "available" ? [term.value] : []));
+  if (sum.status === "unavailable") {
+    return {
+      id,
+      status: "unavailable",
+      unit: "s",
+      type: "derived",
+      provenance,
+      missingTermIds: [],
+      includedTermIds,
+      unavailabilityReason: sum.reason,
+    };
   }
-  return { id, status: "available", value, unit: "s", type: "derived", provenance, missingTermIds: [] };
+  return {
+    id,
+    status: "available",
+    value: sum.value,
+    unit: "s",
+    type: "derived",
+    provenance,
+    missingTermIds: [],
+    includedTermIds,
+  };
 }
 
-function isUsableInput(
-  key: TransportInputKey,
-  quantity: Readonly<TaggedTransportQuantity> | undefined,
-): quantity is Readonly<TaggedTransportQuantity> {
-  if (!quantity || !isUsableQuantity(quantity)) return false;
-  return (key === "electrodePorosity" || key === "separatorPorosity")
-    ? quantity.value <= 1
-    : true;
+function aggregateAvailableTerms(terms: ReadonlyArray<Readonly<TransportTerm>>): TransportAggregate {
+  const included = terms.filter((term): term is AvailableTransportTerm => term.status === "available");
+  const includedTermIds = included.map(({ id }) => id);
+  const missingTermIds = terms.flatMap((term) => term.status === "available" ? [] : [term.id]);
+  const termNumbers = included.map(({ equationTerm }) => equationTerm).join(", ");
+  const provenance = included.length > 0
+    ? `Sum of available Tian et al. (2019), Eq. 6a term${included.length === 1 ? "" : "s"} ${termNumbers}.`
+    : "No Tian et al. (2019), Eq. 6a term is available to sum.";
+  if (included.length === 0) {
+    return {
+      id: "available-partial-sum",
+      status: "unavailable",
+      unit: "s",
+      type: "derived",
+      provenance,
+      missingTermIds,
+      includedTermIds,
+      unavailabilityReason: "no-available-terms",
+    };
+  }
+  const sum = sumPositiveFinite(included.map(({ value }) => value));
+  if (sum.status === "unavailable") {
+    return {
+      id: "available-partial-sum",
+      status: "unavailable",
+      unit: "s",
+      type: "derived",
+      provenance,
+      missingTermIds,
+      includedTermIds,
+      unavailabilityReason: sum.reason,
+    };
+  }
+  return {
+    id: "available-partial-sum",
+    status: "available",
+    value: sum.value,
+    unit: "s",
+    type: "derived",
+    provenance,
+    missingTermIds,
+    includedTermIds,
+  };
 }
 
-function isUsableQuantity(quantity: Readonly<TaggedTransportQuantity>): boolean {
-  return Number.isFinite(quantity.value)
-    && quantity.value > 0
-    && typeof quantity.provenance === "string"
-    && quantity.provenance.trim().length > 0;
+function sumPositiveFinite(values: ReadonlyArray<number>):
+  | { readonly status: "available"; readonly value: number }
+  | { readonly status: "unavailable"; readonly reason: "numerical-overflow" | "numerical-underflow" } {
+  let sum = 0;
+  for (const value of values) {
+    if (!Number.isFinite(value)) return { status: "unavailable", reason: "numerical-overflow" };
+    if (value <= 0) return { status: "unavailable", reason: "numerical-underflow" };
+    sum += value;
+    if (!Number.isFinite(sum)) return { status: "unavailable", reason: "numerical-overflow" };
+  }
+  return { status: "available", value: sum };
+}
+
+function validateAndConvertQuantity<Key extends TransportQuantityKey>(
+  key: Key,
+  quantity: Readonly<TaggedTransportQuantity>,
+):
+  | { readonly status: "valid"; readonly siValue: number }
+  | { readonly status: "invalid"; readonly invalidInput: Readonly<TransportInvalidInput<Key>> } {
+  if (!Number.isFinite(quantity.value)) {
+    return { status: "invalid", invalidInput: { key, reason: "non-finite" } };
+  }
+  if (quantity.value <= 0) {
+    return { status: "invalid", invalidInput: { key, reason: "non-positive" } };
+  }
+  if (typeof quantity.provenance !== "string" || quantity.provenance.trim().length === 0) {
+    return { status: "invalid", invalidInput: { key, reason: "missing-provenance" } };
+  }
+  if (key !== "fittedTau") {
+    const maximum = getTransportInputDefinition(key).bounds.inclusiveMaximum;
+    if (maximum !== undefined && quantity.value > maximum) {
+      return { status: "invalid", invalidInput: { key, reason: "out-of-range" } };
+    }
+  }
+  const siValue = toSi(quantity);
+  if (!Number.isFinite(siValue)) {
+    return { status: "invalid", invalidInput: { key, reason: "numerical-overflow" } };
+  }
+  if (siValue <= 0) {
+    return { status: "invalid", invalidInput: { key, reason: "numerical-underflow" } };
+  }
+  return { status: "valid", siValue };
 }
 
 function toSi(quantity: Readonly<TaggedTransportQuantity>): number {
