@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make both capacitive boundary curves visibly cover and reconnect across the complete NCP CV potential range without changing shared g(V), Dunn percentages, integration, or exports.
+**Goal:** Make both capacitive boundary curves cover the complete NCP CV potential range and reconnect smoothly at physically feasible turning endpoints, with plots, percentages, integration, and exports using the same final shared g(V).
 
-**Architecture:** Keep analysis and ordered scientific data unchanged. Repair only chart representation by sharing a singly recorded reversal point between adjacent boundary displays and reserving eight original points at both ends of every branch before deterministic downsampling.
+**Architecture:** Preserve the existing regularized soft-envelope solution as the baseline, then apply a normalized-potential, smoothstep endpoint reconnection to the same shared g(V) before ordered scientific records are built. Keep the existing shared-turning display topology and eight-point endpoint sampling reservation.
 
 **Tech Stack:** React 19, TypeScript 5.7, Vite 5.4, Vitest 2.1, existing SVG scientific charts.
 
@@ -12,7 +12,8 @@
 
 - Work only on `fix-dunn-literature-plot`; do not merge `main`.
 - Preserve `i_cap,f(V) = g(V) * i_f(V)` and `i_cap,r(V) = g(V) * i_r(V)` with one shared `0 <= g(V) <= 1`.
-- Do not rotate curves, move potentials, force `g(V) = 1`, hard-clip, delete points, or change percentages.
+- Do not rotate curves, move potentials, independently smooth branch currents, hard-clip, or delete points.
+- When a same-sign turning-point envelope collapses, enforce its only feasible shared fraction (`g(V) = 1`) through a smooth 5% normalized-potential transition rather than a one-point display patch.
 - A singly recorded reversal is shared only by display boundaries; scientific records remain single and ordered.
 - A doubly recorded reversal with different currents remains separate and is not averaged.
 - Use NCP as the only requested regression dataset.
@@ -129,7 +130,32 @@ Run: `git commit -m "fix: retain Dunn endpoint neighborhoods in plots"`
 
 ---
 
-### Task 3: Verify the NCP scientific and visual result
+### Task 3: Smoothly reconnect the final shared fraction to feasible endpoints
+
+**Files:**
+- Modify: `tests/cv-dunn-reconstruction.test.ts`
+- Modify: `tests/cv-workflow.test.ts`
+- Modify: `src/lib/cvDunnReconstruction.ts`
+
+- [ ] **Step 1: Write failing endpoint tests**
+
+Assert that a same-sign collapsed envelope returns `g = 1` at both endpoints, remains bounded and shared, has no envelope residual in each 5% endpoint neighborhood, and leaves points outside those neighborhoods unchanged when the baseline already satisfies the interior envelope.
+
+- [ ] **Step 2: Verify RED**
+
+Run the focused reconstruction and NCP tests. Expected: FAIL because the current optimizer explicitly skips endpoint envelope penalties and retains baseline endpoint fractions.
+
+- [ ] **Step 3: Implement the normalized smooth endpoint transition**
+
+Compute the feasible shared-fraction interval at each endpoint from both raw currents. Project the endpoint fraction into that interval, then blend the correction into the existing final `g(V)` with a cubic smoothstep weight over the first/last 5% of normalized potential. Reapply after support-grid interpolation so dense and coarse grids share the same endpoint behavior.
+
+- [ ] **Step 4: Verify GREEN and visual invariants**
+
+Run focused tests, then the real NCP 50 and 2 mV/s page flows. Require exact endpoint containment, no branch crossing in the endpoint neighborhoods, continuous full-range SVG paths, and visually clean PNGs.
+
+---
+
+### Task 4: Verify the NCP scientific and visual result
 
 **Files:**
 - Use: `tests/cv-workflow.test.ts`
@@ -146,9 +172,9 @@ Run: `npm test -- tests/cv-workflow.test.ts -t "NCP"`
 
 Expected: all NCP scan rates remain finite, bounded, shared-g, and percentage-normalized.
 
-- [ ] **Step 2: Prove scientific values are unchanged**
+- [ ] **Step 2: Quantify the endpoint reconnection impact**
 
-Record the NCP `capacitivePercent` values before the page-only changes and compare them after Tasks 1–2. Expected: exact equality because analysis and integration code are unchanged.
+Record the NCP `capacitivePercent` values before and after endpoint reconnection. Expected: finite, normalized results with only the small auditable change produced by the 5% endpoint neighborhoods.
 
 - [ ] **Step 3: Run the real NCP CSV through the local page**
 
@@ -160,7 +186,7 @@ Save the verified export as `D:/codex_communication/NCP_50mVs_CV_capacitive_cont
 
 ---
 
-### Task 4: Full verification and handoff
+### Task 5: Full verification and handoff
 
 **Files:**
 - Review all modified files.
@@ -188,4 +214,4 @@ Expected: no whitespace errors and no uncommitted implementation files.
 
 - [ ] **Step 4: Report verified evidence**
 
-Report the shared-turning-point display change, eight-point retention, unchanged NCP percentage, test/build results, commit hashes, and updated PNG. Do not claim deployment without a separately verified deployment run.
+Report the shared-turning-point display change, eight-point retention, endpoint-reconnection percentage impact, test/build results, commit hashes, and updated PNGs. Do not claim deployment without the user's post-image approval and a separately verified deployment run.
