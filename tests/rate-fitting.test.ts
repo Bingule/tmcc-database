@@ -95,6 +95,7 @@ describe("bounded characteristic-time fitting", () => {
       expect(result.statistics.sse).toBeCloseTo(0, 8);
       expect(result.predictions).toHaveLength(rates.length);
       expect(result.residuals).toHaveLength(rates.length);
+      expect(result.iterationCountExact).toBe(true);
     }
   });
 
@@ -215,6 +216,46 @@ describe("bounded characteristic-time fitting", () => {
     expect(result.iterations).toBe(7);
   });
 
+  it("rejects two stagnant eight-iteration confirmations that exactly exhaust each start and the global budget", async () => {
+    let optimizerBatches = 0;
+    const stagnantOptimizer: RateOptimizer = (_data, _fit, optimizerOptions) => {
+      optimizerBatches += 1;
+      return {
+        parameterValues: Array.from(optimizerOptions.initialValues),
+        parameterError: 1,
+        iterations: optimizerOptions.maxIterations,
+      };
+    };
+    const fit = createRatePerformanceFitter({
+      loadOptimizer: async () => ({ levenbergMarquardt: stagnantOptimizer }),
+      yieldToMacrotask: async () => undefined,
+    });
+    const result = await fit(
+      syntheticData(evaluateTianRate, { qM: 325, tau: 0.8, n: 0.62 }),
+      { modelId: "tian-characteristic-time", maxIterations: 80 },
+    );
+
+    expectFailureWithoutParameters(result, "maximum-iterations");
+    expect(result.iterations).toBe(80);
+    expect(result.iterationCountExact).toBe(true);
+    expect(optimizerBatches).toBe(10);
+  });
+
+  it("does not accept a stable high-SSE fit after exhausting maxIterations=81", async () => {
+    const increasingCapacity = rates.map((rate, index) => ({
+      rate,
+      capacity: 25 + index * 20,
+    }));
+    const result = await fitRatePerformance(increasingCapacity, {
+      modelId: "tian-characteristic-time",
+      maxIterations: 81,
+    });
+
+    expectFailureWithoutParameters(result, "maximum-iterations");
+    expect(result.iterations).toBe(81);
+    expect(result.iterationCountExact).toBe(true);
+  });
+
   it("provides timeout and cancellation gates without leaking parameters", async () => {
     const data = syntheticData(evaluateTianRate, { qM: 325, tau: 0.8, n: 0.62 });
     const controller = new AbortController();
@@ -263,6 +304,7 @@ describe("bounded characteristic-time fitting", () => {
   });
 
   it("enforces a positive timeout after yielding between synchronous batches", async () => {
+    let currentTime = 0;
     const movingOptimizer: RateOptimizer = (_data, _fit, optimizerOptions) => ({
       parameterValues: Array.from(optimizerOptions.initialValues, (value) => value + 0.01),
       parameterError: 1,
@@ -270,7 +312,10 @@ describe("bounded characteristic-time fitting", () => {
     });
     const fit = createRatePerformanceFitter({
       loadOptimizer: async () => ({ levenbergMarquardt: movingOptimizer }),
-      yieldToMacrotask: () => new Promise((resolve) => setTimeout(resolve, 5)),
+      now: () => currentTime,
+      yieldToMacrotask: async () => {
+        currentTime = 2;
+      },
     });
     const result = await fit(
       syntheticData(evaluateTianRate, { qM: 325, tau: 0.8, n: 0.62 }),
@@ -294,6 +339,24 @@ describe("bounded characteristic-time fitting", () => {
     );
 
     expectFailureWithoutParameters(result, "optimizer-error");
+  });
+
+  it("marks iteration count as a lower bound when the native optimizer times out inside a batch", async () => {
+    const timingOutOptimizer: RateOptimizer = () => {
+      throw new Error("The execution time is over to 0.001 seconds");
+    };
+    const fit = createRatePerformanceFitter({
+      loadOptimizer: async () => ({ levenbergMarquardt: timingOutOptimizer }),
+      yieldToMacrotask: async () => undefined,
+    });
+    const result = await fit(
+      syntheticData(evaluateTianRate, { qM: 325, tau: 0.8, n: 0.62 }),
+      { modelId: "tian-characteristic-time", maxIterations: 80 },
+    );
+
+    expectFailureWithoutParameters(result, "timeout");
+    expect(result.iterations).toBe(0);
+    expect(result.iterationCountExact).toBe(false);
   });
 
   it("returns a fitting-level typed failure for non-finite model predictions", async () => {

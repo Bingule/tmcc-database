@@ -51,6 +51,8 @@ export interface RateFitConverged {
   readonly uncertainty: Readonly<ConfidenceIntervalResult>;
   /** Actual optimizer iterations consumed globally across every attempted start. */
   readonly iterations: number;
+  /** Successful optimizer batches report their completed iteration counts exactly. */
+  readonly iterationCountExact: true;
   readonly usedPointCount: number;
   readonly warnings: ReadonlyArray<RateFitWarning>;
 }
@@ -59,8 +61,10 @@ export interface RateFitFailure {
   readonly status: "failed";
   readonly modelId: string;
   readonly failure: Readonly<{ code: RateFitFailureCode; message: string }>;
-  /** Actual optimizer iterations consumed before failure across every attempted start. */
+  /** Known completed iterations; a lower bound when iterationCountExact is false. */
   readonly iterations: number;
+  /** False when the optimizer throws inside a synchronous batch before reporting its iterations. */
+  readonly iterationCountExact: boolean;
   readonly warnings: ReadonlyArray<RateFitWarning>;
 }
 
@@ -75,7 +79,12 @@ interface OptimizedStart {
 type OptimizedStartOutcome =
   | Readonly<{ status: "converged"; result: OptimizedStart }>
   | Readonly<{ status: "exhausted"; iterations: number }>
-  | Readonly<{ status: "failed"; code: RateFitFailureCode; iterations: number }>;
+  | Readonly<{
+    status: "failed";
+    code: RateFitFailureCode;
+    iterations: number;
+    iterationCountExact: boolean;
+  }>;
 
 interface OptimizerResult {
   readonly parameterValues: number[];
@@ -103,6 +112,7 @@ export interface RateFitDependencies {
   readonly loadOptimizer: () => Promise<Readonly<{ levenbergMarquardt: RateOptimizer }>>;
   readonly resolveModel: (id: string) => Readonly<RateModelDefinition> | undefined;
   readonly yieldToMacrotask: () => Promise<void>;
+  readonly now: () => number;
 }
 
 const parameterIds = ["qM", "tau", "n"] as const;
@@ -115,8 +125,16 @@ function failed(
   message: string,
   iterations = 0,
   warnings: ReadonlyArray<RateFitWarning> = [],
+  iterationCountExact = true,
 ): RateFitFailure {
-  return { status: "failed", modelId, failure: { code, message }, iterations, warnings };
+  return {
+    status: "failed",
+    modelId,
+    failure: { code, message },
+    iterations,
+    iterationCountExact,
+    warnings,
+  };
 }
 
 function finitePositiveBound(value: number): number {
@@ -263,6 +281,7 @@ async function optimizeStart(
   deadline: number,
   signal: AbortSignal | undefined,
   yieldToMacrotask: () => Promise<void>,
+  now: () => number,
 ): Promise<OptimizedStartOutcome> {
   const observed = data.map(({ capacity }) => capacity);
   const x = data.map(({ rate }) => rate);
@@ -273,16 +292,35 @@ async function optimizeStart(
   let encoded = encodeParameters(start);
   const initialPredictions = predictionsFor(data, start, evaluate);
   if (!initialPredictions) {
-    return { status: "failed", code: "non-finite-prediction", iterations: 0 };
+    return {
+      status: "failed",
+      code: "non-finite-prediction",
+      iterations: 0,
+      iterationCountExact: true,
+    };
   }
   let previousSse = sumSquaredError(observed, initialPredictions);
   let totalIterations = 0;
   let confirmations = 0;
 
   while (totalIterations < maxIterations) {
-    if (signal?.aborted) return { status: "failed", code: "cancelled", iterations: totalIterations };
-    const remainingMs = deadline - Date.now();
-    if (remainingMs <= 0) return { status: "failed", code: "timeout", iterations: totalIterations };
+    if (signal?.aborted) {
+      return {
+        status: "failed",
+        code: "cancelled",
+        iterations: totalIterations,
+        iterationCountExact: true,
+      };
+    }
+    const remainingMs = deadline - now();
+    if (remainingMs <= 0) {
+      return {
+        status: "failed",
+        code: "timeout",
+        iterations: totalIterations,
+        iterationCountExact: true,
+      };
+    }
     const batchIterations = Math.min(8, maxIterations - totalIterations);
     let optimized: OptimizerResult;
     try {
@@ -308,6 +346,7 @@ async function optimizeStart(
         status: "failed",
         code: message.includes("execution time") ? "timeout" : "optimizer-error",
         iterations: totalIterations,
+        iterationCountExact: false,
       };
     }
     if (
@@ -315,24 +354,49 @@ async function optimizeStart(
       || optimized.iterations < 0
       || optimized.iterations > batchIterations
     ) {
-      return { status: "failed", code: "optimizer-error", iterations: totalIterations };
+      return {
+        status: "failed",
+        code: "optimizer-error",
+        iterations: totalIterations,
+        iterationCountExact: true,
+      };
     }
     totalIterations += optimized.iterations;
     if (!optimized.parameterValues.every(Number.isFinite) || !Number.isFinite(optimized.parameterError)) {
-      return { status: "failed", code: "non-finite-result", iterations: totalIterations };
+      return {
+        status: "failed",
+        code: "non-finite-result",
+        iterations: totalIterations,
+        iterationCountExact: true,
+      };
     }
 
     const parameters = decodeParameters(optimized.parameterValues);
     if (!parameterIds.every((parameter) => Number.isFinite(parameters[parameter]))) {
-      return { status: "failed", code: "non-finite-result", iterations: totalIterations };
+      return {
+        status: "failed",
+        code: "non-finite-result",
+        iterations: totalIterations,
+        iterationCountExact: true,
+      };
     }
     const predictions = predictionsFor(data, parameters, evaluate);
     if (!predictions) {
-      return { status: "failed", code: "non-finite-prediction", iterations: totalIterations };
+      return {
+        status: "failed",
+        code: "non-finite-prediction",
+        iterations: totalIterations,
+        iterationCountExact: true,
+      };
     }
     const currentSse = sumSquaredError(observed, predictions);
     if (!Number.isFinite(currentSse)) {
-      return { status: "failed", code: "non-finite-result", iterations: totalIterations };
+      return {
+        status: "failed",
+        code: "non-finite-result",
+        iterations: totalIterations,
+        iterationCountExact: true,
+      };
     }
 
     const optimizerReportedConvergence = optimized.iterations < batchIterations;
@@ -342,15 +406,22 @@ async function optimizeStart(
     encoded = [...optimized.parameterValues];
     previousSse = currentSse;
 
-    if ((optimizerReportedConvergence && stable) || confirmations >= 2) {
+    const startBudgetExhausted = totalIterations >= maxIterations;
+    if (!startBudgetExhausted && ((optimizerReportedConvergence && stable) || confirmations >= 2)) {
       return {
         status: "converged",
         result: { parameters, sse: currentSse, iterations: totalIterations },
       };
     }
     if (optimized.iterations === 0) {
-      return { status: "failed", code: "optimizer-error", iterations: totalIterations };
+      return {
+        status: "failed",
+        code: "optimizer-error",
+        iterations: totalIterations,
+        iterationCountExact: true,
+      };
     }
+    if (startBudgetExhausted) return { status: "exhausted", iterations: totalIterations };
     if (totalIterations < maxIterations) await yieldToMacrotask();
   }
 
@@ -403,7 +474,7 @@ async function fitRatePerformanceWithDependencies(
     seenRates.add(rate);
   }
   const inputWarnings: RateFitWarning[] = [...duplicateRates].map((rate) => ({ code: "duplicate-rate", rate }));
-  const deadline = Date.now() + timeoutMs;
+  const deadline = dependencies.now() + timeoutMs;
 
   let optimizerModule: Readonly<{ levenbergMarquardt: RateOptimizer }>;
   try {
@@ -435,6 +506,7 @@ async function fitRatePerformanceWithDependencies(
       deadline,
       options.signal,
       dependencies.yieldToMacrotask,
+      dependencies.now,
     );
     totalIterations += optimized.status === "converged"
       ? optimized.result.iterations
@@ -442,7 +514,14 @@ async function fitRatePerformanceWithDependencies(
     if (optimized.status === "failed") {
       lastFailure = optimized.code;
       if (optimized.code === "timeout" || optimized.code === "cancelled") {
-        return failed(modelId, optimized.code, `The fit was ${optimized.code}.`, totalIterations, inputWarnings);
+        return failed(
+          modelId,
+          optimized.code,
+          `The fit was ${optimized.code}.`,
+          totalIterations,
+          inputWarnings,
+          optimized.iterationCountExact,
+        );
       }
     } else if (optimized.status === "converged") {
       candidates.push(optimized.result);
@@ -453,10 +532,20 @@ async function fitRatePerformanceWithDependencies(
       if (options.signal?.aborted) {
         return failed(modelId, "cancelled", "The fit was cancelled.", totalIterations, inputWarnings);
       }
-      if (Date.now() >= deadline) {
+      if (dependencies.now() >= deadline) {
         return failed(modelId, "timeout", "The fit timed out.", totalIterations, inputWarnings);
       }
     }
+  }
+
+  if (totalIterations >= maxIterations) {
+    return failed(
+      modelId,
+      "maximum-iterations",
+      "The global optimizer iteration budget was exhausted before a fit could be accepted.",
+      totalIterations,
+      inputWarnings,
+    );
   }
 
   if (candidates.length === 0) {
@@ -491,6 +580,7 @@ async function fitRatePerformanceWithDependencies(
     uncertainty,
     // This is the actual global optimizer work across every attempted start.
     iterations: totalIterations,
+    iterationCountExact: true,
     usedPointCount: data.length,
     warnings: [...inputWarnings, ...uncertainty.warnings],
   };
@@ -508,6 +598,7 @@ const defaultDependencies: RateFitDependencies = {
   },
   resolveModel: getRateModel,
   yieldToMacrotask: () => new Promise((resolve) => setTimeout(resolve, 0)),
+  now: Date.now,
 };
 
 export function createRatePerformanceFitter(
