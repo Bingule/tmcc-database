@@ -3163,6 +3163,7 @@ td button {
   width: 15px;
   height: 15px;
   min-height: 0;
+  padding: 0;
 }
 
 .cv-peak-points-card .cv-peak-potential-input {

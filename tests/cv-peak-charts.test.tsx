@@ -85,6 +85,7 @@ describe("peak b-value charts", () => {
     const compactInputRule = css.slice(css.lastIndexOf(".cv-peak-points-card .cv-peak-column-heading input"), css.indexOf("}", css.lastIndexOf(".cv-peak-points-card .cv-peak-column-heading input")) + 1);
     expect(compactInputRule).toContain("height: 15px");
     expect(compactInputRule).toContain("min-height: 0");
+    expect(compactInputRule).toContain("padding: 0");
   });
 
   it("composes full-width controls, summaries, and auditable point rows", async () => {
