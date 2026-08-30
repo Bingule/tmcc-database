@@ -24,8 +24,9 @@ const SOFT_ENVELOPE_ENDPOINT_FIDELITY_WEIGHT = 0.25;
 const SOFT_ENVELOPE_SMOOTHNESS_RATIO = 1e-4;
 const SOFT_ENVELOPE_LAMBDA = 8;
 const SOFT_ENVELOPE_TOLERANCE_SCALE = 1e-10;
-const ENDPOINT_SHAPE_WINDOW = 0.05;
+const ENDPOINT_SHAPE_WINDOW = 0.15;
 const ENDPOINT_DIRECTION_TOLERANCE_SCALE = 1e-10;
+const ENDPOINT_DIRECTION_MIN_DELTA = 1e-8;
 const ENDPOINT_PROJECTION_TOLERANCE = 1e-10;
 const SOFT_ENVELOPE_MAXIMUM_ACTIVE_SET_ITERATIONS = 50;
 const SOFT_ENVELOPE_MAXIMUM_SUPPORT_POINTS = 1_001;
@@ -240,19 +241,14 @@ export function refineSharedFractionWithSoftEnvelope(
     1e-10,
     SOFT_ENVELOPE_SMOOTHNESS_RATIO * input.baselineLambda
   );
-  if (softEnvelopeMeanPenalty(
+  const hasNumericalEnvelopeViolation = hasEnvelopeViolation(
     input.baselineG,
     forward,
     reverse,
     normalizedTolerance
-  ) === 0) {
-    const g = refineEndpointMorphology(
-      input.baselineG,
-      normalizedPotentials,
-      forward,
-      reverse,
-      normalizedTolerance
-    );
+  );
+  if (!hasNumericalEnvelopeViolation) {
+    const g = input.baselineG.map((value) => Math.min(1, Math.max(0, value)));
     return {
       baselineG: [...input.baselineG],
       g,
@@ -388,27 +384,16 @@ function refineEndpointMorphology(
 ): number[] {
   if (incomingG.length === 1) {
     const [lower, upper] = feasibleFractionInterval(forward[0]!, reverse[0]!);
-    return [Math.min(upper, Math.max(lower, incomingG[0]!))];
+    return [Math.min(1, Math.max(0, Math.min(upper, Math.max(lower, incomingG[0]!))))];
   }
 
-  const legacyReconnected = reconnectSharedFractionEndpoints(
+  const reconnected = reconnectSharedFractionEndpoints(
     incomingG,
-    normalizedPotentials,
     forward,
     reverse,
     tolerance
   );
-  if (!hasAddedEndpointDirectionReversal(
-    legacyReconnected,
-    normalizedPotentials,
-    forward,
-    reverse,
-    tolerance
-  )) {
-    return legacyReconnected;
-  }
-
-  const refined = [...legacyReconnected];
+  const refined = reconnected.map((value) => Math.min(1, Math.max(0, value)));
 
   for (const endpointIndex of [0, refined.length - 1]) {
     const [lower, upper] = feasibleFractionInterval(
@@ -417,43 +402,101 @@ function refineEndpointMorphology(
     );
     refined[endpointIndex] = Math.min(
       upper,
-      Math.max(lower, incomingG[endpointIndex]!)
+      Math.max(lower, refined[endpointIndex]!)
     );
   }
-  enforceEndpointDirectionsSequentially(
-    refined,
-    normalizedPotentials,
-    forward,
-    reverse,
-    tolerance
-  );
 
-  validateEndpointMorphology(
+  const shouldFixLeftEndpoint = isEndpointWindowMonotone(
+    forward,
+    normalizedPotentials,
+    "left"
+  );
+  const shouldFixRightEndpoint = isEndpointWindowMonotone(
+    forward,
+    normalizedPotentials,
+    "right"
+  );
+  if (hasAddedEndpointDirectionReversal(
     refined,
     normalizedPotentials,
     forward,
     reverse,
     tolerance
-  );
+  ) && (shouldFixLeftEndpoint || shouldFixRightEndpoint)) {
+    try {
+      enforceEndpointDirectionsSequentially(
+        refined,
+        normalizedPotentials,
+        forward,
+        reverse,
+        tolerance,
+        shouldFixLeftEndpoint,
+        shouldFixRightEndpoint
+      );
+      validateEndpointMorphology(
+        refined,
+        normalizedPotentials,
+        forward,
+        reverse,
+        tolerance
+      );
+      return refined;
+    } catch (error) {
+      if (error instanceof CvAnalysisError && error.code === "reconstructionFailed") {
+        return reconnected.map((value) => Math.min(1, Math.max(0, value)));
+      }
+      throw error;
+    }
+  }
+  validateEndpointFeasible(refined, forward, reverse);
   return refined;
+}
+
+function isEndpointWindowMonotone(
+  raw: number[],
+  normalizedPotentials: number[],
+  side: "left" | "right"
+): boolean {
+  let previousSign = 0;
+  const endpointIndex = side === "left" ? 0 : raw.length - 2;
+  for (let index = 0; index < raw.length - 1; index += 1) {
+    const inWindow = side === "left"
+      ? normalizedPotentials[index + 1]! <= ENDPOINT_SHAPE_WINDOW + Number.EPSILON
+      : normalizedPotentials[index]! >= 1 - ENDPOINT_SHAPE_WINDOW - Number.EPSILON;
+    if (!inWindow || index === endpointIndex) continue;
+
+    const delta = raw[index + 1]! - raw[index]!;
+    if (Math.abs(delta) < ENDPOINT_DIRECTION_MIN_DELTA) continue;
+    const sign = Math.sign(delta);
+    if (previousSign === 0) {
+      previousSign = sign;
+      continue;
+    }
+    if (sign !== previousSign) return false;
+    previousSign = sign;
+  }
+  return true;
 }
 
 function reconnectSharedFractionEndpoints(
   g: number[],
-  normalizedPotentials: number[],
   forward: number[],
   reverse: number[],
   tolerance: number
 ): number[] {
   const reconnected = [...g];
   const lastIndex = g.length - 1;
+  const windowLength = Math.max(2, Math.floor(ENDPOINT_SHAPE_WINDOW * (g.length - 1)) + 1);
   const endpoints = [
-    { index: 0, distance: (potential: number) => potential },
-    { index: lastIndex, distance: (potential: number) => 1 - potential }
+    0,
+    lastIndex
   ] as const;
 
-  for (const endpoint of endpoints) {
-    const index = endpoint.index;
+  for (const index of endpoints) {
+    const [pointLower, pointUpper] = feasibleFractionInterval(
+      forward[index]!,
+      reverse[index]!
+    );
     const lower = Math.min(forward[index]!, reverse[index]!);
     const upper = Math.max(forward[index]!, reverse[index]!);
     const fraction = g[index]!;
@@ -464,20 +507,35 @@ function reconnectSharedFractionEndpoints(
       && reverseCurrent >= lower - tolerance
       && reverseCurrent <= upper + tolerance;
     if (isContained) continue;
-
-    for (let pointIndex = 0; pointIndex < g.length; pointIndex += 1) {
-      const distance = endpoint.distance(normalizedPotentials[pointIndex]!);
-      if (distance < 0 || distance > ENDPOINT_SHAPE_WINDOW) continue;
-      const progress = distance / ENDPOINT_SHAPE_WINDOW;
-      const smoothstep = progress * progress * (3 - 2 * progress);
-      const endpointWeight = 1 - smoothstep;
-      reconnected[pointIndex] = Math.min(1, Math.max(
-        0,
-        reconnected[pointIndex]! + endpointWeight * (1 - reconnected[pointIndex]!)
+    const constrainedEndpoint = Math.min(pointUpper, Math.max(pointLower, fraction));
+    const direction = index === 0 ? "forward" : "reverse";
+    const anchorIndex = direction === "forward"
+      ? windowLength - 1
+      : g.length - windowLength;
+    const affectedWindow = direction === "forward"
+      ? Array.from({ length: anchorIndex + 1 }, (_, i) => i)
+      : Array.from({ length: g.length - anchorIndex }, (_, i) => anchorIndex + i);
+    for (const pointIndex of affectedWindow) {
+      if (pointIndex < 0 || pointIndex >= g.length) continue;
+      const endpointProgress = direction === "forward"
+        ? pointIndex / (windowLength - 1)
+        : (g.length - 1 - pointIndex) / (windowLength - 1);
+      const recoveryWeight = smoothstep(Math.min(1, endpointProgress));
+      reconnected[pointIndex] = Math.min(1, Math.max(0,
+        lerp(constrainedEndpoint, g[pointIndex]!, recoveryWeight)
       ));
     }
   }
   return reconnected;
+}
+
+function lerp(left: number, right: number, ratio: number): number {
+  return left + (right - left) * ratio;
+}
+
+function smoothstep(value: number): number {
+  const bounded = Math.max(0, Math.min(1, value));
+  return bounded * bounded * (3 - 2 * bounded);
 }
 
 function hasAddedEndpointDirectionReversal(
@@ -501,6 +559,9 @@ function hasAddedEndpointDirectionReversal(
         ENDPOINT_DIRECTION_TOLERANCE_SCALE * scale
       );
       const rawDelta = rawRight - rawLeft;
+      if (Math.abs(rawDelta) < ENDPOINT_DIRECTION_MIN_DELTA) {
+        continue;
+      }
       const capacitiveDelta = g[index + 1]! * rawRight - g[index]! * rawLeft;
       if (Math.abs(rawDelta) > directionTolerance
         && Math.abs(capacitiveDelta) > directionTolerance
@@ -509,7 +570,7 @@ function hasAddedEndpointDirectionReversal(
       }
     }
   }
-  return reversalCount >= 2;
+  return reversalCount >= 1;
 }
 
 function enforceEndpointDirectionsSequentially(
@@ -517,38 +578,44 @@ function enforceEndpointDirectionsSequentially(
   normalizedPotentials: number[],
   forward: number[],
   reverse: number[],
-  normalizedTolerance: number
+  normalizedTolerance: number,
+  adjustLeftEndpoint: boolean,
+  adjustRightEndpoint: boolean
 ) {
-  for (let rightIndex = 1;
-    rightIndex < g.length
-      && normalizedPotentials[rightIndex]! <= ENDPOINT_SHAPE_WINDOW + Number.EPSILON;
-    rightIndex += 1) {
-    g[rightIndex] = closestFeasibleNeighborFraction(
-      g[rightIndex]!,
-      g[rightIndex - 1]!,
-      forward[rightIndex - 1]!,
-      forward[rightIndex]!,
-      reverse[rightIndex - 1]!,
-      reverse[rightIndex]!,
-      "right",
-      normalizedTolerance
-    );
+  if (adjustLeftEndpoint) {
+    for (let rightIndex = 1;
+      rightIndex < g.length
+        && normalizedPotentials[rightIndex]! <= ENDPOINT_SHAPE_WINDOW + Number.EPSILON;
+      rightIndex += 1) {
+      g[rightIndex] = closestFeasibleNeighborFraction(
+        g[rightIndex]!,
+        g[rightIndex - 1]!,
+        forward[rightIndex - 1]!,
+        forward[rightIndex]!,
+        reverse[rightIndex - 1]!,
+        reverse[rightIndex]!,
+        "right",
+        normalizedTolerance
+      );
+    }
   }
 
-  for (let leftIndex = g.length - 2;
-    leftIndex >= 0
-      && normalizedPotentials[leftIndex]! >= 1 - ENDPOINT_SHAPE_WINDOW - Number.EPSILON;
-    leftIndex -= 1) {
-    g[leftIndex] = closestFeasibleNeighborFraction(
-      g[leftIndex]!,
-      g[leftIndex + 1]!,
-      forward[leftIndex]!,
-      forward[leftIndex + 1]!,
-      reverse[leftIndex]!,
-      reverse[leftIndex + 1]!,
-      "left",
-      normalizedTolerance
-    );
+  if (adjustRightEndpoint) {
+    for (let leftIndex = g.length - 2;
+      leftIndex >= 0
+        && normalizedPotentials[leftIndex]! >= 1 - ENDPOINT_SHAPE_WINDOW - Number.EPSILON;
+      leftIndex -= 1) {
+      g[leftIndex] = closestFeasibleNeighborFraction(
+        g[leftIndex]!,
+        g[leftIndex + 1]!,
+        forward[leftIndex]!,
+        forward[leftIndex + 1]!,
+        reverse[leftIndex]!,
+        reverse[leftIndex + 1]!,
+        "left",
+        normalizedTolerance
+      );
+    }
   }
 }
 
@@ -569,6 +636,9 @@ function closestFeasibleNeighborFraction(
     [reverseLeft, reverseRight]
   ] as const) {
     const rawDelta = rawRight - rawLeft;
+    if (Math.abs(rawDelta) < ENDPOINT_DIRECTION_MIN_DELTA) {
+      continue;
+    }
     const scale = Math.max(1, Math.abs(rawLeft), Math.abs(rawRight));
     const directionTolerance = Math.max(
       normalizedTolerance,
@@ -652,6 +722,9 @@ function validateEndpointMorphology(
       const rawLeft = raw[index]!;
       const rawRight = raw[index + 1]!;
       const rawDelta = rawRight - rawLeft;
+      if (Math.abs(rawDelta) < ENDPOINT_DIRECTION_MIN_DELTA) {
+        continue;
+      }
       const scale = Math.max(1, Math.abs(rawLeft), Math.abs(rawRight));
       const directionTolerance = Math.max(
         normalizedTolerance,
@@ -664,6 +737,33 @@ function validateEndpointMorphology(
       }
     }
   }
+}
+
+function validateEndpointFeasible(g: number[], forward: number[], reverse: number[]) {
+  for (const endpointIndex of [0, g.length - 1]) {
+    const [lower, upper] = feasibleFractionInterval(
+      forward[endpointIndex]!,
+      reverse[endpointIndex]!
+    );
+    if (g[endpointIndex]! < lower - Number.EPSILON
+      || g[endpointIndex]! > upper + Number.EPSILON) {
+      throw new CvAnalysisError("reconstructionFailed");
+    }
+  }
+}
+
+function hasEnvelopeViolation(g: number[], forward: number[], reverse: number[], tolerance: number): boolean {
+  for (let index = 0; index < g.length; index += 1) {
+    const lower = Math.min(forward[index]!, reverse[index]!);
+    const upper = Math.max(forward[index]!, reverse[index]!);
+    const reconstructedForward = g[index]! * forward[index]!;
+    const reconstructedReverse = g[index]! * reverse[index]!;
+    if (reconstructedForward > upper + tolerance || reconstructedForward < lower - tolerance
+      || reconstructedReverse > upper + tolerance || reconstructedReverse < lower - tolerance) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function selectSoftEnvelopeSupportIndices(

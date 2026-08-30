@@ -1056,12 +1056,18 @@ export function makeDunnPolygons(
     if (current?.[0]?.branch === record.branch) current.push(record);
     else branchRuns.push([record]);
   }
+
+  const endpointSafeRun = plotPath.map((record, index) => ({
+    x: record.potential,
+    y: (index === 0 || index === plotPath.length - 1) ? record.originalCurrent : record.capacitiveCurrent
+  })).filter((point) => Number.isFinite(point.y) && Number.isFinite(point.x));
+
   return [{
     id: "capacitive-area",
     label: t("cv.dunn.capacitive"),
     color: "#7656a8",
     opacity: 0.72,
-    polygons: [plotPath.map((record) => ({ x: record.potential, y: record.capacitiveCurrent }))]
+    polygons: endpointSafeRun.length >= 3 ? [endpointSafeRun] : []
   }, {
     id: "diffusion-area",
     label: t("cv.dunn.diffusion"),

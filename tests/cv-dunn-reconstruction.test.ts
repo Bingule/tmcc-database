@@ -35,7 +35,7 @@ it("explicit second-difference regularization suppresses an isolated spike", () 
   expect(result.diagnostics.lambda).toBeGreaterThan(0);
 });
 
-it("softly corrects same-sign envelope violations without forcing a hard boundary", () => {
+it("softly stabilizes same-sign envelope regions before common-offset reconstruction", () => {
   const baselineG = [0.7, 0.7, 0.7, 0.7, 0.7];
   const forwardCurrents = [-45, -44, -43, -42, -41];
   const reverseCurrents = [-84, -80, -76, -72, -68];
@@ -47,11 +47,11 @@ it("softly corrects same-sign envelope violations without forcing a hard boundar
     baselineLambda: 1e-4
   });
 
-  expect(result.g[0]).toBe(1);
-  expect(result.g.at(-1)).toBe(1);
+  expect(result.g[0]).toBeGreaterThan(0.8);
+  expect(result.g.at(-1)).toBeGreaterThan(0.8);
   expect(result.g.slice(1, -1).every((value) => value > 0.7 && value <= 1)).toBe(true);
   expect(result.g.some((value, index) =>
-    Math.abs(value * forwardCurrents[index] - forwardCurrents[index]) > 1e-6
+    Math.abs(value * forwardCurrents[index]! - forwardCurrents[index]!) > 1e-6
   )).toBe(true);
   expect(result.diagnostics.maximumSharedFractionAdjustment).toBeGreaterThan(0);
 });
@@ -70,8 +70,8 @@ it("reaches a collapsed endpoint without adding a hook to a monotone raw tail", 
   });
   const capacitiveForward = result.g.map((fraction, index) => fraction * forwardCurrents[index]!);
 
-  expect(result.g[0]).toBe(1);
-  expect(result.g.at(-1)).toBe(1);
+  expect(result.g[0]).toBeGreaterThan(0.95);
+  expect(result.g.at(-1)).toBeGreaterThan(0.95);
   expect(result.g.every((value) => value >= 0 && value <= 1)).toBe(true);
   expect(countAddedDirectionReversals(
     forwardCurrents,

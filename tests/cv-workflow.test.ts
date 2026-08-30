@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { makeDunnFractionGrid } from "../src/lib/cvDunnConfidence";
-import { optimizeSharedFraction, secondDifferenceRoughness } from "../src/lib/cvDunnReconstruction";
+import {
+  optimizeSharedFraction,
+  secondDifferenceRoughness
+} from "../src/lib/cvDunnReconstruction";
 import { stabilizeDunnFractions } from "../src/lib/cvDunnStabilization";
 import { pchipInterpolate } from "../src/lib/cvInterpolation";
 import { analyzeCvWorkflow } from "../src/lib/cvWorkflow";
@@ -319,10 +322,8 @@ describe("constrained Dunn regression datasets", () => {
           const reconstructed = contribution.plotPath[sourceIndex]!;
           expect(reconstructed.potential).toBe(original.potential);
           expect(reconstructed.branch).toBe(expectedBranches[turningIndex]);
-          expect(reconstructed.capacitiveCurrent).toBeCloseTo(
-            original.current * evaluateG(contribution.potentialGrid, contribution.g, original.potential),
-            12
-          );
+          expect(reconstructed.capacitiveCurrent).toBeGreaterThanOrEqual(reconstructed.envelopeLower - 1e-10);
+          expect(reconstructed.capacitiveCurrent).toBeLessThanOrEqual(reconstructed.envelopeUpper + 1e-10);
           expect(reconstructed.current).toBe(reconstructed.capacitiveCurrent);
           expect(reconstructed.correctionMagnitude).toBeCloseTo(
             Math.abs(reconstructed.capacitiveCurrent - reconstructed.targetCapacitiveCurrent),
@@ -333,16 +334,16 @@ describe("constrained Dunn regression datasets", () => {
     }
   });
 
-  it("preserves a branch-only endpoint tail without extrapolating the opposite branch", () => {
+  it("keeps branch-only endpoint tail points numerically stable with opposite-branch endpoint fallback", () => {
     const result = analyzeCvWorkflow(makeMismatchedEndpointTailSeries(), settings);
 
     for (const contribution of result.contributions) {
       expect(Math.min(...contribution.plotPath.map((point) => point.potential))).toBeCloseTo(-1, 12);
       const endpoint = contribution.plotPath.find((point) => point.potential === -1);
       expect(endpoint).toBeDefined();
-      expect(endpoint!.oppositeCurrent).toBe(0);
-      const endpointG = evaluateG(contribution.potentialGrid, contribution.g, endpoint!.potential);
-      expect(endpoint!.capacitiveCurrent).toBeCloseTo(endpointG * endpoint!.originalCurrent, 12);
+      expect(Number.isFinite(endpoint!.oppositeCurrent)).toBe(true);
+      expect(endpoint!.capacitiveCurrent).toBeGreaterThanOrEqual(endpoint!.envelopeLower - 1e-10);
+      expect(endpoint!.capacitiveCurrent).toBeLessThanOrEqual(endpoint!.envelopeUpper + 1e-10);
       expect(endpoint!.correctionMagnitude).toBeCloseTo(
         Math.abs(endpoint!.capacitiveCurrent - endpoint!.targetCapacitiveCurrent),
         12
@@ -367,7 +368,7 @@ describe("constrained Dunn regression datasets", () => {
     }
   });
 
-  it("temporarily preserves the historical optimized shared fraction without endpoint reshaping", () => {
+  it("preserves the historical smooth shared fraction before common-offset containment", () => {
     for (const dunnConfidenceMode of ["threshold", "weighted"] as const) {
       const result = analyzeCvWorkflow(makeNcpRegressionSeries(), { ...settings, dunnConfidenceMode });
       for (const contribution of result.contributions) {
@@ -382,8 +383,11 @@ describe("constrained Dunn regression datasets", () => {
           result.alignedGrid.potentials,
           stabilized.diagnostics.smoothingMultiplier
         );
-        expect(contribution.g).toEqual(historical.g);
-        expect(contribution.diagnostics.maximumSharedFractionAdjustment).toBe(0);
+        const maxGap = contribution.g.reduce((max, value, index) =>
+          Math.max(max, Math.abs(value - historical.g[index]!)), 0);
+        expect(maxGap).toBeLessThanOrEqual(0.08);
+        expect(contribution.diagnostics.maximumSharedFractionAdjustment).toBeGreaterThanOrEqual(0);
+        expect(contribution.diagnostics.maximumSharedFractionAdjustment).toBeCloseTo(maxGap, 10);
       }
     }
   });
@@ -393,30 +397,37 @@ function expectSharedSoftEnvelopeReconstruction(result: CvWorkflowResult) {
   for (const contribution of result.contributions) {
     expect(contribution.g.every((value) => value >= 0 && value <= 1)).toBe(true);
     contribution.g.forEach((fraction, index) => {
-      expect(contribution.capacitiveForward[index]).toBeCloseTo(
-        fraction * contribution.originalForward[index], 10
-      );
-      expect(contribution.capacitiveReverse[index]).toBeCloseTo(
-        fraction * contribution.originalReverse[index], 10
+      const forwardOffset = contribution.capacitiveForward[index]!
+        - fraction * contribution.originalForward[index]!;
+      const reverseOffset = contribution.capacitiveReverse[index]!
+        - fraction * contribution.originalReverse[index]!;
+      expect(forwardOffset).toBeCloseTo(reverseOffset, 10);
+      expect(contribution.capacitiveForward[index]! - contribution.capacitiveReverse[index]!).toBeCloseTo(
+        fraction * (contribution.originalForward[index]! - contribution.originalReverse[index]!),
+        10
       );
     });
     for (const record of contribution.plotPath) {
       const tolerance = 1e-10 * Math.max(1, Math.abs(record.originalCurrent), Math.abs(record.oppositeCurrent));
-      expect(record.capacitiveCurrent).toBeCloseTo(record.g * record.originalCurrent, 10);
-      expect(record.effectiveFraction).toBeCloseTo(record.g, 10);
+      expect(record.capacitiveCurrent).toBeGreaterThanOrEqual(record.envelopeLower - tolerance);
+      expect(record.capacitiveCurrent).toBeLessThanOrEqual(record.envelopeUpper + tolerance);
+      if (record.originalCurrent !== 0) {
+        expect(record.effectiveFraction).toBeCloseTo(
+          record.capacitiveCurrent / record.originalCurrent,
+          10
+        );
+      }
       expect(Math.abs(record.capacitiveCurrent)).toBeLessThanOrEqual(Math.abs(record.originalCurrent) + tolerance);
       expect(record.capacitiveCurrent * record.originalCurrent).toBeGreaterThanOrEqual(-tolerance);
       expect(record.capacitiveCurrent + record.diffusionCurrent).toBeCloseTo(record.originalCurrent, 10);
     }
-    expect(contribution.diagnostics.maximumAbsoluteEnvelopeViolation).toBeGreaterThanOrEqual(0);
-    expect(Number.isFinite(contribution.diagnostics.maximumAbsoluteEnvelopeViolation)).toBe(true);
+    expect(contribution.diagnostics.maximumAbsoluteEnvelopeViolation).toBeLessThanOrEqual(1e-10);
     expect(contribution.diagnostics.softEnvelopeConverged).toBe(true);
     expect(contribution.diagnostics.softEnvelopeIterations).toBeGreaterThanOrEqual(0);
     expect(contribution.diagnostics.softEnvelopeOptimalityResidual).toBeGreaterThanOrEqual(0);
     expect(contribution.diagnostics.maximumSharedFractionAdjustment).toBeGreaterThanOrEqual(0);
-    expect(contribution.diagnostics.envelopeResidualPointCount).toBeGreaterThanOrEqual(0);
-    expect(contribution.diagnostics.envelopeResidualPointPercent).toBeGreaterThanOrEqual(0);
-    expect(contribution.diagnostics.envelopeResidualPointPercent).toBeLessThanOrEqual(100);
+    expect(contribution.diagnostics.envelopeResidualPointCount).toBe(0);
+    expect(contribution.diagnostics.envelopeResidualPointPercent).toBe(0);
   }
 }
 

@@ -131,6 +131,83 @@ export function reconstructBranchCurrents(
   return { capacitive, diffusion };
 }
 
+export function reconstructSharedOffsetCurrents(
+  forward: number[],
+  reverse: number[],
+  g: number[]
+): {
+  capacitiveForward: number[];
+  capacitiveReverse: number[];
+  diffusionForward: number[];
+  diffusionReverse: number[];
+  commonOffset: number[];
+} {
+  if (forward.length !== reverse.length || forward.length !== g.length) {
+    throw new CvAnalysisError("invalidDataShape");
+  }
+  const capacitiveForward: number[] = [];
+  const capacitiveReverse: number[] = [];
+  const diffusionForward: number[] = [];
+  const diffusionReverse: number[] = [];
+  const commonOffset: number[] = [];
+  for (let index = 0; index < g.length; index += 1) {
+    const pair = reconstructSharedOffsetPair(
+      forward[index]!,
+      reverse[index]!,
+      g[index]!
+    );
+    capacitiveForward.push(pair.forward);
+    capacitiveReverse.push(pair.reverse);
+    diffusionForward.push(cleanZero(forward[index]! - pair.forward));
+    diffusionReverse.push(cleanZero(reverse[index]! - pair.reverse));
+    commonOffset.push(pair.offset);
+  }
+  return {
+    capacitiveForward,
+    capacitiveReverse,
+    diffusionForward,
+    diffusionReverse,
+    commonOffset
+  };
+}
+
+function reconstructSharedOffsetPair(
+  forward: number,
+  reverse: number,
+  fraction: number
+): { forward: number; reverse: number; offset: number } {
+  validateOriginalAndFraction(forward, fraction);
+  validateOriginalAndFraction(reverse, fraction);
+  const envelopeLower = Math.min(forward, reverse);
+  const envelopeUpper = Math.max(forward, reverse);
+  const originals = [forward, reverse] as const;
+  const targets = [fraction * forward, fraction * reverse] as const;
+  let offsetLower = Number.NEGATIVE_INFINITY;
+  let offsetUpper = Number.POSITIVE_INFINITY;
+  for (let index = 0; index < originals.length; index += 1) {
+    const original = originals[index]!;
+    const target = targets[index]!;
+    const feasibleLower = Math.max(envelopeLower, Math.min(0, original));
+    const feasibleUpper = Math.min(envelopeUpper, Math.max(0, original));
+    offsetLower = Math.max(offsetLower, feasibleLower - target);
+    offsetUpper = Math.min(offsetUpper, feasibleUpper - target);
+  }
+  const tolerance = RECONSTRUCTION_TOLERANCE_SCALE * Math.max(
+    1,
+    Math.abs(forward),
+    Math.abs(reverse)
+  );
+  if (offsetLower > offsetUpper + tolerance) {
+    throw new CvAnalysisError("reconstructionFailed");
+  }
+  const offset = cleanZero(Math.min(offsetUpper, Math.max(offsetLower, 0)));
+  const capacitiveForward = cleanZero(targets[0] + offset);
+  const capacitiveReverse = cleanZero(targets[1] + offset);
+  validateReconstructedPoint(forward, capacitiveForward, forward - capacitiveForward);
+  validateReconstructedPoint(reverse, capacitiveReverse, reverse - capacitiveReverse);
+  return { forward: capacitiveForward, reverse: capacitiveReverse, offset };
+}
+
 export function integrateMagnitude(potentials: number[], currents: number[]): number {
   if (potentials.length !== currents.length) throw new CvAnalysisError("invalidDataShape");
   if (potentials.some((potential) => !Number.isFinite(potential))
@@ -183,12 +260,11 @@ export function reconstructDunnContribution(input: DunnContributionInput): DunnC
   const g = [...refined.g];
   const originalForward = [...alignedGrid.forwardCurrents[seriesIndex]!];
   const originalReverse = [...alignedGrid.reverseCurrents[seriesIndex]!];
-  const forward = reconstructBranchCurrents(originalForward, g);
-  const reverse = reconstructBranchCurrents(originalReverse, g);
-  const plotPath = reconstructOriginalOrderPath(input);
+  const reconstructed = reconstructSharedOffsetCurrents(originalForward, originalReverse, g);
+  const plotPath = reconstructOriginalOrderPath(input, g);
   const overshoot = mergeOvershootDiagnostics([
-    measureBranchOvershoot(originalForward, forward.capacitive),
-    measureBranchOvershoot(originalReverse, reverse.capacitive),
+    measureBranchOvershoot(originalForward, reconstructed.capacitiveForward),
+    measureBranchOvershoot(originalReverse, reconstructed.capacitiveReverse),
     measureBranchOvershoot(
       plotPath.map((point) => point.originalCurrent),
       plotPath.map((point) => point.capacitiveCurrent)
@@ -206,10 +282,10 @@ export function reconstructDunnContribution(input: DunnContributionInput): DunnC
     g,
     originalForward,
     originalReverse,
-    capacitiveForward: forward.capacitive,
-    capacitiveReverse: reverse.capacitive,
-    diffusionForward: forward.diffusion,
-    diffusionReverse: reverse.diffusion,
+    capacitiveForward: reconstructed.capacitiveForward,
+    capacitiveReverse: reconstructed.capacitiveReverse,
+    diffusionForward: reconstructed.diffusionForward,
+    diffusionReverse: reconstructed.diffusionReverse,
     plotPath,
     capacitivePercent: 100 * capacitiveArea / totalArea,
     diffusionPercent: 100 * diffusionArea / totalArea,
@@ -320,7 +396,10 @@ function validateAlignedArrays(reference: number[], ...arrays: number[][]) {
   if (reference.some((value) => !Number.isFinite(value))) throw new CvAnalysisError("invalidDataShape");
 }
 
-function reconstructOriginalOrderPath(input: DunnContributionInput): DunnContribution["plotPath"] {
+function reconstructOriginalOrderPath(
+  input: DunnContributionInput,
+  constrainedFractions: number[]
+): DunnContribution["plotPath"] {
   const cycle = input.alignedGrid.cycles[input.seriesIndex]!;
   const branchBySourceIndex = branchOwnershipBySourceIndex(cycle);
   const oppositeBySourceIndex = new Map<number, number>();
@@ -331,19 +410,16 @@ function reconstructOriginalOrderPath(input: DunnContributionInput): DunnContrib
     owned.forEach(({ sourceIndex }, index) => oppositeBySourceIndex.set(sourceIndex, opposite[index]!));
   }
 
-  const minimumPotential = input.alignedGrid.potentials[0]!;
-  const maximumPotential = input.alignedGrid.potentials.at(-1)!;
-  const interpolationPotentials = cycle.originalPoints.map((point) =>
-    Math.min(maximumPotential, Math.max(minimumPotential, point.potential)));
-  const baselineFractions = pchipInterpolate(
+  const sharedPotentials = cycle.originalPoints.map((point) => point.potential);
+  const baselineFractions = evaluateSharedFractionOnOriginalGrid(
     input.alignedGrid.potentials,
     input.refined.baselineG,
-    interpolationPotentials
+    sharedPotentials
   ).map(validateFraction);
-  const fractions = pchipInterpolate(
+  const fractions = evaluateSharedFractionOnOriginalGrid(
     input.alignedGrid.potentials,
-    input.refined.g,
-    interpolationPotentials
+    constrainedFractions,
+    sharedPotentials
   ).map(validateFraction);
 
   const records = cycle.originalPoints.map((point, sourceIndex) => {
@@ -360,6 +436,38 @@ function reconstructOriginalOrderPath(input: DunnContributionInput): DunnContrib
     );
   });
   return insertSharedZeroCrossings(records);
+}
+
+function evaluateSharedFractionOnOriginalGrid(
+  alignedPotentials: number[],
+  alignedFractions: number[],
+  sharedPotentials: number[]
+): number[] {
+  const minimumPotential = alignedPotentials[0]!;
+  const maximumPotential = alignedPotentials.at(-1)!;
+  const interpolationPotentials: number[] = [];
+  const interpolationIndices: number[] = [];
+  const evaluated = new Array<number>(sharedPotentials.length).fill(0);
+
+  sharedPotentials.forEach((potential, index) => {
+    if (potential <= minimumPotential) {
+      evaluated[index] = alignedFractions[0]!;
+      return;
+    }
+    if (potential >= maximumPotential) {
+      evaluated[index] = alignedFractions.at(-1)!;
+      return;
+    }
+    interpolationIndices.push(index);
+    interpolationPotentials.push(potential);
+  });
+  if (interpolationPotentials.length === 0) return evaluated;
+
+  const interior = pchipInterpolate(alignedPotentials, alignedFractions, interpolationPotentials);
+  interpolationIndices.forEach((index, interpolationIndex) => {
+    evaluated[index] = interior[interpolationIndex]!;
+  });
+  return evaluated;
 }
 
 function insertSharedZeroCrossings(records: DunnContribution["plotPath"]): DunnContribution["plotPath"] {
@@ -408,10 +516,15 @@ function makeOrderedRecord(
 ): DunnOrderedRecord {
   validateOriginalAndFraction(point.current, baselineFraction);
   validateOriginalAndFraction(point.current, fraction);
+  const reconstructed = reconstructSharedOffsetPair(
+    point.current,
+    oppositeCurrent,
+    fraction
+  );
   const envelopeLower = Math.min(point.current, oppositeCurrent);
   const envelopeUpper = Math.max(point.current, oppositeCurrent);
   const targetCapacitiveCurrent = cleanZero(baselineFraction * point.current);
-  const capacitiveCurrent = cleanZero(fraction * point.current);
+  const capacitiveCurrent = reconstructed.forward;
   const diffusionCurrent = cleanZero(point.current - capacitiveCurrent);
   validateReconstructedPoint(point.current, capacitiveCurrent, diffusionCurrent);
   return {
@@ -425,7 +538,9 @@ function makeOrderedRecord(
     capacitiveCurrent,
     diffusionCurrent,
     g: fraction,
-    effectiveFraction: fraction,
+    effectiveFraction: point.current === 0
+      ? 0
+      : Math.min(1, Math.max(0, capacitiveCurrent / point.current)),
     correctionMagnitude: Math.abs(capacitiveCurrent - targetCapacitiveCurrent),
     branch,
     sourceIndex,
@@ -446,12 +561,19 @@ function evaluateOppositeCurrents(
   const interpolationIndices: number[] = [];
   const currents = new Array<number>(potentials.length).fill(0);
   potentials.forEach((potential, index) => {
+    if (potential <= minimum) {
+      currents[index] = opposite.currents[0]!;
+      return;
+    }
+    if (potential >= maximum) {
+      currents[index] = opposite.currents.at(-1)!;
+      return;
+    }
     if (potential < minimum - tolerance || potential > maximum + tolerance) {
-      // No opposite-branch value exists here; zero retains signed raw-current containment without extrapolation.
       return;
     }
     interpolationIndices.push(index);
-    interpolationPotentials.push(Math.min(maximum, Math.max(minimum, potential)));
+    interpolationPotentials.push(potential);
   });
   const interpolated = pchipInterpolate(opposite.potentials, opposite.currents, interpolationPotentials);
   interpolationIndices.forEach((index, interpolationIndex) => {

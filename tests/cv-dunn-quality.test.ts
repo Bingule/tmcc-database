@@ -8,6 +8,7 @@ import {
   measureEnvelopeViolation,
   projectCapacitiveToEnvelope,
   reconstructBranchCurrents,
+  reconstructSharedOffsetCurrents,
   reconstructDunnContribution,
   validateDunnContribution
 } from "../src/lib/cvDunnQuality";
@@ -81,6 +82,27 @@ it("leaves opposite-sign and already feasible shared-g targets unchanged", () =>
   expect(projectCapacitiveToEnvelope(4, 2, 3).correctionMagnitude).toBe(0);
 });
 
+it("uses one minimum common offset to contain same-sign shared-g branch pairs", () => {
+  const result = reconstructSharedOffsetCurrents([-48], [-50], [0.8]);
+
+  expect(result.commonOffset[0]).toBeCloseTo(-9.6, 12);
+  expect(result.capacitiveForward[0]).toBeCloseTo(-48, 12);
+  expect(result.capacitiveReverse[0]).toBeCloseTo(-49.6, 12);
+  expect(result.capacitiveForward[0]! - result.capacitiveReverse[0]!).toBeCloseTo(
+    0.8 * (-48 - -50),
+    12
+  );
+  expect(result.diffusionForward[0]! + result.capacitiveForward[0]!).toBeCloseTo(-48, 12);
+  expect(result.diffusionReverse[0]! + result.capacitiveReverse[0]!).toBeCloseTo(-50, 12);
+});
+
+it("keeps a feasible opposite-sign shared-g pair unchanged", () => {
+  const result = reconstructSharedOffsetCurrents([4], [-3], [0.5]);
+  expect(result.commonOffset).toEqual([0]);
+  expect(result.capacitiveForward).toEqual([2]);
+  expect(result.capacitiveReverse).toEqual([-1.5]);
+});
+
 it("measures signed and absolute residual envelope violation", () => {
   const diagnostics = measureEnvelopeViolation([
     { envelopeLower: -2, envelopeUpper: 3, capacitiveCurrent: 3.25 },
@@ -102,7 +124,7 @@ it("flags low fit quality below 50% coverage without deleting the result", () =>
 });
 
 describe("reconstructDunnContribution", () => {
-  it("uses one refined shared fraction without pointwise branch projection", () => {
+  it("keeps the refined shared fraction while applying one common containment offset", () => {
     const cycle = normalizeCvCycle([
       { potential: -1, current: 2 },
       { potential: 0, current: 4 },
@@ -119,20 +141,27 @@ describe("reconstructDunnContribution", () => {
 
     expect(contribution.g).toEqual([0.6, 0.6, 0.6]);
     contribution.g.forEach((fraction, index) => {
-      expect(contribution.capacitiveForward[index]).toBeCloseTo(
-        fraction * contribution.originalForward[index], 12
-      );
-      expect(contribution.capacitiveReverse[index]).toBeCloseTo(
-        fraction * contribution.originalReverse[index], 12
+      const forwardOffset = contribution.capacitiveForward[index]!
+        - fraction * contribution.originalForward[index]!;
+      const reverseOffset = contribution.capacitiveReverse[index]!
+        - fraction * contribution.originalReverse[index]!;
+      expect(forwardOffset).toBeCloseTo(reverseOffset, 12);
+      expect(contribution.capacitiveForward[index]! - contribution.capacitiveReverse[index]!).toBeCloseTo(
+        fraction * (contribution.originalForward[index]! - contribution.originalReverse[index]!),
+        12
       );
     });
     for (const record of contribution.plotPath.filter((point) => !point.synthetic)) {
-      expect(record.capacitiveCurrent).toBeCloseTo(record.g * record.originalCurrent, 12);
-      expect(record.effectiveFraction).toBeCloseTo(record.g, 12);
+      expect(record.capacitiveCurrent).toBeGreaterThanOrEqual(record.envelopeLower - 1e-10);
+      expect(record.capacitiveCurrent).toBeLessThanOrEqual(record.envelopeUpper + 1e-10);
+      expect(record.effectiveFraction).toBeCloseTo(
+        record.capacitiveCurrent / record.originalCurrent,
+        12
+      );
       expect(record.capacitiveCurrent + record.diffusionCurrent).toBeCloseTo(record.originalCurrent, 12);
     }
     expect(contribution.plotPath.some((record) => record.correctionMagnitude > 0)).toBe(true);
-    expect(contribution.diagnostics.maximumAbsoluteEnvelopeViolation).toBeGreaterThan(0);
+    expect(contribution.diagnostics.maximumAbsoluteEnvelopeViolation).toBe(0);
   });
 
   it("calculates contribution areas from the same canonical ordered records", () => {
@@ -235,9 +264,12 @@ describe("reconstructDunnContribution", () => {
 
     expect(contribution.plotPath).toHaveLength(cycle.originalPoints.length);
     expect(contribution.plotPath.map((point) => point.potential)).toEqual([0, 1, 1, 1, 0, -1, 0]);
-    expect(contribution.plotPath.map((point) => point.current)).toEqual([0.5, 1.5, 2.25, 3, 2.5, 1.5, 3.5]);
     expect(contribution.plotPath.map((point) => point.originalCurrent)).toEqual([1, 2, 3, 4, 5, 6, 7]);
-    expect(contribution.plotPath.map((point) => point.diffusionCurrent)).toEqual([0.5, 0.5, 0.75, 1, 2.5, 4.5, 3.5]);
+    expect(contribution.plotPath.every((point) =>
+      point.capacitiveCurrent >= point.envelopeLower - 1e-10
+      && point.capacitiveCurrent <= point.envelopeUpper + 1e-10
+      && Math.abs(point.capacitiveCurrent + point.diffusionCurrent - point.originalCurrent) <= 1e-10
+    )).toBe(true);
     expect(contribution.plotPath.every((point) => point.capacitiveCurrent === point.current)).toBe(true);
     expect(contribution.plotPath.map((point) => point.branch)).toEqual([
       "forward",
@@ -280,7 +312,10 @@ describe("reconstructDunnContribution", () => {
 
     expect(contribution.plotPath).toHaveLength(cycle.originalPoints.length);
     expect(contribution.plotPath.map((point) => point.potential)).toEqual([-0.5, 0, -0.5, -1, -0.75, -0.5]);
-    expect(contribution.plotPath.map((point) => point.current)).toEqual([0.5, 1.5, 1.5, 1, 1.875, 3]);
+    expect(contribution.plotPath.every((point) =>
+      point.capacitiveCurrent >= point.envelopeLower - 1e-10
+      && point.capacitiveCurrent <= point.envelopeUpper + 1e-10
+    )).toBe(true);
     expect(contribution.plotPath.map((point) => point.branch)).toEqual([
       "forward",
       "forward",
@@ -384,10 +419,10 @@ describe("reconstructDunnContribution", () => {
 
     expect(contribution.originalForward).toEqual([-4, 2, 8]);
     expect(contribution.originalReverse).toEqual([-8, -2, 4]);
-    expect(contribution.capacitiveForward).toEqual([-1, 1, 6]);
-    expect(contribution.capacitiveReverse).toEqual([-2, -1, 3]);
-    expect(contribution.diffusionForward).toEqual([-3, 1, 2]);
-    expect(contribution.diffusionReverse).toEqual([-6, -1, 1]);
+    expect(contribution.capacitiveForward).toEqual([-4, 1, 7]);
+    expect(contribution.capacitiveReverse).toEqual([-5, -1, 4]);
+    expect(contribution.diffusionForward).toEqual([0, 1, 1]);
+    expect(contribution.diffusionReverse).toEqual([-3, -1, 0]);
     expect(contribution.capacitivePercent).toBeCloseTo(53.125, 12);
     expect(contribution.diffusionPercent).toBeCloseTo(46.875, 12);
     expect(contribution.plotPath.map(({ potential, current, branch }) => ({ potential, current, branch }))).toEqual([
