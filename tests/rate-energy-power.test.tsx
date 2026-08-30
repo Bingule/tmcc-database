@@ -89,7 +89,7 @@ describe("energy and power exports", () => {
       sampleId: "curve-1", sampleName: "Electrode A", mode: "capacity", xUnit: "mAh-g-1",
       currentUnit: null, currentSign: "positive", basis: "electrode", massG: 2,
       volumeCm3: 0.5, dischargeTimeHours: 1, integrationMethod: "trapezoidal-v-dq", integrationSucceeded: true,
-      source: { kind: "upload", fileName: "=curve.csv", sheetName: "Sheet 2", headerMode: "header", hasHeader: true, mapping: { x: { index: 1, name: "capacity" }, voltage: { index: 0, name: "voltage" }, current: null }, rawRows: [{ rowNumber: 2, cells: [4, 0, "unmapped"] }, { rowNumber: 3, cells: [3, 1, "kept"] }] },
+      source: { kind: "upload", fileName: "=curve.csv", sheetName: "Sheet 2", headerMode: "header", hasHeader: true, allHeaders: ["voltage", "capacity", "note"], rawHeader: ["voltage", "capacity", "note"], mapping: { x: { index: 1, name: "capacity" }, voltage: { index: 0, name: "voltage" }, current: null }, rawRows: [{ rowNumber: 2, cells: [4, 0, "unmapped"] }, { rowNumber: 3, cells: [3, 1, "kept"] }] },
     }, metadata);
     expect(curve).toContain("sample_id,sample_name,point_id,axis_value,axis_type,axis_unit,voltage_V,current_original,current_unit,current_sign");
     expect(curve).toContain("curve-1,Electrode A,'+point,0,capacity,mAh-g-1,4,,");
@@ -97,6 +97,24 @@ describe("energy and power exports", () => {
     expect(curve).toContain("upload,'=curve.csv,Sheet 2,header,true,2,1,capacity,0,voltage");
     expect(curve).toContain('"[4,0,""unmapped""]"');
     expect(serializeEnergyResultsCsv([result], metadata)).toContain("point_count");
+  });
+
+  it("preserves every uploaded raw row and invalid mapping when no analysis points exist", () => {
+    const csv = serializeEnergyCurveCsv([], {
+      sampleId: "invalid-map", sampleName: "Raw source", mode: "capacity", xUnit: "mAh-g-1",
+      currentUnit: null, currentSign: "positive", basis: "active-material", massG: null,
+      volumeCm3: null, dischargeTimeHours: null, integrationMethod: "trapezoidal-v-dq", integrationSucceeded: false,
+      source: { kind: "upload", fileName: "raw.xlsx", sheetName: "Run 2", headerMode: "header", hasHeader: true,
+        allHeaders: ["capacity", "voltage", "operator note"], rawHeader: ["capacity", "voltage", "operator note"],
+        mapping: { x: { index: 0, name: "capacity" }, voltage: { index: 0, name: "capacity" }, current: null },
+        rawRows: [{ rowNumber: 2, cells: [0, 4, "start"] }, { rowNumber: 4, cells: [100, 3, "kept gap"] }] },
+    }, { resultKind: "user", exampleId: null });
+    expect(csv).toContain("all_headers_json");
+    expect(csv).toContain('"[""capacity"",""voltage"",""operator note""]"');
+    expect(csv).toContain("raw.xlsx,Run 2,header,true,2,0,capacity,0,capacity");
+    expect(csv).toContain('"[0,4,""start""]"');
+    expect(csv).toContain("raw.xlsx,Run 2,header,true,4,0,capacity,0,capacity");
+    expect(csv).toContain('"[100,3,""kept gap""]"');
   });
 });
 
@@ -227,7 +245,12 @@ describe("EnergyPowerPage", () => {
     const selects = view.querySelectorAll<HTMLSelectElement>('.rate-column-mapping select');
     await change(selects[1], selects[0].value);
     expect(view.querySelector('[role="alert"]')?.textContent).toContain("different columns");
-    expect(onImport).toHaveBeenLastCalledWith(expect.objectContaining({ points: [] }));
+    expect(onImport).toHaveBeenLastCalledWith(expect.objectContaining({ points: [], source: expect.objectContaining({
+      fileName: "map.csv", sheetName: "Only", headerMode: "auto", hasHeader: true,
+      allHeaders: ["capacity", "voltage"], rawHeader: ["capacity", "voltage"],
+      mapping: expect.objectContaining({ x: { index: 0, name: "capacity" }, voltage: { index: 0, name: "capacity" } }),
+      rawRows: [{ rowNumber: 2, cells: [0, 4] }, { rowNumber: 3, cells: [1, 3] }],
+    }) }));
   });
 
   it("uses the latest callback and invalidates an older parse when curve mode changes", async () => {

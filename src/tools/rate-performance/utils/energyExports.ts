@@ -83,7 +83,7 @@ const curveHeaders = [
   "included_in_integration", "exclusion_reason", "source_kind", "file_name", "sheet_name",
   "header_mode", "has_header", "source_row_number", "mapped_axis_index", "mapped_axis_name",
   "mapped_voltage_index", "mapped_voltage_name", "mapped_current_index", "mapped_current_name",
-  "raw_row_json", "result_kind", "example_id",
+  "all_headers_json", "raw_header_json", "raw_row_json", "source_edited", "result_kind", "example_id",
 ];
 
 export function serializeEnergyCurveCsv(
@@ -102,23 +102,37 @@ export function serializeEnergyCurvesCsv(
 }
 
 function curveRows(points: ReadonlyArray<Readonly<EnergyCurveExportPoint>>, context: Readonly<EnergyCurveExportContext>, metadata: Readonly<EnergyExportMetadata>) {
-  const validation = validateEnergyCurvePoints(points, context.mode, context.currentSign);
-  return points.map((point, index) => {
+  const upload = context.source.kind === "upload" ? context.source : null;
+  const rowCount = Math.max(points.length, upload?.rawRows.length ?? 0);
+  const rows = Array.from({ length: rowCount }, (_, index) => {
+    const raw = upload?.rawRows[index];
+    return { point: points[index] ?? pointFromRaw(context.sampleId, context.mode, upload, raw, index), raw };
+  });
+  const validation = validateEnergyCurvePoints(rows.map(({ point }) => point), context.mode, context.currentSign);
+  const mappingValid = upload === null || validSourceMapping(upload, context.mode);
+  return rows.map(({ point, raw: sourceRaw }, index) => {
     const pointValidation = validation.points[index];
-    const included = context.integrationSucceeded && pointValidation.included;
-    const upload = context.source.kind === "upload" ? context.source : null;
-    const raw = upload?.rawRows[index] ?? { rowNumber: index + 1, cells: context.mode === "time" ? [point.x, point.voltage, point.current ?? null] : [point.x, point.voltage] };
+    const included = mappingValid && context.integrationSucceeded && pointValidation.included;
+    const raw = sourceRaw ?? { rowNumber: index + 1, cells: context.mode === "time" ? [point.x, point.voltage, point.current ?? null] : [point.x, point.voltage] };
     return [
       context.sampleId, context.sampleName, point.id, point.x, context.mode, context.xUnit, point.voltage,
       point.current ?? null, context.currentUnit, context.currentSign, context.basis, context.massG,
       context.volumeCm3, context.dischargeTimeHours, context.integrationMethod, "full-curve",
-      pointValidation.parseValid ? pointValidation.scientificallyValid ? "valid" : "scientifically-invalid" : pointValidation.reason === "blank-row" ? "unused" : "parse-invalid",
-      included ? "true" : "false", included ? null : pointValidation.reason ?? "integration-failed",
+      mappingValid ? pointValidation.parseValid ? pointValidation.scientificallyValid ? "valid" : "scientifically-invalid" : pointValidation.reason === "blank-row" ? "unused" : "parse-invalid" : "mapping-invalid",
+      included ? "true" : "false", included ? null : mappingValid ? pointValidation.reason ?? "integration-failed" : "mapping-invalid",
       context.source.kind, upload?.fileName ?? null, upload?.sheetName ?? null, upload?.headerMode ?? null,
       upload ? String(upload.hasHeader) : null, raw.rowNumber, upload?.mapping.x?.index ?? null,
       upload?.mapping.x?.name ?? null, upload?.mapping.voltage?.index ?? null, upload?.mapping.voltage?.name ?? null,
-      upload?.mapping.current?.index ?? null, upload?.mapping.current?.name ?? null, JSON.stringify(raw.cells),
+      upload?.mapping.current?.index ?? null, upload?.mapping.current?.name ?? null, upload ? JSON.stringify(upload.allHeaders) : null,
+      upload?.rawHeader ? JSON.stringify(upload.rawHeader) : null, JSON.stringify(raw.cells), context.source.kind === "manual" ? String(context.source.edited) : null,
       metadata.resultKind, metadata.exampleId,
     ];
   });
 }
+
+function pointFromRaw(sampleId: string, mode: "capacity" | "time", source: Extract<EnergyCurveSource, { kind: "upload" }> | null, raw: Readonly<{ rowNumber: number; cells: ReadonlyArray<string | number | null> }> | undefined, index: number): EnergyCurveExportPoint {
+  const cell = (column: { index: number } | null) => column && raw ? numericCell(raw.cells[column.index]) : Number.NaN;
+  return { id: `${sampleId}-source-${raw?.rowNumber ?? index + 1}`, x: cell(source?.mapping.x ?? null), voltage: cell(source?.mapping.voltage ?? null), current: mode === "time" ? cell(source?.mapping.current ?? null) : null };
+}
+function validSourceMapping(source: Extract<EnergyCurveSource, { kind: "upload" }>, mode: "capacity" | "time") { const columns = mode === "time" ? [source.mapping.x, source.mapping.voltage, source.mapping.current] : [source.mapping.x, source.mapping.voltage]; return columns.every((column) => column !== null && column.index >= 0 && column.index < source.allHeaders.length) && new Set(columns.map((column) => column?.index)).size === columns.length; }
+function numericCell(value: string | number | null | undefined) { if (value == null || (typeof value === "string" && value.trim() === "")) return null; const numeric = typeof value === "number" ? value : Number(value); return Number.isFinite(numeric) ? numeric : Number.NaN; }
