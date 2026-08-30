@@ -3134,6 +3134,45 @@ td button {
 .cv-table-copy-toolbar button { margin: 0; }
 .cv-table-copy-toolbar [role="status"] { margin: 0; }
 
+/* Keep the peak-point table compact after the generic table/input rules above. */
+.cv-peak-points-card .cv-peak-points-table {
+  width: 100%;
+  min-width: 480px;
+  table-layout: fixed;
+}
+
+.cv-peak-points-card .cv-peak-points-table th,
+.cv-peak-points-card .cv-peak-points-table td {
+  padding: 6px 4px;
+  overflow: hidden;
+  font-size: 0.82rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cv-peak-points-card .cv-peak-column-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 16px;
+  gap: 3px;
+  width: 100%;
+  max-width: none;
+}
+
+.cv-peak-points-card .cv-peak-column-heading input {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  min-height: 0;
+}
+
+.cv-peak-points-card .cv-peak-potential-input {
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  padding: 6px 5px;
+  font-size: 0.82rem;
+}
+
 .scientific-chart-shell {
   width: 100%;
   margin: 14px 0;

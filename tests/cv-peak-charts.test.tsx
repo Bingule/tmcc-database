@@ -1,4 +1,5 @@
 import { act } from "react";
+import { readFile } from "node:fs/promises";
 import { createRoot } from "react-dom/client";
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import { CvPeakOverviewChart } from "../src/components/CvPeakOverviewChart";
@@ -70,6 +71,22 @@ afterAll(() => {
 });
 
 describe("peak b-value charts", () => {
+  it("keeps compact peak-table CSS overrides after generic table rules", async () => {
+    const css = await readFile("src/styles/global.css", "utf8");
+    const genericTableRule = css.lastIndexOf(".tool-result-table th,");
+    const compactTableRule = css.lastIndexOf(".cv-peak-points-card .cv-peak-points-table th,");
+    expect(compactTableRule).toBeGreaterThan(genericTableRule);
+    const compactRule = css.slice(compactTableRule, css.indexOf("}", compactTableRule) + 1);
+    expect(compactRule).toContain("padding: 6px 4px");
+    expect(compactRule).toContain("font-size: 0.82rem");
+    const compactHeadingStart = css.lastIndexOf(".cv-peak-points-card .cv-peak-column-heading {");
+    const compactHeadingRule = css.slice(compactHeadingStart, css.indexOf("}", compactHeadingStart) + 1);
+    expect(compactHeadingRule).toContain("display: grid");
+    const compactInputRule = css.slice(css.lastIndexOf(".cv-peak-points-card .cv-peak-column-heading input"), css.indexOf("}", css.lastIndexOf(".cv-peak-points-card .cv-peak-column-heading input")) + 1);
+    expect(compactInputRule).toContain("height: 15px");
+    expect(compactInputRule).toContain("min-height: 0");
+  });
+
   it("composes full-width controls, summaries, and auditable point rows", async () => {
     const series = makeThreePeakNcpLikeSeries();
     const result = analyzePeakBValues(series, normalizeAlignedCvCycles(series), 0.95);
