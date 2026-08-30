@@ -4,7 +4,7 @@ import { createRoot } from "react-dom/client";
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import { CvPeakOverviewChart } from "../src/components/CvPeakOverviewChart";
 import { CvPeakRegressionChart } from "../src/components/CvPeakRegressionChart";
-import { CvPeakAnalysisPanel, type CvPeakPanelCopy } from "../src/components/CvPeakAnalysisPanel";
+import { CvPeakAnalysisPanel, formatCompact, naturalLog, type CvPeakPanelCopy } from "../src/components/CvPeakAnalysisPanel";
 import { analyzePeakBValues } from "../src/lib/cvPeakAnalysis";
 import { normalizeAlignedCvCycles } from "../src/lib/cvCycle";
 import { makeThreePeakNcpLikeSeries } from "./fixtures/cvPeakData";
@@ -86,6 +86,25 @@ describe("peak b-value charts", () => {
     expect(compactInputRule).toContain("height: 15px");
     expect(compactInputRule).toContain("min-height: 0");
     expect(compactInputRule).toContain("padding: 0");
+    const compactHeadingTextStart = css.lastIndexOf(".cv-peak-points-card .cv-peak-heading-text,");
+    const compactHeadingTextRule = css.slice(compactHeadingTextStart, css.indexOf("}", compactHeadingTextStart) + 1);
+    expect(compactHeadingTextRule).toContain("letter-spacing: 0");
+    expect(compactHeadingTextRule).toContain("text-transform: none");
+  });
+
+  it("formats compact values and natural logs at their boundaries", () => {
+    expect(formatCompact(0, "—")).toBe("0");
+    expect(formatCompact(100000, "—")).toBe("1.000e+5");
+    expect(formatCompact(0.00001, "—")).toBe("1.000e-5");
+    expect(formatCompact(12.345678, "—")).toBe("12.346");
+    expect(formatCompact(null, "—")).toBe("—");
+    expect(formatCompact(Number.NaN, "—")).toBe("—");
+    expect(formatCompact(Number.POSITIVE_INFINITY, "—")).toBe("—");
+    expect(naturalLog(null)).toBeNull();
+    expect(naturalLog(0)).toBeNull();
+    expect(naturalLog(-1)).toBeNull();
+    expect(naturalLog(Number.NaN)).toBeNull();
+    expect(naturalLog(1)).toBe(0);
   });
 
   it("composes full-width controls, summaries, and auditable point rows", async () => {
@@ -150,6 +169,8 @@ describe("peak b-value charts", () => {
     const table = container.querySelector<HTMLTableElement>('[data-table-id="cv-peak-points"]')!;
     const headers = Array.from(table.querySelectorAll("thead th")).map((cell) => cell.textContent?.trim());
     expect(table.querySelectorAll("colgroup col")).toHaveLength(6);
+    expect(Array.from(table.querySelectorAll("colgroup col")).map((col) => (col as HTMLElement).style.width))
+      .toEqual(["11%", "14%", "21%", "19%", "16%", "19%"]);
     expect(Array.from(table.querySelectorAll("thead [data-peak-short-label]")).map((node) => node.textContent))
       .toEqual(["Peak", "ν", "E", "i", "ln ν", "ln |i|"]);
     expect(Array.from(table.querySelectorAll("thead [data-peak-unit]")).map((node) => node.textContent))
@@ -174,6 +195,8 @@ describe("peak b-value charts", () => {
     expect(firstRow.querySelector('[data-peak-cell="current"]')?.textContent).toBe(formatExpectedCompact(firstPoint.candidate!.current));
     expect(firstRow.querySelector('[data-peak-cell="logScanRate"]')?.textContent).toBe(formatExpectedCompact(Math.log(firstPoint.scanRate)));
     expect(firstRow.querySelector('[data-peak-cell="logCurrent"]')?.textContent).toBe(formatExpectedCompact(Math.log(Math.abs(firstPoint.candidate!.current))));
+    expect(table.querySelector('thead label[title="Scan rate"]')).not.toBeNull();
+    expect(table.querySelector('thead input[aria-label="Select column to copy: Scan rate"]')).not.toBeNull();
 
     const copyButton = container.querySelector<HTMLButtonElement>('[data-peak-copy-toolbar] button')!;
     expect(copyButton.disabled).toBe(true);
@@ -187,6 +210,37 @@ describe("peak b-value charts", () => {
     expect(copied.split("\r\n")[1]).toBe(`${panelCopy.peak} ${result.fits[0]!.labelIndex}\t${Number(Math.log(firstPoint.scanRate).toFixed(6)).toString()}`);
     expect(copied.split("\r\n")).toHaveLength(16);
     expect(container.querySelector('[data-peak-copy-toolbar]')?.textContent).toContain(panelCopy.copySuccess);
+
+    await act(async () => table.querySelector<HTMLInputElement>('thead input[value="scanRate"]')!.click());
+    await act(async () => table.querySelector<HTMLInputElement>('thead input[value="potential"]')!.click());
+    await act(async () => table.querySelector<HTMLInputElement>('thead input[value="current"]')!.click());
+    await act(async () => table.querySelector<HTMLInputElement>('thead input[value="peak"]')!.click());
+    await act(async () => table.querySelector<HTMLInputElement>('thead input[value="logScanRate"]')!.click());
+    await act(async () => copyButton.click());
+    const exactCopied = writeText.mock.calls[1]![0] as string;
+    const exactFirstRow = exactCopied.split("\r\n")[1]!;
+    expect(exactCopied.split("\r\n")[0]).toBe("Scan rate\tPotential\tCurrent");
+    expect(exactFirstRow).toBe(`${firstPoint.scanRate} mV/s\t${Number(firstPoint.candidate!.potential.toFixed(6))}\t${Number(firstPoint.candidate!.current.toFixed(6))}`);
+
+    const chineseCopy: CvPeakPanelCopy = {
+      ...panelCopy,
+      peak: "峰值",
+      scanRate: "扫描速率",
+      potential: "电位",
+      current: "电流",
+      logScanRate: "扫描速率自然对数",
+      logCurrent: "电流绝对值自然对数",
+      copyColumns: "选择要复制的列"
+    };
+    await act(async () => root.render(<CvPeakAnalysisPanel
+      series={series} result={result} selectedPeakId="peak-1" selectedSeriesIndex={0}
+      onPeakChange={() => undefined} onSeriesChange={() => undefined} onPotentialSelect={() => undefined}
+      onAdjustPotential={() => undefined} onConfirm={() => undefined} onExclude={() => undefined}
+      onRestore={() => undefined} onAddPeak={() => undefined} onRemovePeak={() => undefined} copy={chineseCopy}
+    />));
+    const chineseTable = container.querySelector<HTMLTableElement>('[data-table-id="cv-peak-points"]')!;
+    expect(chineseTable.querySelector('thead label[title="扫描速率"]')).not.toBeNull();
+    expect(chineseTable.querySelector('thead input[aria-label="选择要复制的列: 扫描速率"]')).not.toBeNull();
 
     await act(async () => root.unmount());
   });

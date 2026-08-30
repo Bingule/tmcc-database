@@ -325,7 +325,7 @@ function format(value: number | null, decimals: number, unavailable: string) {
   return value === null || !Number.isFinite(value) ? unavailable : Number(value.toFixed(decimals)).toString();
 }
 
-function formatCompact(value: number | null, unavailable: string) {
+export function formatCompact(value: number | null, unavailable: string) {
   if (value === null || !Number.isFinite(value)) return unavailable;
   if (value === 0) return "0";
   const magnitude = Math.abs(value);
@@ -333,7 +333,7 @@ function formatCompact(value: number | null, unavailable: string) {
   return Number(value.toPrecision(5)).toString();
 }
 
-function naturalLog(value: number | null): number | null {
+export function naturalLog(value: number | null): number | null {
   return value === null || !Number.isFinite(value) || value <= 0 ? null : Math.log(value);
 }
 

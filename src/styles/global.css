@@ -3158,6 +3158,12 @@ td button {
   max-width: none;
 }
 
+.cv-peak-points-card .cv-peak-heading-text,
+.cv-peak-points-card .cv-peak-heading-text > span {
+  letter-spacing: 0;
+  text-transform: none;
+}
+
 .cv-peak-points-card .cv-peak-column-heading input {
   flex: none;
   width: 15px;
