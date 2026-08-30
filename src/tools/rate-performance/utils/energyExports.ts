@@ -108,7 +108,11 @@ function curveRows(points: ReadonlyArray<Readonly<EnergyCurveExportPoint>>, cont
     const raw = upload?.rawRows[index];
     return { point: points[index] ?? pointFromRaw(context.sampleId, context.mode, upload, raw, index), raw };
   });
-  const validation = validateEnergyCurvePoints(rows.map(({ point }) => point), context.mode, context.currentSign);
+  const validation = validateEnergyCurvePoints(
+    rows.map(({ point }) => ({ ...point, current: point.current ?? null })),
+    context.mode,
+    context.currentSign,
+  );
   const mappingValid = upload === null || validSourceMapping(upload, context.mode);
   return rows.map(({ point, raw: sourceRaw }, index) => {
     const pointValidation = validation.points[index];
