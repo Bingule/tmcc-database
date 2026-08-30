@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Breadcrumbs } from "../../../components/Breadcrumbs";
 import { useI18n } from "../../../i18n/I18nProvider";
 import { fitRatePerformance, MAX_SYNC_RATE_FIT_POINTS, type RateFitResult } from "../analysis/fitRatePerformance";
-import { reconstructCaRate, type CaReconstructionSuccess } from "../analysis/reconstructCaRate";
+import { reconstructCaRate, type CaPoint, type CaReconstructionFailure, type CaReconstructionSuccess } from "../analysis/reconstructCaRate";
 import { CaAnalysisResults } from "../components/CaAnalysisResults";
 import { CaDataInput, completeCaPoints, createInitialCaPoints, validateCaDraftPoints, type CaDraftPoint, type CaInputMode } from "../components/CaDataInput";
 import { CaProcessingControls, DEFAULT_CA_PROCESSING, toCaOptions, type CaProcessingValue } from "../components/CaProcessingControls";
@@ -15,6 +15,8 @@ import { ReferenceList } from "../components/ReferenceList";
 import { ResultCards } from "../components/ResultCards";
 import { CA_RATE_EXAMPLE } from "../data/caExamples";
 import { getRateReference } from "../references/rateReferences";
+import { getRateModel } from "../models/registry";
+import { translatedRegistryText } from "../utils/rateModelPresentation";
 
 type CompletedFit = Extract<RateFitResult, { status: "converged" }>;
 
@@ -25,6 +27,7 @@ export default function CaRateAnalysisPage() {
   const [processing, setProcessing] = useState<CaProcessingValue>(DEFAULT_CA_PROCESSING);
   const [source, setSource] = useState<"example" | "user">("user");
   const [reconstruction, setReconstruction] = useState<CaReconstructionSuccess | null>(null);
+  const [fatalFailure, setFatalFailure] = useState<{ result: CaReconstructionFailure; points: CaPoint[] } | null>(null);
   const [fit, setFit] = useState<CompletedFit | null>(null);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
@@ -34,13 +37,13 @@ export default function CaRateAnalysisPage() {
   useEffect(() => () => invalidate(), []);
 
   function invalidate() { generation.current += 1; controller.current?.abort(); controller.current = null; }
-  function resetResults() { setReconstruction(null); setFit(null); setPending(false); setMessage(""); setCancelled(false); }
+  function resetResults() { setReconstruction(null); setFatalFailure(null); setFit(null); setPending(false); setMessage(""); setCancelled(false); }
   function changeInput(next: CaDraftPoint[]) { invalidate(); setPoints(next); setSource("user"); resetResults(); }
   function changeProcessing(next: CaProcessingValue) { invalidate(); setProcessing(next); setSource("user"); resetResults(); }
   function changeMode(next: CaInputMode) { invalidate(); setMode(next); setPoints(createInitialCaPoints()); setSource("user"); resetResults(); }
   function loadExample() {
     invalidate(); setMode("manual"); setSource("example");
-    setPoints(CA_RATE_EXAMPLE.points.map((point, index) => ({ id: `${CA_RATE_EXAMPLE.id}-${index + 1}`, ...point })));
+    setPoints(CA_RATE_EXAMPLE.points.map((point, index) => ({ id: `${CA_RATE_EXAMPLE.id}-${index + 1}`, ...point, source: { kind: "example" } })));
     setProcessing({ ...DEFAULT_CA_PROCESSING, activeMassG: CA_RATE_EXAMPLE.activeMassG }); resetResults();
   }
 
@@ -52,7 +55,7 @@ export default function CaRateAnalysisPage() {
     if (input.length < 2) { setMessage(t("rate.ca.error.insufficientInput")); return; }
     const options = toCaOptions(processing);
     const rebuilt = reconstructCaRate(input, options);
-    if (rebuilt.status === "failure") { setMessage(t(`rate.ca.error.${rebuilt.code}`)); return; }
+    if (rebuilt.status === "failure") { setFatalFailure({ result: rebuilt, points: input }); setMessage(t(`rate.ca.error.${rebuilt.code}`)); return; }
     setReconstruction(rebuilt);
     if (rebuilt.ratePoints.length > MAX_SYNC_RATE_FIT_POINTS) { setMessage(t("rate.ca.error.tooMany", { max: MAX_SYNC_RATE_FIT_POINTS.toLocaleString("en-US") })); return; }
     if (rebuilt.ratePoints.length < 4) { setMessage(t("rate.ca.error.insufficientRatePoints")); return; }
@@ -78,7 +81,7 @@ export default function CaRateAnalysisPage() {
     <RatePerformanceNav currentPath="/tools/rate-performance/ca-analysis" />
     <CaDataInput mode={mode} points={points} onModeChange={changeMode} onChange={changeInput} onLoadExample={loadExample} />
     <CaProcessingControls value={processing} onChange={changeProcessing} />
-    <CaRawExport points={points} options={options} metadata={{ resultKind: source, exampleId: source === "example" ? CA_RATE_EXAMPLE.id : null }} />
+    <CaRawExport points={points} options={options} failure={fatalFailure} metadata={{ resultKind: source, exampleId: source === "example" ? CA_RATE_EXAMPLE.id : null }} />
     <section className="tool-section ca-run-panel"><h2>{t("rate.ca.workflow.title")}</h2><p className="ca-workflow">I(t) ↓ Q(t) ↓ {t("rate.ca.workflow.rate")} ↓ Q(R) ↓ {t("rate.ca.workflow.fit")}</p>
       <button type="button" disabled={pending} onClick={() => void analyze()}>{t("rate.ca.action.analyze")}</button>
       {pending ? <button type="button" onClick={() => { invalidate(); setPending(false); setCancelled(true); setMessage(t("rate.ca.error.cancelled")); }}>{t("rate.analysis.cancel")}</button> : null}
@@ -103,10 +106,10 @@ function CaEmptyState({ onLoadExample }: { onLoadExample: () => void }) {
 function CaTheory() {
   const { t } = useI18n();
   const theory: RateTheoryContent = {
-    title: t("rate.ca.theory.name"), equation: "Q(t) = (1/m) ∫ I(t) dt;  R(t) = [I(t)/m] / Q(t);  Q(R) = Q_M / [1 + 2(Rτ)^n]",
+    title: t("rate.ca.theory.name"), equation: "Q(t) = (1/m) ∫₀ᵗ I_adj(t') dt';  R(t) = [I_adj(t)/m] / Q(t);  Q(R) = Q_M / [1 + 2(Rτ)^n]",
     equationDescription: t("rate.ca.theory.equationDescription"),
-    parameters: [{ symbol: "I", name: t("rate.ca.theory.current"), meaning: t("rate.ca.theory.currentMeaning"), unit: "mA", type: "measured" }, { symbol: "m", name: t("rate.ca.theory.mass"), meaning: t("rate.ca.theory.massMeaning"), unit: "g", type: "user-input" }, { symbol: "R", name: t("rate.ca.theory.rate"), meaning: t("rate.ca.theory.rateMeaning"), unit: "h^-1", type: "derived" }, { symbol: "Q_M", name: t("rate.ca.theory.qM"), meaning: t("rate.ca.theory.qMMeaning"), unit: "mAh g^-1", type: "fitted" }, { symbol: "τ", name: t("rate.ca.theory.tau"), meaning: t("rate.ca.theory.tauMeaning"), unit: "h", type: "fitted" }, { symbol: "n", name: t("rate.ca.theory.n"), meaning: t("rate.ca.theory.nMeaning"), unit: "dimensionless", type: "fitted" }],
-    physicalMeaning: t("rate.ca.theory.physical"), limitingBehavior: t("rate.ca.theory.limits"), applicability: t("rate.ca.theory.applicability"), assumptions: [t("rate.ca.theory.assumption1"), t("rate.ca.theory.assumption2")], limitations: [t("rate.ca.theory.limitation1"), t("rate.ca.theory.limitation2")], citationGuidance: t("rate.ca.theory.cite"),
+    parameters: [{ symbol: "I_adj", name: t("rate.ca.chart.adjustedCurrent"), meaning: t("rate.ca.processing.help"), unit: "mA", type: "derived" }, { symbol: "m", name: t("rate.ca.theory.mass"), meaning: t("rate.ca.theory.massMeaning"), unit: "g", type: "user-input" }, { symbol: "R", name: t("rate.ca.theory.rate"), meaning: t("rate.ca.theory.rateMeaning"), unit: "h^-1", type: "derived" }, { symbol: "Q_M", name: t("rate.ca.theory.qM"), meaning: t("rate.ca.theory.qMMeaning"), unit: "mAh g^-1", type: "fitted" }, { symbol: "τ", name: t("rate.ca.theory.tau"), meaning: t("rate.ca.theory.tauMeaning"), unit: "h", type: "fitted" }, { symbol: "n", name: t("rate.ca.theory.n"), meaning: t("rate.ca.theory.nMeaning"), unit: "dimensionless", type: "fitted" }],
+    physicalMeaning: t("rate.ca.theory.physical"), limitingBehavior: t("rate.ca.theory.limits"), applicability: t("rate.ca.theory.applicability"), assumptions: [t("rate.ca.theory.assumption1"), t("rate.ca.theory.assumption2")], limitations: (getRateModel("rational-characteristic-time")?.limitations ?? []).map((value) => translatedRegistryText(value, t)), citationGuidance: t("rate.ca.theory.cite"),
   };
   const reference = getRateReference("tian-2020-chronoamperometry");
   return <><ModelTheoryPanel content={theory} /><ReferenceList references={reference ? [reference] : []} /></>;

@@ -4,8 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "../src/i18n/I18nProvider";
 import type { RateFitResult } from "../src/tools/rate-performance/analysis/fitRatePerformance";
 import { reconstructCaRate } from "../src/tools/rate-performance/analysis/reconstructCaRate";
-import { serializeCaFitCurveCsv, serializeCaFitParametersCsv, serializeCaOriginalCsv, serializeCaReconstructedCsv } from "../src/tools/rate-performance/utils/caExports";
+import { serializeCaFailureCsv, serializeCaFitCurveCsv, serializeCaFitParametersCsv, serializeCaOriginalCsv, serializeCaReconstructedCsv } from "../src/tools/rate-performance/utils/caExports";
 import CaRateAnalysisPage from "../src/tools/rate-performance/pages/CaRateAnalysisPage";
+import { CaFileImport } from "../src/tools/rate-performance/components/CaDataInput";
 
 const { fitRatePerformance } = vi.hoisted(() => ({ fitRatePerformance: vi.fn() }));
 vi.mock("../src/tools/rate-performance/analysis/fitRatePerformance", async (original) => ({
@@ -33,6 +34,13 @@ async function renderPage(language: "en" | "zh" = "en") {
   roots.push(root);
   await act(async () => root.render(<I18nProvider><CaRateAnalysisPage /></I18nProvider>));
   return container;
+}
+
+async function renderImport(parseFile: (file: File) => Promise<Array<{ name: string; rows: Array<Array<string | number | null>> }>>, onChange = vi.fn()) {
+  const container = document.createElement("div"); document.body.appendChild(container);
+  const root = createRoot(container); roots.push(root);
+  await act(async () => root.render(<I18nProvider><CaFileImport onChange={onChange} parseFile={parseFile} /></I18nProvider>));
+  return { container, onChange };
 }
 
 function button(view: HTMLElement, label: string) {
@@ -208,10 +216,21 @@ describe("CA rate reconstruction", () => {
 
   it("exports fitted curves and parameters with model and source provenance", () => {
     const metadata = { resultKind: "example" as const, exampleId: "ca-rate-example" };
-    const curve = serializeCaFitCurveCsv([{ x: 1, y: 2 }], metadata);
-    const parameters = serializeCaFitParametersCsv(convergedResult as Extract<RateFitResult, { status: "converged" }>, metadata);
-    expect(curve).toContain("rational-characteristic-time,example,ca-rate-example");
-    expect(parameters).toContain("qM,300,mAh g^-1,fitted,0,1,converged,8,rational-characteristic-time,example,ca-rate-example");
+    const reconstruction = reconstructCaRate([{ id: "a", time: 0, current: 2 }, { id: "b", time: 1, current: 2 }], { timeUnit: "h", currentUnit: "mA", activeMassG: 1, sign: "positive", baseline: { mode: "off" } });
+    expect(reconstruction.status).toBe("success"); if (reconstruction.status !== "success") return;
+    const curve = serializeCaFitCurveCsv([{ x: 1, y: 2 }], reconstruction, convergedResult as Extract<RateFitResult, { status: "converged" }>, metadata);
+    const parameters = serializeCaFitParametersCsv(convergedResult as Extract<RateFitResult, { status: "converged" }>, reconstruction, metadata);
+    expect(curve).toContain("rational-characteristic-time,converged,4"); expect(curve).toContain(",example,ca-rate-example");
+    expect(curve).toContain("active_mass_g"); expect(curve).toContain("physical-zero-time");
+    expect(parameters).toContain("used_point_count"); expect(parameters).toContain(",4,");
+  });
+
+  it("exports fatal reconstruction failures with conflicting source rows", () => {
+    const points = [{ id: "a", time: 0, current: 1, source: { kind: "upload" as const, fileName: "x.csv", sheetName: "S", headerMode: "header" as const, hasHeader: true, fileRowNumber: 2 } }, { id: "b", time: 0, current: 2, source: { kind: "upload" as const, fileName: "x.csv", sheetName: "S", headerMode: "header" as const, hasHeader: true, fileRowNumber: 3 } }];
+    const options = { timeUnit: "s" as const, currentUnit: "mA" as const, activeMassG: 1, sign: "positive" as const, baseline: { mode: "off" as const } };
+    const failure = reconstructCaRate(points, options); expect(failure.status).toBe("failure"); if (failure.status !== "failure") return;
+    const csv = serializeCaFailureCsv(failure, points, options, { resultKind: "user", exampleId: null });
+    expect(csv).toContain("duplicate-time"); expect(csv).toContain("x.csv,S,header,true,2"); expect(csv).toContain("x.csv,S,header,true,3");
   });
 });
 
@@ -305,6 +324,9 @@ describe("CaRateAnalysisPage", () => {
     for (const text of ["Detected columns", "time, current", "Rows4", "Valid points2", "Invalid points2", "Missing values1", "Time range0 – 1", "Current range2 – 3"]) {
       expect(view.textContent).toContain(text);
     }
+    await click(button(view, "Reconstruct & Fit"));
+    expect(fitRatePerformance).not.toHaveBeenCalled();
+    expect(view.textContent).toContain("Complete or remove invalid rows");
   });
 
   it("reports fit failure and aborts a pending fit on unmount", async () => {
@@ -376,5 +398,44 @@ describe("CaRateAnalysisPage", () => {
     expect(button(view, "Original CA data")).toBeTruthy();
     expect(button(view, "Full processed CA data")).toBeTruthy();
     expect(view.querySelector(".rate-results-user")).toBeNull();
+  });
+
+  it("clears an earlier upload when a newer file fails and ignores an older late completion", async () => {
+    let resolveOld!: (value: Array<{ name: string; rows: Array<Array<string | number>> }>) => void;
+    const old = new Promise<Array<{ name: string; rows: Array<Array<string | number>> }>>((resolve) => { resolveOld = resolve; });
+    const parseFile = vi.fn()
+      .mockResolvedValueOnce([{ name: "A", rows: [["time", "current"], [0, 1], [1, 1]] }])
+      .mockRejectedValueOnce(new Error("bad B"))
+      .mockReturnValueOnce(old)
+      .mockResolvedValueOnce([{ name: "new", rows: [["time", "current"], [0, 4], [1, 4]] }]);
+    const { container, onChange } = await renderImport(parseFile);
+    const input = container.querySelector<HTMLInputElement>('input[type="file"]')!;
+    async function upload(name: string) {
+      Object.defineProperty(input, "files", { configurable: true, value: [new File([name], name)] });
+      await act(async () => { input.dispatchEvent(new Event("change", { bubbles: true })); await Promise.resolve(); await Promise.resolve(); });
+    }
+    await upload("A.csv"); expect(container.textContent).toContain("A.csv");
+    await upload("B.csv"); expect(container.textContent).not.toContain("A.csv"); expect(onChange).toHaveBeenLastCalledWith([]);
+    await upload("old.csv");
+    await upload("new.csv");
+    resolveOld([{ name: "old", rows: [["time", "current"], [0, 9], [1, 9]] }]);
+    await act(async () => { await old; await Promise.resolve(); });
+    expect(container.textContent).toContain("new.csv"); expect(container.textContent).not.toContain("old.csv");
+  });
+
+  it("preserves workbook sheet, header decision and physical file row numbers", async () => {
+    const { container, onChange } = await renderImport(async () => [
+      { name: "first", rows: [["time", "current"], [0, 1]] },
+      { name: "second", rows: [[0, 2], [1, 1]] },
+    ]);
+    const input = container.querySelector<HTMLInputElement>('input[type="file"]')!;
+    Object.defineProperty(input, "files", { configurable: true, value: [new File(["x"], "book.xlsx")] });
+    await act(async () => { input.dispatchEvent(new Event("change", { bubbles: true })); await Promise.resolve(); await Promise.resolve(); });
+    const sheet = [...container.querySelectorAll("select")].find((select) => select.textContent?.includes("second"))!;
+    await act(async () => { Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")?.set?.call(sheet, "1"); sheet.dispatchEvent(new Event("change", { bubbles: true })); });
+    expect(onChange).toHaveBeenLastCalledWith([
+      expect.objectContaining({ source: expect.objectContaining({ kind: "upload", fileName: "book.xlsx", sheetName: "second", headerMode: "auto", hasHeader: false, fileRowNumber: 1 }) }),
+      expect.objectContaining({ source: expect.objectContaining({ fileRowNumber: 2 }) }),
+    ]);
   });
 });

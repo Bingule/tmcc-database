@@ -48,8 +48,8 @@ export function CaAnalysisResults({ input, options, reconstruction, fit, metadat
     { id: "rate", label: t("rate.ca.export.rate"), filename: "ca-reconstructed-rate.csv", csv: () => serializeCaRateCsv(reconstruction, metadata) },
     { id: "processed", label: t("rate.ca.export.processed"), filename: "ca-reconstructed-all.csv", csv: () => serializeCaReconstructedCsv(reconstruction, metadata) },
     ...(fit ? [
-      { id: "curve", label: t("rate.ca.export.curve"), filename: "ca-fitted-curve.csv", csv: () => serializeCaFitCurveCsv(curve, metadata) },
-      { id: "parameters", label: t("rate.ca.export.parameters"), filename: "ca-fit-parameters.csv", csv: () => serializeCaFitParametersCsv(fit, metadata) },
+      { id: "curve", label: t("rate.ca.export.curve"), filename: "ca-fitted-curve.csv", csv: () => serializeCaFitCurveCsv(curve, reconstruction, fit, metadata) },
+      { id: "parameters", label: t("rate.ca.export.parameters"), filename: "ca-fit-parameters.csv", csv: () => serializeCaFitParametersCsv(fit, reconstruction, metadata) },
     ] : []),
   ];
   const rawCount = reconstruction.points.length;

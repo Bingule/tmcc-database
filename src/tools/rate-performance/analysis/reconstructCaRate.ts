@@ -3,7 +3,12 @@ import type { RatePoint } from "../models/types";
 export type CaTimeUnit = "s" | "min" | "h";
 export type CaCurrentUnit = "A" | "mA";
 export type CaCurrentSign = "positive" | "negative";
-export interface CaPoint { readonly id: string; readonly time: number; readonly current: number }
+export interface CaPointSource {
+  readonly kind: "manual-placeholder" | "manual" | "example" | "upload" | "programmatic";
+  readonly fileName?: string; readonly sheetName?: string; readonly headerMode?: "auto" | "header" | "data";
+  readonly hasHeader?: boolean; readonly fileRowNumber?: number;
+}
+export interface CaPoint { readonly id: string; readonly time: number; readonly current: number; readonly source?: Readonly<CaPointSource> }
 export interface CaFitRange { readonly timeStart?: number; readonly timeEnd?: number; readonly minimumRateH1?: number; readonly maximumRateH1?: number }
 export interface CaReconstructionOptions {
   readonly timeUnit: CaTimeUnit; readonly currentUnit: CaCurrentUnit; readonly activeMassG: number; readonly sign: CaCurrentSign;
@@ -19,6 +24,7 @@ export interface ReconstructedCaPoint {
   readonly timeS: number; readonly signedCurrentMa: number; readonly adjustedCurrentMa: number; readonly specificCurrentMaG: number;
   readonly cumulativeCapacityMahG: number; readonly effectiveRateH1: number | null; readonly exclusionReason: CaExclusionReason | null;
   readonly includedInFit: boolean; readonly fitExclusionReason: CaFitExclusionReason | null;
+  readonly source: Readonly<CaPointSource>;
 }
 export interface CaReconstructionSuccess {
   readonly status: "success"; readonly inputOrder: "as-entered" | "sorted-for-analysis";
@@ -67,7 +73,7 @@ export function reconstructCaRate(input: ReadonlyArray<Readonly<CaPoint>>, optio
     }
     const derived = deriveRate(specificCurrentMaG, cumulativeCapacityMahG);
     const fitExclusionReason = selectFitExclusion(point.time, derived.effectiveRateH1, derived.exclusionReason, options.fitRange);
-    points.push({ id: point.id, originalIndex: point.originalIndex, originalTime: point.time, originalCurrent: point.current, timeS: point.time * TIME_TO_SECONDS[options.timeUnit], signedCurrentMa, adjustedCurrentMa, specificCurrentMaG, cumulativeCapacityMahG, ...derived, includedInFit: fitExclusionReason === null, fitExclusionReason });
+    points.push({ id: point.id, originalIndex: point.originalIndex, originalTime: point.time, originalCurrent: point.current, source: point.source ?? { kind: "programmatic" }, timeS: point.time * TIME_TO_SECONDS[options.timeUnit], signedCurrentMa, adjustedCurrentMa, specificCurrentMaG, cumulativeCapacityMahG, ...derived, includedInFit: fitExclusionReason === null, fitExclusionReason });
   }
   const reconstructedRatePoints: RatePoint[] = []; const ratePoints: RatePoint[] = [];
   for (const point of points) {

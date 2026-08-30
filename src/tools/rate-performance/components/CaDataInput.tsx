@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { parseDelimitedTable, parseTabularFile, TabularParseError, type TabularCell, type TabularSheet } from "../../../lib/tabularParsing";
 import { useI18n } from "../../../i18n/I18nProvider";
-import type { CaPoint } from "../analysis/reconstructCaRate";
+import type { CaPoint, CaPointSource } from "../analysis/reconstructCaRate";
 import { CA_RATE_EXAMPLE } from "../data/caExamples";
 
-export interface CaDraftPoint { readonly id: string; readonly time: number | null; readonly current: number | null }
+export interface CaDraftPoint { readonly id: string; readonly time: number | null; readonly current: number | null; readonly source?: Readonly<CaPointSource> }
 export type CaInputMode = "manual" | "upload";
 
 export const createInitialCaPoints = (): CaDraftPoint[] => Array.from({ length: 5 }, (_, index) => ({
-  id: `ca-manual-${index + 1}`, time: null, current: null,
+  id: `ca-manual-${index + 1}`, time: null, current: null, source: { kind: "manual-placeholder" },
 }));
 
 export function CaDataInput({ mode, points, onModeChange, onChange, onLoadExample }: {
@@ -39,13 +39,13 @@ function CaManualTable({ points, onChange, onLoadExample }: {
   const { t } = useI18n();
   const sequence = useRef(points.length);
   const replace = (id: string, field: "time" | "current", raw: string) => onChange(points.map((point) =>
-    point.id === id ? { ...point, [field]: raw.trim() === "" ? null : Number(raw) } : { ...point }));
+    point.id === id ? { ...point, [field]: raw.trim() === "" ? null : Number(raw), source: { kind: "manual" } } : { ...point }));
   function paste(event: React.ClipboardEvent<HTMLTableElement>) {
     const text = event.clipboardData.getData("text");
     if (!text.trim()) return;
     let rows: TabularCell[][]; try { rows = parseDelimitedTable(text); } catch { return; }
     if (rows.some((row) => row.length < 2)) return;
-    const next = rows.map((row, index) => ({ id: `ca-paste-${Date.now()}-${index}`, time: Number(row[0]), current: Number(row[1]) }));
+    const next = rows.map((row, index) => ({ id: `ca-paste-${Date.now()}-${index}`, time: Number(row[0]), current: Number(row[1]), source: { kind: "manual" as const } }));
     if (next.every(({ time, current }) => Number.isFinite(time) && Number.isFinite(current))) {
       event.preventDefault(); onChange(next);
     }
@@ -62,7 +62,7 @@ function CaManualTable({ points, onChange, onLoadExample }: {
       </table>
     </div>
     <div className="rate-manual-toolbar">
-      <button type="button" onClick={() => { sequence.current += 1; onChange([...points.map((p) => ({ ...p })), { id: `ca-manual-${sequence.current}`, time: null, current: null }]); }}>{t("rate.ca.input.addRow")}</button>
+      <button type="button" onClick={() => { sequence.current += 1; onChange([...points.map((p) => ({ ...p })), { id: `ca-manual-${sequence.current}`, time: null, current: null, source: { kind: "manual-placeholder" } }]); }}>{t("rate.ca.input.addRow")}</button>
       <button type="button" disabled={points.length === 0} onClick={() => onChange(points.slice(0, -1).map((p) => ({ ...p })))}>{t("rate.ca.input.deleteRow")}</button>
       <button type="button" onClick={() => onChange(createInitialCaPoints())}>{t("rate.ca.input.clear")}</button>
       <button type="button" onClick={onLoadExample}>{t("rate.ca.input.loadExample")}</button>
@@ -71,11 +71,12 @@ function CaManualTable({ points, onChange, onLoadExample }: {
   </>;
 }
 
-function CaFileImport({ onChange }: { onChange: (points: CaDraftPoint[]) => void }) {
+export function CaFileImport({ onChange, parseFile = parseTabularFile }: { onChange: (points: CaDraftPoint[]) => void; parseFile?: typeof parseTabularFile }) {
   const { t } = useI18n();
   const [sheets, setSheets] = useState<TabularSheet[]>([]);
   const [sheetIndex, setSheetIndex] = useState(0);
   const [headerMode, setHeaderMode] = useState<"auto" | "header" | "data">("auto");
+  const [hasHeader, setHasHeader] = useState(false);
   const [headers, setHeaders] = useState<string[]>([]);
   const [rows, setRows] = useState<TabularCell[][]>([]);
   const [mapping, setMapping] = useState({ time: 0, current: 1 });
@@ -88,23 +89,22 @@ function CaFileImport({ onChange }: { onChange: (points: CaDraftPoint[]) => void
   useEffect(() => { latestOnChange.current = onChange; });
   useEffect(() => () => { mounted.current = false; generation.current += 1; }, []);
   function adapt(next = mapping) {
-    const parsed = rows.map((row, index) => ({ id: `ca-import-${index + 1}`, time: numeric(row[next.time]), current: numeric(row[next.current]) }));
-    latestOnChange.current(parsed);
+    latestOnChange.current(adaptCaRows(rows, next, { fileName, sheetName: sheets[sheetIndex]?.name ?? "", headerMode, hasHeader }));
   }
-  function applySheet(sheet: Readonly<TabularSheet>, nextIndex: number, nextMode = headerMode) {
+  function applySheet(sheet: Readonly<TabularSheet>, nextIndex: number, nextMode = headerMode, sourceFileName = fileName) {
     const inspected = inspectCaSheet(sheet, nextMode, (column) => t("rate.import.column", { column }));
-    setSheetIndex(nextIndex); setHeaders(inspected.headers); setRows(inspected.rows); setMapping(inspected.mapping);
-    latestOnChange.current(adaptCaRows(inspected.rows, inspected.mapping, nextIndex));
+    setSheetIndex(nextIndex); setHeaders(inspected.headers); setRows(inspected.rows); setMapping(inspected.mapping); setHasHeader(inspected.hasHeader);
+    latestOnChange.current(adaptCaRows(inspected.rows, inspected.mapping, { fileName: sourceFileName, sheetName: sheet.name, headerMode: nextMode, hasHeader: inspected.hasHeader }));
   }
   async function select(file?: File) {
     if (!file) return;
     const token = ++generation.current; setBusy(true); setError("");
     try {
-      const parsedSheets = await parseTabularFile(file);
+      const parsedSheets = await parseFile(file);
       if (!mounted.current || generation.current !== token) return;
-      setFileName(file.name); setSheets(parsedSheets); applySheet(parsedSheets[0], 0);
+      setFileName(file.name); setSheets(parsedSheets); applySheet(parsedSheets[0], 0, headerMode, file.name);
     } catch (caught) {
-      if (mounted.current && generation.current === token) setError(t(caught instanceof TabularParseError && caught.code === "resourceLimitExceeded" ? "rate.import.resourceLimit" : "rate.import.parseError"));
+      if (mounted.current && generation.current === token) { setSheets([]); setRows([]); setHeaders([]); setFileName(""); latestOnChange.current([]); setError(t(caught instanceof TabularParseError && caught.code === "resourceLimitExceeded" ? "rate.import.resourceLimit" : "rate.import.parseError")); }
     } finally { if (mounted.current && generation.current === token) setBusy(false); }
   }
   const summary = useMemo(() => summarizeCaRows(rows, mapping), [rows, mapping]);
@@ -133,10 +133,10 @@ function inspectCaSheet(sheet: Readonly<TabularSheet>, mode: "auto" | "header" |
   const time = headers.findIndex((value) => /time|时间/i.test(value)); const current = headers.findIndex((value) => /current|电流/i.test(value));
   const mapping = { time: time < 0 ? 0 : time, current: current < 0 ? Math.min(1, width - 1) : current };
   if (mapping.current === mapping.time) mapping.current = Math.min(1, width - 1);
-  return { headers, rows, mapping };
+  return { headers, rows, mapping, hasHeader };
 }
-function adaptCaRows(rows: ReadonlyArray<ReadonlyArray<TabularCell>>, mapping: { time: number; current: number }, sheetIndex: number) {
-  return rows.map((row, index) => ({ id: `ca-import-${sheetIndex + 1}-${index + 1}`, time: numeric(row[mapping.time]), current: numeric(row[mapping.current]) }));
+function adaptCaRows(rows: ReadonlyArray<ReadonlyArray<TabularCell>>, mapping: { time: number; current: number }, source: { fileName: string; sheetName: string; headerMode: "auto" | "header" | "data"; hasHeader: boolean }) {
+  return rows.map((row, index) => ({ id: `ca-import-${safeId(source.sheetName)}-${index + 1}`, time: numeric(row[mapping.time]), current: numeric(row[mapping.current]), source: { kind: "upload" as const, ...source, fileRowNumber: index + (source.hasHeader ? 2 : 1) } }));
 }
 
 export function completeCaPoints(points: ReadonlyArray<Readonly<CaDraftPoint>>): CaPoint[] {
@@ -145,12 +145,13 @@ export function completeCaPoints(points: ReadonlyArray<Readonly<CaDraftPoint>>):
 export function validateCaDraftPoints(points: ReadonlyArray<Readonly<CaDraftPoint>>) {
   const complete: CaPoint[] = []; const invalidPointIds: string[] = [];
   for (const point of points) {
-    if (point.time === null && point.current === null) continue;
+    if (point.time === null && point.current === null && point.source?.kind === "manual-placeholder") continue;
     if (!point.id || typeof point.time !== "number" || !Number.isFinite(point.time) || typeof point.current !== "number" || !Number.isFinite(point.current)) invalidPointIds.push(point.id);
-    else complete.push({ id: point.id, time: point.time, current: point.current });
+    else complete.push({ id: point.id, time: point.time, current: point.current, source: point.source });
   }
   return { points: complete, invalidPointIds } as const;
 }
+function safeId(value: string) { return value.trim().replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "") || "sheet"; }
 function numeric(value: TabularCell | undefined) { if (value == null || value === "") return null; const number = Number(value); return Number.isFinite(number) ? number : Number.NaN; }
 function summarizeCaRows(rows: ReadonlyArray<ReadonlyArray<TabularCell>>, mapping: { time: number; current: number }) {
   let valid = 0; let missing = 0; let minimumTime = Infinity; let maximumTime = -Infinity; let minimumCurrent = Infinity; let maximumCurrent = -Infinity;
