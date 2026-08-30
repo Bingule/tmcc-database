@@ -16,7 +16,7 @@ import { RatePerformanceNav } from "../components/RatePerformanceNav";
 import { ResultCards } from "../components/ResultCards";
 import { ENERGY_POWER_EXAMPLE } from "../data/energyExamples";
 import {
-  serializeEnergyCurveCsv,
+  serializeEnergyCurvesCsv,
   serializeEnergyOriginalCsv,
   serializeEnergyResultsCsv,
   serializeRagoneCsv,
@@ -26,13 +26,13 @@ export default function EnergyPowerPage() {
   const { t } = useI18n();
   const [workflow, setWorkflow] = useState<"summary" | "curve">("summary");
   const [samples, setSamples] = useState<EnergySummaryDraft[]>([createEnergySummaryDraft()]);
-  const [curve, setCurve] = useState<EnergyCurveDraft>(createEnergyCurveDraft);
+  const [curves, setCurves] = useState<EnergyCurveDraft[]>([createEnergyCurveDraft()]);
   const [results, setResults] = useState<EnergyPowerResult[] | null>(null);
   const [source, setSource] = useState<"example" | "user">("user");
 
   function invalidate() { setResults(null); setSource("user"); }
   function changeSamples(next: EnergySummaryDraft[]) { setSamples(next); invalidate(); }
-  function changeCurve(next: EnergyCurveDraft) { setCurve(next); invalidate(); }
+  function changeCurves(next: EnergyCurveDraft[]) { setCurves(next); invalidate(); }
   function changeWorkflow(next: "summary" | "curve") { setWorkflow(next); setResults(null); setSource("user"); }
   function loadExample() {
     setWorkflow("summary"); setSource("example"); setResults(null);
@@ -44,43 +44,39 @@ export default function EnergyPowerPage() {
     })));
   }
   function calculateSummary() { setResults(samples.map(toSummaryInput).map(calculateSummaryEnergyPower)); }
-  function integrateCurve() {
-    const active = curve.points.filter((point) => point.x !== null || point.voltage !== null || point.current !== null);
-    const normalization = curve.mode === "capacity" ? {
-      mode: "capacity" as const, capacityUnit: curve.xUnit as "mAh-g-1" | "Ah-kg-1" | "mAh",
-      normalizationBasis: curve.basis, sampleId: curve.sampleName || t("rate.energy.curve.defaultName"),
-      massG: curve.massG ?? undefined, volumeCm3: curve.volumeCm3 ?? undefined,
-      dischargeTimeHours: curve.dischargeTimeHours ?? undefined,
-    } : {
-      mode: "time" as const, timeUnit: curve.xUnit as "s" | "min" | "h", currentUnit: curve.currentUnit,
-      normalizationBasis: curve.basis, sampleId: curve.sampleName || t("rate.energy.curve.defaultName"),
-      massG: curve.massG ?? undefined, volumeCm3: curve.volumeCm3 ?? undefined,
-    };
-    const points = curve.mode === "capacity"
-      ? active.map((point) => ({ id: point.id, capacity: point.x ?? Number.NaN, voltage: point.voltage ?? Number.NaN }))
-      : active.map((point) => ({ id: point.id, time: point.x ?? Number.NaN, voltage: point.voltage ?? Number.NaN, current: point.current ?? Number.NaN }));
-    setResults([integrateDischargeCurve(points, normalization)]);
-  }
+  const curveDisplayName = (curve: Readonly<EnergyCurveDraft>, index: number) => curve.sampleName || t("rate.energy.curve.datasetNumber", { number: index + 1 });
+  function integrateCurves() { setResults(curves.map((curve, index) => integrateCurve(curve, curveDisplayName(curve, index)))); }
 
   const metadata = { resultKind: source, exampleId: source === "example" ? ENERGY_POWER_EXAMPLE.id : null } as const;
   const ragone = toRagonePoints(results ?? []);
   const originalCsv = workflow === "summary"
     ? serializeEnergyOriginalCsv(samples.map(toSummaryInput), metadata)
-    : serializeEnergyCurveCsv(curve.points.map((point) => ({ id: point.id, x: point.x, voltage: point.voltage, current: point.current })), { mode: curve.mode, xUnit: curve.xUnit, currentUnit: curve.mode === "time" ? curve.currentUnit : null, basis: curve.basis }, metadata);
+    : serializeEnergyCurvesCsv(curves.map((curve, index) => ({
+      points: curve.points.map((point) => ({ id: point.id, x: point.x, voltage: point.voltage, current: point.current })),
+      context: curveExportContext(curve, curveDisplayName(curve, index)),
+    })), metadata);
 
   return <section className="tools-page energy-power-page">
     <Breadcrumbs current={t("rate.energyPower.title")} /><h1>{t("rate.energyPower.title")}</h1><p className="tool-lede">{t("rate.energy.subtitle")}</p>
     <RatePerformanceNav currentPath="/tools/rate-performance/energy-power" />
-    <section className="tool-section"><h2>{t("rate.energy.input.title")}</h2><div className="rate-input-mode" role="radiogroup" aria-label={t("rate.energy.input.workflow")}>
+    <section className="tool-section"><h2>{t("rate.energy.input.title")}</h2><div className="rate-input-mode" role="group" aria-label={t("rate.energy.input.workflow")}>
       <button type="button" aria-pressed={workflow === "summary"} onClick={() => changeWorkflow("summary")}>{t("rate.energy.input.summary")}</button>
       <button type="button" aria-pressed={workflow === "curve"} onClick={() => changeWorkflow("curve")}>{t("rate.energy.input.curves")}</button>
     </div></section>
-    {workflow === "summary" ? <EnergySummaryInput samples={samples} onChange={changeSamples} onLoadExample={loadExample} /> : <EnergyCurveInput value={curve} onChange={changeCurve} />}
-    <section className="tool-section energy-run-panel"><button type="button" onClick={workflow === "summary" ? calculateSummary : integrateCurve}>{t(workflow === "summary" ? "rate.energy.action.calculate" : "rate.energy.action.integrate")}</button></section>
-    {results ? <EnergyPowerResults results={results} ragone={ragone} kind={source} csv={{ original: originalCsv, results: serializeEnergyResultsCsv(results, metadata, workflow === "summary" ? samples.map((sample) => sample.sampleName || sample.id) : [curve.sampleName || t("rate.energy.curve.defaultName")]), ragone: serializeRagoneCsv(ragone, metadata) }} /> : <EnergyEmptyState onLoadExample={loadExample} />}
+    {workflow === "summary" ? <EnergySummaryInput samples={samples} onChange={changeSamples} onLoadExample={loadExample} /> : <EnergyCurveInput values={curves} onChange={changeCurves} />}
+    <section className="tool-section energy-run-panel"><button type="button" onClick={workflow === "summary" ? calculateSummary : integrateCurves}>{t(workflow === "summary" ? "rate.energy.action.calculate" : "rate.energy.action.integrate")}</button></section>
+    {results ? <EnergyPowerResults results={results} sampleIds={workflow === "summary" ? samples.map((sample) => sample.sampleName || sample.id) : curves.map(curveDisplayName)} ragone={ragone} kind={source} csv={{ original: originalCsv, results: serializeEnergyResultsCsv(results, metadata, workflow === "summary" ? samples.map((sample) => sample.sampleName || sample.id) : curves.map(curveDisplayName)), ragone: serializeRagoneCsv(ragone, metadata) }} /> : <EnergyEmptyState onLoadExample={loadExample} />}
     <EnergyTheorySection />
   </section>;
 }
+
+function integrateCurve(curve: Readonly<EnergyCurveDraft>, sampleId: string): EnergyPowerResult {
+  const active = curve.points.filter((point) => point.x !== null || point.voltage !== null || point.current !== null);
+  if (curve.mode === "capacity") return integrateDischargeCurve(active.map((point) => ({ id: point.id, capacity: point.x ?? Number.NaN, voltage: point.voltage ?? Number.NaN })), { mode: "capacity", capacityUnit: curve.xUnit as "mAh-g-1" | "Ah-kg-1" | "mAh", normalizationBasis: curve.basis, sampleId, massG: curve.massG ?? undefined, volumeCm3: curve.volumeCm3 ?? undefined, dischargeTimeHours: curve.dischargeTimeHours ?? undefined });
+  const sign = curve.currentSign === "negative" ? -1 : 1;
+  return integrateDischargeCurve(active.map((point) => ({ id: point.id, time: point.x ?? Number.NaN, voltage: point.voltage ?? Number.NaN, current: (point.current ?? Number.NaN) * sign })), { mode: "time", timeUnit: curve.xUnit as "s" | "min" | "h", currentUnit: curve.currentUnit, normalizationBasis: curve.basis, sampleId, massG: curve.massG ?? undefined, volumeCm3: curve.volumeCm3 ?? undefined });
+}
+function curveExportContext(curve: Readonly<EnergyCurveDraft>, sampleName: string) { return { sampleId: curve.id, sampleName, mode: curve.mode, xUnit: curve.xUnit, currentUnit: curve.mode === "time" ? curve.currentUnit : null, currentSign: curve.currentSign, basis: curve.basis, massG: curve.massG, volumeCm3: curve.volumeCm3, dischargeTimeHours: curve.dischargeTimeHours, integrationMethod: curve.mode === "capacity" ? "trapezoidal-v-dq" as const : "trapezoidal-v-i-dt" as const }; }
 
 function EnergyEmptyState({ onLoadExample }: { onLoadExample: () => void }) {
   const { t } = useI18n();

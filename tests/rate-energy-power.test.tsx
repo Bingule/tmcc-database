@@ -1,6 +1,6 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "../src/i18n/I18nProvider";
 import {
   calculateSummaryEnergyPower,
@@ -8,6 +8,7 @@ import {
   toRagonePoints,
 } from "../src/tools/rate-performance/analysis/energyPower";
 import EnergyPowerPage from "../src/tools/rate-performance/pages/EnergyPowerPage";
+import { EnergyCurveFileImport } from "../src/tools/rate-performance/components/EnergyCurveFileImport";
 import {
   serializeEnergyOriginalCsv,
   serializeEnergyResultsCsv,
@@ -35,6 +36,12 @@ function button(view: HTMLElement, label: string) {
 }
 async function click(target: Element) {
   await act(async () => { target.dispatchEvent(new MouseEvent("click", { bubbles: true })); await Promise.resolve(); });
+}
+async function change(target: HTMLInputElement | HTMLSelectElement, value: string) {
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(target instanceof HTMLSelectElement ? HTMLSelectElement.prototype : HTMLInputElement.prototype, "value")?.set?.call(target, value);
+    target.dispatchEvent(new Event("change", { bubbles: true }));
+  });
 }
 
 describe("energy and power calculations", () => {
@@ -77,7 +84,15 @@ describe("energy and power exports", () => {
     expect(results).toContain("average-voltage,active-material,Wh kg^-1,W kg^-1");
     expect(results).toContain("example,energy-power-example");
     expect(serializeRagoneCsv(toRagonePoints([result]), metadata)).toContain("sample_id,specific_energy_Wh_kg-1,specific_power_W_kg-1,normalization_basis,result_kind,example_id");
-    expect(serializeEnergyCurveCsv([{ id: "+point", x: 0, voltage: 4, current: null }], { mode: "capacity", xUnit: "mAh-g-1", currentUnit: null, basis: "electrode" }, metadata)).toContain("'+point,0,capacity,mAh-g-1,4,,");
+    const curve = serializeEnergyCurveCsv([{ id: "+point", x: 0, voltage: 4, current: null }], {
+      sampleId: "curve-1", sampleName: "Electrode A", mode: "capacity", xUnit: "mAh-g-1",
+      currentUnit: null, currentSign: "positive", basis: "electrode", massG: 2,
+      volumeCm3: 0.5, dischargeTimeHours: 1, integrationMethod: "trapezoidal-v-dq",
+    }, metadata);
+    expect(curve).toContain("sample_id,sample_name,point_id,axis_value,axis_type,axis_unit,voltage_V,current_original,current_unit,current_sign");
+    expect(curve).toContain("curve-1,Electrode A,'+point,0,capacity,mAh-g-1,4,,");
+    expect(curve).toContain("electrode,2,0.5,1,trapezoidal-v-dq,full-curve,valid,true");
+    expect(serializeEnergyResultsCsv([result], metadata)).toContain("point_count");
   });
 });
 
@@ -106,6 +121,20 @@ describe("EnergyPowerPage", () => {
     await click(button(view, "Clear")); expect(view.querySelectorAll(".energy-summary-sample")).toHaveLength(1);
   });
 
+  it("supports multiple full-curve samples and integrates every sample into Ragone data", async () => {
+    const view = await renderPage(); await click(button(view, "Full Discharge Curves"));
+    const table = view.querySelector(".energy-curve-table")!;
+    await act(async () => { const event = new Event("paste", { bubbles: true }); Object.defineProperty(event, "clipboardData", { value: { getData: () => "0\t4\n100\t3\n200\t2" } }); table.dispatchEvent(event); });
+    await change(view.querySelector<HTMLInputElement>('.energy-curve-sample input[name$="-duration"]')!, "0.5");
+    await click(button(view, "Duplicate"));
+    expect(view.querySelectorAll(".energy-curve-sample")).toHaveLength(2);
+    await click(button(view, "Integrate Curve"));
+    expect(view.querySelectorAll('[data-point-series-id="ragone-active-material"]')).toHaveLength(2);
+    expect(view.textContent).toContain("Discharge curve 1"); expect(view.textContent).toContain("Discharge curve 2");
+    await click(button(view, "Add Sample")); expect(view.querySelectorAll(".energy-curve-sample")).toHaveLength(3);
+    await click(button(view, "Delete")); expect(view.querySelectorAll(".energy-curve-sample")).toHaveLength(2);
+  });
+
   it("integrates both explicit full-curve modes and reports strict-axis failures", async () => {
     const view = await renderPage(); await click(button(view, "Full Discharge Curves"));
     expect(view.textContent).toContain("Capacity–voltage"); expect(view.textContent).toContain("Time–voltage–current");
@@ -123,18 +152,67 @@ describe("EnergyPowerPage", () => {
     expect(view.textContent).toContain("Detected columns"); expect(view.textContent).toContain("Rows3"); expect(view.textContent).toContain("Valid points2"); expect(view.textContent).toContain("Invalid points1");
   });
 
+  it("does not silently discard an invalid first data row as a header", async () => {
+    const view = await renderPage(); await click(button(view, "Full Discharge Curves"));
+    await click(view.querySelectorAll<HTMLInputElement>('.energy-curve-input input[type="radio"]')[3]);
+    const fileInput = view.querySelector<HTMLInputElement>('input[type="file"]')!;
+    Object.defineProperty(fileInput, "files", { configurable: true, value: [new File(["bad,4\n100,3"], "curve.csv")] });
+    await act(async () => { fileInput.dispatchEvent(new Event("change", { bubbles: true })); await new Promise((resolve) => setTimeout(resolve, 20)); });
+    expect(view.textContent).toContain("Rows2"); expect(view.textContent).toContain("Invalid points1");
+    const headerMode = [...view.querySelectorAll("select")].find((item) => item.getAttribute("aria-label") === "Header handling")!;
+    await change(headerMode, "header"); expect(view.textContent).toContain("Rows1");
+    await change(headerMode, "data"); expect(view.textContent).toContain("Rows2");
+  });
+
   it("shows a parser failure instead of retaining a misleading upload", async () => {
     const view = await renderPage(); await click(button(view, "Full Discharge Curves"));
     await click(view.querySelectorAll<HTMLInputElement>('.energy-curve-input input[type="radio"]')[3]);
     const fileInput = view.querySelector<HTMLInputElement>('input[type="file"]')!;
+    Object.defineProperty(fileInput, "files", { configurable: true, value: [new File(["capacity,voltage\n0,4\n100,3"], "valid.csv")] });
+    await act(async () => { fileInput.dispatchEvent(new Event("change", { bubbles: true })); await new Promise((resolve) => setTimeout(resolve, 20)); });
+    expect(view.textContent).toContain("Rows2");
     Object.defineProperty(fileInput, "files", { configurable: true, value: [new File(["not a workbook"], "broken.xlsx")] });
     await act(async () => { fileInput.dispatchEvent(new Event("change", { bubbles: true })); await new Promise((resolve) => setTimeout(resolve, 20)); });
     expect(view.querySelector('[role="alert"]')?.textContent).toContain("could not be read");
+    expect(view.textContent).not.toContain("Rows2");
+    await click(button(view, "Integrate Curve")); expect(view.textContent).toContain("At least two complete curve points");
+  });
+
+  it("offers worksheet selection, explicit mapping, missing counts and scientific ranges", async () => {
+    const view = document.createElement("div"); document.body.appendChild(view); const root = createRoot(view); roots.push(root);
+    const fake = new File(["unused"], "curves.xlsx");
+    const parseFile = vi.fn().mockResolvedValueOnce([
+      { name: "First", rows: [["voltage", "capacity"], [4, 0], [3, 100], [null, 200]] },
+      { name: "Second", rows: [["capacity", "voltage"], [0, 4], [50, 3.5]] },
+    ]); const onPoints = vi.fn();
+    await act(async () => root.render(<I18nProvider><EnergyCurveFileImport sampleId="curve-a" mode="capacity" parseFile={parseFile} onPoints={onPoints} /></I18nProvider>));
+    const fileInput = view.querySelector<HTMLInputElement>('input[type="file"]')!;
+    Object.defineProperty(fileInput, "files", { configurable: true, value: [fake] });
+    await act(async () => { fileInput.dispatchEvent(new Event("change", { bubbles: true })); await new Promise((resolve) => setTimeout(resolve, 20)); });
+    expect(parseFile).toHaveBeenCalled();
+    for (const text of ["Worksheet", "Column mapping", "Mapped capacity column", "Mapped voltage column", "Missing values1", "Capacity range0–100", "Voltage range3–4"]) expect(view.textContent).toContain(text);
+    const sheet = [...view.querySelectorAll("select")].find((item) => item.parentElement?.textContent?.includes("Worksheet"))!;
+    await change(sheet, "1"); expect(view.textContent).toContain("Second"); expect(view.textContent).toContain("Rows2");
+  });
+
+  it("uses the latest callback and invalidates an older parse when curve mode changes", async () => {
+    let resolve!: (sheets: Array<{ name: string; rows: Array<Array<string | number>> }>) => void;
+    const parseFile = vi.fn(() => new Promise<Array<{ name: string; rows: Array<Array<string | number>> }>>((next) => { resolve = next; }));
+    const first = vi.fn(); const latest = vi.fn(); const view = document.createElement("div"); document.body.appendChild(view); const root = createRoot(view); roots.push(root);
+    await act(async () => root.render(<I18nProvider><EnergyCurveFileImport sampleId="race" mode="capacity" parseFile={parseFile} onPoints={first} /></I18nProvider>)); first.mockClear();
+    const fileInput = view.querySelector<HTMLInputElement>('input[type="file"]')!; Object.defineProperty(fileInput, "files", { configurable: true, value: [new File(["x"], "slow.csv")] });
+    await act(async () => { fileInput.dispatchEvent(new Event("change", { bubbles: true })); await Promise.resolve(); });
+    await act(async () => root.render(<I18nProvider><EnergyCurveFileImport sampleId="race" mode="time" parseFile={parseFile} onPoints={latest} /></I18nProvider>));
+    resolve([{ name: "late", rows: [["capacity", "voltage"], [0, 4], [1, 3]] }]);
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+    expect(latest).toHaveBeenCalledWith([]); expect(latest).not.toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ x: 0 })]));
+    expect(first).not.toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ x: 0 })]));
   });
 
   it("renders the workflow in Chinese without leaking keys", async () => {
     const view = await renderPage("zh");
     for (const text of ["能量与功率", "数据输入", "示例数据集", "完整放电曲线", "假设", "限制"]) expect(view.textContent).toContain(text);
+    await click(button(view, "完整放电曲线")); expect(view.textContent).toContain("放电曲线 1");
     expect(view.textContent).not.toContain("rate.energy.");
   });
 });

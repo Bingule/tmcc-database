@@ -3704,6 +3704,10 @@ sub {
 .energy-curve-table-scroll { max-height: 24rem; overflow: auto; margin-bottom: 0.75rem; }
 .energy-curve-table { width: 100%; min-width: 34rem; }
 .energy-curve-table th { position: sticky; top: 0; z-index: 1; background: #f3f6f5; }
+.energy-import-controls { display: flex; flex-wrap: wrap; gap: 0.8rem; margin: 0.8rem 0; }
+.energy-import-controls label,
+.energy-curve-file-import > label { display: grid; gap: 0.35rem; }
+.energy-curve-file-import .rate-import-summary { margin-top: 0.8rem; }
 .energy-run-panel { display: flex; justify-content: flex-end; }
 .energy-empty-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); }
 

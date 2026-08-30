@@ -6,8 +6,9 @@ import { ResultCards } from "./ResultCards";
 
 const basisColors = { "active-material": "#1f6f78", electrode: "#b36b2c", device: "#596275" } as const;
 
-export function EnergyPowerResults({ results, ragone, kind, csv }: {
+export function EnergyPowerResults({ results, sampleIds, ragone, kind, csv }: {
   results: ReadonlyArray<Readonly<EnergyPowerResult>>;
+  sampleIds: ReadonlyArray<string>;
   ragone: ReadonlyArray<Readonly<RagonePoint>>;
   kind: "example" | "user";
   csv: Readonly<{ original: string; results: string; ragone: string }>;
@@ -26,7 +27,7 @@ export function EnergyPowerResults({ results, ragone, kind, csv }: {
       ...(result.volumetricEnergyWhL === null ? [] : [{ id: `${result.sampleId}-vol-energy`, label: `${result.sampleId} · ${t("rate.energy.result.volEnergy")}`, value: format(result.volumetricEnergyWhL), unit: "Wh L^-1", type: "derived" as const }]),
       ...(result.volumetricPowerWL === null ? [] : [{ id: `${result.sampleId}-vol-power`, label: `${result.sampleId} · ${t("rate.energy.result.volPower")}`, value: format(result.volumetricPowerWL), unit: "W L^-1", type: "derived" as const }]),
     ])} />
-    {failures.length ? <section className="tool-section" role="alert"><h2>{t("rate.energy.result.failures")}</h2><ul>{failures.map((failure, index) => <li key={`${failure.code}-${index}`}>{t(`rate.energy.error.${failure.code}`)}{failure.pointIds.length ? ` (${failure.pointIds.join(", ")})` : ""}</li>)}</ul></section> : null}
+    {failures.length ? <section className="tool-section" role="alert"><h2>{t("rate.energy.result.failures")}</h2><ul>{results.flatMap((result, index) => result.status === "failure" ? [<li key={`${result.code}-${index}`}><strong>{sampleIds[index] ?? `#${index + 1}`}</strong>: {t(`rate.energy.error.${result.code}`)}{result.pointIds.length ? ` (${result.pointIds.join(", ")})` : ""}</li>] : [])}</ul></section> : null}
     {series.length ? <><RateChartPanel title={t("rate.energy.ragone.title")} xLabel={t("rate.energy.ragone.x")} yLabel={t("rate.energy.ragone.y")} xScale="log10" yScale="log10" exportId="energy-ragone-chart" metadata={t("rate.energy.ragone.metadata")} series={series} /><p className="tool-validation">{t("rate.energy.ragone.basisWarning")}</p></> : null}
     <ExportToolbar csvItems={[
       { id: "energy-original", label: t("rate.energy.export.original"), filename: "energy-power-original.csv", csv: csv.original },
