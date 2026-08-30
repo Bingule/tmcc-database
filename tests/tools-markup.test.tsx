@@ -164,7 +164,7 @@ describe("Tools page markup", () => {
     const fieldsets = [...importPanel.querySelectorAll("fieldset.cv-import-fieldset")];
     const formatChoices = importPanel.querySelector<HTMLElement>(".cv-format-choices")!;
 
-    expect(fieldsets).toHaveLength(3);
+    expect(fieldsets).toHaveLength(4);
     expect(fieldsets.every((fieldset) => fieldset.querySelector("legend") !== null)).toBe(true);
     expect(formatChoices.getAttribute("aria-invalid")).toBe("true");
     expect(formatChoices.classList.contains("cv-format-choices-invalid")).toBe(true);
@@ -174,7 +174,16 @@ describe("Tools page markup", () => {
     expect(importPanel.querySelectorAll(".cv-format-choice code")).toHaveLength(2);
     expect(importPanel.querySelectorAll(".cv-format-choice table")).toHaveLength(2);
 
-    const ids = ["cv-file-input", "cv-scan-rates", "cv-point-interval", "cv-r-squared-threshold"];
+    expect(importPanel.querySelector("#cv-point-interval")).toBeNull();
+    const ids = [
+      "cv-file-input",
+      "cv-scan-rates",
+      "cv-potential-interval-mode",
+      "cv-potential-interval-mv",
+      "cv-r-squared-threshold",
+      "cv-turning-trim-mode",
+      "cv-turning-trim-mv"
+    ];
     for (const id of ids) expect(importPanel.querySelector(`label[for=\"${id}\"]`)).not.toBeNull();
 
     const pasteSource = importPanel.querySelector<HTMLInputElement>('input[name="cv-source"][value="paste"]')!;
@@ -183,10 +192,17 @@ describe("Tools page markup", () => {
     expect(textarea.labels?.[0]?.htmlFor).toBe("cv-paste-text");
     expect(textarea.getAttribute("aria-label")).not.toBeNull();
 
-    const interval = importPanel.querySelector<HTMLSelectElement>("#cv-point-interval")!;
+    const interval = importPanel.querySelector<HTMLSelectElement>("#cv-potential-interval-mode")!;
+    const thresholdMode = importPanel.querySelector<HTMLInputElement>("#cv-dunn-method-threshold")!;
+    const weightedMode = importPanel.querySelector<HTMLInputElement>("#cv-dunn-method-weighted")!;
+    const trimMode = importPanel.querySelector<HTMLSelectElement>("#cv-turning-trim-mode")!;
     const threshold = importPanel.querySelector<HTMLInputElement>("#cv-r-squared-threshold")!;
     expect(interval.disabled).toBe(false);
+    expect(thresholdMode.disabled).toBe(false);
+    expect(weightedMode.disabled).toBe(false);
+    expect(trimMode.disabled).toBe(false);
     expect(threshold.disabled).toBe(false);
+    expect(view.textContent).toContain("Smoothing: Auto");
   });
 
   it("uses responsive layout hooks and table-based calculator result regions", async () => {
@@ -212,7 +228,9 @@ describe("Tools page markup", () => {
     expect(cvLayout?.querySelector(":scope > .cv-results.tool-section-wide")).not.toBeNull();
     expect(cvLayout?.querySelector(":scope > .cv-export.tool-section-wide")).not.toBeNull();
     expect(cv.querySelector(".cv-import .cv-analysis-actions > button[name=\"cv-analyze\"] + .tool-validation")).not.toBeNull();
-    expect(cv.querySelectorAll('.scientific-chart-empty[role="status"]')).toHaveLength(4);
+    expect(cv.querySelector<HTMLSelectElement>('select[name="bAnalysisMode"]')?.value).toBe("peak");
+    expect(cv.querySelector('[data-panel-id="cv-potential-b-analysis"]')).toBeNull();
+    expect(cv.querySelectorAll('.scientific-chart-empty[role="status"]')).toHaveLength(2);
     expect((await readFile("src/pages/CvKineticsPage.tsx", "utf8"))).toContain('t("cv.table.sweepBranch")');
   });
 });
@@ -237,6 +255,9 @@ describe("Tools static integration", () => {
     expect(css).toMatch(/\.cv-paste-source\s+textarea[^}]*width:\s*100%[^}]*min-height:\s*1[2-9]0px/s);
     expect(css).toMatch(/\.cv-format-choices\s*\{[^}]*grid-template-columns:\s*repeat\(2,/s);
     expect(css).toMatch(/\.cv-analysis-settings\s*\{[^}]*grid-template-columns:\s*repeat\(2,/s);
+    expect(css).toMatch(/\.cv-settings-diagnostics\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+minmax\(280px,\s*0\.8fr\)/s);
+    expect(css).toMatch(/\.cv-diagnostics-list\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+auto/s);
+    expect(css).toMatch(/\.cv-data-input\s*\{[^}]*box-shadow:\s*inset\s+4px\s+0\s+0/s);
     expect(css).toMatch(/@media\s*\(max-width:\s*520px\)[\s\S]*?\.cv-analysis-settings\s*\{[^}]*grid-template-columns:\s*1fr/s);
     expect(css).toMatch(/\.tools-page\s+:is\([^}]*textarea[^}]*\):focus-visible/s);
     expect(css).toMatch(/\.cv-import\s+\.tool-validation:empty[^}]*display:\s*none/s);

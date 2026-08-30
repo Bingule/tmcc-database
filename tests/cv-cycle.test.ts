@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   CvCycleStructureError,
+  normalizeAlignedCvCycles,
+  normalizeCvCycle,
   splitAlignedCvCycles,
   splitCvCycle
 } from "../src/lib/cvCycle";
@@ -118,5 +120,108 @@ describe("splitAlignedCvCycles", () => {
       cyclicClosure: true
     });
     expect(branches[1][2].points.map((point) => point.sourceIndex)).toEqual([0, 1, 2]);
+  });
+});
+
+describe("normalizeCvCycle", () => {
+  it("normalizes an endpoint-started one-turn loop", () => {
+    const cycle = normalizeCvCycle(points([-1, -0.5, 0, -0.5, -1]));
+
+    expect(cycle.forward.points.map((point) => point.potential)).toEqual([-1, -0.5, 0]);
+    expect(cycle.reverse.points.map((point) => point.potential)).toEqual([0, -0.5, -1]);
+    expect(cycle.ignoredPointCount).toBe(0);
+  });
+
+  it("joins same-direction seam fragments into one logical branch", () => {
+    const cycle = normalizeCvCycle(points([-0.5, 0, -0.5, -1, -0.75, -0.5]));
+
+    expect(cycle.forward.points.map((point) => point.potential)).toEqual([-1, -0.75, -0.5, 0]);
+    expect(cycle.reverse.points.map((point) => point.potential)).toEqual([0, -0.5, -1]);
+    expect(cycle.originalPoints.map((point) => point.potential)).toEqual([-0.5, 0, -0.5, -1, -0.75, -0.5]);
+  });
+
+  it("ignores only an incomplete next cycle after closure", () => {
+    const cycle = normalizeCvCycle(points([-1, -0.5, 0, -0.5, -1, -0.8, -0.6]));
+
+    expect(cycle.selectedEndIndex).toBe(4);
+    expect(cycle.ignoredPointCount).toBe(2);
+  });
+
+  it("keeps the true endpoint instead of closing at the first point inside tolerance", () => {
+    const ascending = Array.from({ length: 301 }, (_, index) => index);
+    const descending = Array.from({ length: 300 }, (_, index) => 299 - index);
+    const cycle = normalizeCvCycle(points([...ascending, ...descending]));
+
+    expect(cycle.selectedEndIndex).toBe(600);
+    expect(cycle.originalPoints.at(-1)?.potential).toBe(0);
+    expect(cycle.ignoredPointCount).toBe(0);
+  });
+
+  it("accepts a one-turn cycle whose return endpoint differs by a few native intervals", () => {
+    const ascending = Array.from({ length: 998 }, (_, index) => 0.003 + index * 0.001);
+    const descending = Array.from({ length: 1_000 }, (_, index) => 0.999 - index * 0.001);
+    const cycle = normalizeCvCycle(points([...ascending, ...descending]));
+
+    expect(cycle.forward.direction).toBe(1);
+    expect(cycle.reverse.direction).toBe(-1);
+    expect(cycle.originalPoints.at(-1)?.potential).toBeCloseTo(0, 12);
+  });
+
+  it("rejects a one-turn scan that stops four native intervals before closing", () => {
+    const ascending = Array.from({ length: 997 }, (_, index) => 0.004 + index * 0.001);
+    const descending = Array.from({ length: 992 }, (_, index) => 0.999 - index * 0.001);
+
+    expect(() => normalizeCvCycle(points([...ascending, ...descending])))
+      .toThrow("branchPointCount");
+  });
+
+  it("ignores a tail that extends beyond an already closed endpoint-started loop", () => {
+    const cycle = normalizeCvCycle(points([-1, 0, -1, -0.5, 0.5]));
+
+    expect(cycle.selectedEndIndex).toBe(2);
+    expect(cycle.ignoredPointCount).toBe(2);
+  });
+
+  it("ignores an extreme tail after an already closed endpoint-started loop", () => {
+    const cycle = normalizeCvCycle(points([-1, 0, -1, 100]));
+
+    expect(cycle.selectedEndIndex).toBe(2);
+    expect(cycle.ignoredPointCount).toBe(1);
+  });
+
+  it("does not let an extreme tail turn a mid-sweep start into an endpoint start", () => {
+    const cycle = normalizeCvCycle(points([-1, 0, -1, -1.1, -1, 100]));
+
+    expect(cycle.selectedEndIndex).toBe(4);
+    expect(cycle.ignoredPointCount).toBe(1);
+  });
+
+  it("does not treat a later return after another reversal as an endpoint-started closure", () => {
+    expect(() => normalizeCvCycle(points([-1, 0, -0.5, 0, -1]))).toThrow("branchPointCount");
+  });
+
+  it("retains double-recorded turning currents on opposite branches", () => {
+    const input = [
+      { potential: -1, current: -1 },
+      { potential: 0, current: 3 },
+      { potential: 0, current: 2 },
+      { potential: -1, current: -2 }
+    ];
+    const cycle = normalizeCvCycle(input);
+
+    expect(cycle.forward.points.at(-1)).toMatchObject({ potential: 0, current: 3 });
+    expect(cycle.reverse.points[0]).toMatchObject({ potential: 0, current: 2 });
+  });
+});
+
+describe("normalizeAlignedCvCycles", () => {
+  it("accepts mixed one-turn and seam-started cycles with matching directions", () => {
+    const cycles = normalizeAlignedCvCycles([
+      { label: "2", scanRate: 2, points: points([-1, -0.5, 0, -0.5, -1]) },
+      { label: "5", scanRate: 5, points: points([-0.5, 0, -0.5, -1, -0.5]) }
+    ]);
+
+    expect(cycles).toHaveLength(2);
+    expect(cycles.every((cycle) => cycle.forward.direction === 1 && cycle.reverse.direction === -1)).toBe(true);
   });
 });

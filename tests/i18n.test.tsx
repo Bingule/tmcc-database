@@ -141,14 +141,24 @@ describe("I18nProvider", () => {
     expect(zh["cv.import.pointInterval.help"]).toContain("各分支内");
   });
 
+  it("defines the bilingual advanced Dunn introduction as plain text", () => {
+    expect(en["cv.intro.advancedTitle"]).toBe("Advanced R²-Guided Regularized Dunn Analysis");
+    expect(en["cv.intro.description"]).toContain("Local k1, k2, and R² values");
+    expect(en["cv.intro.description"]).toContain("0 <= g(V) <= 1");
+    expect(en["cv.intro.benefits"]).toBe("Benefits: robust reconstruction · R²-aware confidence weighting · smooth branch consistency · sign preservation · bounded capacitive contribution · reduced sensitivity to local fitting noise");
+    expect(zh["cv.intro.advancedTitle"]).toBe("高级 R² 引导正则化 Dunn 分析");
+    expect(zh["cv.intro.description"]).toContain("0 <= g(V) <= 1");
+    expect(zh["cv.intro.benefits"]).toContain("优势：稳健重构");
+  });
+
   it("defines bilingual publication-style Dunn area and coverage resources", () => {
     expect(en["cv.dunn.excludedArea"]).toBe("Excluded by R² threshold / unavailable");
     expect(en["cv.dunn.coverageNotice"]).toContain("{{valid}} / {{total}} points");
-    expect(en["cv.dunn.coverageHelp"]).toContain("hatched regions");
+    expect(en["cv.dunn.coverageHelp"]).toContain("continuously across the CV loop");
     expect(en["cv.dunn.help"]).toContain("publication-style filled areas");
     expect(zh["cv.dunn.excludedArea"]).toBe("低于 R² 阈值／不可用");
     expect(zh["cv.dunn.coverageNotice"]).toContain("{{valid}} / {{total}} 个点");
-    expect(zh["cv.dunn.coverageHelp"]).toContain("斜线区域");
+    expect(zh["cv.dunn.coverageHelp"]).toContain("沿完整 CV loop 连续显示");
     expect(zh["cv.dunn.help"]).toContain("文献式填色");
   });
 
@@ -167,6 +177,15 @@ describe("I18nProvider", () => {
     expect(zh["rate.import.summary"]).toBe("导入摘要");
     expect(zh["rate.theory.equation"]).toBe("控制方程");
     expect(zh["rate.export.svg"]).toBe("导出 SVG");
+  });
+
+  it("defines bilingual peak and potential-resolved b-value modes", () => {
+    expect(en["cv.b.mode.peak"]).toBe("Peak b-value");
+    expect(en["cv.b.mode.potential"]).toBe("Potential-resolved b-value");
+    expect(en["cv.peak.limit"]).toContain("10");
+    expect(zh["cv.b.mode.peak"]).toBe("峰值 b 值");
+    expect(zh["cv.b.mode.potential"]).toBe("电位分辨 b 值");
+    expect(zh["cv.peak.partial"]).toContain("部分");
   });
 
   it("keeps Angstrom units untranslated in Chinese resources", () => {

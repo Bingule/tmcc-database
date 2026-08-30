@@ -2374,6 +2374,37 @@ td button {
   line-height: 1.6;
 }
 
+.cv-intro-subtitle {
+  margin: 16px 0 0;
+  color: #285b70;
+  font-size: clamp(1.15rem, 2vw, 1.5rem);
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.tool-page-header .cv-intro-description {
+  margin-top: 10px;
+}
+
+.tool-page-header .cv-intro-benefits {
+  margin-top: 8px;
+  color: #3f5963;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.cv-page-header {
+  max-width: none;
+}
+
+@media (max-width: 640px) {
+  .tool-page-header .cv-intro-benefits {
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+}
+
 .tools-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2535,8 +2566,207 @@ td button {
   grid-column: 1 / -1;
 }
 
-.cv-import > :is(h2, p, .cv-format-choices, .cv-data-input, .cv-analysis-settings, .cv-preview, .cv-analysis-actions) {
+.cv-import > :is(h2, p, .cv-format-choices, .cv-data-input, .cv-settings-diagnostics, .cv-preview, .cv-analysis-actions) {
   grid-column: 1 / -1;
+}
+
+.cv-b-selection-controls {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.7fr) minmax(180px, 1fr) auto auto;
+  gap: 8px 12px;
+  align-items: end;
+  margin: 14px 0 6px;
+}
+
+.cv-b-selection-controls > label {
+  align-self: center;
+}
+
+.cv-b-selection-controls > button {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.cv-b-dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  margin-top: 14px;
+}
+
+.cv-b-mode-control {
+  display: grid;
+  grid-template-columns: minmax(0, 18rem);
+  gap: 5px;
+  margin-top: 12px;
+}
+
+.cv-b-vertical-stack {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  width: 100%;
+  margin-top: 14px;
+}
+
+.cv-peak-selection-controls {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #d5e0dc;
+  border-radius: 9px;
+  background: #f5f9f7;
+}
+
+.cv-peak-selector-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(10rem, 14rem));
+  gap: 12px;
+}
+
+.cv-peak-selection-controls label {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+  overflow-wrap: anywhere;
+}
+
+.cv-peak-selection-controls select {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.cv-peak-point-actions,
+.cv-peak-management-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-start;
+}
+
+.cv-peak-point-actions button,
+.cv-peak-management-actions button {
+  min-width: 0;
+  margin: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.cv-table-scroll {
+  overflow-x: auto;
+}
+
+.cv-peak-potential-input {
+  min-width: 0;
+  width: 100%;
+  padding: 6px 5px;
+  font-size: 0.82rem;
+}
+
+.cv-peak-points-card {
+  min-width: 0;
+}
+
+.cv-peak-points-table {
+  width: 100%;
+  min-width: 480px;
+  table-layout: fixed;
+}
+
+.cv-peak-points-table th,
+.cv-peak-points-table td {
+  padding: 6px 4px;
+  overflow: hidden;
+  font-size: 0.82rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cv-peak-column-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 16px;
+  align-items: center;
+  gap: 3px;
+  width: 100%;
+  max-width: none;
+}
+
+.cv-peak-heading-text {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+  line-height: 1.05;
+}
+
+.cv-peak-heading-text small {
+  font-size: 0.66rem;
+  font-weight: 650;
+  text-transform: none;
+}
+
+.cv-peak-column-heading input {
+  width: 15px;
+  height: 15px;
+}
+
+.cv-peak-points-card .cv-table-copy-toolbar button {
+  padding: 6px 9px;
+  font-size: 0.8rem;
+}
+
+.cv-analysis-card {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #dce2df;
+  border-radius: 8px;
+  background: #fbfcfc;
+}
+
+.cv-analysis-card > h3 {
+  margin: 0 0 10px;
+}
+
+.cv-b-interpretation,
+.cv-b-range-note {
+  margin: 10px 0 0;
+  font-size: 0.86rem;
+}
+
+.cv-b-range-note {
+  padding: 8px 10px;
+  border-left: 3px solid #d47b3c;
+  background: #fff7f1;
+  color: #734324;
+}
+
+.cv-b-fit-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, auto) minmax(0, 1fr));
+  gap: 6px 10px;
+  margin: 12px 0 0;
+  font-size: 0.84rem;
+}
+
+.cv-b-fit-metrics dt {
+  color: #607078;
+  font-weight: 700;
+}
+
+.cv-b-fit-metrics dd {
+  min-width: 0;
+  margin: 0;
+  color: #17242a;
+  overflow-wrap: anywhere;
+}
+
+.b-value-overview-svg [role="button"] {
+  cursor: pointer;
+}
+
+.b-value-overview-svg [role="button"]:focus-visible {
+  outline: none;
+  filter: drop-shadow(0 0 2px #111b25);
 }
 
 .cv-import-fieldset {
@@ -2629,6 +2859,51 @@ td button {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
+}
+
+.cv-settings-diagnostics {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.8fr);
+  gap: 14px;
+  align-items: start;
+  min-width: 0;
+}
+
+.cv-settings-diagnostics .cv-analysis-settings {
+  min-width: 0;
+}
+
+.cv-method-notes {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #d6e2de;
+  border-radius: 7px;
+  background: #f8fbfa;
+}
+
+.cv-method-notes h3,
+.cv-method-notes p,
+.cv-method-notes ul {
+  margin: 0;
+}
+
+.cv-method-notes [role="status"] {
+  width: fit-content;
+  padding: 5px 8px;
+  border: 1px solid #cbded8;
+  border-radius: 6px;
+  color: #1f5660;
+  background: #eef6f3;
+  font-weight: 800;
+}
+
+.cv-method-notes ul {
+  display: grid;
+  gap: 7px;
+  padding-left: 18px;
+  color: #52666e;
 }
 
 .cv-format-choices > :is(legend, p) {
@@ -2894,26 +3169,83 @@ td button {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 12px;
-  margin: 12px 0 6px;
+  margin: 8px 0 6px;
 }
 
-.cv-table-copy-columns {
+.cv-result-table-block .tool-table-wrap table {
+  width: max-content;
+  min-width: 100%;
+}
+
+.cv-table-column-heading {
   display: flex;
-  flex: 1 1 420px;
-  flex-wrap: wrap;
-  gap: 6px 12px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  width: clamp(112px, 12vw, 150px);
+  max-width: 150px;
+  font: inherit;
+  line-height: 1.3;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
-.cv-table-copy-columns label {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
+.cv-table-column-heading input {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
   margin: 0;
-  font-weight: 500;
 }
 
 .cv-table-copy-toolbar button { margin: 0; }
-.cv-table-copy-toolbar [role="status"] { flex-basis: 100%; min-height: 1.4em; }
+.cv-table-copy-toolbar [role="status"] { margin: 0; }
+
+/* Keep the peak-point table compact after the generic table/input rules above. */
+.cv-peak-points-card .cv-peak-points-table {
+  width: 100%;
+  min-width: 480px;
+  table-layout: fixed;
+}
+
+.cv-peak-points-card .cv-peak-points-table th,
+.cv-peak-points-card .cv-peak-points-table td {
+  padding: 6px 4px;
+  overflow: hidden;
+  font-size: 0.82rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cv-peak-points-card .cv-peak-column-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 16px;
+  gap: 3px;
+  width: 100%;
+  max-width: none;
+}
+
+.cv-peak-points-card .cv-peak-heading-text,
+.cv-peak-points-card .cv-peak-heading-text > span {
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.cv-peak-points-card .cv-peak-column-heading input {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  min-height: 0;
+  padding: 0;
+}
+
+.cv-peak-points-card .cv-peak-potential-input {
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  padding: 6px 5px;
+  font-size: 0.82rem;
+}
 
 .rate-data-input {
   display: grid;
@@ -3319,10 +3651,61 @@ td button {
   font-size: 0.88rem;
 }
 
+.cv-diagnostics {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #e3eae7;
+}
+
+.cv-diagnostics h3 {
+  margin: 0;
+}
+
+.cv-diagnostics-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 14px;
+  margin: 0;
+}
+
+.cv-diagnostics-list dt {
+  color: #607078;
+}
+
+.cv-diagnostics-list dd {
+  margin: 0;
+  color: #17242a;
+  font-weight: 750;
+  text-align: right;
+}
+
+.cv-diagnostic-warning {
+  margin: 0;
+  padding: 9px 12px;
+  border-left: 4px solid #a66a2d;
+  border-radius: 5px;
+  color: #684214;
+  background: #fff7e8;
+  font-weight: 750;
+}
+
 .scientific-chart-svg {
   display: block;
   width: 100%;
   min-width: 560px;
+}
+
+.scientific-stacked-bar-chart-svg {
+  min-width: var(--scientific-stacked-bar-min-width, 560px);
+}
+
+.scientific-stacked-bar-chart-svg [data-label-placement="external"] {
+  paint-order: stroke;
+  stroke: #fbfcfb;
+  stroke-width: 3px;
+  stroke-linejoin: round;
 }
 
 .scientific-chart-point:focus-visible {
@@ -3461,6 +3844,38 @@ sub {
     grid-template-columns: 1fr;
   }
 
+  .cv-b-dashboard-grid,
+  .cv-b-selection-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .cv-peak-selection-controls {
+    gap: 10px;
+  }
+
+  .cv-peak-selector-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cv-peak-point-actions,
+  .cv-peak-management-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  }
+
+  .cv-peak-point-actions button,
+  .cv-peak-management-actions button {
+    width: 100%;
+  }
+
+  .cv-b-selection-controls > button {
+    width: 100%;
+  }
+
+  .cv-b-fit-metrics {
+    grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  }
+
   .tools-grid {
     grid-template-columns: 1fr;
   }
@@ -3495,6 +3910,7 @@ sub {
   .cv-format-choices,
   .cv-source-controls,
   .cv-data-input,
+  .cv-settings-diagnostics,
   .cv-analysis-settings {
     grid-template-columns: 1fr;
   }

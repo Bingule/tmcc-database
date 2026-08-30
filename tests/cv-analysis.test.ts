@@ -432,6 +432,23 @@ describe("analyzeBValue", () => {
     ]);
   });
 
+  it("marks scale-relative near-zero currents as unstable while retaining the fit", () => {
+    const records = attemptBValueFits({
+      potentials: [0, 1],
+      scanRates: [1, 4, 9],
+      currents: [
+        [1e-8, 1],
+        [2e-8, 2],
+        [3e-8, 3]
+      ]
+    });
+
+    expect(records[0].status).toBe("nearZeroCurrentUnstable");
+    expect(records[0].fit).not.toBeNull();
+    expect(records[0].fit?.currentStabilityRatio).toBeCloseTo(1e-8 / 3, 15);
+    expect(records[1].status).toBe("valid");
+  });
+
   it("returns no fit with fewer than three distinct positive scan rates", () => {
     expect(analyzeBValue({ potentials: [0], scanRates: [1, 1], currents: [[2], [3]] })).toEqual([]);
     expect(analyzeBValue({ potentials: [0], scanRates: [1, 2], currents: [[2], [4]] })).toEqual([]);

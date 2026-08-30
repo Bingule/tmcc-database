@@ -1,17 +1,32 @@
-import { useId, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Breadcrumbs } from "../components/Breadcrumbs";
+import { BValueOverviewChart } from "../components/BValueOverviewChart";
+import { CvPeakAnalysisPanel, type CvPeakPanelCopy } from "../components/CvPeakAnalysisPanel";
 import {
   CvImportPanel,
   type CvImportDraft,
   type CvUiError
 } from "../components/CvImportPanel";
-import { ScientificLineChart, type ChartAreaPoint, type ChartAreaSeries, type ChartSeries } from "../components/ScientificLineChart";
+import { ScientificStackedBarChart } from "../components/ScientificStackedBarChart";
+import { ScientificLineChart, type ChartAreaPoint, type ChartAreaSeries, type ChartPolygonSeries, type ChartSeries } from "../components/ScientificLineChart";
 import { useI18n } from "../i18n/I18nProvider";
-import { resolveGridBranches } from "../lib/cvAnalysis";
 import { parseScanRateList, type CvDataLayout, type CvHeaderMode } from "../lib/cvImport";
 import { confirmCvSeries, CvParseError, parseCvFile, parseDelimitedCv, type ParsedCvTable } from "../lib/cvParsing";
+import { localCapacitiveFraction, rSquaredConfidence } from "../lib/cvDunnConfidence";
+import { formatSelectedPotential, isSelectableBRecord, selectRepresentativeBRecord, snapBRecordToPotential } from "../lib/cvBValueSelection";
 import { analyzeCvWorkflow } from "../lib/cvWorkflow";
-import { CvAnalysisError, type BValuePoint, type CvFitRecord, type CvFitStatus, type CvSeries, type CvWorkflowResult, type DunnContribution } from "../lib/cvTypes";
+import {
+  addManualPeakOverride,
+  applyPeakOverrides,
+  createPeakOverrideState,
+  CvPeakOverrideError,
+  removePeakOverride,
+  restorePeakPointOverride,
+  setPeakPointOverride,
+  snapPeakPoint,
+  type CvPeakOverrideState
+} from "../lib/cvPeakOverrides";
+import { CvAnalysisError, type BValuePoint, type CvAnalysisSettings, type CvFitRecord, type CvFitStatus, type CvPeakAnalysisResult, type CvPeakFitStatus, type CvPeakPointStatus, type CvSeries, type CvWorkflowResult, type DunnBranchFitRecord, type DunnContribution, type DunnFitStatus } from "../lib/cvTypes";
 import { downloadCsv, downloadPng, downloadSvg, rowsToCsv } from "../lib/toolExport";
 
 type AnalysisState = CvWorkflowResult;
@@ -28,11 +43,14 @@ const csvFiles = [
   "cv-dunn-k1-k2.csv",
   "cv-capacitive-current.csv",
   "cv-diffusion-current.csv",
-  "cv-contribution-summary.csv"
+  "cv-contribution-summary.csv",
+  "cv-peak-b-value-results.csv",
+  "cv-peak-points.csv"
 ] as const;
 export const MAX_CHART_POINTS = 2_000;
 const MAX_CHART_GAP_RUNS = 500;
 export const MAX_CHART_OUTPUT_POINTS = 4_000;
+const DUNN_ENDPOINT_NEIGHBORHOOD_POINT_COUNT = 8;
 const MAX_TABLE_ROWS = 500;
 export const MAX_VISIBLE_TABLE_ROWS = 12;
 const initialDraft: CvImportDraft = {
@@ -40,8 +58,12 @@ const initialDraft: CvImportDraft = {
   source: "file",
   pasteText: "",
   scanRateText: "",
-  pointInterval: 1,
-  rSquaredThreshold: 0.95
+  potentialIntervalMode: "auto",
+  potentialIntervalMillivolts: 5,
+  rSquaredThreshold: 0.95,
+  dunnConfidenceMode: "threshold",
+  turningPointTrimMode: "auto",
+  turningPointTrimMillivolts: 0
 };
 
 export function CvKineticsPage() {
@@ -53,22 +75,42 @@ export function CvKineticsPage() {
   const [analysis, setAnalysis] = useState<AnalysisState | null>(null);
   const [analysisMetadata, setAnalysisMetadata] = useState<ResultMetadata | null>(null);
   const [selectedBSequenceIndex, setSelectedBSequenceIndex] = useState<number | undefined>();
+  const [bAnalysisMode, setBAnalysisMode] = useState<"peak" | "potential">("peak");
+  const [peakOverrides, setPeakOverrides] = useState<CvPeakOverrideState>(() => createPeakOverrideState());
+  const [selectedPeakId, setSelectedPeakId] = useState<string | null>(null);
+  const [selectedPeakSeriesIndex, setSelectedPeakSeriesIndex] = useState(0);
+  const [pendingPeakAdd, setPendingPeakAdd] = useState(false);
+  const [peakInteractionError, setPeakInteractionError] = useState<"limit" | "snap" | null>(null);
   const [potentialInput, setPotentialInput] = useState("");
   const [selectedRate, setSelectedRate] = useState<number | undefined>();
   const [errorCode, setErrorCode] = useState<CvUiError | null>(null);
   const importVersion = useRef(0);
-  const bResultRecords = (analysis?.bRecords ?? []).filter(isResultOutputRecord);
-  const dunnResultRecords = (analysis?.dunnRecords ?? []).filter(isResultOutputRecord);
-  const validBResultRecords = bResultRecords.filter((record) => record.status === "valid" && record.fit);
+  const bResultRecords = analysis?.bRecords ?? [];
+  const dunnResultRecords = flattenDunnRecords(analysis).filter(isDunnResultOutputRecord);
+  const selectableBResultRecords = bResultRecords.filter(isSelectableBRecord);
   const contributions = analysis?.contributions ?? [];
   const canExportCsv = Boolean(analysis && analysisMetadata);
+  const peakResult = useMemo(() => analysis
+    ? applyPeakOverrides(
+      analysis.peakAnalysis,
+      analysis.series,
+      analysis.alignedGrid.cycles,
+      analysis.settings.rSquaredThreshold,
+      peakOverrides
+    )
+    : null, [analysis, peakOverrides]);
 
-  function invalidateAnalysis() {
+  function invalidateAnalysis(keepPeakOverrides = false) {
     setAnalysis(null);
     setAnalysisMetadata(null);
     setSelectedBSequenceIndex(undefined);
     setPotentialInput("");
     setSelectedRate(undefined);
+    setSelectedPeakId(null);
+    setSelectedPeakSeriesIndex(0);
+    setPendingPeakAdd(false);
+    setPeakInteractionError(null);
+    if (!keepPeakOverrides) setPeakOverrides(createPeakOverrideState());
     setErrorCode(null);
   }
 
@@ -82,7 +124,7 @@ export function CvKineticsPage() {
     setBusy(false);
     if (parsingChanged) setTable(null);
     setDraft(next);
-    invalidateAnalysis();
+    invalidateAnalysis(sameDraftExceptRSquaredThreshold(draft, next));
     if (next.source === "file" && selectedFile && (fileSettingsChanged || sourceChanged)) {
       if (next.options.layout) void parseSelectedFile(selectedFile, {
         layout: next.options.layout,
@@ -160,9 +202,9 @@ export function CvKineticsPage() {
   }
 
   function handleCsvExport(filename: typeof csvFiles[number]) {
-    if (!analysis || !analysisMetadata) return;
+    if (!analysis || !analysisMetadata || !peakResult) return;
     setErrorCode(null);
-    try { exportCsv(filename, analysis, analysisMetadata, t); }
+    try { exportCsv(filename, analysis, peakResult, analysisMetadata, t); }
     catch { setErrorCode("export"); }
   }
 
@@ -182,14 +224,16 @@ export function CvKineticsPage() {
     try {
       const parsedRates = parseScanRateList(draft.scanRateText);
       const series = confirmCvSeries(table, parsedRates);
-      const result = analyzeCvWorkflow(series, {
-        pointInterval: draft.pointInterval,
-        rSquaredThreshold: draft.rSquaredThreshold
-      });
+      const result = analyzeCvWorkflow(series, analysisSettingsFromDraft(draft));
       const firstAvailableB = result.bRecords.find((record) => record.fit)?.fit;
       if (!firstAvailableB) throw new PageAnalysisError("noBFit");
-      const firstValidB = result.bRecords.find((record) => record.status === "valid" && record.fit);
+      const firstValidB = selectRepresentativeBRecord(result.bRecords);
       setAnalysis(result);
+      setBAnalysisMode("peak");
+      setSelectedPeakId(result.peakAnalysis.fits[0]?.peakId ?? null);
+      setSelectedPeakSeriesIndex(0);
+      setPendingPeakAdd(false);
+      setPeakInteractionError(null);
       setAnalysisMetadata({
         layout: table.layout,
         headerMode: table.headerMode,
@@ -197,52 +241,46 @@ export function CvKineticsPage() {
         orderedScanRates: [...parsedRates]
       });
       setSelectedBSequenceIndex(firstValidB?.sequenceIndex);
-      setPotentialInput(firstValidB ? String(firstValidB.potential) : "");
+      setPotentialInput(firstValidB ? formatSelectedPotential(firstValidB.potential) : "");
       setSelectedRate([...result.analysisGrid.scanRates].sort((left, right) => left - right)[0]);
     } catch (error) {
       if (error instanceof CvParseError) setErrorCode(error.code);
       else if (error instanceof PageAnalysisError) setErrorCode(error.code);
       else if (error instanceof CvAnalysisError && error.code === "noCommonPotentialRange") setErrorCode("noOverlap");
       else if (error instanceof CvAnalysisError && error.code === "invalidCycleStructure") setErrorCode("invalidCycleStructure");
-      else if (error instanceof CvAnalysisError && error.code === "invalidPointInterval") setErrorCode("invalidPointInterval");
+      else if (error instanceof CvAnalysisError && error.code === "invalidPotentialInterval") setErrorCode("invalidPotentialInterval");
+      else if (error instanceof CvAnalysisError && error.code === "invalidTurningPointTrim") setErrorCode("invalidTurningPointTrim");
       else if (error instanceof CvAnalysisError && error.code === "invalidRSquaredThreshold") setErrorCode("invalidRSquaredThreshold");
       else setErrorCode("analysis");
     }
   }
 
-  const selectedBRecord = validBResultRecords.find((record) => record.sequenceIndex === selectedBSequenceIndex);
+  const selectedBRecord = bResultRecords.find((record) => record.sequenceIndex === selectedBSequenceIndex);
   const selectedB = selectedBRecord?.fit ?? undefined;
-  const selectedPotential = selectedBRecord?.potential;
   const selectedContribution = contributions.find((item) => item.scanRate === selectedRate);
+  const selectedDunnPotential = selectedBRecord?.potential;
   const selectedSeriesIndex = analysis?.analysisGrid.scanRates.findIndex((rate) => rate === selectedRate) ?? -1;
-  const selectedOriginalSeries = analysis?.series.find((item) => item.scanRate === selectedRate);
+  const selectedRawSeries = analysis?.series.find((item) => item.scanRate === selectedRate);
+  const selectedCycle = selectedSeriesIndex >= 0 ? analysis?.alignedGrid.cycles[selectedSeriesIndex] : undefined;
+  const selectedOriginalSeries: CvSeries | undefined = selectedRawSeries && selectedCycle
+    ? { ...selectedRawSeries, points: selectedCycle.originalPoints }
+    : undefined;
+  const selectedDunnXDomain = selectedOriginalSeries
+    ? selectedOriginalSeries.points.reduce<[number, number]>(
+      ([minimum, maximum], point) => [Math.min(minimum, point.potential), Math.max(maximum, point.potential)],
+      [Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]
+    )
+    : undefined;
   const sortedContributions = [...contributions].sort((left, right) => left.scanRate - right.scanRate);
   const sortedDunnRates = [...(analysis?.analysisGrid.scanRates ?? [])].sort((left, right) => left - right);
   const dunnCoverage = analysis ? makeDunnCoverage(analysis) : undefined;
-  const selectedBRecordIndex = validBResultRecords.findIndex((record) => record.sequenceIndex === selectedBSequenceIndex);
-  const bChart = useMemo<ChartSeries[]>(() => {
-    if (!analysis) return [];
-    const bRecordBySequence = new Map(analysis.bRecords.map((record) => [record.sequenceIndex, record]));
-    return [{
-      id: "b-values", label: t("cv.b.value"), color: "#16697a",
-      points: analysis.analysisGrid.potentials.map((potential, sequenceIndex) => {
-        const record = bRecordBySequence.get(sequenceIndex);
-        return {
-          id: String(sequenceIndex),
-          x: potential,
-          y: record?.status === "valid" && record.fit ? record.fit.b : null,
-          accessibilityLabel: `${t("cv.b.value")}: ${t("cv.table.potential")} ${serializeScientificNumber(potential)} V, ${t("cv.table.branchValue", { branch: (record?.branchIndex ?? 0) + 1 })}`
-        };
-      })
-    }];
-  }, [analysis, t]);
+  const selectedBRecordIndex = selectableBResultRecords.findIndex((record) => record.sequenceIndex === selectedBSequenceIndex);
   const fitChart = sampleChartSeries(makeFitChart(selectedB, t("cv.b.fitData")));
-  const dunnChart = sampleChartSeries(makeDunnChart(selectedOriginalSeries, t));
-  const dunnAreas = sampleChartAreas(makeDunnAreas(analysis, selectedRate, selectedSeriesIndex, t));
-  const contributionChart = sampleChartSeries(makeContributionChart(sortedContributions, t));
-  const sampledBChart = useMemo(() => sampleChartSeries(bChart), [bChart]);
-  const bGapRunCount = useMemo(() => countNullRuns(bChart[0]?.points ?? []), [bChart]);
+  const sampledDunnPath = sampleDunnPlotPath(selectedContribution?.plotPath ?? [], MAX_CHART_POINTS);
+  const dunnChart = makeDunnChart(selectedOriginalSeries, selectedContribution, sampledDunnPath, t);
+  const dunnPolygons = makeDunnPolygons(sampledDunnPath, t);
   const missingBFitCount = analysis?.summary.unavailableBCount ?? 0;
+  const bGapRunCount = countBInvalidRuns(analysis?.bRecords ?? []);
   const resultMetadata = analysis ? analysisMetadata : null;
   const chartMetadata = analysis && resultMetadata
     ? [
@@ -253,7 +291,7 @@ export function CvKineticsPage() {
       }),
       t("cv.chart.analysisSettings", {
         rates: resultMetadata.orderedScanRates.map(serializeScientificNumber).join(", "),
-        interval: analysis.settings.pointInterval,
+        interval: potentialIntervalLabel(analysis, t),
         threshold: serializeScientificNumber(analysis.settings.rSquaredThreshold)
       })
     ]
@@ -273,48 +311,159 @@ export function CvKineticsPage() {
     ]
     : chartMetadata;
   const figureAvailability = {
-    "cv-b-chart": hasChartPoints(sampledBChart),
-    "cv-fit-chart": hasChartPoints(fitChart),
+    "cv-b-chart": bAnalysisMode === "potential" && Boolean(analysis?.bRecords.some((record) => record.fit)),
+    "cv-fit-chart": bAnalysisMode === "potential" && hasChartPoints(fitChart),
+    "cv-peak-overview-chart": bAnalysisMode === "peak" && Boolean(peakResult?.fits.length),
+    "cv-peak-regression-chart": bAnalysisMode === "peak" && Boolean(peakResult?.fits.some((fit) => fit.b !== null)),
     "cv-dunn-chart": hasChartPoints(dunnChart),
-    "cv-contribution-chart": hasChartPoints(contributionChart)
+    "cv-contribution-chart": sortedContributions.length > 0
   } as const;
 
-  function choosePotential(potential: number) {
-    const record = validBResultRecords.find((item) => item.potential === potential);
-    setSelectedBSequenceIndex(record?.sequenceIndex);
-    setPotentialInput(record ? String(record.potential) : String(potential));
-  }
-
   function chooseBSequenceIndex(pointId: string) {
-    const record = validBResultRecords.find((item) => String(item.sequenceIndex) === pointId);
+    const record = bResultRecords.find((item) => String(item.sequenceIndex) === pointId && item.fit);
     if (!record) return;
     setSelectedBSequenceIndex(record.sequenceIndex);
-    setPotentialInput(String(record.potential));
+    setPotentialInput(formatSelectedPotential(record.potential));
   }
 
   function handlePotentialInput(value: string) {
     setPotentialInput(value);
     const potential = value.trim() === "" ? Number.NaN : Number(value);
-    const record = Number.isFinite(potential)
-      ? validBResultRecords.find((item) => item.potential === potential)
+    const branchIndex = selectedBRecord?.branchIndex ?? 0;
+    const exactRecord = Number.isFinite(potential)
+      ? bResultRecords.find((record) => record.branchIndex === branchIndex && record.potential === potential)
       : undefined;
-    setSelectedBSequenceIndex(record?.sequenceIndex);
+    if (exactRecord) setSelectedBSequenceIndex(exactRecord.sequenceIndex);
+  }
+
+  function commitPotentialInput() {
+    const potential = potentialInput.trim() === "" ? Number.NaN : Number(potentialInput);
+    const branchIndex = selectedBRecord?.branchIndex ?? 0;
+    const record = snapBRecordToPotential(bResultRecords, branchIndex, potential);
+    if (!record) return;
+    setSelectedBSequenceIndex(record.sequenceIndex);
+    setPotentialInput(formatSelectedPotential(record.potential));
+  }
+
+  function chooseBBranch(branchIndex: number) {
+    const requested = selectedBRecord?.potential ?? Number(potentialInput);
+    const record = snapBRecordToPotential(bResultRecords, branchIndex, requested)
+      ?? selectableBResultRecords.find((item) => item.branchIndex === branchIndex);
+    if (!record) return;
+    setSelectedBSequenceIndex(record.sequenceIndex);
+    setPotentialInput(formatSelectedPotential(record.potential));
   }
 
   function movePotential(offset: -1 | 1) {
     if (!analysis || selectedBRecordIndex < 0) return;
-    const record = validBResultRecords[selectedBRecordIndex + offset];
+    const record = selectableBResultRecords[selectedBRecordIndex + offset];
     if (!record) return;
     setSelectedBSequenceIndex(record.sequenceIndex);
-    setPotentialInput(String(record.potential));
+    setPotentialInput(formatSelectedPotential(record.potential));
+  }
+
+  function adjustSelectedPeak(potential: number, peakId = selectedPeakId, seriesIndex = selectedPeakSeriesIndex) {
+    if (!analysis || !peakResult || !peakId) return;
+    const fit = peakResult.fits.find((item) => item.peakId === peakId);
+    const series = analysis.series[seriesIndex];
+    const cycle = analysis.alignedGrid.cycles[seriesIndex];
+    if (!fit || !series || !cycle) return;
+    try {
+      const snapped = snapPeakPoint(series, cycle, fit.branch, potential);
+      setPeakOverrides((current) => setPeakPointOverride(current, {
+        peakId,
+        seriesIndex,
+        action: "adjust",
+        sourceIndex: snapped.sourceIndex
+      }));
+      setSelectedPeakId(peakId);
+      setSelectedPeakSeriesIndex(seriesIndex);
+      setPeakInteractionError(null);
+    } catch {
+      setPeakInteractionError("snap");
+    }
+  }
+
+  function confirmSelectedPeak() {
+    const point = peakResult?.fits.find((fit) => fit.peakId === selectedPeakId)?.points[selectedPeakSeriesIndex];
+    if (!selectedPeakId || !point?.candidate) return setPeakInteractionError("snap");
+    setPeakOverrides((current) => setPeakPointOverride(current, {
+      peakId: selectedPeakId,
+      seriesIndex: selectedPeakSeriesIndex,
+      action: "confirm",
+      sourceIndex: point.candidate!.sourceIndex
+    }));
+    setPeakInteractionError(null);
+  }
+
+  function excludeSelectedPeak() {
+    if (!selectedPeakId) return;
+    setPeakOverrides((current) => setPeakPointOverride(current, {
+      peakId: selectedPeakId,
+      seriesIndex: selectedPeakSeriesIndex,
+      action: "exclude"
+    }));
+    setPeakInteractionError(null);
+  }
+
+  function restoreSelectedPeak() {
+    if (!selectedPeakId) return;
+    setPeakOverrides((current) => restorePeakPointOverride(current, selectedPeakId, selectedPeakSeriesIndex));
+    setPeakInteractionError(null);
+  }
+
+  function addSelectedPeak() {
+    if (!analysis || !peakResult) return setPeakInteractionError("snap");
+    if (peakResult.fits.length >= peakResult.maximumPeakCount) return setPeakInteractionError("limit");
+    setPendingPeakAdd((current) => !current);
+    setPeakInteractionError(null);
+  }
+
+  function selectPeakOverviewPoint(potential: number, seriesIndex: number, sourceIndex: number) {
+    if (!pendingPeakAdd) {
+      adjustSelectedPeak(potential);
+      return;
+    }
+    if (!analysis || !peakResult) return setPeakInteractionError("snap");
+    const cycle = analysis.alignedGrid.cycles[seriesIndex];
+    if (!cycle) return setPeakInteractionError("snap");
+    const onForward = cycle.forward.points.some((point) => point.sourceIndex === sourceIndex);
+    const onReverse = cycle.reverse.points.some((point) => point.sourceIndex === sourceIndex);
+    const branch = onForward === onReverse ? null : onForward ? "forward" as const : "reverse" as const;
+    if (!branch) return setPeakInteractionError("snap");
+    try {
+      const next = addManualPeakOverride(peakOverrides, peakResult, analysis.series, analysis.alignedGrid.cycles, {
+        anchorSeriesIndex: seriesIndex,
+        branch,
+        sourceIndex
+      });
+      setPeakOverrides(next);
+      setSelectedPeakId(next.manualPeaks.at(-1)?.manualPeakId ?? selectedPeakId);
+      setSelectedPeakSeriesIndex(seriesIndex);
+      setPendingPeakAdd(false);
+      setPeakInteractionError(null);
+    } catch (error) {
+      setPeakInteractionError(error instanceof CvPeakOverrideError && error.code === "peakLimit" ? "limit" : "snap");
+    }
+  }
+
+  function removeSelectedPeak() {
+    if (!selectedPeakId) return;
+    const remaining = peakResult?.fits.filter((fit) => fit.peakId !== selectedPeakId) ?? [];
+    setPeakOverrides((current) => removePeakOverride(current, selectedPeakId));
+    setSelectedPeakId(remaining[0]?.peakId ?? null);
+    setPendingPeakAdd(false);
+    setPeakInteractionError(null);
   }
 
   return (
     <section className="tools-page cv-page">
       <Breadcrumbs current={t("cv.title")} />
-      <header className="tool-page-header">
+      <header className="tool-page-header cv-page-header">
         <h1>{t("cv.title")}</h1>
-        <p>{t("cv.subtitle")}</p>
+        <h2 className="cv-intro-subtitle">{t("cv.intro.advancedTitle")}</h2>
+        <p className="cv-intro-description">{t("cv.intro.description")}</p>
+        <p className="cv-intro-benefits">{t("cv.intro.benefits")}</p>
         <p>{t("cv.chart.samplingNotice", {
           target: MAX_CHART_POINTS,
           maximum: MAX_CHART_OUTPUT_POINTS
@@ -338,39 +487,86 @@ export function CvKineticsPage() {
 
       <section className="tool-section cv-b-analysis">
         <h2>{t("cv.b.title")}</h2><p>{t("cv.b.help")}</p>
-        <label htmlFor="cv-selected-potential">{t("cv.results.potential")} (V)</label>
-        <input
-          id="cv-selected-potential"
-          name="selectedPotential"
-          type="number"
-          step="any"
-          inputMode="decimal"
-          aria-label={t("cv.aria.selectedPotential")}
-          aria-invalid={potentialInput !== "" && selectedPotential === undefined}
-          value={potentialInput}
-          onChange={(event) => handlePotentialInput(event.target.value)}
-        />
-        <button type="button" disabled={selectedBRecordIndex <= 0} onClick={() => movePotential(-1)}>{t("cv.results.previousPotential")}</button>
-        <button type="button" disabled={!analysis || selectedBRecordIndex < 0 || selectedBRecordIndex >= validBResultRecords.length - 1} onClick={() => movePotential(1)}>{t("cv.results.nextPotential")}</button>
-        <p>{t("cv.results.potentialHelp")}</p>
-        {potentialInput !== "" && selectedPotential === undefined && <p role="status">{t("cv.results.potentialUnavailable")}</p>}
-        {analysis && missingBFitCount > 0 && <p role="status">{t("cv.b.missingFits", { count: missingBFitCount, total: analysis.analysisGrid.potentials.length })}</p>}
-        {bGapRunCount > MAX_CHART_GAP_RUNS && <p role="status">{t("cv.chart.tooManyGaps")}</p>}
-        <ScientificLineChart title={t("cv.b.chart")} xLabel={`${t("cv.table.potential")} (V)`} yLabel={t("cv.b.value")}
-          emptyLabel={t("cv.chart.empty")} legendLabel={t("cv.chart.legend")} series={sampledBChart}
-          selectedPointId={selectedBSequenceIndex === undefined ? undefined : String(selectedBSequenceIndex)} onSelectPointId={chooseBSequenceIndex}
-          exportId="cv-b-chart" metadata={chartMetadata} />
-        <DataTable tableId="cv-b-records-table" headers={[`${t("cv.table.potential")} (V)`, t("cv.table.sweepBranch"), t("cv.b.value"), t("cv.b.intercept"), t("cv.results.rSquared"), t("cv.table.pointCount"), t("cv.results.fitStatus")]}
-          rows={bResultRecords.map((record) => bRecordRow(record, t))} />
-        <ScientificLineChart title={t("cv.b.fitChart")} xLabel={t("cv.b.logRate")} yLabel={t("cv.b.logCurrent")}
-          emptyLabel={t("cv.results.noFit")} legendLabel={t("cv.chart.legend")} series={fitChart} exportId="cv-fit-chart" metadata={fitChartMetadata} />
-        {selectedBRecord && <p data-selected-fit-status="true">{t("cv.results.selectedFit", {
-          status: fitStatusLabel(selectedBRecord.status, t),
-          rSquared: selectedBRecord.fit ? format(selectedBRecord.fit.rSquared) : "—",
-          points: selectedBRecord.fit ? selectedBRecord.fit.pointCount : "—"
-        })}</p>}
-        <DataTable tableId="cv-selected-b-record-table" headers={[t("cv.results.potential"), t("cv.table.sweepBranch"), t("cv.b.value"), t("cv.b.intercept"), t("cv.results.rSquared"), t("cv.results.points"), t("cv.results.fitStatus")]}
-          rows={selectedBRecord ? [bRecordRow(selectedBRecord, t)] : []} />
+        <label className="cv-b-mode-control">{t("cv.b.mode.label")}
+          <select name="bAnalysisMode" value={bAnalysisMode} onChange={(event) => setBAnalysisMode(event.target.value as "peak" | "potential")}>
+            <option value="peak">{t("cv.b.mode.peak")}</option>
+            <option value="potential">{t("cv.b.mode.potential")}</option>
+          </select>
+        </label>
+        {bAnalysisMode === "peak" && analysis && peakResult && <>
+          {peakInteractionError && <p className="cv-analysis-notice" role="alert">{t(peakInteractionError === "limit" ? "cv.peak.limit" : "cv.peak.snapError")}</p>}
+          <CvPeakAnalysisPanel
+            series={analysis.series}
+            result={peakResult}
+            selectedPeakId={selectedPeakId}
+            selectedSeriesIndex={selectedPeakSeriesIndex}
+            onPeakChange={(peakId) => { setSelectedPeakId(peakId); setPeakInteractionError(null); }}
+            onSeriesChange={(seriesIndex) => { setSelectedPeakSeriesIndex(seriesIndex); setPeakInteractionError(null); }}
+            onPotentialSelect={selectPeakOverviewPoint}
+            onAdjustPotential={(peakId, seriesIndex, potential) => adjustSelectedPeak(potential, peakId, seriesIndex)}
+            onConfirm={confirmSelectedPeak}
+            onExclude={excludeSelectedPeak}
+            onRestore={restoreSelectedPeak}
+            onAddPeak={addSelectedPeak}
+            onRemovePeak={removeSelectedPeak}
+            pendingAdd={pendingPeakAdd}
+            copy={makePeakPanelCopy(t)}
+            metadata={chartMetadata}
+          />
+        </>}
+        {bAnalysisMode === "potential" && <div data-panel-id="cv-potential-b-analysis" className="cv-b-vertical-stack">
+          <div className="cv-b-selection-controls">
+            <label htmlFor="cv-selected-branch">{t("cv.table.sweepBranch")}</label>
+            <select id="cv-selected-branch" name="selectedBBranch" value={selectedBRecord?.branchIndex ?? 0} onChange={(event) => chooseBBranch(Number(event.target.value))}>
+              <option value={0}>{t("cv.b.forwardSweep")}</option>
+              <option value={1}>{t("cv.b.reverseSweep")}</option>
+            </select>
+            <label htmlFor="cv-selected-potential">{t("cv.results.potential")} (V)</label>
+            <input id="cv-selected-potential" name="selectedPotential" type="number" step="any" inputMode="decimal"
+              aria-label={t("cv.aria.selectedPotential")} value={potentialInput}
+              onChange={(event) => handlePotentialInput(event.target.value)} onBlur={commitPotentialInput}
+              onKeyDown={(event) => { if (event.key === "Enter") commitPotentialInput(); }} />
+            <button type="button" disabled={selectedBRecordIndex <= 0} onClick={() => movePotential(-1)}>{t("cv.results.previousPotential")}</button>
+            <button type="button" disabled={!analysis || selectedBRecordIndex < 0 || selectedBRecordIndex >= selectableBResultRecords.length - 1} onClick={() => movePotential(1)}>{t("cv.results.nextPotential")}</button>
+          </div>
+          <p>{t("cv.results.potentialHelp")}</p>
+          {analysis && missingBFitCount > 0 && <p role="status">{t("cv.b.missingFits", { count: missingBFitCount, total: analysis.analysisGrid.potentials.length })}</p>}
+          {bGapRunCount > MAX_CHART_GAP_RUNS && <p role="status">{t("cv.chart.tooManyGaps")}</p>}
+          <div className="cv-b-dashboard-grid cv-b-vertical-stack">
+            <article className="cv-analysis-card cv-b-overview-card">
+              <h3>{t("cv.b.overviewTitle")}</h3>
+              <BValueOverviewChart records={analysis?.bRecords ?? []} selectedSequenceIndex={selectedBSequenceIndex}
+                onSelectSequenceIndex={(sequenceIndex) => chooseBSequenceIndex(String(sequenceIndex))} title={t("cv.b.chart")}
+                xLabel={`${t("cv.table.potential")} (V)`} yLabel={t("cv.b.value")} legendLabel={t("cv.chart.legend")}
+                forwardLabel={t("cv.b.forwardSweep")} reverseLabel={t("cv.b.reverseSweep")}
+                validLabel={t("cv.b.quality.conventional")} outsideLabel={t("cv.b.quality.outside")}
+                excludedLabel={t("cv.b.quality.excluded")} unstableLabel={t("cv.b.quality.unstable")}
+                diffusionLabel={t("cv.b.interpretation.diffusion")} capacitiveLabel={t("cv.b.interpretation.capacitive")}
+                exportId="cv-b-chart" metadata={chartMetadata} />
+              <p className="cv-b-interpretation">{t("cv.b.interpretation.help")}</p>
+            </article>
+            <article className="cv-analysis-card cv-b-fit-card">
+              <h3>{t("cv.b.fitChart")}</h3>
+              <ScientificLineChart title={t("cv.b.fitChart")} xLabel={t("cv.b.logRate")} yLabel={t("cv.b.logCurrent")}
+                emptyLabel={t("cv.results.noFit")} legendLabel={t("cv.chart.legend")} series={fitChart} exportId="cv-fit-chart" metadata={fitChartMetadata} />
+              {selectedBRecord?.fit && <dl className="cv-b-fit-metrics" data-selected-fit-status="true">
+                <dt>{t("cv.results.potential")}</dt><dd>{formatSelectedPotential(selectedBRecord.potential)} V</dd>
+                <dt>{t("cv.table.sweepBranch")}</dt><dd>{selectedBRecord.branchIndex === 0 ? t("cv.b.forwardSweep") : t("cv.b.reverseSweep")}</dd>
+                <dt>{t("cv.b.value")}</dt><dd>{format(selectedBRecord.fit.b)}</dd>
+                <dt>{t("cv.b.intercept")}</dt><dd>{format(selectedBRecord.fit.intercept)}</dd>
+                <dt>{t("cv.results.rSquared")}</dt><dd>{format(selectedBRecord.fit.rSquared)}</dd>
+                <dt>{t("cv.results.points")}</dt><dd>{selectedBRecord.fit.pointCount}</dd>
+                <dt>{t("cv.results.fitStatus")}</dt><dd>{fitStatusLabel(selectedBRecord.status, t)}</dd>
+              </dl>}
+              {selectedBRecord?.fit && (selectedBRecord.fit.b < 0.5 || selectedBRecord.fit.b > 1) && <p className="cv-b-range-note" role="status">{t("cv.b.outsideRangeNote")}</p>}
+            </article>
+          </div>
+          <h3>{t("cv.b.resultsTable")}</h3>
+          <DataTable tableId="cv-b-records-table" headers={[`${t("cv.table.potential")} (V)`, t("cv.table.sweepBranch"), t("cv.b.value"), t("cv.b.intercept"), t("cv.results.rSquared"), t("cv.table.pointCount"), t("cv.results.fitStatus")]}
+            rows={bResultRecords.map((record) => bRecordRow(record, t))} />
+          <DataTable tableId="cv-selected-b-record-table" headers={[t("cv.results.potential"), t("cv.table.sweepBranch"), t("cv.b.value"), t("cv.b.intercept"), t("cv.results.rSquared"), t("cv.results.points"), t("cv.results.fitStatus")]}
+            rows={selectedBRecord ? [bRecordRow(selectedBRecord, t)] : []} />
+        </div>}
       </section>
 
       <section className="tool-section cv-dunn-analysis">
@@ -386,20 +582,50 @@ export function CvKineticsPage() {
           })}</p>
           <p className="cv-dunn-coverage-help">{t("cv.dunn.coverageHelp")}</p>
         </>}
+        {selectedContribution && <dl className="cv-dunn-envelope-diagnostics" data-dunn-envelope-diagnostics="true">
+          <dt>{t("cv.dunn.envelopeCorrection")}</dt>
+          <dd>{selectedContribution.diagnostics.correctedPointCount} / {selectedContribution.plotPath.length} · max Δg = {format(selectedContribution.diagnostics.maximumSharedFractionAdjustment)}</dd>
+          <dt>{t("cv.dunn.envelopeViolation")}</dt>
+          <dd>{selectedContribution.diagnostics.envelopeResidualPointCount} / {selectedContribution.plotPath.length} · max = {format(selectedContribution.diagnostics.maximumAbsoluteEnvelopeViolation)}</dd>
+          {selectedContribution.diagnostics.gSmoothnessWarning && <><dt>{t("cv.results.fitStatus")}</dt><dd>{t("cv.dunn.smoothnessWarning")}</dd></>}
+        </dl>}
         <ScientificLineChart title={t("cv.dunn.chart")} xLabel={`${t("cv.table.potential")} (V)`} yLabel={t("cv.table.currentArbitrary")}
-          emptyLabel={t("cv.chart.empty")} legendLabel={t("cv.chart.legend")} series={dunnChart} areas={dunnAreas} selectedX={selectedPotential} exportId="cv-dunn-chart" metadata={dunnChartMetadata} />
+          emptyLabel={t("cv.chart.empty")} legendLabel={t("cv.chart.legend")} series={dunnChart} polygons={dunnPolygons} selectedX={selectedDunnPotential} xDomain={selectedDunnXDomain} exportId="cv-dunn-chart" metadata={dunnChartMetadata} />
         <DataTable tableId="cv-original-current-table" headers={[`${t("cv.table.potential")} (V)`, t("cv.dunn.originalMeasured")]}
           rows={(selectedOriginalSeries?.points ?? []).map((point) => [point.potential, point.current])} />
-        <DataTable tableId="cv-dunn-current-table" headers={[`${t("cv.table.potential")} (V)`, t("cv.dunn.interpolatedInput"), t("cv.dunn.reconstructedTotalUnits"), t("cv.dunn.capacitive") + " (arb. units)", t("cv.dunn.diffusion") + " (arb. units)"]}
+        <DataTable tableId="cv-dunn-current-table" headers={[`${t("cv.table.potential")} (V)`, t("cv.dunn.originalMeasured"), t("cv.dunn.reconstructedTotalUnits"), t("cv.dunn.capacitive") + " (arb. units)", t("cv.dunn.diffusion") + " (arb. units)"]}
           rows={dunnRows(analysis, selectedContribution, selectedSeriesIndex)} />
       </section>
 
       <section className="tool-section tool-section-wide cv-results">
         <h2>{t("cv.results.title")}</h2>
-        <ScientificLineChart title={t("cv.dunn.contributionChart")} xLabel={`${t("cv.table.scanRate")} (mV/s)`} yLabel="%"
-          emptyLabel={t("cv.chart.empty")} legendLabel={t("cv.chart.legend")} series={contributionChart} exportId="cv-contribution-chart" metadata={chartMetadata} />
+        <ScientificStackedBarChart
+          title={t("cv.dunn.contributionChart")}
+          xLabel={`${t("cv.table.scanRate")} (mV/s)`}
+          yLabel="%"
+          emptyLabel={t("cv.chart.empty")}
+          legendLabel={t("cv.chart.legend")}
+          lowerLabel={t("cv.dunn.capacitive")}
+          upperLabel={t("cv.dunn.diffusion")}
+          lowerColor="#e07a5f"
+          upperColor="#3d405b"
+          data={sortedContributions.map((item) => ({
+            id: String(item.scanRate),
+            x: item.scanRate,
+            lower: item.capacitivePercent,
+            upper: item.diffusionPercent
+          }))}
+          exportId="cv-contribution-chart"
+          metadata={chartMetadata}
+        />
         <DataTable tableId="cv-contribution-table" headers={[`${t("cv.table.scanRate")} (mV/s)`, t("cv.dunn.capacitive") + " (%)", t("cv.dunn.diffusion") + " (%)", t("cv.results.validSampledPoints"), `${t("cv.results.coverage")} (%)`]}
-          rows={sortedContributions.map((item) => [item.scanRate, item.capacitivePercent, item.diffusionPercent, `${item.validPointCount} / ${item.sampledPointCount}`, item.coveragePercent])} />
+          rows={sortedContributions.map((item) => [
+            item.scanRate,
+            item.capacitivePercent,
+            item.diffusionPercent,
+            `${dunnCoverage?.validPointCount ?? 0} / ${dunnCoverage?.sampledPointCount ?? 0}`,
+            dunnCoverage?.coveragePercent ?? 0
+          ])} />
         <p>{t("cv.results.contributionUnavailable")}</p>
         <DataTable tableId="cv-dunn-records-table" headers={[`${t("cv.table.potential")} (V)`, t("cv.table.sweepBranch"), t("cv.dunn.k1"), t("cv.dunn.k2"), t("cv.results.rSquared"), t("cv.table.pointCount"), t("cv.results.fitStatus")]}
           rows={dunnResultRecords.map((record) => dunnRecordRow(record, t))} />
@@ -409,7 +635,10 @@ export function CvKineticsPage() {
         <h2>{t("cv.export.title")}</h2><h3>{t("cv.export.csv")}</h3>
         {csvFiles.map((filename) => <button key={filename} type="button" disabled={!canExportCsv} onClick={() => handleCsvExport(filename)}>{filename}</button>)}
         <h3>{t("cv.export.figures")}</h3>
-        {(["cv-b-chart", "cv-fit-chart", "cv-dunn-chart", "cv-contribution-chart"] as const).flatMap((id) => [
+        {(bAnalysisMode === "peak"
+          ? ["cv-peak-overview-chart", "cv-peak-regression-chart", "cv-dunn-chart", "cv-contribution-chart"] as const
+          : ["cv-b-chart", "cv-fit-chart", "cv-dunn-chart", "cv-contribution-chart"] as const
+        ).flatMap((id) => [
           <button key={`${id}-svg`} type="button" disabled={!figureAvailability[id]} onClick={() => void handleFigureExport(id, "svg")}>{t("cv.export.svg")} — {id}.svg</button>,
           <button key={`${id}-png`} type="button" disabled={!figureAvailability[id]} onClick={() => void handleFigureExport(id, "png")}>{t("cv.export.png")} — {id}.png</button>
         ])}
@@ -425,7 +654,6 @@ class PageAnalysisError extends Error { constructor(readonly code: "noBFit" | "a
 
 function DataTable({ headers, rows, tableId }: { headers: string[]; rows: Array<Array<string | number | null>>; tableId?: string }) {
   const { t } = useI18n();
-  const controlId = useId();
   const [selectedColumns, setSelectedColumns] = useState<Set<number>>(() => new Set());
   const [copyStatus, setCopyStatus] = useState<"success" | "error" | null>(null);
   const supportsColumnCopy = rows.length > 1;
@@ -460,23 +688,26 @@ function DataTable({ headers, rows, tableId }: { headers: string[]; rows: Array<
   const scrollsVertically = displayedRows.length > MAX_VISIBLE_TABLE_ROWS;
   return <div className="cv-result-table-block">
     {supportsColumnCopy && <div className="cv-table-copy-toolbar">
-      <span id={`${controlId}-columns`}>{t("cv.table.copy.columns")}</span>
-      <div className="cv-table-copy-columns" role="group" aria-labelledby={`${controlId}-columns`}>
-        {headers.map((header, index) => {
-          const checkboxId = `${controlId}-column-${index}`;
-          return <label htmlFor={checkboxId} key={index}>
-            <input id={checkboxId} type="checkbox" value={index} checked={selectedColumns.has(index)} onChange={() => toggleColumn(index)} />
-            {header}
-          </label>;
-        })}
-      </div>
       <button type="button" disabled={selectedColumns.size === 0} onClick={copySelectedColumns}>{t("cv.table.copy.action")}</button>
-      <p role="status" aria-live="polite">{copyStatus && t(`cv.table.copy.${copyStatus}`)}</p>
+      {copyStatus && <p role="status" aria-live="polite">{t(`cv.table.copy.${copyStatus}`)}</p>}
     </div>}
     <div className={`cv-result-table-frame${scrollsVertically ? " cv-result-table-frame-scroll" : ""}`}>
       <div className="tool-table-wrap">
         <div className="cv-result-table-viewport">
-          <table data-table-id={tableId}><thead><tr>{headers.map((header, index) => <th scope="col" key={index}>{header}</th>)}</tr></thead>
+          <table data-table-id={tableId}><thead><tr>{headers.map((header, index) => <th scope="col" key={index}>
+            {supportsColumnCopy
+              ? <label className="cv-table-column-heading">
+                <span>{header}</span>
+                <input
+                  type="checkbox"
+                  value={index}
+                  checked={selectedColumns.has(index)}
+                  aria-label={`${t("cv.table.copy.columns")}: ${header}`}
+                  onChange={() => toggleColumn(index)}
+                />
+              </label>
+              : header}
+          </th>)}</tr></thead>
             <tbody>{displayedRows.map((row, index) => <tr key={index}>{row.map((cell, cellIndex) => <td key={cellIndex}>{format(cell)}</td>)}</tr>)}</tbody></table>
         </div>
       </div>
@@ -487,15 +718,10 @@ function DataTable({ headers, rows, tableId }: { headers: string[]; rows: Array<
 
 function QualitySummary({ analysis, metadata }: { analysis: AnalysisState; metadata: ResultMetadata }) {
   const { t } = useI18n();
-  let minimum = Number.POSITIVE_INFINITY;
-  let maximum = Number.NEGATIVE_INFINITY;
-  for (const potential of analysis.fullGrid.potentials) {
-    minimum = Math.min(minimum, potential);
-    maximum = Math.max(maximum, potential);
-  }
-  const coverage = analysis.summary.retainedPointCount === 0
-    ? 0
-    : analysis.summary.validDunnCount / analysis.summary.retainedPointCount * 100;
+  const minimum = analysis.alignedGrid.commonMinimum;
+  const maximum = analysis.alignedGrid.commonMaximum;
+  const diagnostics = analysis.contributions[0]?.diagnostics;
+  const dunnCoverage = makeDunnCoverage(analysis);
   return <section className="tool-section tool-section-wide cv-quality" data-quality-summary="true">
     <h2>{t("cv.quality.title")}</h2>
     <ul>
@@ -509,7 +735,10 @@ function QualitySummary({ analysis, metadata }: { analysis: AnalysisState; metad
         retained: analysis.summary.retainedPointCount
       })}</li>
       <li>{t("cv.quality.settings", {
-        interval: analysis.settings.pointInterval,
+        interval: potentialIntervalLabel(analysis, t),
+        method: dunnMethodLabel(analysis.settings.dunnConfidenceMode, t),
+        trim: turningPointTrimLabel(analysis, t),
+        smoothing: t("cv.quality.smoothing.auto"),
         threshold: format(analysis.settings.rSquaredThreshold)
       })}</li>
       <li>{t("cv.quality.bCounts", {
@@ -523,18 +752,39 @@ function QualitySummary({ analysis, metadata }: { analysis: AnalysisState; metad
         unavailable: analysis.summary.unavailableDunnCount
       })}</li>
       <li>{t("cv.quality.coverage", {
-        valid: analysis.summary.validDunnCount,
-        total: analysis.summary.retainedPointCount,
-        coverage: format(coverage)
+        valid: dunnCoverage.validPointCount,
+        total: dunnCoverage.sampledPointCount,
+        coverage: format(dunnCoverage.coveragePercent)
       })}</li>
     </ul>
+    {diagnostics && <div className="cv-diagnostics" data-dunn-diagnostics="true">
+      <h3>{t("cv.diagnostics.title")}</h3>
+      <dl className="cv-diagnostics-list">
+        <dt>{t("cv.diagnostics.mode")}</dt>
+        <dd>{dunnMethodLabel(diagnostics.mode, t)}</dd>
+        <dt>{t("cv.diagnostics.interval")}</dt>
+        <dd>{format(diagnostics.resolvedPotentialInterval * 1000)} mV</dd>
+        <dt>{t("cv.diagnostics.trim")}</dt>
+        <dd>{format(diagnostics.resolvedTurningPointTrim * 1000)} mV</dd>
+        <dt>{t("cv.diagnostics.forwardMedian")}</dt>
+        <dd>{format(diagnostics.medianForwardRSquared)}</dd>
+        <dt>{t("cv.diagnostics.reverseMedian")}</dt>
+        <dd>{format(diagnostics.medianReverseRSquared)}</dd>
+        <dt>{t("cv.diagnostics.forwardAbove")}</dt>
+        <dd>{format(diagnostics.forwardAboveThresholdPercent)}%</dd>
+        <dt>{t("cv.diagnostics.reverseAbove")}</dt>
+        <dd>{format(diagnostics.reverseAboveThresholdPercent)}%</dd>
+      </dl>
+      {diagnostics.lowFitQuality && <p className="cv-diagnostic-warning" role="status">{t("cv.warning.lowFitQuality")}</p>}
+      {diagnostics.scanRateWarning && <p className="cv-diagnostic-warning" role="status">{t("cv.warning.scanRateCount")}</p>}
+    </div>}
   </section>;
 }
 
 function bRecordRow(record: CvWorkflowResult["bRecords"][number], t: ReturnType<typeof useI18n>["t"]): Array<string | number | null> {
   return [
     record.potential,
-    t("cv.table.branchValue", { branch: record.branchIndex + 1 }),
+    record.branchIndex === 0 ? t("cv.b.forwardSweep") : t("cv.b.reverseSweep"),
     record.fit?.b ?? null,
     record.fit?.intercept ?? null,
     record.fit?.rSquared ?? null,
@@ -543,14 +793,14 @@ function bRecordRow(record: CvWorkflowResult["bRecords"][number], t: ReturnType<
   ];
 }
 
-function isResultOutputRecord<T>(record: CvFitRecord<T>) {
+function isDunnResultOutputRecord(record: DunnBranchFitRecord) {
   return record.status !== "belowRSquaredThreshold";
 }
 
-function dunnRecordRow(record: CvWorkflowResult["dunnRecords"][number], t: ReturnType<typeof useI18n>["t"]): Array<string | number | null> {
+function dunnRecordRow(record: DunnBranchFitRecord, t: ReturnType<typeof useI18n>["t"]): Array<string | number | null> {
   return [
     record.potential,
-    t("cv.table.branchValue", { branch: record.branchIndex + 1 }),
+    t("cv.table.branchValue", { branch: record.branch === "forward" ? 1 : 2 }),
     record.fit?.k1 ?? null,
     record.fit?.k2 ?? null,
     record.fit?.rSquared ?? null,
@@ -559,13 +809,85 @@ function dunnRecordRow(record: CvWorkflowResult["dunnRecords"][number], t: Retur
   ];
 }
 
-function fitStatusLabel(status: CvFitStatus, t: ReturnType<typeof useI18n>["t"]): string {
+function fitStatusLabel(status: CvFitStatus | DunnFitStatus, t: ReturnType<typeof useI18n>["t"]): string {
   const keys = {
     valid: "cv.status.valid",
     belowRSquaredThreshold: "cv.status.belowRSquaredThreshold",
     insufficientData: "cv.status.insufficientData",
     zeroCurrentLogUnavailable: "cv.status.zeroCurrentLogUnavailable",
-    regressionFailed: "cv.status.regressionFailed"
+    nearZeroCurrentUnstable: "cv.status.nearZeroCurrentUnstable",
+    regressionFailed: "cv.status.regressionFailed",
+    trimmed: "cv.status.trimmed"
+  } as const;
+  return t(keys[status]);
+}
+
+function makePeakPanelCopy(t: ReturnType<typeof useI18n>["t"]): CvPeakPanelCopy {
+  return {
+    overview: t("cv.peak.overview"),
+    regression: t("cv.peak.regression"),
+    peak: t("cv.peak.peak"),
+    scanRate: t("cv.table.scanRate"),
+    potential: t("cv.table.potential"),
+    current: t("cv.table.current"),
+    branch: t("cv.table.sweepBranch"),
+    kind: t("cv.peak.peak"),
+    forward: t("cv.b.forwardSweep"),
+    reverse: t("cv.b.reverseSweep"),
+    oxidation: t("cv.peak.oxidation"),
+    reduction: t("cv.peak.reduction"),
+    bValue: t("cv.b.value"),
+    intercept: t("cv.b.intercept"),
+    rSquared: t("cv.results.rSquared"),
+    fitPoints: t("cv.results.points"),
+    coverage: t("cv.peak.coverage"),
+    fitStatus: t("cv.results.fitStatus"),
+    logScanRate: t("cv.peak.logScanRate"),
+    logCurrent: t("cv.peak.logCurrent"),
+    copyAction: t("cv.table.copy.action"),
+    copyColumns: t("cv.table.copy.columns"),
+    copySuccess: t("cv.table.copy.success"),
+    copyError: t("cv.table.copy.error"),
+    confirm: t("cv.peak.confirm"),
+    exclude: t("cv.peak.exclude"),
+    restore: t("cv.peak.restore"),
+    add: t("cv.peak.add"),
+    remove: t("cv.peak.remove"),
+    noPeaks: t("cv.peak.noPeaks"),
+    summary: t("cv.peak.summary"),
+    adjustments: t("cv.peak.adjustments"),
+    legend: t("cv.chart.legend"),
+    empty: t("cv.results.noFit"),
+    xPotential: `${t("cv.table.potential")} (V)`,
+    yCurrent: t("cv.table.currentArbitrary"),
+    xLogRate: t("cv.b.logRate"),
+    yLogCurrent: t("cv.b.logCurrent"),
+    complete: t("cv.peak.complete"),
+    partial: t("cv.peak.partial"),
+    unavailable: "—",
+    fitStatusLabel: (status) => peakFitStatusLabel(status, t)
+  };
+}
+
+function peakFitStatusLabel(status: CvPeakFitStatus, t: ReturnType<typeof useI18n>["t"]): string {
+  const keys = {
+    valid: "cv.peak.fit.valid",
+    belowRSquaredThreshold: "cv.peak.fit.belowRSquaredThreshold",
+    insufficientData: "cv.peak.fit.insufficientData",
+    nearZeroCurrentUnstable: "cv.peak.fit.nearZeroCurrentUnstable",
+    regressionFailed: "cv.peak.fit.regressionFailed"
+  } as const;
+  return t(keys[status]);
+}
+
+function peakPointStatusLabel(status: CvPeakPointStatus, t: ReturnType<typeof useI18n>["t"]): string {
+  const keys = {
+    auto: "cv.peak.status.auto",
+    confirmed: "cv.peak.status.confirmed",
+    adjusted: "cv.peak.status.adjusted",
+    missing: "cv.peak.status.missing",
+    excluded: "cv.peak.status.excluded",
+    nearZeroCurrentUnstable: "cv.peak.status.nearZeroCurrentUnstable"
   } as const;
   return t(keys[status]);
 }
@@ -586,6 +908,48 @@ function format(value: string | number | null) { return typeof value === "number
 
 function serializeScientificNumber(value: number) { return String(value); }
 
+function flattenDunnRecords(analysis: AnalysisState | null): DunnBranchFitRecord[] {
+  return analysis ? [...analysis.dunnRecords.forward, ...analysis.dunnRecords.reverse] : [];
+}
+
+function potentialIntervalLabel(analysis: AnalysisState, t: ReturnType<typeof useI18n>["t"]): string {
+  return analysis.settings.potentialInterval.mode === "manual"
+    ? `${serializeScientificNumber(analysis.settings.potentialInterval.millivolts)} mV`
+    : t("cv.import.mode.auto");
+}
+
+function resolvedPotentialIntervalLabel(analysis: AnalysisState): string {
+  return `${serializeScientificNumber(analysis.alignedGrid.resolvedPotentialInterval * 1000)} mV`;
+}
+
+function turningPointTrimLabel(analysis: AnalysisState, t: ReturnType<typeof useI18n>["t"]): string {
+  return analysis.settings.turningPointTrim.mode === "manual"
+    ? `${serializeScientificNumber(analysis.settings.turningPointTrim.millivolts)} mV`
+    : t("cv.import.mode.auto");
+}
+
+function dunnMethodLabel(mode: CvAnalysisSettings["dunnConfidenceMode"], t: ReturnType<typeof useI18n>["t"]): string {
+  return mode === "weighted" ? t("cv.import.dunnMethod.weighted") : t("cv.import.dunnMethod.threshold");
+}
+
+function analysisSettingsFromDraft(draft: CvImportDraft): CvAnalysisSettings {
+  return {
+    potentialInterval: draft.potentialIntervalMode === "manual"
+      ? { mode: "manual", millivolts: draft.potentialIntervalMillivolts }
+      : { mode: "auto" },
+    rSquaredThreshold: draft.rSquaredThreshold,
+    dunnConfidenceMode: draft.dunnConfidenceMode,
+    turningPointTrim: draft.turningPointTrimMode === "manual"
+      ? { mode: "manual", millivolts: draft.turningPointTrimMillivolts }
+      : { mode: "auto" }
+  };
+}
+
+function sameDraftExceptRSquaredThreshold(previous: CvImportDraft, next: CvImportDraft): boolean {
+  if (previous.rSquaredThreshold === next.rSquaredThreshold) return false;
+  return JSON.stringify({ ...previous, rSquaredThreshold: 0 }) === JSON.stringify({ ...next, rSquaredThreshold: 0 });
+}
+
 function makeFitChart(point: BValuePoint | undefined, measuredLabel: string): ChartSeries[] {
   if (!point) return [];
   const fitPoints = [...point.fitPoints].sort((left, right) => left.logScanRate - right.logScanRate);
@@ -596,87 +960,231 @@ function makeFitChart(point: BValuePoint | undefined, measuredLabel: string): Ch
   ];
 }
 
-function makeContributionChart(contributions: DunnContribution[], t: ReturnType<typeof useI18n>["t"]): ChartSeries[] {
-  return [
-    { id: "capacitive-percent", label: t("cv.dunn.capacitive"), color: "#e07a5f", points: contributions.map((item) => ({ x: item.scanRate, y: item.capacitivePercent })) },
-    { id: "diffusion-percent", label: t("cv.dunn.diffusion"), color: "#3d405b", dash: "5 3", points: contributions.map((item) => ({ x: item.scanRate, y: item.diffusionPercent })) }
-  ];
-}
-
-function makeDunnChart(original: CvSeries | undefined, t: ReturnType<typeof useI18n>["t"]): ChartSeries[] {
-  if (!original) return [];
-  return [{
+export function makeDunnChart(
+  original: CvSeries | undefined,
+  contribution: DunnContribution | undefined,
+  plotPath: DunnContribution["plotPath"],
+  t: ReturnType<typeof useI18n>["t"]
+): ChartSeries[] {
+  if (!original && !contribution) return [];
+  const series: ChartSeries[] = [{
     id: "original",
     label: t("cv.dunn.originalCurve"),
     color: "#16697a",
-    points: original.points.map((point) => ({ x: point.potential, y: point.current }))
+    points: contribution
+      ? plotPath.map((point) => ({ x: point.potential, y: point.originalCurrent }))
+      : original!.points.map((point) => ({ x: point.potential, y: point.current }))
   }];
+  if (!contribution) return series;
+
+  series.push({
+    id: "capacitive-forward",
+    label: `${t("cv.dunn.capacitive")} ${t("cv.table.branchValue", { branch: 1 })}`,
+    color: "#7656a8",
+    dash: "4 3",
+    points: makeBranchBoundaryPoints(plotPath, "forward")
+  });
+  series.push({
+    id: "capacitive-reverse",
+    label: `${t("cv.dunn.capacitive")} ${t("cv.table.branchValue", { branch: 2 })}`,
+    color: "#9a78cf",
+    dash: "4 3",
+    points: makeBranchBoundaryPoints(plotPath, "reverse")
+  });
+  return series;
 }
 
-function makeDunnAreas(
-  analysis: AnalysisState | null,
-  scanRate: number | undefined,
-  seriesIndex: number,
+function makeBranchBoundaryPoints(
+  plotPath: DunnContribution["plotPath"],
+  branch: DunnContribution["plotPath"][number]["branch"]
+): ChartSeries["points"] {
+  const points: ChartSeries["points"] = [];
+  let insideRun = false;
+  for (let index = 0; index < plotPath.length; index += 1) {
+    const point = plotPath[index]!;
+    if (point.branch !== branch) {
+      insideRun = false;
+      continue;
+    }
+    if (!insideRun) {
+      if (points.length > 0) points.push({ x: point.potential, y: null });
+      const turningIndex = (index - 1 + plotPath.length) % plotPath.length;
+      const turning = plotPath[turningIndex];
+      if (turning
+        && turning.branch !== branch
+        && isDisplaySharedTurningPoint(
+          plotPath[(turningIndex - 1 + plotPath.length) % plotPath.length],
+          turning,
+          point
+        )) {
+        points.push({ x: turning.potential, y: turning.capacitiveCurrent });
+      }
+    }
+    points.push({ x: point.potential, y: point.capacitiveCurrent });
+    const turningIndex = (index + 1) % plotPath.length;
+    const turning = plotPath[turningIndex];
+    if (turning
+      && turning.branch !== branch
+      && isDisplaySharedTurningPoint(
+        point,
+        turning,
+        plotPath[(turningIndex + 1) % plotPath.length]
+      )) {
+      points.push({ x: turning.potential, y: turning.capacitiveCurrent });
+    }
+    insideRun = true;
+  }
+  return points;
+}
+
+function isDisplaySharedTurningPoint(
+  previous: DunnContribution["plotPath"][number] | undefined,
+  turning: DunnContribution["plotPath"][number],
+  next: DunnContribution["plotPath"][number] | undefined
+): boolean {
+  if (!previous || !next || turning.synthetic || previous.branch === next.branch) return false;
+  const incoming = turning.potential - previous.potential;
+  const outgoing = next.potential - turning.potential;
+  return incoming !== 0 && outgoing !== 0 && incoming * outgoing < 0;
+}
+
+export function makeDunnPolygons(
+  plotPath: DunnContribution["plotPath"],
   t: ReturnType<typeof useI18n>["t"]
-): ChartAreaSeries[] {
-  if (!analysis || scanRate === undefined || seriesIndex < 0) return [];
-  const records = new Map(analysis.dunnRecords.map((record) => [record.sequenceIndex, record]));
-  const branches = resolveGridBranches(analysis.analysisGrid);
-  const components = (index: number) => {
-    const record = records.get(index);
-    if (record?.status !== "valid" || !record.fit) return null;
-    return {
-      capacitive: record.fit.k1 * scanRate,
-      diffusion: record.fit.k2 * Math.sqrt(scanRate)
-    };
-  };
-  const segments = (makePoint: (index: number) => ChartAreaPoint | null) => branches.flatMap((branch) =>
-    collectAreaSegments(branch.startIndex, branch.endIndex, makePoint));
+): ChartPolygonSeries[] {
+  if (plotPath.length < 3) return [];
+  const branchRuns: DunnContribution["plotPath"][] = [];
+  for (const record of plotPath) {
+    const current = branchRuns.at(-1);
+    if (current?.[0]?.branch === record.branch) current.push(record);
+    else branchRuns.push([record]);
+  }
+
+  const endpointSafeRun = plotPath.map((record, index) => ({
+    x: record.potential,
+    y: (index === 0 || index === plotPath.length - 1) ? record.originalCurrent : record.capacitiveCurrent
+  })).filter((point) => Number.isFinite(point.y) && Number.isFinite(point.x));
 
   return [{
     id: "capacitive-area",
     label: t("cv.dunn.capacitive"),
     color: "#7656a8",
     opacity: 0.72,
-    segments: segments((index) => {
-      const component = components(index);
-      if (!component) return null;
-      return {
-        x: analysis.analysisGrid.potentials[index],
-        lower: 0,
-        upper: component.capacitive
-      };
-    })
+    polygons: endpointSafeRun.length >= 3 ? [endpointSafeRun] : []
   }, {
     id: "diffusion-area",
     label: t("cv.dunn.diffusion"),
     color: "#6fb7a7",
     opacity: 0.72,
-    segments: segments((index) => {
-      const component = components(index);
-      if (!component) return null;
-      return {
-        x: analysis.analysisGrid.potentials[index],
-        lower: component.capacitive,
-        upper: component.capacitive + component.diffusion
-      };
-    })
+    polygons: branchRuns.filter((run) => run.length >= 2).map((run) => [
+      ...run.map((record) => ({ x: record.potential, y: record.originalCurrent })),
+      ...[...run].reverse().map((record) => ({ x: record.potential, y: record.capacitiveCurrent }))
+    ])
+  }];
+}
+
+export function sampleDunnPlotPath(
+  plotPath: DunnContribution["plotPath"],
+  limit: number
+): DunnContribution["plotPath"] {
+  if (plotPath.length <= limit) return plotPath;
+  const selected = new Set<number>([0, plotPath.length - 1]);
+  let runStart = 0;
+  for (let index = 1; index <= plotPath.length; index += 1) {
+    if (index === plotPath.length || plotPath[index]!.branch !== plotPath[runStart]!.branch) {
+      reserveDunnEndpointNeighborhood(selected, plotPath, runStart, index - 1, 1);
+      reserveDunnEndpointNeighborhood(selected, plotPath, index - 1, runStart, -1);
+      runStart = index;
+    }
+  }
+  const syntheticIndexes = plotPath.flatMap((record, index) => record.synthetic && !selected.has(index) ? [index] : []);
+  addEvenlySampledIndexes(selected, syntheticIndexes, Math.max(0, MAX_CHART_OUTPUT_POINTS - selected.size));
+  const available = Math.max(0, limit - selected.size);
+  for (let bucket = 0; bucket < available; bucket += 1) {
+    const start = Math.floor(bucket * plotPath.length / available);
+    const end = Math.max(start + 1, Math.floor((bucket + 1) * plotPath.length / available));
+    let extremeIndex = start;
+    for (let index = start + 1; index < Math.min(plotPath.length, end); index += 1) {
+      const magnitude = Math.max(Math.abs(plotPath[index]!.originalCurrent), Math.abs(plotPath[index]!.capacitiveCurrent));
+      const extremeMagnitude = Math.max(Math.abs(plotPath[extremeIndex]!.originalCurrent), Math.abs(plotPath[extremeIndex]!.capacitiveCurrent));
+      if (magnitude > extremeMagnitude) extremeIndex = index;
+    }
+    selected.add(extremeIndex);
+  }
+  return [...selected].sort((left, right) => left - right).slice(0, MAX_CHART_OUTPUT_POINTS).map((index) => plotPath[index]!);
+}
+
+function reserveDunnEndpointNeighborhood(
+  selected: Set<number>,
+  plotPath: DunnContribution["plotPath"],
+  start: number,
+  end: number,
+  step: 1 | -1
+) {
+  let retainedOriginalCount = 0;
+  for (let index = start; step > 0 ? index <= end : index >= end; index += step) {
+    selected.add(index);
+    if (!plotPath[index]!.synthetic) retainedOriginalCount += 1;
+    if (retainedOriginalCount >= DUNN_ENDPOINT_NEIGHBORHOOD_POINT_COUNT) break;
+  }
+}
+
+function addEvenlySampledIndexes(selected: Set<number>, candidates: number[], count: number) {
+  if (count <= 0 || candidates.length === 0) return;
+  if (count >= candidates.length) {
+    candidates.forEach((index) => selected.add(index));
+    return;
+  }
+  if (count === 1) {
+    selected.add(candidates[Math.floor((candidates.length - 1) / 2)]!);
+    return;
+  }
+  for (let sample = 0; sample < count; sample += 1) {
+    const candidateIndex = Math.round(sample * (candidates.length - 1) / (count - 1));
+    selected.add(candidates[candidateIndex]!);
+  }
+}
+
+export function makeDunnAreas(
+  analysis: AnalysisState | null,
+  scanRate: number | undefined,
+  seriesIndex: number,
+  t: ReturnType<typeof useI18n>["t"]
+): ChartAreaSeries[] {
+  if (!analysis || scanRate === undefined || seriesIndex < 0) return [];
+  const contribution = analysis.contributions.find((item) => item.scanRate === scanRate);
+  if (!contribution) return [];
+  const toAreaPoint = (x: number, first: number, second: number): ChartAreaPoint => ({
+    x,
+    lower: Math.min(first, second),
+    upper: Math.max(first, second)
+  });
+
+  return [{
+    id: "capacitive-area",
+    label: t("cv.dunn.capacitive"),
+    color: "#7656a8",
+    opacity: 0.72,
+    segments: [contribution.potentialGrid.map((potential, index) =>
+      toAreaPoint(potential, contribution.capacitiveForward[index]!, contribution.capacitiveReverse[index]!))]
   }, {
-    id: "excluded-area",
-    label: t("cv.dunn.excludedArea"),
-    color: "#7d858b",
-    pattern: "diagonalHatch",
-    segments: segments((index) => components(index) ? null : {
-      x: analysis.analysisGrid.potentials[index],
-      lower: 0,
-      upper: analysis.analysisGrid.currents[seriesIndex][index]
-    })
+    id: "diffusion-area",
+    label: t("cv.dunn.diffusion"),
+    color: "#6fb7a7",
+    opacity: 0.72,
+    segments: [
+      contribution.potentialGrid.map((potential, index) =>
+        toAreaPoint(potential, contribution.originalForward[index]!, contribution.capacitiveForward[index]!)),
+      contribution.potentialGrid.map((potential, index) =>
+        toAreaPoint(potential, contribution.originalReverse[index]!, contribution.capacitiveReverse[index]!))
+    ]
   }];
 }
 
 function makeDunnCoverage(analysis: AnalysisState) {
-  const validPointCount = analysis.dunnRecords.filter((record) => record.status === "valid" && record.fit).length;
-  const sampledPointCount = analysis.dunnRecords.length;
+  const dunnRecords = flattenDunnRecords(analysis);
+  const validPointCount = dunnRecords.filter((record) => record.status === "valid" && record.fit).length;
+  const sampledPointCount = dunnRecords.length;
   return {
     validPointCount,
     sampledPointCount,
@@ -706,11 +1214,13 @@ function collectAreaSegments(
 
 function dunnRows(analysis: AnalysisState | null, contribution: DunnContribution | undefined, seriesIndex: number) {
   if (!analysis || !contribution || seriesIndex < 0) return [];
-  return analysis.analysisGrid.potentials.map((potential, index) => {
-    const capacitive = contribution.capacitiveCurrent[index];
-    const diffusion = contribution.diffusionCurrent[index];
-    return [potential, analysis.analysisGrid.currents[seriesIndex][index], capacitive === null || diffusion === null ? null : capacitive + diffusion, capacitive, diffusion];
-  });
+  return contribution.plotPath.map((record) => [
+    record.potential,
+    record.originalCurrent,
+    record.capacitiveCurrent + record.diffusionCurrent,
+    record.capacitiveCurrent,
+    record.diffusionCurrent
+  ]);
 }
 
 function sampleChartSeries(series: ChartSeries[]): ChartSeries[] {
@@ -840,28 +1350,15 @@ function hasChartPoints(series: ChartSeries[]) {
 function exportCsv(
   filename: typeof csvFiles[number],
   analysis: AnalysisState,
+  peakResult: CvPeakAnalysisResult,
   metadata: ResultMetadata,
   t: ReturnType<typeof useI18n>["t"]
 ) {
   const grid = analysis.analysisGrid;
   const contributionByRate = new Map(analysis.contributions.map((item) => [item.scanRate, item]));
   const sortedRates = [...grid.scanRates].sort((left, right) => left - right);
-  const metadataHeaders = [
-    t("cv.export.dataLayout"),
-    t("cv.export.dataSource"),
-    t("cv.export.pointInterval"),
-    t("cv.export.rSquaredThreshold"),
-    t("cv.export.headerMode"),
-    t("cv.export.orderedScanRates")
-  ];
-  const metadataValues = [
-    layoutIdentifier(metadata.layout),
-    t(sourceKey(metadata.source)),
-    analysis.settings.pointInterval,
-    analysis.settings.rSquaredThreshold,
-    t(headerModeKey(metadata.headerMode)),
-    metadata.orderedScanRates.map(serializeScientificNumber).join(" ")
-  ];
+  const metadataHeaders = exportMetadataHeaders(t);
+  const metadataValues = exportMetadataValues(analysis, metadata, t);
   let csv: string;
   const potentialHeader = `${t("cv.table.potential")} (V)`;
   const scanRateHeader = `${t("cv.table.scanRate")} (mV/s)`;
@@ -874,16 +1371,72 @@ function exportCsv(
   }
   else if (filename === csvFiles[1]) csv = rowsToCsv(
     [potentialHeader, t("cv.table.sweepBranch"), t("cv.b.value"), t("cv.b.intercept"), t("cv.results.rSquared"), t("cv.table.pointCount"), t("cv.results.fitStatus"), ...metadataHeaders],
-    analysis.bRecords.filter(isResultOutputRecord).map((record) => [...bRecordRow(record, t), ...metadataValues])
+    analysis.bRecords.map((record) => [...bRecordRow(record, t), ...metadataValues])
   );
   else if (filename === csvFiles[2]) csv = rowsToCsv(
-    [potentialHeader, t("cv.table.sweepBranch"), t("cv.dunn.k1"), t("cv.dunn.k2"), t("cv.results.rSquared"), t("cv.table.pointCount"), t("cv.results.fitStatus"), ...metadataHeaders],
-    analysis.dunnRecords.filter(isResultOutputRecord).map((record) => [...dunnRecordRow(record, t), ...metadataValues])
+    [
+      scanRateHeader,
+      potentialHeader,
+      t("cv.table.sweepBranch"),
+      t("cv.dunn.k1"),
+      t("cv.dunn.k2"),
+      t("cv.results.rSquared"),
+      t("cv.table.pointCount"),
+      t("cv.results.fitStatus"),
+      t("cv.export.localCapacitiveFraction"),
+      t("cv.export.localConfidence"),
+      ...metadataHeaders
+    ],
+    dunnExportRows(analysis, sortedRates, t).map((row) => [...row, ...metadataValues])
+  );
+  else if (filename === csvFiles[6]) csv = rowsToCsv(
+    [
+      t("cv.export.peakLabel"),
+      t("cv.table.sweepBranch"),
+      t("cv.export.peakKind"),
+      t("cv.b.value"),
+      t("cv.b.intercept"),
+      t("cv.results.rSquared"),
+      t("cv.export.fitPointCount"),
+      t("cv.peak.coverage"),
+      t("cv.results.fitStatus"),
+      ...metadataHeaders
+    ],
+    peakResult.fits.map((fit) => [
+      `${t("cv.peak.peak")} ${fit.labelIndex}`,
+      fit.branch === "forward" ? t("cv.b.forwardSweep") : t("cv.b.reverseSweep"),
+      fit.kind === "oxidation" ? t("cv.peak.oxidation") : t("cv.peak.reduction"),
+      fit.b,
+      fit.intercept,
+      fit.rSquared,
+      fit.pointCount,
+      `${fit.coverageCount}/${analysis.series.length} · ${fit.coverageStatus === "complete" ? t("cv.peak.complete") : t("cv.peak.partial")}`,
+      peakFitStatusLabel(fit.fitStatus, t),
+      ...metadataValues
+    ])
+  );
+  else if (filename === csvFiles[7]) csv = rowsToCsv(
+    [
+      t("cv.export.peakLabel"),
+      scanRateHeader,
+      t("cv.export.peakPotential"),
+      t("cv.export.peakCurrent"),
+      t("cv.peak.sourceIndex"),
+      t("cv.peak.pointStatus"),
+      ...metadataHeaders
+    ],
+    peakResult.fits.flatMap((fit) => fit.points.map((point) => [
+      `${t("cv.peak.peak")} ${fit.labelIndex}`,
+      point.scanRate,
+      point.candidate?.potential ?? null,
+      point.candidate?.current ?? null,
+      point.candidate?.sourceIndex ?? null,
+      peakPointStatusLabel(point.status, t),
+      ...metadataValues
+    ]))
   );
   else if (filename === csvFiles[5]) {
-    const validPointCount = analysis.summary.validDunnCount;
-    const sampledPointCount = analysis.summary.retainedPointCount;
-    const coverage = sampledPointCount === 0 ? 0 : validPointCount / sampledPointCount * 100;
+    const dunnCoverage = makeDunnCoverage(analysis);
     csv = rowsToCsv(
       [scanRateHeader, `${t("cv.dunn.capacitive")} (%)`, `${t("cv.dunn.diffusion")} (%)`, t("cv.export.validPoints"), t("cv.export.sampledPoints"), `${t("cv.results.coverage")} (%)`, t("cv.export.contributionStatus"), ...metadataHeaders],
       sortedRates.map((scanRate) => {
@@ -892,9 +1445,9 @@ function exportCsv(
           scanRate,
           item?.capacitivePercent ?? null,
           item?.diffusionPercent ?? null,
-          validPointCount,
-          sampledPointCount,
-          coverage,
+          dunnCoverage.validPointCount,
+          dunnCoverage.sampledPointCount,
+          dunnCoverage.coveragePercent,
           item ? t("cv.export.available") : t("cv.export.unavailable"),
           ...metadataValues
         ];
@@ -903,17 +1456,139 @@ function exportCsv(
   }
   else {
     const capacitive = filename === csvFiles[3];
-    const headerKey = capacitive ? "cv.export.capacitiveCurrentAt" : "cv.export.diffusionCurrentAt";
-    const currentHeaders = sortedRates.map((rate) => t(headerKey, { rate: serializeScientificNumber(rate) }));
     csv = rowsToCsv(
-      [potentialHeader, ...withWideMetadata(currentHeaders, analysis, metadata, t)],
-      grid.potentials.map((potential, index) => [potential, ...sortedRates.map((rate) => {
+      [
+        scanRateHeader,
+        t("cv.export.sequenceIndex"),
+        t("cv.export.sourceIndex"),
+        t("cv.table.sweepBranch"),
+        potentialHeader,
+        t("cv.dunn.originalMeasured"),
+        t("cv.export.oppositeCurrent"),
+        t("cv.export.envelopeLower"),
+        t("cv.export.envelopeUpper"),
+        "g(V)",
+        t("cv.export.targetCapacitiveCurrent"),
+        t("cv.export.effectiveFraction"),
+        capacitive ? t("cv.dunn.capacitive") : t("cv.dunn.diffusion"),
+        t("cv.export.envelopeCorrection"),
+        t("cv.export.maximumAbsoluteOvershoot"),
+        t("cv.export.maximumEnvelopeViolation"),
+        ...metadataHeaders
+      ],
+      sortedRates.flatMap((rate) => {
         const item = contributionByRate.get(rate);
-        return item ? (capacitive ? item.capacitiveCurrent : item.diffusionCurrent)[index] : null;
-      })])
+        if (!item) return [];
+        return item.plotPath.map((record, sequenceIndex) => [
+          rate,
+          sequenceIndex,
+          record.sourceIndex,
+          record.branch === "forward" ? t("cv.b.forwardSweep") : t("cv.b.reverseSweep"),
+          record.potential,
+          record.originalCurrent,
+          record.oppositeCurrent,
+          record.envelopeLower,
+          record.envelopeUpper,
+          record.g,
+          record.targetCapacitiveCurrent,
+          record.effectiveFraction,
+          capacitive ? record.capacitiveCurrent : record.diffusionCurrent,
+          record.correctionMagnitude,
+          item.diagnostics.maximumAbsoluteOvershoot,
+          item.diagnostics.maximumAbsoluteEnvelopeViolation,
+          ...metadataValues
+        ]);
+      })
     );
   }
   downloadCsv(filename, csv);
+}
+
+function countBInvalidRuns(records: CvWorkflowResult["bRecords"]): number {
+  return [0, 1].reduce((total, branchIndex) => {
+    let inside = false;
+    let count = 0;
+    records.filter((record) => record.branchIndex === branchIndex).forEach((record) => {
+      const invalid = record.status !== "valid" || record.fit === null;
+      if (invalid && !inside) count += 1;
+      inside = invalid;
+    });
+    return total + count;
+  }, 0);
+}
+
+function exportMetadataHeaders(t: ReturnType<typeof useI18n>["t"]) {
+  return [
+    t("cv.export.dataLayout"),
+    t("cv.export.dataSource"),
+    t("cv.export.requestedInterval"),
+    t("cv.export.resolvedInterval"),
+    t("cv.export.dunnMethod"),
+    t("cv.export.rSquaredThreshold"),
+    t("cv.export.requestedTurningTrim"),
+    t("cv.export.resolvedTurningTrim"),
+    t("cv.export.smoothing"),
+    t("cv.export.commonRange"),
+    t("cv.export.forwardMedianRSquared"),
+    t("cv.export.reverseMedianRSquared"),
+    t("cv.export.dunnCoverage"),
+    t("cv.export.headerMode"),
+    t("cv.export.orderedScanRates")
+  ];
+}
+
+function exportMetadataValues(
+  analysis: AnalysisState,
+  metadata: ResultMetadata,
+  t: ReturnType<typeof useI18n>["t"]
+) {
+  const diagnostics = analysis.contributions[0]?.diagnostics;
+  const dunnCoverage = makeDunnCoverage(analysis);
+  return [
+    layoutIdentifier(metadata.layout),
+    t(sourceKey(metadata.source)),
+    potentialIntervalLabel(analysis, t),
+    resolvedPotentialIntervalLabel(analysis),
+    dunnMethodLabel(analysis.settings.dunnConfidenceMode, t),
+    analysis.settings.rSquaredThreshold,
+    turningPointTrimLabel(analysis, t),
+    `${serializeScientificNumber(analysis.dunnRecords.resolvedTurningPointTrim * 1000)} mV`,
+    t("cv.quality.smoothing.auto"),
+    `${serializeScientificNumber(analysis.alignedGrid.commonMinimum)}-${serializeScientificNumber(analysis.alignedGrid.commonMaximum)}`,
+    diagnostics?.medianForwardRSquared ?? null,
+    diagnostics?.medianReverseRSquared ?? null,
+    dunnCoverage.coveragePercent,
+    t(headerModeKey(metadata.headerMode)),
+    metadata.orderedScanRates.map(serializeScientificNumber).join(" ")
+  ];
+}
+
+function dunnExportRows(
+  analysis: AnalysisState,
+  sortedRates: number[],
+  t: ReturnType<typeof useI18n>["t"]
+): Array<Array<string | number | null>> {
+  return sortedRates.flatMap((scanRate) =>
+    flattenDunnRecords(analysis).map((record) => {
+      const localFraction = record.fit
+        ? localCapacitiveFraction(record.fit.k1, record.fit.k2, scanRate)
+        : null;
+      const localConfidence = record.fit
+        ? rSquaredConfidence(record.fit.rSquared, analysis.settings.dunnConfidenceMode, analysis.settings.rSquaredThreshold)
+        : null;
+      return [
+        scanRate,
+        record.potential,
+        t("cv.table.branchValue", { branch: record.branch === "forward" ? 1 : 2 }),
+        record.fit?.k1 ?? null,
+        record.fit?.k2 ?? null,
+        record.fit?.rSquared ?? null,
+        record.fit?.pointCount ?? null,
+        fitStatusLabel(record.status, t),
+        localFraction,
+        localConfidence
+      ];
+    }));
 }
 
 function withWideMetadata(
@@ -923,14 +1598,12 @@ function withWideMetadata(
   t: ReturnType<typeof useI18n>["t"]
 ) {
   if (headers.length === 0) return headers;
-  const suffix = [
-    `${t("cv.export.dataLayout")}: ${layoutIdentifier(metadata.layout)}`,
-    `${t("cv.export.dataSource")}: ${t(sourceKey(metadata.source))}`,
-    `${t("cv.export.headerMode")}: ${t(headerModeKey(metadata.headerMode))}`,
-    `${t("cv.export.orderedScanRates")}: ${metadata.orderedScanRates.map(serializeScientificNumber).join(" ")}`,
-    `${t("cv.export.pointInterval")}: ${analysis.settings.pointInterval}`,
-    `${t("cv.export.rSquaredThreshold")}: ${serializeScientificNumber(analysis.settings.rSquaredThreshold)}`
-  ].join("; ");
+  const suffix = exportMetadataHeaders(t)
+    .map((header, index) => {
+      const value = exportMetadataValues(analysis, metadata, t)[index] ?? null;
+      return `${header}: ${typeof value === "number" ? serializeScientificNumber(value) : format(value)}`;
+    })
+    .join("; ");
   return headers.map((header, index) => index === headers.length - 1 ? `${header} [${suffix}]` : header);
 }
 

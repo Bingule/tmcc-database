@@ -39,7 +39,15 @@ export interface ChartAreaSeries {
 
 export type ChartScale = "linear" | "log10";
 
-interface ScientificLineChartProps {
+export interface ChartPolygonSeries {
+  id: string;
+  label: string;
+  color: string;
+  opacity?: number;
+  polygons: Array<Array<{ x: number; y: number }>>;
+}
+
+export interface ScientificLineChartProps {
   title: string;
   xLabel: string;
   yLabel: string;
@@ -47,10 +55,12 @@ interface ScientificLineChartProps {
   legendLabel: string;
   series: ChartSeries[];
   areas?: ChartAreaSeries[];
+  polygons?: ChartPolygonSeries[];
   selectedX?: number;
   onSelectX?: (x: number) => void;
   selectedPointId?: string;
   onSelectPointId?: (id: string) => void;
+  xDomain?: [number, number];
   exportId?: string;
   metadata?: string | string[];
   xScale?: ChartScale;
@@ -69,10 +79,12 @@ export function ScientificLineChart({
   legendLabel,
   series,
   areas = [],
+  polygons = [],
   selectedX,
   onSelectX,
   selectedPointId,
   onSelectPointId,
+  xDomain,
   exportId,
   metadata,
   xScale = "linear",
@@ -94,7 +106,17 @@ export function ScientificLineChart({
     { x: point.x, y: point.lower },
     { x: point.x, y: point.upper }
   ])));
-  const domainPoints = [...allPoints, ...areaBounds].map((point) => ({
+  const finitePolygons = polygons.map((item) => ({
+    ...item,
+    polygons: item.polygons.map((polygon) => polygon.filter((point) =>
+      Number.isFinite(point.x)
+      && Number.isFinite(point.y)
+      && isScaleValue(point.x, xScale)
+      && isScaleValue(point.y, yScale)
+    )).filter((polygon) => polygon.length >= 3)
+  }));
+  const polygonBounds = finitePolygons.flatMap((item) => item.polygons.flat());
+  const domainPoints = [...allPoints, ...areaBounds, ...polygonBounds].map((point) => ({
     x: projectScaleValue(point.x, xScale),
     y: projectScaleValue(point.y, yScale)
   }));
@@ -103,27 +125,39 @@ export function ScientificLineChart({
     return <div className="scientific-chart-empty" role="status">{emptyLabel}</div>;
   }
 
-  const xDomain = expandedDomain(domainPoints, "x");
+  const requestedXDomain = xDomain
+    && xDomain.length === 2
+    && xDomain.every(Number.isFinite)
+    && xDomain[0] < xDomain[1]
+    && xDomain.every((value) => isScaleValue(value, xScale))
+    ? xDomain.map((value) => projectScaleValue(value, xScale)) as [number, number]
+    : null;
+  const resolvedXDomain = requestedXDomain
+    ? requestedXDomain
+    : expandedDomain(domainPoints, "x");
   const yDomain = expandedDomain(domainPoints, "y");
   const legendColumns = calculateLegendColumns([
     ...finiteAreas.map((item) => item.label),
+    ...finitePolygons.map((item) => item.label),
     ...finiteSeries.map((item) => item.label)
   ]);
-  const legendRows = Math.ceil((finiteAreas.length + finiteSeries.length) / legendColumns);
+  const legendRows = Math.ceil((finiteAreas.length + finitePolygons.length + finiteSeries.length) / legendColumns);
   const metadataSourceLines = typeof metadata === "string" ? [metadata] : metadata ?? [];
   const metadataLines = metadataSourceLines.flatMap((line) => wrapMetadataLine(line));
   const legendTop = metadataLines.length > 0 ? 17 + metadataLines.length * 18 + 4 : 17;
   const chartMargin = { ...margin, top: Math.max(margin.top, legendTop + legendRows * 22) };
   const plotWidth = dimensions.width - chartMargin.left - chartMargin.right;
   const plotHeight = dimensions.height - chartMargin.top - chartMargin.bottom;
-  const projectX = (value: number) => chartMargin.left + normalized(projectScaleValue(value, xScale), xDomain) * plotWidth;
+  const projectX = (value: number) => chartMargin.left + normalized(projectScaleValue(value, xScale), resolvedXDomain) * plotWidth;
   const projectY = (value: number) => dimensions.height - chartMargin.bottom - normalized(projectScaleValue(value, yScale), yDomain) * plotHeight;
-  const xTicks = ticks(xDomain);
+  const xTicks = ticks(resolvedXDomain);
   const yTicks = ticks(yDomain);
   const selectedPoint = selectedPointId !== undefined
     ? allPoints.find((point) => point.id === selectedPointId) ?? null
     : Number.isFinite(selectedX)
-      ? allPoints.find((point) => point.x === selectedX) ?? null
+      ? allPoints.find((point) => point.x === selectedX)
+        ?? areaBounds.find((point) => point.x === selectedX)
+        ?? null
       : null;
   const supportsPointSelection = Boolean(onSelectX || onSelectPointId);
   const patternId = (item: ChartAreaSeries) => `${patternPrefix}-${item.id.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
@@ -142,6 +176,7 @@ export function ScientificLineChart({
         viewBox={`0 0 ${dimensions.width} ${dimensions.height}`}
         width="100%"
         height="auto"
+        data-x-domain={resolvedXDomain.map((value) => unprojectScaleValue(value, xScale)).join(",")}
         data-export-id={exportId}
         className="scientific-chart-svg"
       >
@@ -175,7 +210,7 @@ export function ScientificLineChart({
           role="group"
           aria-label={legendLabel}
         >
-          {[...finiteAreas.map((item) => ({ kind: "area" as const, item })), ...finiteSeries.map((item) => ({ kind: "line" as const, item }))].map((entry, index) => {
+          {[...finiteAreas.map((item) => ({ kind: "area" as const, item })), ...finitePolygons.map((item) => ({ kind: "polygon" as const, item })), ...finiteSeries.map((item) => ({ kind: "line" as const, item }))].map((entry, index) => {
             const column = index % legendColumns;
             const row = Math.floor(index / legendColumns);
             const x = chartMargin.left + column * (plotWidth / legendColumns);
@@ -185,6 +220,8 @@ export function ScientificLineChart({
               <g key={item.id} className="scientific-chart-legend-item" transform={`translate(${x} ${y})`}>
                 {entry.kind === "area"
                   ? <rect x={1} y={-6} width={24} height={12} rx={2} fill={entry.item.pattern === "diagonalHatch" ? `url(#${patternId(entry.item)})` : entry.item.color} fillOpacity={entry.item.pattern ? 1 : entry.item.opacity ?? 0.68} />
+                  : entry.kind === "polygon"
+                    ? <rect x={1} y={-6} width={24} height={12} rx={2} fill={entry.item.color} fillOpacity={entry.item.opacity ?? 0.68} />
                   : entry.item.mode === "points"
                     ? <circle cx={13} cy={0} r={3.5} fill={entry.item.color} />
                     : <line x1={0} y1={0} x2={26} y2={0} stroke={entry.item.color} strokeWidth={2.25} strokeDasharray={entry.item.dash} />}
@@ -220,13 +257,29 @@ export function ScientificLineChart({
             />
           )))}
         </g>
+        <g className="scientific-chart-polygons" aria-hidden="true">
+          {finitePolygons.flatMap((item) => item.polygons.map((polygon, polygonIndex) => <path
+            key={`${item.id}-${polygonIndex}`}
+            data-polygon-series-id={item.id}
+            data-area-series-id={item.id}
+            data-polygon-index={polygonIndex}
+            data-render-point-count={polygon.length}
+            d={`${polygon.map((point, index) => `${index === 0 ? "M" : "L"} ${projectX(point.x)} ${projectY(point.y)}`).join(" ")} Z`}
+            fill={item.color}
+            fillOpacity={item.opacity ?? 0.68}
+            stroke="none"
+          />))}
+        </g>
         <g className="scientific-chart-axes" aria-hidden="true">
           <line x1={chartMargin.left} y1={chartMargin.top} x2={chartMargin.left} y2={dimensions.height - chartMargin.bottom} stroke="#607d8b" strokeWidth={1.25} />
           <line x1={chartMargin.left} y1={dimensions.height - chartMargin.bottom} x2={dimensions.width - chartMargin.right} y2={dimensions.height - chartMargin.bottom} stroke="#607d8b" strokeWidth={1.25} />
           {xTicks.map((tick, index) => (
             <g key={`x-${index}`}>
-              <line x1={projectXTick(tick, xDomain, chartMargin.left, plotWidth)} y1={dimensions.height - chartMargin.bottom} x2={projectXTick(tick, xDomain, chartMargin.left, plotWidth)} y2={dimensions.height - chartMargin.bottom + 6} stroke="#607d8b" strokeWidth={1.25} />
-              <text x={projectXTick(tick, xDomain, chartMargin.left, plotWidth)} y={dimensions.height - chartMargin.bottom + 22} textAnchor="middle" fill="#455a64" fontSize={11}>{formatTick(unprojectScaleValue(tick, xScale))}</text>
+              <line x1={projectXTick(tick, resolvedXDomain, chartMargin.left, plotWidth)} y1={dimensions.height - chartMargin.bottom} x2={projectXTick(tick, resolvedXDomain, chartMargin.left, plotWidth)} y2={dimensions.height - chartMargin.bottom + 6} stroke="#607d8b" strokeWidth={1.25} />
+              <text x={projectXTick(tick, resolvedXDomain, chartMargin.left, plotWidth)} y={dimensions.height - chartMargin.bottom + 22} textAnchor="middle" fill="#455a64" fontSize={11}>{formatEndpointTick(
+                unprojectScaleValue(tick, xScale),
+                resolvedXDomain.map((value) => unprojectScaleValue(value, xScale)) as [number, number]
+              )}</text>
             </g>
           ))}
           {yTicks.map((tick, index) => (
@@ -302,7 +355,7 @@ export function ScientificLineChart({
             />
             <circle
               data-selected-x={String(selectedPoint.x)}
-              data-selected-point-id={selectedPoint.id}
+              data-selected-point-id={"id" in selectedPoint ? selectedPoint.id : undefined}
               cx={projectX(selectedPoint.x)}
               cy={projectY(selectedPoint.y)}
               r={4.5}
@@ -486,4 +539,12 @@ function formatTick(value: number): string {
   const magnitude = Math.abs(value);
   if (magnitude >= 10_000 || magnitude < 0.001) return value.toExponential(2);
   return Number(value.toPrecision(4)).toString();
+}
+
+function formatEndpointTick(value: number, [minimum, maximum]: [number, number]): string {
+  if (value === minimum || value === maximum) {
+    const nearestInteger = Math.round(value);
+    if (Math.abs(value - nearestInteger) <= 0.001 * (maximum - minimum)) return String(nearestInteger);
+  }
+  return formatTick(value);
 }

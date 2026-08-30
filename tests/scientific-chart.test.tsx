@@ -126,6 +126,27 @@ describe("ScientificLineChart", () => {
     }
   });
 
+  it("uses an explicit x-domain and snaps near-integer endpoint tick labels", async () => {
+    const view = await renderChart({
+      ...baseProps,
+      series: [{
+        id: "dunn",
+        label: "Dunn current",
+        color: "#1155cc",
+        points: [{ x: -0.995, y: 1 }, { x: -0.005, y: 2 }]
+      }],
+      xDomain: [-0.9992, -0.000307]
+    });
+    const svg = view.querySelector("svg")!;
+    const xTickLabels = [...svg.querySelectorAll<SVGTextElement>(".scientific-chart-axes > g text")]
+      .slice(0, 5)
+      .map((label) => label.textContent);
+
+    expect(svg.getAttribute("data-x-domain")).toBe("-0.9992,-0.000307");
+    expect(xTickLabels.at(0)).toBe("-1");
+    expect(xTickLabels.at(-1)).toBe("0");
+  });
+
   it("computes a domain for more than 150,000 finite points without argument spreading", async () => {
     const points = Array.from({ length: 150_001 }, (_, index) => ({ x: index, y: index % 17 }));
     const view = await renderChart({
