@@ -131,22 +131,31 @@ describe("peak b-value charts", () => {
 
     const table = container.querySelector<HTMLTableElement>('[data-table-id="cv-peak-points"]')!;
     const headers = Array.from(table.querySelectorAll("thead th")).map((cell) => cell.textContent?.trim());
-    expect(headers).toEqual([
-      panelCopy.peak,
-      panelCopy.scanRate,
-      panelCopy.potential,
-      panelCopy.current,
-      panelCopy.logScanRate,
-      panelCopy.logCurrent
-    ]);
+    expect(table.querySelectorAll("colgroup col")).toHaveLength(6);
+    expect(Array.from(table.querySelectorAll("thead [data-peak-short-label]")).map((node) => node.textContent))
+      .toEqual(["Peak", "ν", "E", "i", "ln ν", "ln |i|"]);
+    expect(Array.from(table.querySelectorAll("thead [data-peak-unit]")).map((node) => node.textContent))
+      .toEqual(["(mV/s)", "(V)", "(arb.)"]);
+    expect(table.querySelector("thead")?.textContent).not.toContain("Scan rate");
+    expect(headers).toEqual(["Peak", "ν(mV/s)", "E(V)", "i(arb.)", "ln ν", "ln |i|"]);
     expect(table.textContent).not.toContain("Original source index");
     expect(table.textContent).not.toContain("Point status");
     expect(table.querySelectorAll('thead input[type="checkbox"]')).toHaveLength(6);
 
     const firstPoint = result.fits[0]!.points[0]!;
     const firstRow = table.querySelector("tbody tr")!;
-    expect(firstRow.textContent).toContain(Number(Math.log(firstPoint.scanRate).toFixed(6)).toString());
-    expect(firstRow.textContent).toContain(Number(Math.log(Math.abs(firstPoint.candidate!.current)).toFixed(6)).toString());
+    function formatExpectedCompact(value: number): string {
+      if (value === 0) return "0";
+      const magnitude = Math.abs(value);
+      if (magnitude >= 1e5 || magnitude < 1e-4) return value.toExponential(3);
+      return Number(value.toPrecision(5)).toString();
+    }
+    expect(firstRow.querySelector('[data-peak-cell="scanRate"]')?.textContent).toBe(String(firstPoint.scanRate));
+    expect(firstRow.querySelector('[data-peak-cell="scanRate"]')?.textContent).not.toContain("mV/s");
+    expect(firstRow.querySelector<HTMLInputElement>("input")?.defaultValue).toBe(String(firstPoint.candidate!.potential));
+    expect(firstRow.querySelector('[data-peak-cell="current"]')?.textContent).toBe(formatExpectedCompact(firstPoint.candidate!.current));
+    expect(firstRow.querySelector('[data-peak-cell="logScanRate"]')?.textContent).toBe(formatExpectedCompact(Math.log(firstPoint.scanRate)));
+    expect(firstRow.querySelector('[data-peak-cell="logCurrent"]')?.textContent).toBe(formatExpectedCompact(Math.log(Math.abs(firstPoint.candidate!.current))));
 
     const copyButton = container.querySelector<HTMLButtonElement>('[data-peak-copy-toolbar] button')!;
     expect(copyButton.disabled).toBe(true);
@@ -157,6 +166,7 @@ describe("peak b-value charts", () => {
     expect(writeText).toHaveBeenCalledTimes(1);
     const copied = writeText.mock.calls[0]![0] as string;
     expect(copied.split("\r\n")[0]).toBe(`${panelCopy.peak}\t${panelCopy.logScanRate}`);
+    expect(copied.split("\r\n")[1]).toBe(`${panelCopy.peak} ${result.fits[0]!.labelIndex}\t${Number(Math.log(firstPoint.scanRate).toFixed(6)).toString()}`);
     expect(copied.split("\r\n")).toHaveLength(16);
     expect(container.querySelector('[data-peak-copy-toolbar]')?.textContent).toContain(panelCopy.copySuccess);
 

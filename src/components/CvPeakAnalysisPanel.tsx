@@ -89,21 +89,29 @@ export function CvPeakAnalysisPanel({
   const peakName = (index: number) => `${copy.peak} ${index}`;
   const [selectedPointColumns, setSelectedPointColumns] = useState<Set<PeakPointColumnKey>>(() => new Set());
   const [pointCopyStatus, setPointCopyStatus] = useState<"success" | "error" | null>(null);
-  const pointColumns: Array<{ key: PeakPointColumnKey; label: string }> = [
-    { key: "peak", label: copy.peak },
-    { key: "scanRate", label: copy.scanRate },
-    { key: "potential", label: copy.potential },
-    { key: "current", label: copy.current },
-    { key: "logScanRate", label: copy.logScanRate },
-    { key: "logCurrent", label: copy.logCurrent }
-  ];
+  const pointColumns = [
+    { key: "peak", label: copy.peak, shortLabel: copy.peak, width: "11%" },
+    { key: "scanRate", label: copy.scanRate, shortLabel: "ν", unit: "(mV/s)", width: "14%" },
+    { key: "potential", label: copy.potential, shortLabel: "E", unit: "(V)", width: "21%" },
+    { key: "current", label: copy.current, shortLabel: "i", unit: "(arb.)", width: "19%" },
+    { key: "logScanRate", label: copy.logScanRate, shortLabel: "ln ν", width: "16%" },
+    { key: "logCurrent", label: copy.logCurrent, shortLabel: "ln |i|", width: "19%" }
+  ] satisfies Array<PeakPointColumn>;
   const pointRows = result.fits.flatMap((fit) => fit.points.map((point) => {
     const candidate = point.candidate;
     return {
       fit,
       point,
       candidate,
-      values: {
+      displayValues: {
+        peak: peakName(fit.labelIndex),
+        scanRate: formatCompact(point.scanRate, copy.unavailable),
+        potential: formatCompact(candidate?.potential ?? null, copy.unavailable),
+        current: formatCompact(candidate?.current ?? null, copy.unavailable),
+        logScanRate: formatCompact(naturalLog(point.scanRate), copy.unavailable),
+        logCurrent: formatCompact(naturalLog(candidate ? Math.abs(candidate.current) : null), copy.unavailable)
+      },
+      copyValues: {
         peak: peakName(fit.labelIndex),
         scanRate: `${point.scanRate} mV/s`,
         potential: format(candidate?.potential ?? null, 6, copy.unavailable),
@@ -129,7 +137,7 @@ export function CvPeakAnalysisPanel({
     if (columns.length === 0) return;
     const text = [
       columns.map((column) => column.label),
-      ...pointRows.map((row) => columns.map((column) => row.values[column.key]))
+      ...pointRows.map((row) => columns.map((column) => row.copyValues[column.key]))
     ].map((row) => row.join("\t")).join("\r\n");
     try {
       await navigator.clipboard.writeText(text);
@@ -246,10 +254,14 @@ export function CvPeakAnalysisPanel({
       </div>
       <div className="cv-table-scroll">
       <table className="tool-result-table cv-peak-points-table" data-table-id="cv-peak-points">
+        <colgroup>{pointColumns.map((column) => <col key={column.key} style={{ width: column.width }} />)}</colgroup>
         <thead><tr>
           {pointColumns.map((column) => <th scope="col" key={column.key}>
-            <label className="cv-table-column-heading cv-peak-column-heading">
-              <span>{column.label}</span>
+            <label className="cv-table-column-heading cv-peak-column-heading" title={column.label}>
+              <span className="cv-peak-heading-text">
+                <span data-peak-short-label>{column.shortLabel}</span>
+                {column.unit && <small data-peak-unit>{column.unit}</small>}
+              </span>
               <input
                 type="checkbox"
                 value={column.key}
@@ -260,7 +272,7 @@ export function CvPeakAnalysisPanel({
             </label>
           </th>)}
         </tr></thead>
-        <tbody>{pointRows.map(({ fit, point, candidate, values }) => {
+        <tbody>{pointRows.map(({ fit, point, candidate, displayValues }) => {
           return <tr
             key={`${fit.peakId}-${point.seriesIndex}`}
             data-peak-id={fit.peakId}
@@ -269,9 +281,9 @@ export function CvPeakAnalysisPanel({
             data-current={candidate?.current ?? ""}
             data-point-status={point.status}
           >
-            <td>{values.peak}</td>
-            <td>{values.scanRate}</td>
-            <td>{candidate ? <input
+            <td data-peak-cell="peak">{displayValues.peak}</td>
+            <td data-peak-cell="scanRate">{displayValues.scanRate}</td>
+            <td data-peak-cell="potential">{candidate ? <input
               className="cv-peak-potential-input"
               type="number"
               step="any"
@@ -287,9 +299,9 @@ export function CvPeakAnalysisPanel({
               }}
               aria-label={`${peakName(fit.labelIndex)} ${point.scanRate} ${copy.potential}`}
             /> : copy.unavailable}</td>
-            <td>{values.current}</td>
-            <td>{values.logScanRate}</td>
-            <td>{values.logCurrent}</td>
+            <td data-peak-cell="current">{displayValues.current}</td>
+            <td data-peak-cell="logScanRate">{displayValues.logScanRate}</td>
+            <td data-peak-cell="logCurrent">{displayValues.logCurrent}</td>
           </tr>;
         })}</tbody>
       </table>
@@ -301,8 +313,28 @@ export function CvPeakAnalysisPanel({
 
 type PeakPointColumnKey = "peak" | "scanRate" | "potential" | "current" | "logScanRate" | "logCurrent";
 
+interface PeakPointColumn {
+  key: PeakPointColumnKey;
+  label: string;
+  shortLabel: string;
+  unit?: string;
+  width: string;
+}
+
 function format(value: number | null, decimals: number, unavailable: string) {
   return value === null || !Number.isFinite(value) ? unavailable : Number(value.toFixed(decimals)).toString();
+}
+
+function formatCompact(value: number | null, unavailable: string) {
+  if (value === null || !Number.isFinite(value)) return unavailable;
+  if (value === 0) return "0";
+  const magnitude = Math.abs(value);
+  if (magnitude >= 1e5 || magnitude < 1e-4) return value.toExponential(3);
+  return Number(value.toPrecision(5)).toString();
+}
+
+function naturalLog(value: number | null): number | null {
+  return value === null || !Number.isFinite(value) || value <= 0 ? null : Math.log(value);
 }
 
 function formatNaturalLog(value: number | null, unavailable: string) {

@@ -2591,8 +2591,10 @@ td button {
 }
 
 .cv-peak-potential-input {
-  min-width: 7.5rem;
+  min-width: 0;
   width: 100%;
+  padding: 6px 5px;
+  font-size: 0.82rem;
 }
 
 .cv-peak-points-card {
@@ -2600,26 +2602,50 @@ td button {
 }
 
 .cv-peak-points-table {
-  width: max-content;
-  min-width: 100%;
+  width: 100%;
+  min-width: 480px;
+  table-layout: fixed;
 }
 
 .cv-peak-points-table th,
 .cv-peak-points-table td {
-  padding: 7px 8px;
+  padding: 6px 4px;
+  overflow: hidden;
+  font-size: 0.82rem;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .cv-peak-column-heading {
-  width: clamp(92px, 10vw, 132px);
-  max-width: 132px;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 16px;
+  align-items: center;
+  gap: 3px;
+  width: 100%;
+  max-width: none;
 }
 
-.cv-peak-column-heading span {
-  white-space: normal;
-  line-height: 1.2;
-  overflow-wrap: anywhere;
+.cv-peak-heading-text {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+  line-height: 1.05;
+}
+
+.cv-peak-heading-text small {
+  font-size: 0.66rem;
+  font-weight: 650;
+  text-transform: none;
+}
+
+.cv-peak-column-heading input {
+  width: 15px;
+  height: 15px;
+}
+
+.cv-peak-points-card .cv-table-copy-toolbar button {
+  padding: 6px 9px;
+  font-size: 0.8rem;
 }
 
 .cv-analysis-card {
