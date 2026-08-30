@@ -16,5 +16,19 @@ describe("route code splitting", () => {
       expect(source).toContain(`lazy(() => import("./pages/${page}"))`);
       expect(source).not.toMatch(new RegExp(`import\\s+\\{[^}]*${page}[^}]*\\}\\s+from`));
     }
+
+    for (const page of [
+      "RatePerformanceAnalysisPage",
+      "ModelComparisonPage",
+      "TransportLimitationPage",
+      "CharacteristicTimePage",
+      "ThicknessKineticsPage",
+      "CaRateAnalysisPage",
+      "EmpiricalModelsPage",
+      "EnergyPowerPage"
+    ]) {
+      expect(source).toContain(`lazy(() => import("./tools/rate-performance/pages/${page}"))`);
+      expect(source).not.toMatch(new RegExp(`import\\s+\\{[^}]*${page}[^}]*\\}\\s+from`));
+    }
   });
 });

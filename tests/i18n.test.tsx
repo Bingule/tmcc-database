@@ -152,6 +152,23 @@ describe("I18nProvider", () => {
     expect(zh["cv.dunn.help"]).toContain("文献式填色");
   });
 
+  it("defines typed bilingual shared Rate Performance interface resources", () => {
+    expect(en["rate.input.manual"]).toBe("Manual entry");
+    expect(en["rate.input.upload"]).toBe("Upload file");
+    expect(en["rate.results.example"]).toBe("EXAMPLE RESULTS");
+    expect(en["rate.results.user"]).toBe("USER RESULTS");
+    expect(en["rate.import.summary"]).toBe("Import summary");
+    expect(en["rate.theory.equation"]).toBe("Governing equation");
+    expect(en["rate.export.svg"]).toBe("Export SVG");
+    expect(zh["rate.input.manual"]).toBe("手动输入");
+    expect(zh["rate.input.upload"]).toBe("上传文件");
+    expect(zh["rate.results.example"]).toBe("示例结果");
+    expect(zh["rate.results.user"]).toBe("用户结果");
+    expect(zh["rate.import.summary"]).toBe("导入摘要");
+    expect(zh["rate.theory.equation"]).toBe("控制方程");
+    expect(zh["rate.export.svg"]).toBe("导出 SVG");
+  });
+
   it("keeps Angstrom units untranslated in Chinese resources", () => {
     expect(zh["xrd.wavelength"]).toBe("波长（Angstrom）");
   });

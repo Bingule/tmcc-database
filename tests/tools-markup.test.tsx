@@ -28,6 +28,7 @@ async function renderRoute(path: string) {
     if (path === "/tools/cv-kinetics") await import("../src/pages/CvKineticsPage");
     if (path === "/tools/theoretical-capacity") await import("../src/pages/TheoreticalCapacityPage");
     if (path === "/tools/molecular-weight") await import("../src/pages/MolecularWeightPage");
+    if (path === "/tools/rate-performance") await import("../src/tools/rate-performance/pages/RatePerformanceAnalysisPage");
   });
   return view;
 }
@@ -67,7 +68,8 @@ describe("Tools page markup", () => {
     "/tools",
     "/tools/cv-kinetics",
     "/tools/theoretical-capacity",
-    "/tools/molecular-weight"
+    "/tools/molecular-weight",
+    "/tools/rate-performance"
   ])("provides one page heading, breadcrumb navigation, and native keyboard controls on %s", async (path) => {
     const view = await renderRoute(path);
 
@@ -91,7 +93,8 @@ describe("Tools page markup", () => {
     expect(readCards()).toEqual([
       { title: "CV Kinetics Analysis", description: "b-value and Dunn capacitive contribution analysis from multi-scan-rate CV data." },
       { title: "Theoretical Capacity Calculator", description: "Calculate theoretical specific capacity from chemical formula and electron transfer number." },
-      { title: "Molecular Weight Calculator", description: "Calculate molar mass and elemental mass contributions from chemical formulas." }
+      { title: "Molecular Weight Calculator", description: "Calculate molar mass and elemental mass contributions from chemical formulas." },
+      { title: "Rate Performance", description: "Analyze rate capability and compare validated kinetic models." }
     ]);
 
     await switchToChinese(view);
@@ -100,7 +103,8 @@ describe("Tools page markup", () => {
     expect(readCards()).toEqual([
       { title: "CV 动力学分析", description: "基于多扫描速率 CV 数据进行 b 值与 Dunn 电容贡献分析。" },
       { title: "理论容量计算器", description: "根据化学式和电子转移数计算理论比容量。" },
-      { title: "分子量计算器", description: "根据化学式计算摩尔质量和各元素质量贡献。" }
+      { title: "分子量计算器", description: "根据化学式计算摩尔质量和各元素质量贡献。" },
+      { title: "倍率性能", description: "分析倍率性能并比较经验证的动力学模型。" }
     ]);
   });
 
@@ -108,7 +112,8 @@ describe("Tools page markup", () => {
     ["/tools", "Materials Research Tools", "材料研究工具"],
     ["/tools/cv-kinetics", "CV Kinetics Analysis", "CV 动力学分析"],
     ["/tools/theoretical-capacity", "Theoretical Capacity Calculator", "理论容量计算器"],
-    ["/tools/molecular-weight", "Molecular Weight Calculator", "分子量计算器"]
+    ["/tools/molecular-weight", "Molecular Weight Calculator", "分子量计算器"],
+    ["/tools/rate-performance", "Rate Performance Analysis", "倍率性能分析"]
   ])("uses full bilingual titles and the correct breadcrumb depth on %s", async (path, englishTitle, chineseTitle) => {
     const view = await renderRoute(path);
     const breadcrumb = view.querySelector<HTMLElement>("nav.breadcrumb-nav")!;
