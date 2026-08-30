@@ -70,6 +70,13 @@ export function serializeThicknessSamplesCsv(
     const points = source.rateInput.points.length > 0 ? source.rateInput.points : [null];
     return points.map((point) => {
       const normalized = point ? normalizedById.get(point.id) : undefined;
+      const normalizationContext = source.rateInput.normalizationContext;
+      const measuredRateConfirmed = normalized?.normalization.measuredRateConfirmed
+        ?? normalizationContext.confirmHInverseMeasuredRate;
+      const theoreticalCapacity = normalized?.normalization.theoreticalCapacity
+        ?? normalizationContext.theoreticalCapacity?.value;
+      const theoreticalCapacityUnit = normalized?.normalization.theoreticalCapacityUnit
+        ?? normalizationContext.theoreticalCapacity?.unit;
       const scalingExclusion = context.scalingFailure?.sampleIds.includes(source.id) ? context.scalingFailure : null;
       const exclusionCode = outcome?.status === "failed" ? outcome.failureCode : scalingExclusion?.code ?? null;
       const exclusionMessage = outcome?.status === "failed" ? outcome.failureMessage : scalingExclusion?.message ?? null;
@@ -83,9 +90,9 @@ export function serializeThicknessSamplesCsv(
         normalized?.analysisRate ?? null, normalized?.analysisRateUnit ?? null,
         normalized?.analysisCapacity ?? null, normalized?.analysisCapacityUnit ?? null,
         normalized?.normalization.method ?? null,
-        normalized?.normalization.measuredRateConfirmed === undefined ? null : String(normalized.normalization.measuredRateConfirmed),
-        normalized?.normalization.theoreticalCapacity ?? null,
-        normalized?.normalization.theoreticalCapacityUnit ?? null,
+        measuredRateConfirmed === undefined ? null : String(measuredRateConfirmed),
+        theoreticalCapacity ?? null,
+        theoreticalCapacityUnit ?? null,
       ];
     });
   }));

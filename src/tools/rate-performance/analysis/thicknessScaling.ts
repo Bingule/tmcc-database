@@ -318,26 +318,23 @@ export function fitThicknessScaling(samples: ReadonlyArray<Readonly<ThicknessSca
     };
   });
 
-  const duplicateIds = new Set<string>();
-  const conflicts: NonNullable<ThicknessScalingFailure["failure"]["conflicts"]>[number][] = [];
-  for (let left = 0; left < normalized.length; left += 1) {
-    for (let right = left + 1; right < normalized.length; right += 1) {
-      if (nearlyEqual(normalized[left].thicknessMetres, normalized[right].thicknessMetres)) {
-        duplicateIds.add(normalized[left].id);
-        duplicateIds.add(normalized[right].id);
-        conflicts.push({
-          thicknessMetres: Number(normalized[left].thicknessMetres.toPrecision(15)),
-          samples: [normalized[left], normalized[right]].map(({ id, sampleName, originalThickness: thickness, originalThicknessUnit: thicknessUnit }) => (
-            { id, sampleName, thickness, thicknessUnit }
-          )),
-        });
-      }
-    }
+  const thicknessGroups: NormalizedThicknessScalingSample[][] = [];
+  for (const sample of normalized) {
+    const group = thicknessGroups.find(([representative]) => nearlyEqual(representative.thicknessMetres, sample.thicknessMetres));
+    if (group) group.push(sample);
+    else thicknessGroups.push([sample]);
   }
-  if (duplicateIds.size > 0) {
+  const duplicateGroups = thicknessGroups.filter((group) => group.length > 1);
+  if (duplicateGroups.length > 0) {
+    const conflicts = duplicateGroups.map((group) => ({
+      thicknessMetres: Number(group[0].thicknessMetres.toPrecision(15)),
+      samples: group.map(({ id, sampleName, originalThickness: thickness, originalThicknessUnit: thicknessUnit }) => (
+        { id, sampleName, thickness, thicknessUnit }
+      )),
+    }));
     return failed(
       "duplicate-thickness",
-      [...duplicateIds],
+      duplicateGroups.flatMap((group) => group.map(({ id }) => id)),
       "Duplicate physical thicknesses are not averaged or silently merged.",
       { conflicts },
     );

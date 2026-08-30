@@ -22,6 +22,7 @@ import {
   serializeThicknessResidualsCsv,
   serializeThicknessSamplesCsv,
   serializeThicknessScalingCsv,
+  type ThicknessExportContext,
 } from "../src/tools/rate-performance/utils/thicknessExports";
 
 const { fitRatePerformance } = vi.hoisted(() => ({ fitRatePerformance: vi.fn() }));
@@ -187,6 +188,18 @@ describe("fitThicknessScaling", () => {
     });
   });
 
+  it("groups three equivalent physical thicknesses into one conflict with unique sample identities", () => {
+    const result = fitThicknessScaling([
+      { ...sample("a", 40, 1), sampleName: "Forty micrometres" },
+      { ...sample("b", 0.04, 2), sampleName: "Point zero four millimetres", thicknessUnit: "mm" },
+      { ...sample("c", 0.00004, 3), sampleName: "Point zero zero zero zero four metres", thicknessUnit: "m" },
+    ]);
+    expect(result).toMatchObject({ status: "failed", failure: { code: "duplicate-thickness" } });
+    if (result.status !== "failed") return;
+    expect(result.failure.conflicts).toHaveLength(1);
+    expect(result.failure.conflicts?.[0].samples.map(({ id }) => id)).toEqual(["a", "b", "c"]);
+  });
+
   it("uses tau uncertainty in weighted regressions and returns an alpha CI only with residual DOF", () => {
     const weighted = fitThicknessScaling([
       sample("a", 20, 0.002 * 20 ** 1.5, 0.01),
@@ -221,10 +234,17 @@ describe("fitThicknessScaling", () => {
       modelId: "tian-characteristic-time",
     }, {
       id: "failed", sampleName: "@failed", thickness: 80, thicknessUnit: "um" as const, massLoading: null,
-      rateInput: { mode: "upload" as const, points: [], normalizationContext: {} },
+      rateInput: {
+        mode: "upload" as const,
+        points: [],
+        normalizationContext: {
+          confirmHInverseMeasuredRate: true,
+          theoreticalCapacity: { value: 333, unit: "mAh-g-1" as const },
+        },
+      },
       modelId: "rational-characteristic-time",
     }];
-    const exportContext = {
+    const exportContext: ThicknessExportContext = {
       resultKind: "example" as const,
       exampleId: "=thickness-example",
       sources: sourceSamples,
@@ -264,6 +284,7 @@ describe("fitThicknessScaling", () => {
     expect(samplesCsv).toContain("original_thickness_unit");
     expect(samplesCsv).toContain("excluded_from_scaling");
     expect(samplesCsv).toContain("maximum-iterations");
+    expect(samplesCsv).toContain("true,333,mAh-g-1");
     expect(samplesCsv).toContain("a-point,0.1,h-1,300,mAh-g-1,0.1,h-1,300,mAh-g-1,measured-rate-direct");
     expect(fitsCsv).toContain("tau_standard_error_seconds");
     expect(fitsCsv).toContain("q_m,tau_hours,tau_seconds,n");
@@ -378,7 +399,7 @@ describe("fitThicknessSeries", () => {
   });
 
   it("accepts exactly 20,000 points and rejects 20,001 without calling the fitter", async () => {
-    const fit = vi.fn(async () => converged(1));
+    const fit = vi.fn(async (_data: ReadonlyArray<Readonly<{ rate: number; capacity: number }>>) => converged(1));
     const outcomes = await fitThicknessSeries([
       seriesSource("limit", 20_000),
       seriesSource("over-limit", 20_001),
