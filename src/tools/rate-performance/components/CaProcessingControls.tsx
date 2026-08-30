@@ -11,11 +11,15 @@ export interface CaProcessingValue {
   readonly rangeEnabled: boolean;
   readonly rangeStart: number;
   readonly rangeEnd: number;
+  readonly rateRangeEnabled: boolean;
+  readonly minimumRateH1: number;
+  readonly maximumRateH1: number;
 }
 
 export const DEFAULT_CA_PROCESSING: CaProcessingValue = {
   timeUnit: "s", currentUnit: "mA", activeMassG: 0.01, sign: "positive",
   baselineMode: "off", baselineValue: 0, rangeEnabled: false, rangeStart: 0, rangeEnd: 240,
+  rateRangeEnabled: false, minimumRateH1: 0.01, maximumRateH1: 100,
 };
 
 export function CaProcessingControls({ value, onChange }: {
@@ -32,10 +36,13 @@ export function CaProcessingControls({ value, onChange }: {
       <label>{t("rate.ca.processing.mass")} (g)<input type="number" min="0" step="any" value={value.activeMassG} onChange={(e) => update("activeMassG", Number(e.target.value))} /></label>
       <label>{t("rate.ca.processing.sign")}<select value={value.sign} onChange={(e) => update("sign", e.target.value as CaProcessingValue["sign"])}><option value="positive">{t("rate.ca.processing.positive")}</option><option value="negative">{t("rate.ca.processing.negative")}</option></select></label>
       <label>{t("rate.ca.processing.baseline")}<select value={value.baselineMode} onChange={(e) => update("baselineMode", e.target.value as CaProcessingValue["baselineMode"])}><option value="off">{t("rate.ca.processing.off")}</option><option value="constant">{t("rate.ca.processing.constant")}</option></select></label>
-      <label>{t("rate.ca.processing.baselineValue")}<input type="number" min="0" step="any" disabled={value.baselineMode === "off"} value={value.baselineValue} onChange={(e) => update("baselineValue", Number(e.target.value))} /></label>
+      <label>{t("rate.ca.processing.baselineValue", { unit: value.currentUnit })}<input type="number" min="0" step="any" disabled={value.baselineMode === "off"} value={value.baselineValue} onChange={(e) => update("baselineValue", Number(e.target.value))} /></label>
       <label className="ca-checkbox"><input type="checkbox" checked={value.rangeEnabled} onChange={(e) => update("rangeEnabled", e.target.checked)} />{t("rate.ca.processing.range")}</label>
       <label>{t("rate.ca.processing.start")}<input type="number" disabled={!value.rangeEnabled} value={value.rangeStart} onChange={(e) => update("rangeStart", Number(e.target.value))} /></label>
       <label>{t("rate.ca.processing.end")}<input type="number" disabled={!value.rangeEnabled} value={value.rangeEnd} onChange={(e) => update("rangeEnd", Number(e.target.value))} /></label>
+      <label className="ca-checkbox"><input type="checkbox" checked={value.rateRangeEnabled} onChange={(e) => update("rateRangeEnabled", e.target.checked)} />{t("rate.ca.processing.rateRange")}</label>
+      <label>{t("rate.ca.processing.minimumRate")}<input type="number" min="0" disabled={!value.rateRangeEnabled} value={value.minimumRateH1} onChange={(e) => update("minimumRateH1", Number(e.target.value))} /></label>
+      <label>{t("rate.ca.processing.maximumRate")}<input type="number" min="0" disabled={!value.rateRangeEnabled} value={value.maximumRateH1} onChange={(e) => update("maximumRateH1", Number(e.target.value))} /></label>
       <label>{t("rate.ca.processing.smoothing")}<select disabled value="off"><option value="off">{t("rate.ca.processing.offDefault")}</option></select></label>
     </div>
     <p>{t("rate.ca.processing.help")}</p>
@@ -46,6 +53,11 @@ export function toCaOptions(value: Readonly<CaProcessingValue>): CaReconstructio
   return {
     timeUnit: value.timeUnit, currentUnit: value.currentUnit, activeMassG: value.activeMassG, sign: value.sign,
     baseline: value.baselineMode === "constant" ? { mode: "constant", value: value.baselineValue } : { mode: "off" },
-    integrationRange: value.rangeEnabled ? { start: value.rangeStart, end: value.rangeEnd } : undefined,
+    fitRange: value.rangeEnabled || value.rateRangeEnabled ? {
+      timeStart: value.rangeEnabled ? value.rangeStart : undefined,
+      timeEnd: value.rangeEnabled ? value.rangeEnd : undefined,
+      minimumRateH1: value.rateRangeEnabled ? value.minimumRateH1 : undefined,
+      maximumRateH1: value.rateRangeEnabled ? value.maximumRateH1 : undefined,
+    } : undefined,
   };
 }

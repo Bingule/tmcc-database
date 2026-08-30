@@ -5,7 +5,7 @@ export interface RateCsvExportItem {
   readonly id: string;
   readonly label: string;
   readonly filename: string;
-  readonly csv: string;
+  readonly csv: string | (() => string);
 }
 
 export function ExportToolbar({
@@ -40,7 +40,7 @@ export function ExportToolbar({
 
   function csv(item: Readonly<RateCsvExportItem>) {
     try {
-      onCsvExport(item.filename, item.csv);
+      onCsvExport(item.filename, typeof item.csv === "function" ? item.csv() : item.csv);
     } catch (error) {
       onError?.(error);
     }

@@ -120,7 +120,7 @@ describe("CA rate reconstruction", () => {
     }));
   });
 
-  it("applies the selected integration range, negative-current convention and constant baseline", () => {
+  it("integrates from physical t=0 and applies an independent fit range without resetting capacity", () => {
     const result = reconstructCaRate([
       { id: "outside-before", time: 0, current: -4 },
       { id: "start", time: 1, current: -3 },
@@ -130,19 +130,28 @@ describe("CA rate reconstruction", () => {
       timeUnit: "h", currentUnit: "mA", activeMassG: 1,
       sign: "negative",
       baseline: { mode: "constant", value: 1 },
-      integrationRange: { start: 1, end: 2 },
+      fitRange: { timeStart: 1, timeEnd: 2 },
     });
 
     expect(result.status).toBe("success");
     if (result.status !== "success") return;
-    expect(result.capacity).toEqual([0, 2]);
+    expect(result.capacity).toEqual([0, 2.5, 4.5, 7]);
     expect(result.ratePoints).toEqual([
-      expect.objectContaining({ id: "end", rate: 1, capacity: 2 }),
+      expect.objectContaining({ id: "start", rate: 0.8, capacity: 2.5 }),
+      expect.objectContaining({ id: "end", rate: 2 / 4.5, capacity: 4.5 }),
     ]);
-    expect(result.excludedInputPointIds).toEqual(["outside-before", "outside-after"]);
+    expect(result.points[0]).toEqual(expect.objectContaining({ includedInFit: false, fitExclusionReason: "before-fit-time-range" }));
+    expect(result.points[3]).toEqual(expect.objectContaining({ includedInFit: false, fitExclusionReason: "after-fit-time-range" }));
   });
 
-  it("fails explicitly when no positive accumulated-capacity rate point exists", () => {
+  it("requires a physical zero-time origin before integrating Eq. 5", () => {
+    const result = reconstructCaRate([{ id: "a", time: 1, current: 2 }, { id: "b", time: 2, current: 2 }], {
+      timeUnit: "s", currentUnit: "mA", activeMassG: 1, sign: "positive", baseline: { mode: "off" },
+    });
+    expect(result).toEqual(expect.objectContaining({ status: "failure", code: "nonzero-start-time", pointIds: ["a"] }));
+  });
+
+  it("retains a processed reconstruction when no positive rate point exists", () => {
     const result = reconstructCaRate([
       { id: "a", time: 0, current: 0 },
       { id: "b", time: 1, current: 0 },
@@ -151,10 +160,8 @@ describe("CA rate reconstruction", () => {
       sign: "positive", baseline: { mode: "off" },
     });
 
-    expect(result).toEqual(expect.objectContaining({
-      status: "failure",
-      code: "no-valid-rate-points",
-    }));
+    expect(result).toEqual(expect.objectContaining({ status: "success", ratePoints: [] }));
+    if (result.status === "success") expect(result.points).toHaveLength(2);
   });
 
   it("keeps smoothing disabled in the reconstruction contract", () => {
@@ -192,9 +199,11 @@ describe("CA rate reconstruction", () => {
     expect(originalCsv).toContain("'=unsafe");
     expect(originalCsv).toContain("result_kind,example_id");
     expect(originalCsv).toContain("example,ca-rate-example");
+    expect(serializeCaOriginalCsv([{ id: "partial", time: 1, current: null }], options, metadata)).toContain("invalid,missing-current");
     expect(reconstructedCsv).toContain("integration_method,smoothing,effective_rate_definition");
     expect(reconstructedCsv).toContain("trapezoidal,off,specific-current-over-accumulated-specific-capacity");
     expect(reconstructedCsv).toContain("zero-accumulated-capacity");
+    expect(reconstructedCsv).toContain("included_in_fit,fit_exclusion_reason");
   });
 
   it("exports fitted curves and parameters with model and source provenance", () => {
@@ -241,7 +250,7 @@ describe("CaRateAnalysisPage", () => {
     const view = await renderPage();
     expect(view.querySelector(".ca-manual-table-scroll")).toBeTruthy();
     expect(view.querySelectorAll(".ca-manual-table tbody tr")).toHaveLength(5);
-    for (const label of ["Time unit", "Current unit", "Active mass", "Current sign", "Baseline correction", "Integration start", "Integration end", "Smoothing (off)"]) {
+    for (const label of ["Time unit", "Current unit", "Active mass", "Current sign", "Baseline correction", "Fit time start", "Fit time end", "Smoothing (off)"]) {
       expect(view.textContent).toContain(label);
     }
     const table = view.querySelector(".ca-manual-table")!;
@@ -336,5 +345,36 @@ describe("CaRateAnalysisPage", () => {
     expect(fitRatePerformance).not.toHaveBeenCalled();
     expect(view.textContent).toContain("20,000");
     expect(view.textContent).toContain("Rows20002");
+    expect(view.querySelectorAll('[data-point-series-id="ca-rate-capacity"]').length).toBeLessThanOrEqual(1200);
   }, 30_000);
+
+  it("blocks partially populated rows instead of silently dropping them", async () => {
+    const view = await renderPage();
+    await click(button(view, "Load Example"));
+    const current = view.querySelector<HTMLInputElement>('input[name="ca-current-ca-rate-example-2"]')!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(current, "");
+      current.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await click(button(view, "Reconstruct & Fit"));
+    expect(fitRatePerformance).not.toHaveBeenCalled();
+    expect(view.textContent).toContain("Complete or remove invalid rows");
+    expect(view.textContent).toContain("ca-rate-example-2");
+  });
+
+  it("keeps processed charts and exports when reconstruction has zero fit points", async () => {
+    const view = await renderPage();
+    await click(button(view, "Load Example"));
+    const currents = [...view.querySelectorAll<HTMLInputElement>('input[name^="ca-current-"]')];
+    await act(async () => currents.forEach((current) => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(current, "0");
+      current.dispatchEvent(new Event("change", { bubbles: true }));
+    }));
+    await click(button(view, "Reconstruct & Fit"));
+    expect(fitRatePerformance).not.toHaveBeenCalled();
+    expect(view.querySelectorAll(".rate-chart-panel")).toHaveLength(4);
+    expect(button(view, "Original CA data")).toBeTruthy();
+    expect(button(view, "Full processed CA data")).toBeTruthy();
+    expect(view.querySelector(".rate-results-user")).toBeNull();
+  });
 });
