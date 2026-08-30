@@ -2,13 +2,13 @@ import { useI18n } from "../../../i18n/I18nProvider";
 import type {
   createTransportSensitivitySeries,
   TransportInputKey,
-  TransportUnavailabilityReason,
 } from "../analysis/transportTimes";
 import { RateChartPanel } from "./RateChartPanel";
 import {
   displayTransportUnit,
   FIELD_DEFINITIONS,
   fieldDefinition,
+  transportUnavailabilityReasonText,
 } from "./transportTimePresentation";
 
 export function TransportSensitivityPanel({
@@ -28,7 +28,7 @@ export function TransportSensitivityPanel({
   const maximumPercent = formatPercent(series.range.maximumFactor * 100);
   const unit = displayTransportUnit(series.baseline.unit);
   const unavailablePoints = series.points.flatMap((point, index) => point.status === "unavailable"
-    ? [{ step: index + 1, inputValue: point.inputValue, reason: point.unavailableReason ?? "unavailable-terms" as const }]
+    ? [{ step: index + 1, factor: point.factor, inputValue: point.inputValue, reason: point.unavailableReason ?? "unavailable-terms" as const }]
     : []);
   return <section className="tool-section rate-transport-sensitivity">
     <h2>{t("rate.transport.sensitivityTitle")}</h2>
@@ -47,13 +47,21 @@ export function TransportSensitivityPanel({
       steps: series.range.steps,
     })}</p>
     <p>{t("rate.transport.sensitivityStatus", { valid: validPoints, steps: series.range.steps })}</p>
+    <strong>{t("rate.transport.sensitivityPointsTitle")}</strong>
+    <ol className="rate-transport-sensitivity-points">{series.points.map((point, index) => <li key={point.factor}>{t("rate.transport.sensitivityPoint", {
+      step: index + 1,
+      factor: formatNumber(point.factor),
+      value: formatNumber(point.inputValue),
+      unit,
+    })}</li>)}</ol>
     {unavailablePoints.length > 0 ? <div className="tool-validation">
       <strong>{t("rate.transport.sensitivityUnavailableTitle")}</strong>
-      <ul>{unavailablePoints.map(({ step, inputValue, reason }) => <li key={step}>{t("rate.transport.sensitivityUnavailablePoint", {
+      <ul>{unavailablePoints.map(({ step, factor, inputValue, reason }) => <li key={step}>{t("rate.transport.sensitivityUnavailablePoint", {
         step,
-        value: inputValue,
+        factor: formatNumber(factor),
+        value: formatNumber(inputValue),
         unit,
-        reason: sensitivityReason(reason, t),
+        reason: transportUnavailabilityReasonText(reason, t),
       })}</li>)}</ul>
     </div> : null}
     <RateChartPanel
@@ -70,17 +78,6 @@ function formatPercent(value: number): string {
   return Number(value.toPrecision(6)).toString();
 }
 
-function sensitivityReason(
-  reason: TransportUnavailabilityReason,
-  t: ReturnType<typeof useI18n>["t"],
-): string {
-  switch (reason) {
-    case "numerical-overflow": return t("rate.transport.reason.numericalOverflow");
-    case "numerical-underflow": return t("rate.transport.reason.numericalUnderflow");
-    case "no-available-terms": return t("rate.transport.reason.noAvailableTerms");
-    case "unavailable-terms": return t("rate.transport.reason.unavailableTerms");
-    case "missing-inputs": return t("rate.transport.reason.missingInputs");
-    case "invalid-inputs": return t("rate.transport.reason.invalidInputs");
-    case "missing-and-invalid-inputs": return t("rate.transport.reason.missingAndInvalidInputs");
-  }
+function formatNumber(value: number): string {
+  return Number(value.toPrecision(6)).toString();
 }

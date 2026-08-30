@@ -109,17 +109,26 @@ export interface UnavailableTransportTerm extends TransportTermBase {
 
 export type TransportTerm = AvailableTransportTerm | UnavailableTransportTerm;
 
-export interface TransportAggregate {
+interface TransportAggregateBase {
   readonly id: "electrical" | "diffusive" | "calculated-total" | "available-partial-sum";
-  readonly status: "available" | "unavailable";
-  readonly value?: number;
   readonly unit: "s";
   readonly type: "derived";
   readonly provenance: string;
   readonly missingTermIds: ReadonlyArray<TransportTermId>;
   readonly includedTermIds: ReadonlyArray<TransportTermId>;
-  readonly unavailabilityReason?: TransportUnavailabilityReason;
 }
+
+export interface AvailableTransportAggregate extends TransportAggregateBase {
+  readonly status: "available";
+  readonly value: number;
+}
+
+export interface UnavailableTransportAggregate extends TransportAggregateBase {
+  readonly status: "unavailable";
+  readonly unavailabilityReason: TransportUnavailabilityReason;
+}
+
+export type TransportAggregate = AvailableTransportAggregate | UnavailableTransportAggregate;
 
 export interface TransportRelativeContribution {
   readonly termId: TransportTermId;
@@ -328,8 +337,10 @@ export function calculateTransportTimes(input: Readonly<TransportTimeInput>): Tr
   });
 
   const available = terms.filter((term): term is AvailableTransportTerm => term.status === "available");
-  const availableSumResult = sumPositiveFinite(available.map(({ value }) => value));
-  const availableSum = availableSumResult.status === "available" ? availableSumResult.value : undefined;
+  const availableSumResult = available.length > 0
+    ? sumPositiveFinite(available.map(({ value }) => value))
+    : undefined;
+  const availableSum = availableSumResult?.status === "available" ? availableSumResult.value : undefined;
   const complete = available.length === TERM_DEFINITIONS.length
     && available.every(({ value }) => Number.isFinite(value) && value > 0)
     && availableSum !== undefined;
@@ -372,6 +383,7 @@ export type UnresolvedTimeResult =
     readonly unit: "s";
     readonly type: "derived";
     readonly provenance: string;
+    readonly fittedTotal?: number;
   }
   | {
     readonly status: "available";
@@ -420,6 +432,18 @@ export function calculateUnresolvedTime(
   }
   const fittedTotal = fittedValidation.siValue;
   const available = components.filter((component): component is AvailableTransportTerm => component.status === "available");
+  if (available.length === 0) {
+    return {
+      status: "unavailable",
+      missingInputs: [],
+      invalidInputs: [],
+      unavailabilityReason: "no-available-terms",
+      unit: "s",
+      type: "derived",
+      provenance,
+      fittedTotal,
+    };
+  }
   const componentSum = sumPositiveFinite(available.map(({ value }) => value));
   if (componentSum.status === "unavailable") {
     return {
@@ -475,8 +499,16 @@ export interface TransportSensitivityPoint {
   readonly variedInput: Readonly<TransportTimeInput>;
   readonly result: Readonly<TransportTimeResult>;
   readonly status: "available" | "unavailable";
+  readonly termFailures: ReadonlyArray<Readonly<TransportSensitivityTermFailure>>;
   readonly unavailableReason?: TransportUnavailabilityReason;
   readonly totalSeconds?: number;
+}
+
+export interface TransportSensitivityTermFailure {
+  readonly termId: TransportTermId;
+  readonly reason: TransportUnavailabilityReason;
+  readonly missingInputs: ReadonlyArray<TransportInputKey>;
+  readonly invalidInputs: ReadonlyArray<Readonly<TransportInvalidInput<TransportInputKey>>>;
 }
 
 export interface TransportSensitivitySeries {
@@ -508,22 +540,30 @@ export function createTransportSensitivitySeries(
   }
   if (!Number.isFinite(options.minimumFactor) || options.minimumFactor <= 0
     || !Number.isFinite(options.maximumFactor) || options.maximumFactor < options.minimumFactor
-    || !Number.isInteger(options.steps) || options.steps < 2 || options.steps > 101) {
-    throw new RangeError("Sensitivity range must be positive, ordered, and contain 2 to 101 integer steps.");
+    || options.minimumFactor >= 1 || options.maximumFactor <= 1) {
+    throw new RangeError("Sensitivity range must provide two valid points on each side of the 1x baseline.");
+  }
+  if (options.steps !== 5) {
+    throw new RangeError("Sensitivity analysis requires exactly five points.");
   }
 
   const definition = getTransportInputDefinition(parameter);
   const maximumFactor = definition.bounds.inclusiveMaximum === undefined
     ? options.maximumFactor
     : Math.min(options.maximumFactor, definition.bounds.inclusiveMaximum / baseline.value);
-  if (!Number.isFinite(maximumFactor) || maximumFactor < options.minimumFactor) {
-    throw new RangeError(`${parameter} sensitivity range contains no valid bounded sweep.`);
+  if (!Number.isFinite(maximumFactor) || maximumFactor <= 1) {
+    throw new RangeError(`${parameter} sensitivity range cannot provide two valid points on each side of the 1x baseline.`);
   }
   const range = { ...options, maximumFactor };
+  const factors = [
+    range.minimumFactor,
+    (range.minimumFactor + 1) / 2,
+    1,
+    (1 + range.maximumFactor) / 2,
+    range.maximumFactor,
+  ];
 
-  const points = Array.from({ length: range.steps }, (_, index): TransportSensitivityPoint => {
-    const fraction = index / (range.steps - 1);
-    const factor = range.minimumFactor + (range.maximumFactor - range.minimumFactor) * fraction;
+  const points = factors.map((factor): TransportSensitivityPoint => {
     const variedQuantity = {
       ...baseline,
       value: definition.bounds.inclusiveMaximum === undefined
@@ -533,16 +573,28 @@ export function createTransportSensitivitySeries(
     const variedInput = { ...input, [parameter]: variedQuantity };
     const result = calculateTransportTimes(variedInput);
     const total = result.aggregates.calculatedTotal;
+    const termFailures = result.terms.flatMap((term): ReadonlyArray<TransportSensitivityTermFailure> =>
+      term.status === "unavailable" ? [{
+        termId: term.id,
+        reason: term.unavailabilityReason,
+        missingInputs: term.missingInputs,
+        invalidInputs: term.invalidInputs,
+      }] : []);
+    const numericalTermFailure = termFailures.find(({ reason }) =>
+      reason === "numerical-overflow" || reason === "numerical-underflow");
     return {
       factor,
       inputValue: variedQuantity.value,
       variedInput,
       result,
+      termFailures,
       ...(result.complete && total.status === "available" && total.value !== undefined
         ? { status: "available" as const, totalSeconds: total.value }
         : {
           status: "unavailable" as const,
-          unavailableReason: total.unavailabilityReason ?? "unavailable-terms",
+          unavailableReason: total.status === "unavailable" && total.unavailabilityReason === "unavailable-terms"
+            ? numericalTermFailure?.reason ?? "unavailable-terms"
+            : total.status === "unavailable" ? total.unavailabilityReason : "unavailable-terms",
         }),
     };
   });

@@ -10,8 +10,10 @@ import {
   type TaggedTransportQuantity,
   type TransportTimeInput,
   type TransportInputKey,
+  type TransportUnavailabilityReason,
   type TransportUnit,
 } from "../src/tools/rate-performance/analysis/transportTimes";
+import { transportUnavailabilityReasonText } from "../src/tools/rate-performance/components/transportTimePresentation";
 import CharacteristicTimePage from "../src/tools/rate-performance/pages/CharacteristicTimePage";
 import TransportLimitationPage from "../src/tools/rate-performance/pages/TransportLimitationPage";
 
@@ -63,6 +65,22 @@ function LanguageSwitchHarness({ children }: { children: React.ReactNode }) {
     <button type="button" onClick={() => setLanguage("zh")}>Switch to Chinese</button>
     {children}
   </>;
+}
+
+const UNAVAILABILITY_REASONS: ReadonlyArray<TransportUnavailabilityReason> = [
+  "missing-inputs",
+  "invalid-inputs",
+  "missing-and-invalid-inputs",
+  "numerical-overflow",
+  "numerical-underflow",
+  "unavailable-terms",
+  "no-available-terms",
+];
+
+function UnavailabilityReasonHarness() {
+  const { t } = useI18n();
+  return <ul>{UNAVAILABILITY_REASONS.map((reason) =>
+    <li key={reason} data-reason={reason}>{transportUnavailabilityReasonText(reason, t)}</li>)}</ul>;
 }
 
 function quantity<Unit extends TransportUnit>(
@@ -277,6 +295,17 @@ describe("Tian Eq. 5a-6a transport times", () => {
     expect(result.aggregates.availablePartialSum.provenance).not.toContain("all seven");
     expect(result.aggregates.calculatedTotal.status).toBe("unavailable");
   });
+
+  it("does not expose an available zero when no Eq. 6a term can be summed", () => {
+    const result = calculateTransportTimes({});
+    expect(result.availableSum).toBeUndefined();
+    expect(result.aggregates.availablePartialSum).toMatchObject({
+      status: "unavailable",
+      unavailabilityReason: "no-available-terms",
+      includedTermIds: [],
+    });
+    expect(result.aggregates.availablePartialSum).not.toHaveProperty("value");
+  });
 });
 
 describe("unresolved fitted characteristic time", () => {
@@ -312,7 +341,7 @@ describe("unresolved fitted characteristic time", () => {
   });
 
   it("is unavailable when no positive finite fitted time is supplied", () => {
-    expect(calculateUnresolvedTime(undefined, calculateTransportTimes({}).terms)).toEqual({
+    expect(calculateUnresolvedTime(undefined, calculateTransportTimes(completeInput()).terms)).toEqual({
       status: "unavailable",
       missingInputs: ["fittedTau"],
       invalidInputs: [],
@@ -321,6 +350,21 @@ describe("unresolved fitted characteristic time", () => {
       type: "derived",
       provenance: "Difference between fitted tau and the sum of available Tian et al. (2019), Eq. 6a components.",
     });
+  });
+
+  it("uses no-available-terms consistently when an unresolved comparison has no components", () => {
+    const result = calculateUnresolvedTime(
+      quantity(1, "h", "user-input", "User comparison time"),
+      calculateTransportTimes({}).terms,
+    );
+    expect(result).toMatchObject({
+      status: "unavailable",
+      missingInputs: [],
+      invalidInputs: [],
+      unavailabilityReason: "no-available-terms",
+    });
+    expect(result).not.toHaveProperty("availableComponentSum");
+    expect(result).not.toHaveProperty("difference");
   });
 
   it("rejects fitted-time conversion and component-sum overflow with typed reasons", () => {
@@ -364,6 +408,16 @@ describe("deterministic one-at-a-time sensitivity", () => {
     expect(series.range.minimumFactor).toBe(0.5);
     expect(series.range.maximumFactor).toBeCloseTo(1 / 0.9, 12);
     expect(series.points).toHaveLength(5);
+    expect(series.points.map(({ factor }) => factor)).toEqual([
+      0.5,
+      0.75,
+      1,
+      expect.closeTo((1 + 1 / 0.9) / 2, 12),
+      expect.closeTo(1 / 0.9, 12),
+    ]);
+    expect(series.points[2]).toMatchObject({ factor: 1, inputValue: 0.9 });
+    expect(series.points.slice(0, 2).every(({ factor }) => factor < 1)).toBe(true);
+    expect(series.points.slice(3).every(({ factor }) => factor > 1)).toBe(true);
     expect(series.points.every((point) => point.status === "available" && Number.isFinite(point.totalSeconds))).toBe(true);
     expect(series.points.map(({ inputValue }) => inputValue).every((value) => value > 0 && value <= 1)).toBe(true);
   });
@@ -373,19 +427,66 @@ describe("deterministic one-at-a-time sensitivity", () => {
     const series = createTransportSensitivitySeries(input, "electrodeThickness", {
       minimumFactor: 0.5,
       maximumFactor: 1.5,
-      steps: 3,
+      steps: 5,
     });
     expect(series.parameter).toBe("electrodeThickness");
     expect(series.baseline).toEqual(input.electrodeThickness);
-    expect(series.range).toEqual({ minimumFactor: 0.5, maximumFactor: 1.5, steps: 3 });
+    expect(series.range).toEqual({ minimumFactor: 0.5, maximumFactor: 1.5, steps: 5 });
     expect(series.method).toBe("deterministic-one-at-a-time");
-    expect(series.points.map(({ factor }) => factor)).toEqual([0.5, 1, 1.5]);
-    expect(series.points.map(({ inputValue }) => inputValue)).toEqual([50, 100, 150]);
+    expect(series.points.map(({ factor }) => factor)).toEqual([0.5, 0.75, 1, 1.25, 1.5]);
+    expect(series.points.map(({ inputValue }) => inputValue)).toEqual([50, 75, 100, 125, 150]);
     expect(series.points.every(({ variedInput }) =>
       variedInput.separatorThickness === input.separatorThickness
       && variedInput.electrodeConductivity === input.electrodeConductivity,
     )).toBe(true);
     expect(series.interpretation).toBe("No mechanism is inferred; each point changes only the selected input while all other inputs remain at baseline.");
+  });
+
+  it("requires the five-point OAT contract and a range spanning the 1x baseline", () => {
+    expect(() => createTransportSensitivitySeries(completeInput(), "electrodeThickness", {
+      minimumFactor: 0.5,
+      maximumFactor: 1.5,
+      steps: 3,
+    })).toThrow(/exactly five/i);
+    expect(() => createTransportSensitivitySeries(completeInput(), "electrodeThickness", {
+      minimumFactor: 1,
+      maximumFactor: 1.5,
+      steps: 5,
+    })).toThrow(/two valid points on each side/i);
+  });
+
+  it("retains the root term failure when an OAT point overflows", () => {
+    const input = {
+      ...completeInput(),
+      activeMaterialLength: quantity(1e154, "m"),
+      activeMaterialDiffusivity: quantity(1, "m2-s-1"),
+    };
+    const series = createTransportSensitivitySeries(input, "activeMaterialLength");
+    expect(series.points[4]).toMatchObject({
+      status: "unavailable",
+      unavailableReason: "numerical-overflow",
+      termFailures: [{
+        termId: "active-material-diffusion",
+        reason: "numerical-overflow",
+        missingInputs: [],
+        invalidInputs: [],
+      }],
+    });
+  });
+
+  it("does not mask aggregate numerical overflow as unavailable terms in an OAT point", () => {
+    const input = {
+      ...completeInput(),
+      activeMaterialLength: quantity(1, "m"),
+      activeMaterialDiffusivity: quantity(2e-308, "m2-s-1"),
+      kineticTime: quantity(1.1e308, "s"),
+    };
+    const series = createTransportSensitivitySeries(input, "kineticTime");
+    expect(series.points[3]).toMatchObject({
+      status: "unavailable",
+      unavailableReason: "numerical-overflow",
+      termFailures: [],
+    });
   });
 
   it.each<TransportInputKey>([
@@ -407,6 +508,45 @@ describe("deterministic one-at-a-time sensitivity", () => {
 });
 
 describe("transport and characteristic-time pages", () => {
+  it("maps every typed unavailability reason in English and Chinese", async () => {
+    const english = await renderPage(<UnavailabilityReasonHarness />);
+    expect(english.view.textContent).toContain("required inputs are missing");
+    expect(english.view.textContent).toContain("supplied inputs are invalid");
+    expect(english.view.textContent).toContain("required inputs are both missing and invalid");
+    expect(english.view.textContent).toContain("numerical overflow");
+    expect(english.view.textContent).toContain("numerical underflow to a nonpositive result");
+    expect(english.view.textContent).toContain("one or more required terms are unavailable");
+    expect(english.view.textContent).toContain("no Eq. 6a term is available");
+    await english.unmount();
+
+    const chinese = await renderPage(<UnavailabilityReasonHarness />, "zh");
+    expect(chinese.view.textContent).toContain("缺少所需输入");
+    expect(chinese.view.textContent).toContain("提供的输入无效");
+    expect(chinese.view.textContent).toContain("所需输入同时存在缺失和无效值");
+    expect(chinese.view.textContent).toContain("数值溢出");
+    expect(chinese.view.textContent).toContain("数值下溢为非正结果");
+    expect(chinese.view.textContent).toContain("一个或多个所需项不可用");
+    expect(chinese.view.textContent).toContain("没有可用的方程 6a 项");
+    await chinese.unmount();
+  });
+
+  it("renders typed aggregate, partial, and unresolved reasons without empty included-term provenance", async () => {
+    const english = await renderPage(<TransportLimitationPage />);
+    await click(english.view, "Calculate Times");
+    expect(english.view.textContent).toContain("one or more required terms are unavailable");
+    expect(english.view.textContent).toContain("no Eq. 6a term is available");
+    expect(english.view.textContent).toContain("required inputs are missing");
+    expect(english.view.textContent).not.toContain("Included Eq. 6a terms:");
+    await english.unmount();
+
+    const chinese = await renderPage(<TransportLimitationPage />, "zh");
+    await click(chinese.view, "计算时间");
+    expect(chinese.view.textContent).toContain("一个或多个所需项不可用");
+    expect(chinese.view.textContent).toContain("没有可用的方程 6a 项");
+    expect(chinese.view.textContent).toContain("缺少所需输入");
+    expect(chinese.view.textContent).not.toContain("包含的方程 6a 项：");
+    await chinese.unmount();
+  });
   it("renders the transport empty state, tagged inputs, theory, and primary reference", async () => {
     const { view, unmount } = await renderPage(<TransportLimitationPage />);
     expect(view.querySelector("h1")?.textContent).toBe("Transport Limitations");
@@ -507,6 +647,8 @@ describe("transport and characteristic-time pages", () => {
     expect(sensitivity?.textContent).toContain("50%–111.111%");
     expect(sensitivity?.textContent).toContain("5/5 valid points");
     expect(sensitivity?.textContent).toContain("Selected input value (1)");
+    expect(sensitivity?.textContent).toContain("1× = 0.9 1");
+    expect(sensitivity?.textContent).toContain("1.11111× = 1 1");
     expect(sensitivity?.textContent).not.toContain("50% to 150%");
     await unmount();
   });
@@ -580,8 +722,13 @@ describe("transport and characteristic-time pages", () => {
     expect(view.textContent).toContain("Eq. 5b: τ_Diffusive = L_E^2 / D_P + L_S^2 / D_S + L_AM^2 / D_AM");
     expect(view.textContent).toContain("Eq. 5c: τ_Electrical = C_eff (R_E,E + R_I,P + R_I,S)");
     expect(view.textContent).toContain("Eq. 5d: τ = C_eff (R_E,E + R_I,P + R_I,S)");
-    expect(view.textContent).toContain("s (reported as h where converted)");
-    expect(view.textContent).toContain("L_E^2, L_E, and L_E-independent constant contributions");
+    expect(view.textContent).toContain("Eq. 6b: τ = a L_E^2 + b L_E + c");
+    expect(view.textContent).toContain("a groups Eq. 6a terms 1–3");
+    expect(view.textContent).toContain("b is term 4");
+    expect(view.textContent).toContain("c groups terms 5–7");
+    const theoryRows = [...view.querySelectorAll(".rate-theory-panel tbody tr")];
+    expect(theoryRows.find((row) => row.textContent?.includes("Comparison total τ"))?.textContent).toContain("h");
+    expect(theoryRows.find((row) => row.textContent?.includes("Calculated Eq. 6a total"))?.textContent).toContain("s");
     await click(view, "Try Example Inputs");
     const relative = view.querySelector(".rate-transport-relative");
     expect(relative?.textContent).toContain("Derived");
@@ -622,7 +769,9 @@ describe("transport and characteristic-time pages", () => {
     expect(characteristic.view.textContent).toContain("对比 τ 与可用方程 6a 分量之和的差值");
     expect(characteristic.view.textContent).toContain("5 个步骤");
     expect(characteristic.view.textContent).toContain("P_E (1)");
-    expect(characteristic.view.textContent).toContain("s（换算显示时报告为 h）");
+    const theoryRows = [...characteristic.view.querySelectorAll(".rate-theory-panel tbody tr")];
+    expect(theoryRows.find((row) => row.textContent?.includes("对比总时间 τ"))?.textContent).toContain("h");
+    expect(theoryRows.find((row) => row.textContent?.includes("方程 6a 计算总时间"))?.textContent).toContain("s");
     expect(characteristic.view.textContent).not.toContain("拟合总时间 τ");
     expect(characteristic.view.textContent).not.toContain("在本分解之外使用经验证的 Tian 倍率模型拟合");
     expect(characteristic.view.textContent).not.toContain("steps.");

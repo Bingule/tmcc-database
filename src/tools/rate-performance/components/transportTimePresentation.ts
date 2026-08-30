@@ -6,6 +6,7 @@ import type {
   TransportTermId,
   TransportTimeInput,
   TransportTimeResult,
+  TransportUnavailabilityReason,
   TransportUnit,
 } from "../analysis/transportTimes";
 
@@ -146,6 +147,21 @@ export function formatTransportTime(value: number): string {
 
 export function formatTransportPercent(value: number): string {
   return Number(value.toPrecision(4)).toString();
+}
+
+export function transportUnavailabilityReasonText(
+  reason: TransportUnavailabilityReason,
+  t: TransportTranslator,
+): string {
+  switch (reason) {
+    case "numerical-overflow": return t("rate.transport.reason.numericalOverflow");
+    case "numerical-underflow": return t("rate.transport.reason.numericalUnderflow");
+    case "no-available-terms": return t("rate.transport.reason.noAvailableTerms");
+    case "unavailable-terms": return t("rate.transport.reason.unavailableTerms");
+    case "missing-inputs": return t("rate.transport.reason.missingInputs");
+    case "invalid-inputs": return t("rate.transport.reason.invalidInputs");
+    case "missing-and-invalid-inputs": return t("rate.transport.reason.missingAndInvalidInputs");
+  }
 }
 
 function parseOptionalNumber(text: string): number | undefined {

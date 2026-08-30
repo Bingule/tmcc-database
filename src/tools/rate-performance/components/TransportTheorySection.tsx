@@ -25,6 +25,7 @@ function theoryContent(t: TransportTranslator): RateTheoryContent {
     equationDescription: t("rate.transport.theoryEquationDescription"),
     parameters: [
       { symbol: "τ", name: t("rate.transport.fittedTau"), meaning: t("rate.analysis.tauMeaning"), unit: t("rate.transport.theoryTauUnit"), type: "user-input" },
+      { symbol: "τ_Eq.6a", name: t("rate.transport.calculatedTotal"), meaning: t("rate.transport.theoryEquationDescription"), unit: "s", type: "derived" },
       ...FIELD_DEFINITIONS.map((definition) => ({
         symbol: definition.symbol,
         name: t(definition.label),

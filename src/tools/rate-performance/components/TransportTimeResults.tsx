@@ -1,11 +1,11 @@
 import { useI18n } from "../../../i18n/I18nProvider";
 import {
   calculateUnresolvedTime,
+  type TransportAggregate,
   type TransportInputKey,
   type TransportInvalidInput,
   type TransportInvalidReason,
   type TransportTerm,
-  type TransportUnavailabilityReason,
 } from "../analysis/transportTimes";
 import { ResultCards, type RateResultCardItem } from "./ResultCards";
 import {
@@ -13,6 +13,7 @@ import {
   formatTransportPercent,
   formatTransportTime,
   TERM_LABELS,
+  transportUnavailabilityReasonText,
   type CompletedTransportAnalysis,
   type TransportTranslator,
   type TransportWorkspaceMode,
@@ -54,7 +55,7 @@ export function TransportTimeResults({
     <section className="tool-section rate-transport-unresolved">
       <h2>{t("rate.transport.unresolvedTitle")}</h2>
       {unresolved.status === "unavailable"
-        ? <p>{t("rate.transport.unresolvedUnavailable")}</p>
+        ? <p>{t("rate.transport.unavailableGeneric")} — {transportUnavailabilityReasonText(unresolved.unavailabilityReason, t)}</p>
         : <>
           <ResultCards kind={analysis.origin} items={[{
             id: "difference",
@@ -114,7 +115,7 @@ function TransportTermRow({ term, analysis }: { term: Readonly<TransportTerm>; a
       term.missingInputs.length > 0 ? t("rate.transport.missingDetail", { inputs: missing }) : undefined,
       term.invalidInputs.length > 0 ? t("rate.transport.invalidDetail", { inputs: invalid }) : undefined,
       term.missingInputs.length === 0 && term.invalidInputs.length === 0
-        ? unavailabilityReasonText(term.unavailabilityReason, t)
+        ? transportUnavailabilityReasonText(term.unavailabilityReason, t)
         : undefined,
     ].filter((part): part is string => Boolean(part)).join("; ");
   const provenance = term.id === "kinetic"
@@ -136,9 +137,9 @@ function AggregateSummary({ analysis }: { analysis: Readonly<CompletedTransportA
     : transport.aggregates.availablePartialSum;
   const calculatedProvenance = transport.complete
     ? t("rate.transport.provenance.total")
-    : t("rate.transport.provenance.partial", {
+    : calculated.status === "available" ? t("rate.transport.provenance.partial", {
       terms: calculated.includedTermIds.map((id) => transport.terms.find((term) => term.id === id)?.equationTerm).join(", "),
-    });
+    }) : "";
   const items = [
     aggregateCard("electrical", t("rate.transport.electricalAggregate"), transport.aggregates.electrical, t("rate.transport.provenance.electrical"), t),
     aggregateCard("diffusive", t("rate.transport.diffusiveAggregate"), transport.aggregates.diffusive, t("rate.transport.provenance.diffusive"), t),
@@ -151,12 +152,13 @@ function CharacteristicSummary({ analysis }: { analysis: Readonly<CompletedTrans
   const { t } = useI18n();
   const kinetic = analysis.transport.terms.find(({ id }) => id === "kinetic");
   const comparison = calculateUnresolvedTime(analysis.fittedTau, []);
-  const comparisonAvailable = comparison.status === "available";
+  const comparisonTotal = comparison.fittedTotal;
+  const comparisonAvailable = comparisonTotal !== undefined;
   const inputProvenance = t(analysis.origin === "example"
     ? "rate.transport.provenance.example"
     : "rate.transport.provenance.user");
   const items: ReadonlyArray<Readonly<RateResultCardItem>> = [
-    { id: "comparison-total", label: t("rate.transport.fittedTau"), value: comparisonAvailable ? formatTransportTime(comparison.fittedTotal) : t("rate.analysis.notEstimable"), unit: comparisonAvailable ? "s" : undefined, type: analysis.fittedTau?.type ?? "user-input", detail: inputProvenance },
+    { id: "comparison-total", label: t("rate.transport.fittedTau"), value: comparisonAvailable ? formatTransportTime(comparisonTotal) : t("rate.analysis.notEstimable"), unit: comparisonAvailable ? "s" : undefined, type: analysis.fittedTau?.type ?? "user-input", detail: inputProvenance },
     aggregateCard("electrical", t("rate.transport.electricalAggregate"), analysis.transport.aggregates.electrical, t("rate.transport.provenance.electrical"), t),
     aggregateCard("diffusive", t("rate.transport.diffusiveAggregate"), analysis.transport.aggregates.diffusive, t("rate.transport.provenance.diffusive"), t),
     { id: "kinetic", label: "t_c", value: kinetic?.status === "available" ? formatTransportTime(kinetic.value) : t("rate.analysis.notEstimable"), unit: kinetic?.status === "available" ? "s" : undefined, type: kinetic?.type ?? "user-input", detail: kinetic?.status === "available" ? inputProvenance : undefined },
@@ -165,8 +167,27 @@ function CharacteristicSummary({ analysis }: { analysis: Readonly<CompletedTrans
   return <section className="tool-section"><h2>{t("rate.characteristicTime.title")}</h2><ResultCards kind={analysis.origin} items={items} /></section>;
 }
 
-function aggregateCard(id: string, label: string, aggregate: Readonly<{ status: "available" | "unavailable"; value?: number }>, provenance: string, t: TransportTranslator): RateResultCardItem {
-  return { id, label, value: aggregate.status === "available" && aggregate.value !== undefined ? formatTransportTime(aggregate.value) : t("rate.analysis.notEstimable"), unit: aggregate.status === "available" ? "s" : undefined, type: "derived", detail: provenance };
+function aggregateCard(
+  id: string,
+  label: string,
+  aggregate: Readonly<TransportAggregate>,
+  provenance: string,
+  t: TransportTranslator,
+): RateResultCardItem {
+  const detail = [
+    provenance,
+    aggregate.status === "unavailable"
+      ? transportUnavailabilityReasonText(aggregate.unavailabilityReason, t)
+      : undefined,
+  ].filter((part): part is string => Boolean(part)).join(" · ");
+  return {
+    id,
+    label,
+    value: aggregate.status === "available" ? formatTransportTime(aggregate.value) : t("rate.analysis.notEstimable"),
+    unit: aggregate.status === "available" ? "s" : undefined,
+    type: "derived",
+    detail,
+  };
 }
 
 function formatInvalidInputs(
@@ -184,17 +205,5 @@ function invalidReasonText(reason: TransportInvalidReason, t: TransportTranslato
     case "missing-provenance": return t("rate.transport.reason.missingProvenance");
     case "numerical-overflow": return t("rate.transport.reason.numericalOverflow");
     case "numerical-underflow": return t("rate.transport.reason.numericalUnderflow");
-  }
-}
-
-function unavailabilityReasonText(reason: TransportUnavailabilityReason, t: TransportTranslator): string {
-  switch (reason) {
-    case "numerical-overflow": return t("rate.transport.reason.numericalOverflow");
-    case "numerical-underflow": return t("rate.transport.reason.numericalUnderflow");
-    case "no-available-terms": return t("rate.transport.reason.noAvailableTerms");
-    case "unavailable-terms": return t("rate.transport.reason.unavailableTerms");
-    case "missing-inputs": return t("rate.transport.reason.missingInputs");
-    case "invalid-inputs": return t("rate.transport.reason.invalidInputs");
-    case "missing-and-invalid-inputs": return t("rate.transport.reason.missingAndInvalidInputs");
   }
 }
