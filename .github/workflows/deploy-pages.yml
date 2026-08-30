@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: ["main", "fix-dunn-literature-plot"]
+    branches: ["main"]
   workflow_dispatch:
 
 permissions:
