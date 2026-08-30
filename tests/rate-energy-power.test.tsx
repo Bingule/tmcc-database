@@ -9,6 +9,7 @@ import {
 } from "../src/tools/rate-performance/analysis/energyPower";
 import EnergyPowerPage from "../src/tools/rate-performance/pages/EnergyPowerPage";
 import { EnergyCurveFileImport } from "../src/tools/rate-performance/components/EnergyCurveFileImport";
+import { validateEnergyCurvePoints } from "../src/tools/rate-performance/utils/energyCurveValidation";
 import {
   serializeEnergyOriginalCsv,
   serializeEnergyResultsCsv,
@@ -84,15 +85,37 @@ describe("energy and power exports", () => {
     expect(results).toContain("average-voltage,active-material,Wh kg^-1,W kg^-1");
     expect(results).toContain("example,energy-power-example");
     expect(serializeRagoneCsv(toRagonePoints([result]), metadata)).toContain("sample_id,specific_energy_Wh_kg-1,specific_power_W_kg-1,normalization_basis,result_kind,example_id");
-    const curve = serializeEnergyCurveCsv([{ id: "+point", x: 0, voltage: 4, current: null }], {
+    const curve = serializeEnergyCurveCsv([{ id: "+point", x: 0, voltage: 4, current: null }, { id: "second", x: 1, voltage: 3, current: null }], {
       sampleId: "curve-1", sampleName: "Electrode A", mode: "capacity", xUnit: "mAh-g-1",
       currentUnit: null, currentSign: "positive", basis: "electrode", massG: 2,
-      volumeCm3: 0.5, dischargeTimeHours: 1, integrationMethod: "trapezoidal-v-dq",
+      volumeCm3: 0.5, dischargeTimeHours: 1, integrationMethod: "trapezoidal-v-dq", integrationSucceeded: true,
+      source: { kind: "upload", fileName: "=curve.csv", sheetName: "Sheet 2", headerMode: "header", hasHeader: true, mapping: { x: { index: 1, name: "capacity" }, voltage: { index: 0, name: "voltage" }, current: null }, rawRows: [{ rowNumber: 2, cells: [4, 0, "unmapped"] }, { rowNumber: 3, cells: [3, 1, "kept"] }] },
     }, metadata);
     expect(curve).toContain("sample_id,sample_name,point_id,axis_value,axis_type,axis_unit,voltage_V,current_original,current_unit,current_sign");
     expect(curve).toContain("curve-1,Electrode A,'+point,0,capacity,mAh-g-1,4,,");
     expect(curve).toContain("electrode,2,0.5,1,trapezoidal-v-dq,full-curve,valid,true");
+    expect(curve).toContain("upload,'=curve.csv,Sheet 2,header,true,2,1,capacity,0,voltage");
+    expect(curve).toContain('"[4,0,""unmapped""]"');
     expect(serializeEnergyResultsCsv([result], metadata)).toContain("point_count");
+  });
+});
+
+describe("curve validation shared by analysis and export", () => {
+  it("separates parse-valid, scientific-valid and included points for invalid values and axis order", () => {
+    const validation = validateEnergyCurvePoints([
+      { id: "a", x: 0, voltage: 4, current: null }, { id: "b", x: 1, voltage: -1, current: null },
+      { id: "c", x: 0, voltage: 3, current: null }, { id: "d", x: null, voltage: null, current: null },
+    ], "capacity", "positive");
+    expect(validation.counts).toEqual({ parseValid: 3, scientificallyValid: 1, included: 0 });
+    expect(validation.canIntegrate).toBe(false);
+    expect(validation.points.map((point) => point.reason)).toEqual(["dataset-validation-failed", "negative-voltage", "duplicate-axis", "blank-row"]);
+  });
+
+  it("accepts negative recorded discharge current only under the selected negative sign convention", () => {
+    const points = [{ id: "a", x: 0, voltage: 4, current: -2 }, { id: "b", x: 1, voltage: 3, current: -2 }];
+    expect(validateEnergyCurvePoints(points, "time", "positive").canIntegrate).toBe(false);
+    const negative = validateEnergyCurvePoints(points, "time", "negative");
+    expect(negative.canIntegrate).toBe(true); expect(negative.counts.included).toBe(2);
   });
 });
 
@@ -149,7 +172,7 @@ describe("EnergyPowerPage", () => {
     const fileInput = view.querySelector<HTMLInputElement>('input[type="file"]')!;
     Object.defineProperty(fileInput, "files", { configurable: true, value: [new File(["capacity,voltage\n0,4\n100,3\n200,bad"], "curve.csv")] });
     await act(async () => { fileInput.dispatchEvent(new Event("change", { bubbles: true })); await new Promise((resolve) => setTimeout(resolve, 20)); });
-    expect(view.textContent).toContain("Detected columns"); expect(view.textContent).toContain("Rows3"); expect(view.textContent).toContain("Valid points2"); expect(view.textContent).toContain("Invalid points1");
+    expect(view.textContent).toContain("Detected columns"); expect(view.textContent).toContain("Rows3"); expect(view.textContent).toContain("Parse-valid points2"); expect(view.textContent).toContain("Scientifically valid points2"); expect(view.textContent).toContain("Eligible for integration0"); expect(view.textContent).toContain("Invalid points1");
   });
 
   it("does not silently discard an invalid first data row as a header", async () => {
@@ -184,8 +207,8 @@ describe("EnergyPowerPage", () => {
     const parseFile = vi.fn().mockResolvedValueOnce([
       { name: "First", rows: [["voltage", "capacity"], [4, 0], [3, 100], [null, 200]] },
       { name: "Second", rows: [["capacity", "voltage"], [0, 4], [50, 3.5]] },
-    ]); const onPoints = vi.fn();
-    await act(async () => root.render(<I18nProvider><EnergyCurveFileImport sampleId="curve-a" mode="capacity" parseFile={parseFile} onPoints={onPoints} /></I18nProvider>));
+    ]); const onImport = vi.fn();
+    await act(async () => root.render(<I18nProvider><EnergyCurveFileImport sampleId="curve-a" mode="capacity" currentSign="positive" parseFile={parseFile} onImport={onImport} /></I18nProvider>));
     const fileInput = view.querySelector<HTMLInputElement>('input[type="file"]')!;
     Object.defineProperty(fileInput, "files", { configurable: true, value: [fake] });
     await act(async () => { fileInput.dispatchEvent(new Event("change", { bubbles: true })); await new Promise((resolve) => setTimeout(resolve, 20)); });
@@ -195,18 +218,30 @@ describe("EnergyPowerPage", () => {
     await change(sheet, "1"); expect(view.textContent).toContain("Second"); expect(view.textContent).toContain("Rows2");
   });
 
+  it("requires distinct mapped columns and clears integration points for a duplicate mapping", async () => {
+    const view = document.createElement("div"); document.body.appendChild(view); const root = createRoot(view); roots.push(root); const onImport = vi.fn();
+    const parseFile = vi.fn().mockResolvedValue([{ name: "Only", rows: [["capacity", "voltage"], [0, 4], [1, 3]] }]);
+    await act(async () => root.render(<I18nProvider><EnergyCurveFileImport sampleId="mapping" mode="capacity" currentSign="positive" parseFile={parseFile} onImport={onImport} /></I18nProvider>));
+    const input = view.querySelector<HTMLInputElement>('input[type="file"]')!; Object.defineProperty(input, "files", { configurable: true, value: [new File(["x"], "map.csv")] });
+    await act(async () => { input.dispatchEvent(new Event("change", { bubbles: true })); await Promise.resolve(); await Promise.resolve(); });
+    const selects = view.querySelectorAll<HTMLSelectElement>('.rate-column-mapping select');
+    await change(selects[1], selects[0].value);
+    expect(view.querySelector('[role="alert"]')?.textContent).toContain("different columns");
+    expect(onImport).toHaveBeenLastCalledWith(expect.objectContaining({ points: [] }));
+  });
+
   it("uses the latest callback and invalidates an older parse when curve mode changes", async () => {
     let resolve!: (sheets: Array<{ name: string; rows: Array<Array<string | number>> }>) => void;
     const parseFile = vi.fn(() => new Promise<Array<{ name: string; rows: Array<Array<string | number>> }>>((next) => { resolve = next; }));
     const first = vi.fn(); const latest = vi.fn(); const view = document.createElement("div"); document.body.appendChild(view); const root = createRoot(view); roots.push(root);
-    await act(async () => root.render(<I18nProvider><EnergyCurveFileImport sampleId="race" mode="capacity" parseFile={parseFile} onPoints={first} /></I18nProvider>)); first.mockClear();
+    await act(async () => root.render(<I18nProvider><EnergyCurveFileImport sampleId="race" mode="capacity" currentSign="positive" parseFile={parseFile} onImport={first} /></I18nProvider>)); first.mockClear();
     const fileInput = view.querySelector<HTMLInputElement>('input[type="file"]')!; Object.defineProperty(fileInput, "files", { configurable: true, value: [new File(["x"], "slow.csv")] });
     await act(async () => { fileInput.dispatchEvent(new Event("change", { bubbles: true })); await Promise.resolve(); });
-    await act(async () => root.render(<I18nProvider><EnergyCurveFileImport sampleId="race" mode="time" parseFile={parseFile} onPoints={latest} /></I18nProvider>));
+    await act(async () => root.render(<I18nProvider><EnergyCurveFileImport sampleId="race" mode="time" currentSign="positive" parseFile={parseFile} onImport={latest} /></I18nProvider>));
     resolve([{ name: "late", rows: [["capacity", "voltage"], [0, 4], [1, 3]] }]);
     await act(async () => { await Promise.resolve(); await Promise.resolve(); });
-    expect(latest).toHaveBeenCalledWith([]); expect(latest).not.toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ x: 0 })]));
-    expect(first).not.toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ x: 0 })]));
+    expect(latest).toHaveBeenCalledWith(null); expect(latest).not.toHaveBeenCalledWith(expect.objectContaining({ points: expect.arrayContaining([expect.objectContaining({ x: 0 })]) }));
+    expect(first).not.toHaveBeenCalledWith(expect.objectContaining({ points: expect.arrayContaining([expect.objectContaining({ x: 0 })]) }));
   });
 
   it("renders the workflow in Chinese without leaking keys", async () => {

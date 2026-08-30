@@ -4,6 +4,8 @@ import type {
   RagonePoint,
   SummaryEnergyPowerInput,
 } from "../analysis/energyPower";
+import type { EnergyCurveSource } from "../components/EnergyCurveInput";
+import { validateEnergyCurvePoints } from "./energyCurveValidation";
 
 export interface EnergyExportMetadata {
   readonly resultKind: "example" | "user";
@@ -71,13 +73,17 @@ export interface EnergyCurveExportContext {
   readonly xUnit: string; readonly currentUnit: string | null; readonly currentSign: "positive" | "negative";
   readonly basis: string; readonly massG: number | null; readonly volumeCm3: number | null;
   readonly dischargeTimeHours: number | null; readonly integrationMethod: "trapezoidal-v-dq" | "trapezoidal-v-i-dt";
+  readonly integrationSucceeded: boolean; readonly source: EnergyCurveSource;
 }
 
 const curveHeaders = [
   "sample_id", "sample_name", "point_id", "axis_value", "axis_type", "axis_unit", "voltage_V",
   "current_original", "current_unit", "current_sign", "normalization_basis", "mass_g", "volume_cm3",
   "discharge_time_h", "integration_method", "selected_interval", "validation_status",
-  "included_in_integration", "exclusion_reason", "result_kind", "example_id",
+  "included_in_integration", "exclusion_reason", "source_kind", "file_name", "sheet_name",
+  "header_mode", "has_header", "source_row_number", "mapped_axis_index", "mapped_axis_name",
+  "mapped_voltage_index", "mapped_voltage_name", "mapped_current_index", "mapped_current_name",
+  "raw_row_json", "result_kind", "example_id",
 ];
 
 export function serializeEnergyCurveCsv(
@@ -96,16 +102,22 @@ export function serializeEnergyCurvesCsv(
 }
 
 function curveRows(points: ReadonlyArray<Readonly<EnergyCurveExportPoint>>, context: Readonly<EnergyCurveExportContext>, metadata: Readonly<EnergyExportMetadata>) {
-  return points.map((point) => {
-    const blank = point.x === null && point.voltage === null && (context.mode === "capacity" || point.current == null);
-    const valid = Number.isFinite(point.x) && Number.isFinite(point.voltage)
-      && (context.mode === "capacity" || Number.isFinite(point.current));
-    const status = blank ? "unused" : valid ? "valid" : "invalid";
+  const validation = validateEnergyCurvePoints(points, context.mode, context.currentSign);
+  return points.map((point, index) => {
+    const pointValidation = validation.points[index];
+    const included = context.integrationSucceeded && pointValidation.included;
+    const upload = context.source.kind === "upload" ? context.source : null;
+    const raw = upload?.rawRows[index] ?? { rowNumber: index + 1, cells: context.mode === "time" ? [point.x, point.voltage, point.current ?? null] : [point.x, point.voltage] };
     return [
       context.sampleId, context.sampleName, point.id, point.x, context.mode, context.xUnit, point.voltage,
       point.current ?? null, context.currentUnit, context.currentSign, context.basis, context.massG,
-      context.volumeCm3, context.dischargeTimeHours, context.integrationMethod, "full-curve", status,
-      valid ? "true" : "false", valid ? null : blank ? "blank-row" : "invalid-or-missing-value",
+      context.volumeCm3, context.dischargeTimeHours, context.integrationMethod, "full-curve",
+      pointValidation.parseValid ? pointValidation.scientificallyValid ? "valid" : "scientifically-invalid" : pointValidation.reason === "blank-row" ? "unused" : "parse-invalid",
+      included ? "true" : "false", included ? null : pointValidation.reason ?? "integration-failed",
+      context.source.kind, upload?.fileName ?? null, upload?.sheetName ?? null, upload?.headerMode ?? null,
+      upload ? String(upload.hasHeader) : null, raw.rowNumber, upload?.mapping.x?.index ?? null,
+      upload?.mapping.x?.name ?? null, upload?.mapping.voltage?.index ?? null, upload?.mapping.voltage?.name ?? null,
+      upload?.mapping.current?.index ?? null, upload?.mapping.current?.name ?? null, JSON.stringify(raw.cells),
       metadata.resultKind, metadata.exampleId,
     ];
   });

@@ -21,6 +21,7 @@ import {
   serializeEnergyResultsCsv,
   serializeRagoneCsv,
 } from "../utils/energyExports";
+import { validateEnergyCurvePoints } from "../utils/energyCurveValidation";
 
 export default function EnergyPowerPage() {
   const { t } = useI18n();
@@ -53,7 +54,7 @@ export default function EnergyPowerPage() {
     ? serializeEnergyOriginalCsv(samples.map(toSummaryInput), metadata)
     : serializeEnergyCurvesCsv(curves.map((curve, index) => ({
       points: curve.points.map((point) => ({ id: point.id, x: point.x, voltage: point.voltage, current: point.current })),
-      context: curveExportContext(curve, curveDisplayName(curve, index)),
+      context: curveExportContext(curve, curveDisplayName(curve, index), results?.[index]?.status === "success"),
     })), metadata);
 
   return <section className="tools-page energy-power-page">
@@ -72,11 +73,19 @@ export default function EnergyPowerPage() {
 
 function integrateCurve(curve: Readonly<EnergyCurveDraft>, sampleId: string): EnergyPowerResult {
   const active = curve.points.filter((point) => point.x !== null || point.voltage !== null || point.current !== null);
+  const validation = validateEnergyCurvePoints(curve.points, curve.mode, curve.currentSign);
+  if (!validation.canIntegrate) {
+    const invalid = validation.points.filter((point) => point.reason !== "blank-row" && point.reason !== "dataset-validation-failed");
+    const code = active.length < 2 ? "insufficient-points"
+      : invalid.some((point) => point.reason === "duplicate-axis") ? "duplicate-axis"
+        : invalid.some((point) => point.reason === "non-monotonic-axis") ? "non-monotonic-axis" : "invalid-input";
+    return { status: "failure", code, pointIds: invalid.map((point) => point.id) };
+  }
   if (curve.mode === "capacity") return integrateDischargeCurve(active.map((point) => ({ id: point.id, capacity: point.x ?? Number.NaN, voltage: point.voltage ?? Number.NaN })), { mode: "capacity", capacityUnit: curve.xUnit as "mAh-g-1" | "Ah-kg-1" | "mAh", normalizationBasis: curve.basis, sampleId, massG: curve.massG ?? undefined, volumeCm3: curve.volumeCm3 ?? undefined, dischargeTimeHours: curve.dischargeTimeHours ?? undefined });
   const sign = curve.currentSign === "negative" ? -1 : 1;
   return integrateDischargeCurve(active.map((point) => ({ id: point.id, time: point.x ?? Number.NaN, voltage: point.voltage ?? Number.NaN, current: (point.current ?? Number.NaN) * sign })), { mode: "time", timeUnit: curve.xUnit as "s" | "min" | "h", currentUnit: curve.currentUnit, normalizationBasis: curve.basis, sampleId, massG: curve.massG ?? undefined, volumeCm3: curve.volumeCm3 ?? undefined });
 }
-function curveExportContext(curve: Readonly<EnergyCurveDraft>, sampleName: string) { return { sampleId: curve.id, sampleName, mode: curve.mode, xUnit: curve.xUnit, currentUnit: curve.mode === "time" ? curve.currentUnit : null, currentSign: curve.currentSign, basis: curve.basis, massG: curve.massG, volumeCm3: curve.volumeCm3, dischargeTimeHours: curve.dischargeTimeHours, integrationMethod: curve.mode === "capacity" ? "trapezoidal-v-dq" as const : "trapezoidal-v-i-dt" as const }; }
+function curveExportContext(curve: Readonly<EnergyCurveDraft>, sampleName: string, integrationSucceeded: boolean) { return { sampleId: curve.id, sampleName, mode: curve.mode, xUnit: curve.xUnit, currentUnit: curve.mode === "time" ? curve.currentUnit : null, currentSign: curve.currentSign, basis: curve.basis, massG: curve.massG, volumeCm3: curve.volumeCm3, dischargeTimeHours: curve.dischargeTimeHours, integrationMethod: curve.mode === "capacity" ? "trapezoidal-v-dq" as const : "trapezoidal-v-i-dt" as const, integrationSucceeded, source: curve.source }; }
 
 function EnergyEmptyState({ onLoadExample }: { onLoadExample: () => void }) {
   const { t } = useI18n();
