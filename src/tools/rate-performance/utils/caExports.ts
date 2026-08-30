@@ -74,11 +74,12 @@ export function serializeCaReconstructedCsv(
 
 export function serializeCaRateCsv(
   result: Readonly<CaReconstructionSuccess>,
+  fit: Extract<RateFitResult, { status: "converged" }> | null,
   metadata: Readonly<CaExportMetadata>,
 ): string {
   const reconstructedById = new Map(result.points.map((point) => [point.id, point]));
   return rowsToCsv(
-    ["point_id", "rate_h-1", "capacity_mAh_g-1", "included_in_fit", "fit_exclusion_reason", ...sourceHeaders, ...processingHeaders, ...provenanceHeaders],
+    ["point_id", "rate_h-1", "capacity_mAh_g-1", "included_in_fit", "fit_exclusion_reason", "model_id", "fit_status", "used_point_count", ...sourceHeaders, ...processingHeaders, ...provenanceHeaders],
     result.reconstructedRatePoints.map((point) => {
       const reconstructed = reconstructedById.get(point.id);
       return [
@@ -87,6 +88,9 @@ export function serializeCaRateCsv(
       point.capacity,
       reconstructed?.includedInFit ? "true" : "false",
       reconstructed?.fitExclusionReason ?? null,
+      fit?.modelId ?? null,
+      fit?.status ?? "not-run",
+      fit?.usedPointCount ?? 0,
       ...sourceRow(reconstructed?.source),
       ...processingRow(result),
       metadata.resultKind,
@@ -115,8 +119,8 @@ export function serializeCaFitCurveCsv(
   metadata: Readonly<CaExportMetadata>,
 ): string {
   return rowsToCsv(
-    ["effective_rate_h-1", "fitted_capacity_mAh_g-1", "model_id", "fit_status", "used_point_count", ...processingHeaders, ...provenanceHeaders],
-    curve.map((point) => [point.x, point.y, fit.modelId, fit.status, fit.usedPointCount, ...processingRow(reconstruction), metadata.resultKind, metadata.exampleId]),
+    ["effective_rate_h-1", "fitted_capacity_mAh_g-1", "model_id", "fit_status", "used_point_count", ...sourceHeaders, "dataset_id", ...processingHeaders, ...provenanceHeaders],
+    curve.map((point) => [point.x, point.y, fit.modelId, fit.status, fit.usedPointCount, ...datasetSourceRow(reconstruction, metadata), ...processingRow(reconstruction), metadata.resultKind, metadata.exampleId]),
   );
 }
 
@@ -128,21 +132,23 @@ export function serializeCaFitParametersCsv(
   const rows = (["qM", "tau", "n"] as const).map((parameter) => [
     parameter, fit.parameters[parameter], parameter === "qM" ? "mAh g^-1" : parameter === "tau" ? "h" : "dimensionless",
     "fitted", fit.statistics.rmse, fit.statistics.rSquared, fit.status, fit.iterations,
-    fit.modelId, fit.usedPointCount, ...processingRow(reconstruction), metadata.resultKind, metadata.exampleId,
+    fit.modelId, fit.usedPointCount, ...datasetSourceRow(reconstruction, metadata), ...processingRow(reconstruction), metadata.resultKind, metadata.exampleId,
   ]);
   return rowsToCsv(
-    ["parameter", "value", "unit", "parameter_type", "rmse", "r_squared", "convergence_status", "iterations", "model_id", "used_point_count", ...processingHeaders, ...provenanceHeaders],
+    ["parameter", "value", "unit", "parameter_type", "rmse", "r_squared", "convergence_status", "iterations", "model_id", "used_point_count", ...sourceHeaders, "dataset_id", ...processingHeaders, ...provenanceHeaders],
     rows,
   );
 }
 
-export function serializeCaFailureCsv(failure: Readonly<CaReconstructionFailure>, points: ReadonlyArray<Readonly<CaPoint>>, options: Readonly<CaReconstructionOptions>, metadata: Readonly<CaExportMetadata>) {
+export function serializeCaFailureCsv(failure: Readonly<CaReconstructionFailure>, points: ReadonlyArray<Readonly<Pick<CaPoint, "id" | "source"> & { time: number | null; current: number | null }>>, options: Readonly<CaReconstructionOptions>, metadata: Readonly<CaExportMetadata>) {
   const byId = new Map(points.map((point) => [point.id, point]));
-  return rowsToCsv(["failure_code", "conflict_point_id", "time_original", "current_original", ...sourceHeaders, ...processingHeaders, ...provenanceHeaders], failure.pointIds.map((id) => {
-    const point = byId.get(id); return [failure.code, id, point?.time ?? null, point?.current ?? null, ...sourceRow(point?.source), ...optionProcessingRow(options), metadata.resultKind, metadata.exampleId];
+  const ids: Array<string | null> = failure.pointIds.length ? [...failure.pointIds] : [null];
+  return rowsToCsv(["failure_code", "conflict_point_id", "time_original", "current_original", ...sourceHeaders, ...processingHeaders, ...provenanceHeaders], ids.map((id) => {
+    const point = id === null ? undefined : byId.get(id); return [failure.code, id, point?.time ?? null, point?.current ?? null, ...sourceRow(point?.source), ...optionProcessingRow(options), metadata.resultKind, metadata.exampleId];
   }));
 }
 
 function sourceRow(source?: Readonly<CaPoint["source"]>) { return [source?.kind ?? "programmatic", source?.fileName ?? null, source?.sheetName ?? null, source?.headerMode ?? null, source?.hasHeader === undefined ? null : String(source.hasHeader), source?.fileRowNumber ?? null] as Array<string | number | null>; }
+function datasetSourceRow(result: Readonly<CaReconstructionSuccess>, metadata: Readonly<CaExportMetadata>) { return [...sourceRow(result.points[0]?.source), metadata.exampleId ?? "user-ca-dataset"] as Array<string | number | null>; }
 function processingRow(result: Readonly<CaReconstructionSuccess>) { const value = result.processing; return [value.activeMassG, value.timeUnit, value.currentUnit, value.sign, value.baseline.mode, value.baseline.mode === "constant" ? value.baseline.value : null, value.baselineOrder, value.integrationOrigin, value.integration, value.smoothing, value.effectiveRateDefinition, value.fitRange?.timeStart ?? null, value.fitRange?.timeEnd ?? null, value.fitRange?.minimumRateH1 ?? null, value.fitRange?.maximumRateH1 ?? null] as Array<string | number | null>; }
 function optionProcessingRow(value: Readonly<CaReconstructionOptions>) { return [value.activeMassG, value.timeUnit, value.currentUnit, value.sign, value.baseline.mode, value.baseline.mode === "constant" ? value.baseline.value : null, "after-sign-normalization", "physical-zero-time", "trapezoidal", "off", "specific-current-over-accumulated-specific-capacity", value.fitRange?.timeStart ?? null, value.fitRange?.timeEnd ?? null, value.fitRange?.minimumRateH1 ?? null, value.fitRange?.maximumRateH1 ?? null] as Array<string | number | null>; }

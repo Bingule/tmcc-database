@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Breadcrumbs } from "../../../components/Breadcrumbs";
 import { useI18n } from "../../../i18n/I18nProvider";
 import { fitRatePerformance, MAX_SYNC_RATE_FIT_POINTS, type RateFitResult } from "../analysis/fitRatePerformance";
-import { reconstructCaRate, type CaPoint, type CaReconstructionFailure, type CaReconstructionSuccess } from "../analysis/reconstructCaRate";
+import { reconstructCaRate, type CaReconstructionFailure, type CaReconstructionSuccess } from "../analysis/reconstructCaRate";
 import { CaAnalysisResults } from "../components/CaAnalysisResults";
 import { CaDataInput, completeCaPoints, createInitialCaPoints, validateCaDraftPoints, type CaDraftPoint, type CaInputMode } from "../components/CaDataInput";
 import { CaProcessingControls, DEFAULT_CA_PROCESSING, toCaOptions, type CaProcessingValue } from "../components/CaProcessingControls";
@@ -27,7 +27,7 @@ export default function CaRateAnalysisPage() {
   const [processing, setProcessing] = useState<CaProcessingValue>(DEFAULT_CA_PROCESSING);
   const [source, setSource] = useState<"example" | "user">("user");
   const [reconstruction, setReconstruction] = useState<CaReconstructionSuccess | null>(null);
-  const [fatalFailure, setFatalFailure] = useState<{ result: CaReconstructionFailure; points: CaPoint[] } | null>(null);
+  const [fatalFailure, setFatalFailure] = useState<{ result: CaReconstructionFailure; points: CaDraftPoint[] } | null>(null);
   const [fit, setFit] = useState<CompletedFit | null>(null);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
@@ -51,8 +51,8 @@ export default function CaRateAnalysisPage() {
     invalidate(); resetResults();
     const validation = validateCaDraftPoints(points);
     const input = validation.points;
-    if (validation.invalidPointIds.length) { setMessage(t("rate.ca.error.invalidRows", { rows: validation.invalidPointIds.join(", ") })); return; }
-    if (input.length < 2) { setMessage(t("rate.ca.error.insufficientInput")); return; }
+    if (validation.invalidPointIds.length) { setFatalFailure({ result: { status: "failure", code: "invalid-point", pointIds: validation.invalidPointIds }, points: [...points] }); setMessage(t("rate.ca.error.invalidRows", { rows: validation.invalidPointIds.join(", ") })); return; }
+    if (input.length < 2) { setFatalFailure({ result: { status: "failure", code: "insufficient-points", pointIds: input.map(({ id }) => id) }, points: [...points] }); setMessage(t("rate.ca.error.insufficientInput")); return; }
     const options = toCaOptions(processing);
     const rebuilt = reconstructCaRate(input, options);
     if (rebuilt.status === "failure") { setFatalFailure({ result: rebuilt, points: input }); setMessage(t(`rate.ca.error.${rebuilt.code}`)); return; }
@@ -108,7 +108,7 @@ function CaTheory() {
   const theory: RateTheoryContent = {
     title: t("rate.ca.theory.name"), equation: "Q(t) = (1/m) ∫₀ᵗ I_adj(t') dt';  R(t) = [I_adj(t)/m] / Q(t);  Q(R) = Q_M / [1 + 2(Rτ)^n]",
     equationDescription: t("rate.ca.theory.equationDescription"),
-    parameters: [{ symbol: "I_adj", name: t("rate.ca.chart.adjustedCurrent"), meaning: t("rate.ca.processing.help"), unit: "mA", type: "derived" }, { symbol: "m", name: t("rate.ca.theory.mass"), meaning: t("rate.ca.theory.massMeaning"), unit: "g", type: "user-input" }, { symbol: "R", name: t("rate.ca.theory.rate"), meaning: t("rate.ca.theory.rateMeaning"), unit: "h^-1", type: "derived" }, { symbol: "Q_M", name: t("rate.ca.theory.qM"), meaning: t("rate.ca.theory.qMMeaning"), unit: "mAh g^-1", type: "fitted" }, { symbol: "τ", name: t("rate.ca.theory.tau"), meaning: t("rate.ca.theory.tauMeaning"), unit: "h", type: "fitted" }, { symbol: "n", name: t("rate.ca.theory.n"), meaning: t("rate.ca.theory.nMeaning"), unit: "dimensionless", type: "fitted" }],
+    parameters: [{ symbol: "I_adj", name: t("rate.ca.chart.adjustedCurrent"), meaning: `${t("rate.ca.processing.sign")} → ${t("rate.ca.processing.baseline")} (${t("rate.ca.processing.baselineValue", { unit: "mA" })})`, unit: "mA", type: "derived" }, { symbol: "m", name: t("rate.ca.theory.mass"), meaning: t("rate.ca.theory.massMeaning"), unit: "g", type: "user-input" }, { symbol: "R", name: t("rate.ca.theory.rate"), meaning: t("rate.ca.theory.rateMeaning"), unit: "h^-1", type: "derived" }, { symbol: "Q_M", name: t("rate.ca.theory.qM"), meaning: t("rate.ca.theory.qMMeaning"), unit: "mAh g^-1", type: "fitted" }, { symbol: "τ", name: t("rate.ca.theory.tau"), meaning: t("rate.ca.theory.tauMeaning"), unit: "h", type: "fitted" }, { symbol: "n", name: t("rate.ca.theory.n"), meaning: t("rate.ca.theory.nMeaning"), unit: "dimensionless", type: "fitted" }],
     physicalMeaning: t("rate.ca.theory.physical"), limitingBehavior: t("rate.ca.theory.limits"), applicability: t("rate.ca.theory.applicability"), assumptions: [t("rate.ca.theory.assumption1"), t("rate.ca.theory.assumption2")], limitations: (getRateModel("rational-characteristic-time")?.limitations ?? []).map((value) => translatedRegistryText(value, t)), citationGuidance: t("rate.ca.theory.cite"),
   };
   const reference = getRateReference("tian-2020-chronoamperometry");

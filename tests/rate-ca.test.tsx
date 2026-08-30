@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "../src/i18n/I18nProvider";
 import type { RateFitResult } from "../src/tools/rate-performance/analysis/fitRatePerformance";
 import { reconstructCaRate } from "../src/tools/rate-performance/analysis/reconstructCaRate";
-import { serializeCaFailureCsv, serializeCaFitCurveCsv, serializeCaFitParametersCsv, serializeCaOriginalCsv, serializeCaReconstructedCsv } from "../src/tools/rate-performance/utils/caExports";
+import { serializeCaFailureCsv, serializeCaFitCurveCsv, serializeCaFitParametersCsv, serializeCaOriginalCsv, serializeCaRateCsv, serializeCaReconstructedCsv } from "../src/tools/rate-performance/utils/caExports";
 import CaRateAnalysisPage from "../src/tools/rate-performance/pages/CaRateAnalysisPage";
 import { CaFileImport } from "../src/tools/rate-performance/components/CaDataInput";
 
@@ -223,6 +223,9 @@ describe("CA rate reconstruction", () => {
     expect(curve).toContain("rational-characteristic-time,converged,4"); expect(curve).toContain(",example,ca-rate-example");
     expect(curve).toContain("active_mass_g"); expect(curve).toContain("physical-zero-time");
     expect(parameters).toContain("used_point_count"); expect(parameters).toContain(",4,");
+    expect(curve).toContain("source_file_name"); expect(parameters).toContain("dataset_id");
+    expect(serializeCaRateCsv(reconstruction, null, metadata)).toContain("not-run,0");
+    expect(serializeCaRateCsv(reconstruction, convergedResult as Extract<RateFitResult, { status: "converged" }>, metadata)).toContain("rational-characteristic-time,converged,4");
   });
 
   it("exports fatal reconstruction failures with conflicting source rows", () => {
@@ -231,6 +234,8 @@ describe("CA rate reconstruction", () => {
     const failure = reconstructCaRate(points, options); expect(failure.status).toBe("failure"); if (failure.status !== "failure") return;
     const csv = serializeCaFailureCsv(failure, points, options, { resultKind: "user", exampleId: null });
     expect(csv).toContain("duplicate-time"); expect(csv).toContain("x.csv,S,header,true,2"); expect(csv).toContain("x.csv,S,header,true,3");
+    const summary = serializeCaFailureCsv({ status: "failure", code: "insufficient-points", pointIds: [] }, [], options, { resultKind: "user", exampleId: null });
+    expect(summary.split("\r\n")).toHaveLength(2); expect(summary).toContain("insufficient-points"); expect(summary).toContain("physical-zero-time");
   });
 });
 
@@ -382,6 +387,7 @@ describe("CaRateAnalysisPage", () => {
     expect(fitRatePerformance).not.toHaveBeenCalled();
     expect(view.textContent).toContain("Complete or remove invalid rows");
     expect(view.textContent).toContain("ca-rate-example-2");
+    expect(button(view, "Export CA Error CSV")).toBeTruthy();
   });
 
   it("keeps processed charts and exports when reconstruction has zero fit points", async () => {

@@ -45,7 +45,7 @@ export function CaAnalysisResults({ input, options, reconstruction, fit, metadat
   ] : [];
   const exports: RateCsvExportItem[] = [
     { id: "original", label: t("rate.ca.export.original"), filename: "ca-original.csv", csv: () => serializeCaOriginalCsv(input, options, metadata) },
-    { id: "rate", label: t("rate.ca.export.rate"), filename: "ca-reconstructed-rate.csv", csv: () => serializeCaRateCsv(reconstruction, metadata) },
+    { id: "rate", label: t("rate.ca.export.rate"), filename: "ca-reconstructed-rate.csv", csv: () => serializeCaRateCsv(reconstruction, fit, metadata) },
     { id: "processed", label: t("rate.ca.export.processed"), filename: "ca-reconstructed-all.csv", csv: () => serializeCaReconstructedCsv(reconstruction, metadata) },
     ...(fit ? [
       { id: "curve", label: t("rate.ca.export.curve"), filename: "ca-fitted-curve.csv", csv: () => serializeCaFitCurveCsv(curve, reconstruction, fit, metadata) },
