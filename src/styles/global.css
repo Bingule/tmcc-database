@@ -2595,6 +2595,33 @@ td button {
   width: 100%;
 }
 
+.cv-peak-points-card {
+  min-width: 0;
+}
+
+.cv-peak-points-table {
+  width: max-content;
+  min-width: 100%;
+}
+
+.cv-peak-points-table th,
+.cv-peak-points-table td {
+  padding: 7px 8px;
+  white-space: nowrap;
+}
+
+.cv-peak-column-heading {
+  width: clamp(92px, 10vw, 132px);
+  max-width: 132px;
+  gap: 6px;
+}
+
+.cv-peak-column-heading span {
+  white-space: normal;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
 .cv-analysis-card {
   min-width: 0;
   padding: 14px;

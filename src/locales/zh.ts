@@ -427,6 +427,8 @@ export const zh = {
   "cv.peak.summary": "峰值汇总",
   "cv.peak.adjustments": "峰位点调整",
   "cv.peak.pointStatus": "点状态",
+  "cv.peak.logScanRate": "ln(扫描速率 / (mV·s⁻¹))",
+  "cv.peak.logCurrent": "ln(|电流| / 任意单位)",
   "cv.peak.status.auto": "自动识别",
   "cv.peak.status.confirmed": "已确认",
   "cv.peak.status.adjusted": "已调整",

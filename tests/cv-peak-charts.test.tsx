@@ -33,8 +33,12 @@ const panelCopy: CvPeakPanelCopy = {
   fitPoints: "Fit points",
   coverage: "Scan-rate coverage",
   fitStatus: "Fit status",
-  pointStatus: "Point status",
-  sourceIndex: "Original source index",
+  logScanRate: "ln(ν / (mV·s⁻¹))",
+  logCurrent: "ln(|i| / arb. units)",
+  copyAction: "Copy selected columns",
+  copyColumns: "Select column to copy",
+  copySuccess: "Copied selected columns.",
+  copyError: "Could not copy selected columns.",
   confirm: "Confirm point",
   exclude: "Exclude point",
   restore: "Restore automatic point",
@@ -52,12 +56,12 @@ const panelCopy: CvPeakPanelCopy = {
   complete: "Complete",
   partial: "Partial",
   unavailable: "—",
-  fitStatusLabel: (status) => status,
-  pointStatusLabel: (status) => status
+  fitStatusLabel: (status) => status
 };
 
 afterEach(() => {
   containers.splice(0).forEach((container) => container.remove());
+  vi.unstubAllGlobals();
 });
 
 afterAll(() => {
@@ -95,6 +99,67 @@ describe("peak b-value charts", () => {
     expect(container.querySelectorAll('[data-table-id="cv-peak-points"] tbody tr')).toHaveLength(15);
     expect(container.querySelector<HTMLSelectElement>('select[name="selectedPeakId"]')?.value).toBe("peak-1");
     expect(container.querySelector<HTMLSelectElement>('select[name="selectedPeakSeriesIndex"]')?.value).toBe("0");
+    await act(async () => root.unmount());
+  });
+
+  it("renders compact regression columns and copies only checked peak-point columns", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("navigator", { clipboard: { writeText } });
+    const series = makeThreePeakNcpLikeSeries();
+    const result = analyzePeakBValues(series, normalizeAlignedCvCycles(series), 0.95);
+    const container = document.createElement("div");
+    document.body.append(container);
+    containers.push(container);
+    const root = createRoot(container);
+
+    await act(async () => root.render(<CvPeakAnalysisPanel
+      series={series}
+      result={result}
+      selectedPeakId="peak-1"
+      selectedSeriesIndex={0}
+      onPeakChange={() => undefined}
+      onSeriesChange={() => undefined}
+      onPotentialSelect={() => undefined}
+      onAdjustPotential={() => undefined}
+      onConfirm={() => undefined}
+      onExclude={() => undefined}
+      onRestore={() => undefined}
+      onAddPeak={() => undefined}
+      onRemovePeak={() => undefined}
+      copy={panelCopy}
+    />));
+
+    const table = container.querySelector<HTMLTableElement>('[data-table-id="cv-peak-points"]')!;
+    const headers = Array.from(table.querySelectorAll("thead th")).map((cell) => cell.textContent?.trim());
+    expect(headers).toEqual([
+      panelCopy.peak,
+      panelCopy.scanRate,
+      panelCopy.potential,
+      panelCopy.current,
+      panelCopy.logScanRate,
+      panelCopy.logCurrent
+    ]);
+    expect(table.textContent).not.toContain("Original source index");
+    expect(table.textContent).not.toContain("Point status");
+    expect(table.querySelectorAll('thead input[type="checkbox"]')).toHaveLength(6);
+
+    const firstPoint = result.fits[0]!.points[0]!;
+    const firstRow = table.querySelector("tbody tr")!;
+    expect(firstRow.textContent).toContain(Number(Math.log(firstPoint.scanRate).toFixed(6)).toString());
+    expect(firstRow.textContent).toContain(Number(Math.log(Math.abs(firstPoint.candidate!.current)).toFixed(6)).toString());
+
+    const copyButton = container.querySelector<HTMLButtonElement>('[data-peak-copy-toolbar] button')!;
+    expect(copyButton.disabled).toBe(true);
+    await act(async () => table.querySelector<HTMLInputElement>('thead input[value="peak"]')!.click());
+    await act(async () => table.querySelector<HTMLInputElement>('thead input[value="logScanRate"]')!.click());
+    await act(async () => copyButton.click());
+
+    expect(writeText).toHaveBeenCalledTimes(1);
+    const copied = writeText.mock.calls[0]![0] as string;
+    expect(copied.split("\r\n")[0]).toBe(`${panelCopy.peak}\t${panelCopy.logScanRate}`);
+    expect(copied.split("\r\n")).toHaveLength(16);
+    expect(container.querySelector('[data-peak-copy-toolbar]')?.textContent).toContain(panelCopy.copySuccess);
+
     await act(async () => root.unmount());
   });
 

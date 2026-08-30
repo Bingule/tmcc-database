@@ -395,7 +395,8 @@ describe("CV kinetics page", () => {
 
     const after = view.querySelector<HTMLElement>(rowSelector)!;
     expect(after.dataset.sourceIndex).not.toBe(sourceBefore);
-    expect(after.textContent).toContain("Adjusted");
+    expect(after.dataset.pointStatus).toBe("adjusted");
+    expect(after.textContent).not.toContain("Adjusted");
     expect(view.querySelectorAll(".cv-preview tbody tr")).toHaveLength(importRowsBefore);
     expect(view.querySelectorAll('[data-table-id="cv-dunn-current-table"] tbody tr')).toHaveLength(dunnRowsBefore);
   });

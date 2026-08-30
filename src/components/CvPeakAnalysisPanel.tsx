@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { CvPeakOverviewChart } from "./CvPeakOverviewChart";
 import { CvPeakRegressionChart } from "./CvPeakRegressionChart";
-import type { CvPeakAnalysisResult, CvPeakFitStatus, CvPeakPointStatus, CvSeries } from "../lib/cvTypes";
+import type { CvPeakAnalysisResult, CvPeakFitStatus, CvSeries } from "../lib/cvTypes";
 
 export interface CvPeakPanelCopy {
   overview: string;
@@ -21,8 +22,12 @@ export interface CvPeakPanelCopy {
   fitPoints: string;
   coverage: string;
   fitStatus: string;
-  pointStatus: string;
-  sourceIndex: string;
+  logScanRate: string;
+  logCurrent: string;
+  copyAction: string;
+  copyColumns: string;
+  copySuccess: string;
+  copyError: string;
   confirm: string;
   exclude: string;
   restore: string;
@@ -41,7 +46,6 @@ export interface CvPeakPanelCopy {
   partial: string;
   unavailable: string;
   fitStatusLabel: (status: CvPeakFitStatus) => string;
-  pointStatusLabel: (status: CvPeakPointStatus) => string;
 }
 
 interface CvPeakAnalysisPanelProps {
@@ -83,6 +87,57 @@ export function CvPeakAnalysisPanel({
 }: CvPeakAnalysisPanelProps): React.ReactElement {
   const selectedFit = result.fits.find((fit) => fit.peakId === selectedPeakId) ?? result.fits[0] ?? null;
   const peakName = (index: number) => `${copy.peak} ${index}`;
+  const [selectedPointColumns, setSelectedPointColumns] = useState<Set<PeakPointColumnKey>>(() => new Set());
+  const [pointCopyStatus, setPointCopyStatus] = useState<"success" | "error" | null>(null);
+  const pointColumns: Array<{ key: PeakPointColumnKey; label: string }> = [
+    { key: "peak", label: copy.peak },
+    { key: "scanRate", label: copy.scanRate },
+    { key: "potential", label: copy.potential },
+    { key: "current", label: copy.current },
+    { key: "logScanRate", label: copy.logScanRate },
+    { key: "logCurrent", label: copy.logCurrent }
+  ];
+  const pointRows = result.fits.flatMap((fit) => fit.points.map((point) => {
+    const candidate = point.candidate;
+    return {
+      fit,
+      point,
+      candidate,
+      values: {
+        peak: peakName(fit.labelIndex),
+        scanRate: `${point.scanRate} mV/s`,
+        potential: format(candidate?.potential ?? null, 6, copy.unavailable),
+        current: format(candidate?.current ?? null, 6, copy.unavailable),
+        logScanRate: formatNaturalLog(point.scanRate, copy.unavailable),
+        logCurrent: formatNaturalLog(candidate ? Math.abs(candidate.current) : null, copy.unavailable)
+      }
+    };
+  }));
+
+  function togglePointColumn(key: PeakPointColumnKey) {
+    setSelectedPointColumns((current) => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+    setPointCopyStatus(null);
+  }
+
+  async function copySelectedPointColumns() {
+    const columns = pointColumns.filter((column) => selectedPointColumns.has(column.key));
+    if (columns.length === 0) return;
+    const text = [
+      columns.map((column) => column.label),
+      ...pointRows.map((row) => columns.map((column) => row.values[column.key]))
+    ].map((row) => row.join("\t")).join("\r\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      setPointCopyStatus("success");
+    } catch {
+      setPointCopyStatus("error");
+    }
+  }
 
   return <div data-panel-id="cv-peak-analysis" className="cv-b-vertical-stack">
     {!selectedFit && <p className="cv-analysis-notice" role="status">{copy.noPeaks}</p>}
@@ -183,23 +238,39 @@ export function CvPeakAnalysisPanel({
       </table>
     </article>
 
-    <article className="cv-analysis-card cv-table-scroll">
+    <article className="cv-analysis-card cv-peak-points-card">
       <h3>{copy.adjustments}</h3>
-      <table className="tool-result-table" data-table-id="cv-peak-points">
+      <div className="cv-table-copy-toolbar" data-peak-copy-toolbar>
+        <button type="button" disabled={selectedPointColumns.size === 0} onClick={copySelectedPointColumns}>{copy.copyAction}</button>
+        {pointCopyStatus && <p role="status" aria-live="polite">{pointCopyStatus === "success" ? copy.copySuccess : copy.copyError}</p>}
+      </div>
+      <div className="cv-table-scroll">
+      <table className="tool-result-table cv-peak-points-table" data-table-id="cv-peak-points">
         <thead><tr>
-          <th>{copy.peak}</th><th>{copy.scanRate}</th><th>{copy.potential}</th><th>{copy.current}</th><th>{copy.sourceIndex}</th><th>{copy.pointStatus}</th>
+          {pointColumns.map((column) => <th scope="col" key={column.key}>
+            <label className="cv-table-column-heading cv-peak-column-heading">
+              <span>{column.label}</span>
+              <input
+                type="checkbox"
+                value={column.key}
+                checked={selectedPointColumns.has(column.key)}
+                aria-label={`${copy.copyColumns}: ${column.label}`}
+                onChange={() => togglePointColumn(column.key)}
+              />
+            </label>
+          </th>)}
         </tr></thead>
-        <tbody>{result.fits.flatMap((fit) => fit.points.map((point) => {
-          const candidate = point.candidate;
+        <tbody>{pointRows.map(({ fit, point, candidate, values }) => {
           return <tr
             key={`${fit.peakId}-${point.seriesIndex}`}
             data-peak-id={fit.peakId}
             data-series-index={point.seriesIndex}
             data-source-index={candidate?.sourceIndex ?? ""}
             data-current={candidate?.current ?? ""}
+            data-point-status={point.status}
           >
-            <td>{peakName(fit.labelIndex)}</td>
-            <td>{point.scanRate} mV/s</td>
+            <td>{values.peak}</td>
+            <td>{values.scanRate}</td>
             <td>{candidate ? <input
               className="cv-peak-potential-input"
               type="number"
@@ -216,17 +287,26 @@ export function CvPeakAnalysisPanel({
               }}
               aria-label={`${peakName(fit.labelIndex)} ${point.scanRate} ${copy.potential}`}
             /> : copy.unavailable}</td>
-            <td>{format(candidate?.current ?? null, 6, copy.unavailable)}</td>
-            <td>{candidate?.sourceIndex ?? copy.unavailable}</td>
-            <td>{copy.pointStatusLabel(point.status)}</td>
+            <td>{values.current}</td>
+            <td>{values.logScanRate}</td>
+            <td>{values.logCurrent}</td>
           </tr>;
-        }))}</tbody>
+        })}</tbody>
       </table>
+      </div>
     </article>
     </>}
   </div>;
 }
 
+type PeakPointColumnKey = "peak" | "scanRate" | "potential" | "current" | "logScanRate" | "logCurrent";
+
 function format(value: number | null, decimals: number, unavailable: string) {
   return value === null || !Number.isFinite(value) ? unavailable : Number(value.toFixed(decimals)).toString();
+}
+
+function formatNaturalLog(value: number | null, unavailable: string) {
+  return value === null || !Number.isFinite(value) || value <= 0
+    ? unavailable
+    : format(Math.log(value), 6, unavailable);
 }

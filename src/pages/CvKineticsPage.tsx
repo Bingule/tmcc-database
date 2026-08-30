@@ -842,8 +842,12 @@ function makePeakPanelCopy(t: ReturnType<typeof useI18n>["t"]): CvPeakPanelCopy 
     fitPoints: t("cv.results.points"),
     coverage: t("cv.peak.coverage"),
     fitStatus: t("cv.results.fitStatus"),
-    pointStatus: t("cv.peak.pointStatus"),
-    sourceIndex: t("cv.peak.sourceIndex"),
+    logScanRate: t("cv.peak.logScanRate"),
+    logCurrent: t("cv.peak.logCurrent"),
+    copyAction: t("cv.table.copy.action"),
+    copyColumns: t("cv.table.copy.columns"),
+    copySuccess: t("cv.table.copy.success"),
+    copyError: t("cv.table.copy.error"),
     confirm: t("cv.peak.confirm"),
     exclude: t("cv.peak.exclude"),
     restore: t("cv.peak.restore"),
@@ -861,8 +865,7 @@ function makePeakPanelCopy(t: ReturnType<typeof useI18n>["t"]): CvPeakPanelCopy 
     complete: t("cv.peak.complete"),
     partial: t("cv.peak.partial"),
     unavailable: "—",
-    fitStatusLabel: (status) => peakFitStatusLabel(status, t),
-    pointStatusLabel: (status) => peakPointStatusLabel(status, t)
+    fitStatusLabel: (status) => peakFitStatusLabel(status, t)
   };
 }
 

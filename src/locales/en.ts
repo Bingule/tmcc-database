@@ -425,6 +425,8 @@ export const en = {
   "cv.peak.summary": "Peak summary",
   "cv.peak.adjustments": "Peak-point adjustments",
   "cv.peak.pointStatus": "Point status",
+  "cv.peak.logScanRate": "ln(ν / (mV·s⁻¹))",
+  "cv.peak.logCurrent": "ln(|i| / arb. units)",
   "cv.peak.status.auto": "Automatic",
   "cv.peak.status.confirmed": "Confirmed",
   "cv.peak.status.adjusted": "Adjusted",
