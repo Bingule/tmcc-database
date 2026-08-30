@@ -1,5 +1,6 @@
 import { useI18n } from "../../../i18n/I18nProvider";
 import type { RateFitResult } from "../analysis/fitRatePerformance";
+import type { CaFitAttempt } from "../analysis/caFitAttempt";
 import type { CaReconstructionSuccess } from "../analysis/reconstructCaRate";
 import type { CaReconstructionOptions } from "../analysis/reconstructCaRate";
 import type { CaDraftPoint } from "./CaDataInput";
@@ -14,11 +15,12 @@ import { ResultCards, type RateResultCardItem } from "./ResultCards";
 
 const MAX_DISPLAY_POINTS = 1200;
 
-export function CaAnalysisResults({ input, options, reconstruction, fit, metadata, onExportError }: {
+export function CaAnalysisResults({ input, options, reconstruction, fit, fitAttempt, metadata, onExportError }: {
   input: ReadonlyArray<Readonly<CaDraftPoint>>;
   options: Readonly<CaReconstructionOptions>;
   reconstruction: Readonly<CaReconstructionSuccess>;
   fit: Extract<RateFitResult, { status: "converged" }> | null;
+  fitAttempt: Readonly<CaFitAttempt>;
   metadata: Readonly<CaExportMetadata>;
   onExportError?: (error: unknown) => void;
 }) {
@@ -45,7 +47,7 @@ export function CaAnalysisResults({ input, options, reconstruction, fit, metadat
   ] : [];
   const exports: RateCsvExportItem[] = [
     { id: "original", label: t("rate.ca.export.original"), filename: "ca-original.csv", csv: () => serializeCaOriginalCsv(input, options, metadata) },
-    { id: "rate", label: t("rate.ca.export.rate"), filename: "ca-reconstructed-rate.csv", csv: () => serializeCaRateCsv(reconstruction, fit, metadata) },
+    { id: "rate", label: t("rate.ca.export.rate"), filename: "ca-reconstructed-rate.csv", csv: () => serializeCaRateCsv(reconstruction, fitAttempt, metadata) },
     { id: "processed", label: t("rate.ca.export.processed"), filename: "ca-reconstructed-all.csv", csv: () => serializeCaReconstructedCsv(reconstruction, metadata) },
     ...(fit ? [
       { id: "curve", label: t("rate.ca.export.curve"), filename: "ca-fitted-curve.csv", csv: () => serializeCaFitCurveCsv(curve, reconstruction, fit, metadata) },

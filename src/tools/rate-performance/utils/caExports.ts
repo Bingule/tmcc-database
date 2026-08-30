@@ -6,6 +6,7 @@ import type {
   CaReconstructionSuccess,
 } from "../analysis/reconstructCaRate";
 import type { RateFitResult } from "../analysis/fitRatePerformance";
+import type { CaFitAttempt } from "../analysis/caFitAttempt";
 import type { ChartPoint } from "../../../components/ScientificLineChart";
 
 export interface CaExportMetadata {
@@ -74,12 +75,12 @@ export function serializeCaReconstructedCsv(
 
 export function serializeCaRateCsv(
   result: Readonly<CaReconstructionSuccess>,
-  fit: Extract<RateFitResult, { status: "converged" }> | null,
+  fitAttempt: Readonly<CaFitAttempt>,
   metadata: Readonly<CaExportMetadata>,
 ): string {
   const reconstructedById = new Map(result.points.map((point) => [point.id, point]));
   return rowsToCsv(
-    ["point_id", "rate_h-1", "capacity_mAh_g-1", "included_in_fit", "fit_exclusion_reason", "model_id", "fit_status", "used_point_count", ...sourceHeaders, ...processingHeaders, ...provenanceHeaders],
+    ["point_id", "rate_h-1", "capacity_mAh_g-1", "included_in_fit", "fit_exclusion_reason", "model_id", "fit_status", "fit_failure_code", "attempted_point_count", "used_point_count", ...sourceHeaders, ...processingHeaders, ...provenanceHeaders],
     result.reconstructedRatePoints.map((point) => {
       const reconstructed = reconstructedById.get(point.id);
       return [
@@ -88,9 +89,11 @@ export function serializeCaRateCsv(
       point.capacity,
       reconstructed?.includedInFit ? "true" : "false",
       reconstructed?.fitExclusionReason ?? null,
-      fit?.modelId ?? null,
-      fit?.status ?? "not-run",
-      fit?.usedPointCount ?? 0,
+      fitAttempt.modelId,
+      fitAttempt.status,
+      fitAttempt.failureCode ?? null,
+      fitAttempt.attemptedPointCount,
+      fitAttempt.usedPointCount ?? 0,
       ...sourceRow(reconstructed?.source),
       ...processingRow(result),
       metadata.resultKind,

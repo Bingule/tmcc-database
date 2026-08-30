@@ -224,8 +224,19 @@ describe("CA rate reconstruction", () => {
     expect(curve).toContain("active_mass_g"); expect(curve).toContain("physical-zero-time");
     expect(parameters).toContain("used_point_count"); expect(parameters).toContain(",4,");
     expect(curve).toContain("source_file_name"); expect(parameters).toContain("dataset_id");
-    expect(serializeCaRateCsv(reconstruction, null, metadata)).toContain("not-run,0");
-    expect(serializeCaRateCsv(reconstruction, convergedResult as Extract<RateFitResult, { status: "converged" }>, metadata)).toContain("rational-characteristic-time,converged,4");
+    expect(serializeCaRateCsv(reconstruction, { modelId: "rational-characteristic-time", status: "not-run", attemptedPointCount: 0 }, metadata)).toContain("rational-characteristic-time,not-run,,0,0");
+    expect(serializeCaRateCsv(reconstruction, { modelId: "rational-characteristic-time", status: "converged", attemptedPointCount: 4, usedPointCount: 4 }, metadata)).toContain("rational-characteristic-time,converged,,4,4");
+  });
+
+  it("exports failed and cancelled optimizer attempt provenance", () => {
+    const reconstruction = reconstructCaRate([{ id: "a", time: 0, current: 4 }, { id: "b", time: 1, current: 3 }], { timeUnit: "h", currentUnit: "mA", activeMassG: 1, sign: "positive", baseline: { mode: "off" } });
+    expect(reconstruction.status).toBe("success"); if (reconstruction.status !== "success") return;
+    const metadata = { resultKind: "user" as const, exampleId: null };
+    const failed = serializeCaRateCsv(reconstruction, { modelId: "rational-characteristic-time", status: "failed", failureCode: "maximum-iterations", attemptedPointCount: 8 }, metadata);
+    const cancelled = serializeCaRateCsv(reconstruction, { modelId: "rational-characteristic-time", status: "cancelled", failureCode: "cancelled", attemptedPointCount: 8 }, metadata);
+    expect(failed).toContain("fit_failure_code,attempted_point_count,used_point_count");
+    expect(failed).toContain("rational-characteristic-time,failed,maximum-iterations,8,0");
+    expect(cancelled).toContain("rational-characteristic-time,cancelled,cancelled,8,0");
   });
 
   it("exports fatal reconstruction failures with conflicting source rows", () => {

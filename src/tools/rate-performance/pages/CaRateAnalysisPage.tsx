@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Breadcrumbs } from "../../../components/Breadcrumbs";
 import { useI18n } from "../../../i18n/I18nProvider";
 import { fitRatePerformance, MAX_SYNC_RATE_FIT_POINTS, type RateFitResult } from "../analysis/fitRatePerformance";
+import { INITIAL_CA_FIT_ATTEMPT, type CaFitAttempt } from "../analysis/caFitAttempt";
 import { reconstructCaRate, type CaReconstructionFailure, type CaReconstructionSuccess } from "../analysis/reconstructCaRate";
 import { CaAnalysisResults } from "../components/CaAnalysisResults";
 import { CaDataInput, completeCaPoints, createInitialCaPoints, validateCaDraftPoints, type CaDraftPoint, type CaInputMode } from "../components/CaDataInput";
@@ -29,6 +30,7 @@ export default function CaRateAnalysisPage() {
   const [reconstruction, setReconstruction] = useState<CaReconstructionSuccess | null>(null);
   const [fatalFailure, setFatalFailure] = useState<{ result: CaReconstructionFailure; points: CaDraftPoint[] } | null>(null);
   const [fit, setFit] = useState<CompletedFit | null>(null);
+  const [fitAttempt, setFitAttempt] = useState<CaFitAttempt>(INITIAL_CA_FIT_ATTEMPT);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
   const [cancelled, setCancelled] = useState(false);
@@ -37,7 +39,7 @@ export default function CaRateAnalysisPage() {
   useEffect(() => () => invalidate(), []);
 
   function invalidate() { generation.current += 1; controller.current?.abort(); controller.current = null; }
-  function resetResults() { setReconstruction(null); setFatalFailure(null); setFit(null); setPending(false); setMessage(""); setCancelled(false); }
+  function resetResults() { setReconstruction(null); setFatalFailure(null); setFit(null); setFitAttempt(INITIAL_CA_FIT_ATTEMPT); setPending(false); setMessage(""); setCancelled(false); }
   function changeInput(next: CaDraftPoint[]) { invalidate(); setPoints(next); setSource("user"); resetResults(); }
   function changeProcessing(next: CaProcessingValue) { invalidate(); setProcessing(next); setSource("user"); resetResults(); }
   function changeMode(next: CaInputMode) { invalidate(); setMode(next); setPoints(createInitialCaPoints()); setSource("user"); resetResults(); }
@@ -57,18 +59,19 @@ export default function CaRateAnalysisPage() {
     const rebuilt = reconstructCaRate(input, options);
     if (rebuilt.status === "failure") { setFatalFailure({ result: rebuilt, points: input }); setMessage(t(`rate.ca.error.${rebuilt.code}`)); return; }
     setReconstruction(rebuilt);
-    if (rebuilt.ratePoints.length > MAX_SYNC_RATE_FIT_POINTS) { setMessage(t("rate.ca.error.tooMany", { max: MAX_SYNC_RATE_FIT_POINTS.toLocaleString("en-US") })); return; }
-    if (rebuilt.ratePoints.length < 4) { setMessage(t("rate.ca.error.insufficientRatePoints")); return; }
+    if (rebuilt.ratePoints.length > MAX_SYNC_RATE_FIT_POINTS) { setFitAttempt({ ...INITIAL_CA_FIT_ATTEMPT, failureCode: "too-many-points", attemptedPointCount: rebuilt.ratePoints.length }); setMessage(t("rate.ca.error.tooMany", { max: MAX_SYNC_RATE_FIT_POINTS.toLocaleString("en-US") })); return; }
+    if (rebuilt.ratePoints.length < 4) { setFitAttempt({ ...INITIAL_CA_FIT_ATTEMPT, failureCode: "insufficient-data", attemptedPointCount: rebuilt.ratePoints.length }); setMessage(t("rate.ca.error.insufficientRatePoints")); return; }
     const token = generation.current;
     const nextController = new AbortController(); controller.current = nextController;
     setPending(true); setMessage("");
+    setFitAttempt({ modelId: "rational-characteristic-time", status: "pending", attemptedPointCount: rebuilt.ratePoints.length });
     try {
       const result = await fitRatePerformance(rebuilt.ratePoints.map((point) => ({ rate: point.rate as number, capacity: point.capacity as number })), { modelId: "rational-characteristic-time", signal: nextController.signal });
       if (generation.current !== token || nextController.signal.aborted) return;
-      if (result.status === "converged") { setFit(result); setMessage(t("rate.ca.success", { points: rebuilt.ratePoints.length })); }
-      else { setCancelled(result.failure.code === "cancelled"); setMessage(t(result.failure.code === "cancelled" ? "rate.ca.error.cancelled" : "rate.ca.error.fitFailed")); }
+      if (result.status === "converged") { setFit(result); setFitAttempt({ modelId: "rational-characteristic-time", status: "converged", attemptedPointCount: rebuilt.ratePoints.length, usedPointCount: result.usedPointCount }); setMessage(t("rate.ca.success", { points: rebuilt.ratePoints.length })); }
+      else { const wasCancelled = result.failure.code === "cancelled"; setCancelled(wasCancelled); setFitAttempt({ modelId: "rational-characteristic-time", status: wasCancelled ? "cancelled" : "failed", failureCode: result.failure.code, attemptedPointCount: rebuilt.ratePoints.length }); setMessage(t(wasCancelled ? "rate.ca.error.cancelled" : "rate.ca.error.fitFailed")); }
     } catch {
-      if (generation.current === token && !nextController.signal.aborted) setMessage(t("rate.ca.error.unexpected"));
+      if (generation.current === token && !nextController.signal.aborted) { setFitAttempt({ modelId: "rational-characteristic-time", status: "error", failureCode: "unexpected-error", attemptedPointCount: rebuilt.ratePoints.length }); setMessage(t("rate.ca.error.unexpected")); }
     } finally {
       if (generation.current === token) { setPending(false); controller.current = null; }
     }
@@ -84,10 +87,10 @@ export default function CaRateAnalysisPage() {
     <CaRawExport points={points} options={options} failure={fatalFailure} metadata={{ resultKind: source, exampleId: source === "example" ? CA_RATE_EXAMPLE.id : null }} />
     <section className="tool-section ca-run-panel"><h2>{t("rate.ca.workflow.title")}</h2><p className="ca-workflow">I(t) ↓ Q(t) ↓ {t("rate.ca.workflow.rate")} ↓ Q(R) ↓ {t("rate.ca.workflow.fit")}</p>
       <button type="button" disabled={pending} onClick={() => void analyze()}>{t("rate.ca.action.analyze")}</button>
-      {pending ? <button type="button" onClick={() => { invalidate(); setPending(false); setCancelled(true); setMessage(t("rate.ca.error.cancelled")); }}>{t("rate.analysis.cancel")}</button> : null}
+      {pending ? <button type="button" onClick={() => { invalidate(); setPending(false); setCancelled(true); setFitAttempt((current) => ({ ...current, status: "cancelled", failureCode: "cancelled" })); setMessage(t("rate.ca.error.cancelled")); }}>{t("rate.analysis.cancel")}</button> : null}
       <FitStatus status={pending ? "loading" : fit ? "converged" : cancelled ? "cancelled" : message ? "failed" : "idle"} message={message || undefined} />
     </section>
-    {reconstruction ? <CaAnalysisResults input={points} options={options} reconstruction={reconstruction} fit={fit} metadata={{ resultKind: source, exampleId: source === "example" ? CA_RATE_EXAMPLE.id : null }} onExportError={() => setMessage(t("rate.ca.error.export"))} /> : <CaEmptyState onLoadExample={loadExample} />}
+    {reconstruction ? <CaAnalysisResults input={points} options={options} reconstruction={reconstruction} fit={fit} fitAttempt={fitAttempt} metadata={{ resultKind: source, exampleId: source === "example" ? CA_RATE_EXAMPLE.id : null }} onExportError={() => setMessage(t("rate.ca.error.export"))} /> : <CaEmptyState onLoadExample={loadExample} />}
     <CaTheory />
   </section>;
 }
