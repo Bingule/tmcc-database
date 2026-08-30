@@ -1,16 +1,9 @@
 import { useI18n } from "../../../i18n/I18nProvider";
 import type { ThicknessScalingConverged, ThicknessScalingFit } from "../analysis/thicknessScaling";
-import {
-  serializeThicknessFitsCsv,
-  serializeThicknessProvenanceCsv,
-  serializeThicknessResidualsCsv,
-  serializeThicknessSamplesCsv,
-  serializeThicknessScalingCsv,
-} from "../utils/thicknessExports";
 import { sampleRateChartPoints } from "../utils/chartSampling";
-import type { ThicknessFitExportRecord, ThicknessSampleExportSource } from "../utils/thicknessExports";
-import { ExportToolbar } from "./ExportToolbar";
+import type { ThicknessExportContext } from "../utils/thicknessExports";
 import { RateChartPanel } from "./RateChartPanel";
+import { ThicknessExportPanel } from "./ThicknessExportPanel";
 
 export interface ThicknessSampleFailure {
   readonly id: string;
@@ -25,20 +18,23 @@ export function ThicknessScalingResults({
   result,
   failures,
   totalSampleCount,
-  sourceSamples = [],
-  fitRecords = [],
-  kind = "user",
+  exportContext: providedExportContext,
   onExportError,
 }: {
   result: Readonly<ThicknessScalingConverged>;
   failures: ReadonlyArray<Readonly<ThicknessSampleFailure>>;
   totalSampleCount: number;
-  sourceSamples?: ReadonlyArray<Readonly<ThicknessSampleExportSource>>;
-  fitRecords?: ReadonlyArray<Readonly<ThicknessFitExportRecord>>;
-  kind?: "example" | "user";
+  exportContext?: Readonly<ThicknessExportContext>;
   onExportError: () => void;
 }) {
   const { t } = useI18n();
+  const exportContext = providedExportContext ?? {
+    resultKind: "user" as const,
+    exampleId: null,
+    sources: [],
+    outcomes: [],
+    scalingFailure: null,
+  };
   const power = result.fits.power;
   const alphaCi = power.parameters.alphaConfidenceInterval95;
   const rawObserved = result.samples.map(({ thicknessMicrometres: x, tauSeconds: y }) => ({ x, y }));
@@ -55,11 +51,11 @@ export function ThicknessScalingResults({
 
   return <section className="rate-thickness-results">
     <section className="tool-section">
-      <p className="rate-result-kind">{t(`rate.results.${kind}`)}</p>
+      <p className="rate-result-kind">{t(`rate.results.${exportContext.resultKind}`)}</p>
       <h2>{t("rate.thickness.resultsTitle")}</h2>
       <p>{t("rate.thickness.processed", { success: result.samples.length, total: totalSampleCount })}</p>
       <dl className="rate-thickness-summary">
-        <div><dt>{t("rate.thickness.bestModel")}</dt><dd>{result.bestModelId}</dd></div>
+        <div><dt>{t("rate.thickness.bestModel")}</dt><dd>{result.bestModelId ?? t("rate.thickness.noUniqueBest")}</dd></div>
         <div><dt>{t("rate.thickness.criterion")}</dt><dd>{result.criterion.name}</dd></div>
         <div><dt>{t("rate.thickness.weighting")}</dt><dd>{t(result.weighting === "tau-standard-error" ? "rate.thickness.weighted" : "rate.thickness.unweighted")}</dd></div>
         <div><dt>{t("rate.thickness.alpha")}</dt><dd>{format(power.parameters.alpha)}</dd></div>
@@ -79,11 +75,10 @@ export function ThicknessScalingResults({
         <thead><tr>
           <th>{t("rate.thickness.model")}</th><th>{t("rate.thickness.parameters")}</th>
           <th>{t("rate.thickness.rSquared")}</th><th>{t("rate.thickness.rmse")}</th>
-          <th>{t("rate.thickness.criterionValue")}</th>
         </tr></thead>
         <tbody>{Object.values(result.fits).map((fit) => <tr key={fit.modelId}>
           <td>{fit.equation}</td><td>{parameters(fit)}</td><td>{format(fit.statistics.rSquared)}</td>
-          <td>{format(fit.statistics.rmse)}</td><td>{format(fit.criterionValue)}</td>
+          <td>{format(fit.statistics.rmse)}</td>
         </tr>)}</tbody>
       </table></div>
     </section>
@@ -132,21 +127,7 @@ export function ThicknessScalingResults({
       />
     </div>
 
-    <section className="tool-section">
-      <h2>{t("rate.export.title")}</h2>
-      <ExportToolbar
-        csvItems={[
-          { id: "thickness-samples", label: t("rate.thickness.export.samples"), filename: "thickness-samples.csv", csv: serializeThicknessSamplesCsv(result, sourceSamples) },
-          { id: "thickness-fits", label: t("rate.thickness.export.fits"), filename: "thickness-fits.csv", csv: serializeThicknessFitsCsv(result, fitRecords) },
-          { id: "thickness-scaling", label: t("rate.thickness.export.scaling"), filename: "thickness-scaling.csv", csv: serializeThicknessScalingCsv(result) },
-          { id: "thickness-residuals", label: t("rate.thickness.export.residuals"), filename: "thickness-residuals.csv", csv: serializeThicknessResidualsCsv(result) },
-          { id: "thickness-provenance", label: t("rate.thickness.export.provenance"), filename: "thickness-provenance.csv", csv: serializeThicknessProvenanceCsv(result, sourceSamples) },
-        ]}
-        figureExportId="rate-thickness-linear"
-        figureFilename="thickness-tau-vs-l"
-        onError={onExportError}
-      />
-    </section>
+    <ThicknessExportPanel result={result} context={exportContext} onExportError={onExportError} />
 
     <section className="tool-section rate-thickness-interpretation">
       <h2>{t("rate.thickness.interpretationTitle")}</h2>
@@ -165,6 +146,6 @@ function parameters(fit: ThicknessScalingFit): string {
   switch (fit.modelId) {
     case "linear": return `b0=${format(fit.parameters.interceptSeconds)} s; b1=${format(fit.parameters.slopeSecondsPerMetre)} s m^-1`;
     case "quadratic": return `b0=${format(fit.parameters.interceptSeconds)} s; b2=${format(fit.parameters.coefficientSecondsPerMetreSquared)} s m^-2`;
-    case "power": return `a=${format(fit.parameters.amplitude)}; α=${format(fit.parameters.alpha)}`;
+    case "power": return `a=${format(fit.parameters.amplitude)} s·m^-α; α=${format(fit.parameters.alpha)}`;
   }
 }

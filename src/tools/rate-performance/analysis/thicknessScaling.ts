@@ -13,6 +13,7 @@ export interface ThicknessScalingSample {
   readonly tau: number;
   readonly tauStandardError?: number | null;
   readonly massLoading?: number | null;
+  readonly modelId: string;
 }
 
 export interface NormalizedThicknessScalingSample extends ThicknessScalingSample {
@@ -38,7 +39,7 @@ interface BaseThicknessScalingFit {
   readonly predictions: ReadonlyArray<number>;
   readonly residuals: ReadonlyArray<Readonly<ThicknessScalingResidual>>;
   readonly statistics: Readonly<FitStatistics>;
-  readonly criterionValue: number;
+  readonly criterionValue: number | null;
 }
 
 export interface LinearThicknessScalingFit extends BaseThicknessScalingFit {
@@ -68,6 +69,7 @@ export type ThicknessScalingFailureCode =
   | "duplicate-thickness"
   | "invalid-tau"
   | "invalid-tau-uncertainty"
+  | "mixed-models"
   | "insufficient-distinct-thicknesses"
   | "regression-failed";
 
@@ -77,6 +79,11 @@ export interface ThicknessScalingFailure {
     code: ThicknessScalingFailureCode;
     sampleIds: ReadonlyArray<string>;
     message: string;
+    conflicts?: ReadonlyArray<Readonly<{
+      thicknessMetres: number;
+      samples: ReadonlyArray<Readonly<Pick<ThicknessScalingSample, "id" | "sampleName" | "thickness" | "thicknessUnit">>>;
+    }>>;
+    modelGroups?: Readonly<Record<string, ReadonlyArray<string>>>;
   }>;
 }
 
@@ -90,12 +97,13 @@ export interface ThicknessScalingConverged {
   }>;
   readonly weighting: ThicknessWeighting;
   readonly criterion: Readonly<{
-    name: "AICc" | "AIC" | "RMSE";
+    name: "RMSE";
     comparisonScale: "tau-seconds";
     lowerIsBetter: true;
+    purpose: "descriptive";
     logic: string;
   }>;
-  readonly bestModelId: ThicknessScalingModelId;
+  readonly bestModelId: ThicknessScalingModelId | null;
 }
 
 export type ThicknessScalingResult = ThicknessScalingConverged | ThicknessScalingFailure;
@@ -110,8 +118,13 @@ export function normalizeThickness(value: number, unit: ThicknessUnit): number {
   return value * unitToMetres[unit];
 }
 
-function failed(code: ThicknessScalingFailureCode, sampleIds: ReadonlyArray<string>, message: string): ThicknessScalingFailure {
-  return { status: "failed", failure: { code, sampleIds: [...sampleIds], message } };
+function failed(
+  code: ThicknessScalingFailureCode,
+  sampleIds: ReadonlyArray<string>,
+  message: string,
+  details: Partial<Pick<ThicknessScalingFailure["failure"], "conflicts" | "modelGroups">> = {},
+): ThicknessScalingFailure {
+  return { status: "failed", failure: { code, sampleIds: [...sampleIds], message, ...details } };
 }
 
 function nearlyEqual(left: number, right: number): boolean {
@@ -196,7 +209,7 @@ function fitLinearFeature(
     predictions,
     residuals: residualsFor(samples, predictions),
     statistics,
-    criterionValue: Number.NaN,
+    criterionValue: null,
   };
   return modelId === "linear"
     ? { ...base, modelId, parameters: { interceptSeconds: regression.intercept, slopeSecondsPerMetre: regression.slope } }
@@ -237,42 +250,30 @@ function fitPower(
     predictions,
     residuals: residualsFor(samples, predictions),
     statistics,
-    criterionValue: Number.NaN,
+    criterionValue: null,
   };
 }
 
-function criterionFor(fits: ReadonlyArray<ThicknessScalingFit>): ThicknessScalingConverged["criterion"] {
-  if (fits.every(({ statistics }) => statistics.aicc !== null)) {
-    return {
-      name: "AICc",
-      comparisonScale: "tau-seconds",
-      lowerIsBetter: true,
-      logic: "Lowest finite AICc from unweighted original-tau residuals; all models have two parameters.",
-    };
-  }
-  if (fits.every(({ statistics }) => statistics.aic !== null)) {
-    return {
-      name: "AIC",
-      comparisonScale: "tau-seconds",
-      lowerIsBetter: true,
-      logic: "AICc is unavailable for at least one model; compare finite AIC from unweighted original-tau residuals.",
-    };
-  }
+function descriptiveCriterion(): ThicknessScalingConverged["criterion"] {
   return {
     name: "RMSE",
     comparisonScale: "tau-seconds",
     lowerIsBetter: true,
-    logic: "Information criteria are unavailable for an exact or degenerate residual; compare original-tau RMSE.",
+    purpose: "descriptive",
+    logic: "Descriptive comparison by unweighted RMSE on the common original-tau scale; this is not a likelihood ranking or statistical recommendation.",
   };
 }
 
-function criterionValue(fit: ThicknessScalingFit, criterion: ThicknessScalingConverged["criterion"]): number {
-  const value = criterion.name === "AICc"
-    ? fit.statistics.aicc
-    : criterion.name === "AIC"
-      ? fit.statistics.aic
-      : fit.statistics.rmse;
-  return value ?? Number.POSITIVE_INFINITY;
+export function selectLowestDescriptiveRmse(
+  candidates: ReadonlyArray<Readonly<{ modelId: ThicknessScalingModelId; rmse: number | null }>>,
+): ThicknessScalingModelId | null {
+  const finite = candidates.filter((candidate): candidate is Readonly<{ modelId: ThicknessScalingModelId; rmse: number }> => (
+    candidate.rmse !== null && Number.isFinite(candidate.rmse)
+  )).sort((left, right) => left.rmse - right.rmse);
+  if (finite.length === 0) return null;
+  if (finite.length === 1) return finite[0].modelId;
+  const tolerance = Math.max(1, Math.abs(finite[0].rmse), Math.abs(finite[1].rmse)) * 1e-9;
+  return finite[1].rmse - finite[0].rmse <= tolerance ? null : finite[0].modelId;
 }
 
 export function fitThicknessScaling(samples: ReadonlyArray<Readonly<ThicknessScalingSample>>): ThicknessScalingResult {
@@ -291,6 +292,18 @@ export function fitThicknessScaling(samples: ReadonlyArray<Readonly<ThicknessSca
   if (invalidUncertainty.length > 0) {
     return failed("invalid-tau-uncertainty", invalidUncertainty, "Tau standard errors must be positive and finite when supplied.");
   }
+  const modelGroups = Object.fromEntries([...new Set(samples.map(({ modelId }) => modelId))].map((modelId) => [
+    modelId,
+    samples.filter((sample) => sample.modelId === modelId).map(({ id }) => id),
+  ]));
+  if (Object.keys(modelGroups).length > 1) {
+    return failed(
+      "mixed-models",
+      samples.map(({ id }) => id),
+      "Characteristic times from different rate models cannot be combined in one scaling analysis.",
+      { modelGroups },
+    );
+  }
 
   const normalized: NormalizedThicknessScalingSample[] = samples.map((sample) => {
     const thicknessMetres = normalizeThickness(sample.thickness, sample.thicknessUnit);
@@ -306,16 +319,28 @@ export function fitThicknessScaling(samples: ReadonlyArray<Readonly<ThicknessSca
   });
 
   const duplicateIds = new Set<string>();
+  const conflicts: NonNullable<ThicknessScalingFailure["failure"]["conflicts"]>[number][] = [];
   for (let left = 0; left < normalized.length; left += 1) {
     for (let right = left + 1; right < normalized.length; right += 1) {
       if (nearlyEqual(normalized[left].thicknessMetres, normalized[right].thicknessMetres)) {
         duplicateIds.add(normalized[left].id);
         duplicateIds.add(normalized[right].id);
+        conflicts.push({
+          thicknessMetres: Number(normalized[left].thicknessMetres.toPrecision(15)),
+          samples: [normalized[left], normalized[right]].map(({ id, sampleName, originalThickness: thickness, originalThicknessUnit: thicknessUnit }) => (
+            { id, sampleName, thickness, thicknessUnit }
+          )),
+        });
       }
     }
   }
   if (duplicateIds.size > 0) {
-    return failed("duplicate-thickness", [...duplicateIds], "Duplicate physical thicknesses are not averaged or silently merged.");
+    return failed(
+      "duplicate-thickness",
+      [...duplicateIds],
+      "Duplicate physical thicknesses are not averaged or silently merged.",
+      { conflicts },
+    );
   }
   if (normalized.length < 3) {
     return failed(
@@ -339,16 +364,17 @@ export function fitThicknessScaling(samples: ReadonlyArray<Readonly<ThicknessSca
   }
 
   const rawFits: ThicknessScalingFit[] = [linear, quadratic, power];
-  const criterion = criterionFor(rawFits);
-  const withCriterion = rawFits.map((fit) => ({ ...fit, criterionValue: criterionValue(fit, criterion) })) as [
+  const criterion = descriptiveCriterion();
+  const withCriterion = rawFits.map((fit) => ({ ...fit, criterionValue: fit.statistics.rmse })) as [
     LinearThicknessScalingFit,
     QuadraticThicknessScalingFit,
     PowerThicknessScalingFit,
   ];
   const [linearFit, quadraticFit, powerFit] = withCriterion;
-  const bestModelId = withCriterion.reduce((best, fit) => (
-    fit.criterionValue < best.criterionValue ? fit : best
-  )).modelId;
+  const bestModelId = selectLowestDescriptiveRmse(withCriterion.map((fit) => ({
+    modelId: fit.modelId,
+    rmse: fit.statistics.rmse,
+  })));
   return {
     status: "converged",
     samples: normalized,

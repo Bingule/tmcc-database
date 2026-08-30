@@ -1,5 +1,7 @@
+import { useId } from "react";
 import { useI18n } from "../../../i18n/I18nProvider";
 import type { ThicknessUnit } from "../analysis/thicknessScaling";
+import { listRateModels } from "../models/registry";
 import { RateDataInput, type RateDataInputValue } from "./RateDataInput";
 
 export interface ThicknessElectrodeDraft {
@@ -8,6 +10,7 @@ export interface ThicknessElectrodeDraft {
   readonly thickness: number | null;
   readonly thicknessUnit: ThicknessUnit;
   readonly massLoading: number | null;
+  readonly modelId: string;
   readonly rateInput: RateDataInputValue;
 }
 
@@ -23,7 +26,11 @@ export function ThicknessSampleInput({
   onDelete: () => void;
 }) {
   const { t } = useI18n();
-  return <article className="tool-section rate-thickness-sample" data-thickness-sample-id={sample.id}>
+  const headingId = `thickness-sample-heading-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
+  const displayName = sample.sampleName.trim() || t("rate.thickness.unnamedSample");
+  const models = listRateModels().filter((model) => model.status === "validated" && model.fit);
+  return <article className="tool-section rate-thickness-sample" data-thickness-sample-id={sample.id} aria-labelledby={headingId}>
+    <h3 id={headingId}>{displayName}</h3>
     <div className="rate-thickness-sample-header">
       <label>{t("rate.thickness.sampleName")}
         <input
@@ -34,8 +41,8 @@ export function ThicknessSampleInput({
         />
       </label>
       <div className="rate-input-actions">
-        <button type="button" onClick={onDuplicate}>{t("rate.thickness.duplicate")}</button>
-        <button type="button" onClick={onDelete}>{t("rate.thickness.delete")}</button>
+        <button type="button" aria-label={`${t("rate.thickness.duplicate")} ${displayName}`} onClick={onDuplicate}>{t("rate.thickness.duplicate")}</button>
+        <button type="button" aria-label={`${t("rate.thickness.delete")} ${displayName}`} onClick={onDelete}>{t("rate.thickness.delete")}</button>
       </div>
     </div>
     <div className="rate-thickness-metadata">
@@ -69,6 +76,15 @@ export function ThicknessSampleInput({
           value={sample.massLoading ?? ""}
           onChange={(event) => onChange({ ...sample, massLoading: event.target.value === "" ? null : Number(event.target.value) })}
         />
+      </label>
+      <label>{t("rate.thickness.rateModel")}
+        <select
+          aria-label={t("rate.thickness.rateModel")}
+          value={sample.modelId}
+          onChange={(event) => onChange({ ...sample, modelId: event.target.value })}
+        >
+          {models.map((model) => <option key={model.id} value={model.id}>{model.name}</option>)}
+        </select>
       </label>
     </div>
     <RateDataInput value={sample.rateInput} onChange={(rateInput) => onChange({ ...sample, rateInput })} />
