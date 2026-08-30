@@ -3598,3 +3598,67 @@ sub {
     grid-template-columns: 1fr;
   }
 }
+.rate-thickness-datasets {
+  display: grid;
+  gap: 1rem;
+}
+
+.rate-thickness-sample {
+  border-inline-start: 4px solid var(--accent, #16697a);
+}
+
+.rate-thickness-sample-header,
+.rate-thickness-metadata,
+.rate-thickness-summary {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.rate-thickness-sample-header {
+  grid-template-columns: minmax(12rem, 1fr) auto;
+  align-items: end;
+}
+
+.rate-thickness-metadata {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-block: 1rem;
+}
+
+.rate-thickness-sample label,
+.rate-thickness-metadata label {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.rate-thickness-summary {
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+}
+
+.rate-thickness-summary > div {
+  padding: 0.75rem;
+  border: 1px solid #d7dfdc;
+  border-radius: 0.5rem;
+}
+
+.rate-thickness-summary dt {
+  color: #455a64;
+  font-size: 0.875rem;
+}
+
+.rate-thickness-summary dd {
+  margin: 0.25rem 0 0;
+  font-weight: 650;
+}
+
+.rate-thickness-charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 28rem), 1fr));
+  gap: 1rem;
+}
+
+@media (max-width: 720px) {
+  .rate-thickness-sample-header,
+  .rate-thickness-metadata {
+    grid-template-columns: 1fr;
+  }
+}

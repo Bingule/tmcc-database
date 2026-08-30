@@ -5,6 +5,7 @@ export interface ThicknessExampleSample {
   readonly sampleName: string;
   readonly thickness: number;
   readonly thicknessUnit: "um";
+  readonly massLoading?: number;
   readonly dataset: Readonly<RateDataset>;
 }
 
@@ -15,13 +16,19 @@ export interface ThicknessKineticsExample {
   readonly samples: ReadonlyArray<Readonly<ThicknessExampleSample>>;
 }
 
-function exampleDataset(id: string, scale: number): Readonly<RateDataset> {
-  const points = Object.freeze([
-    { id: `${id}-1`, rate: 25, rateUnit: "mA-g-1", capacity: 280 * scale, capacityUnit: "mAh-g-1" },
-    { id: `${id}-2`, rate: 100, rateUnit: "mA-g-1", capacity: 258 * scale, capacityUnit: "mAh-g-1" },
-    { id: `${id}-3`, rate: 400, rateUnit: "mA-g-1", capacity: 196 * scale, capacityUnit: "mAh-g-1" },
-    { id: `${id}-4`, rate: 1000, rateUnit: "mA-g-1", capacity: 128 * scale, capacityUnit: "mAh-g-1" },
-  ].map((point) => Object.freeze(point))) as ReadonlyArray<Readonly<RatePoint>>;
+function exampleDataset(id: string, tau: number, qM: number): Readonly<RateDataset> {
+  const n = 0.68;
+  const capacity = (rate: number) => {
+    const scaled = (rate * tau) ** n;
+    return qM * (1 - scaled * -Math.expm1(-1 / scaled));
+  };
+  const points = Object.freeze([0.02, 0.08, 0.3, 1, 4, 15].map((rate, index) => Object.freeze({
+    id: `${id}-${index + 1}`,
+    rate,
+    rateUnit: "h-1" as const,
+    capacity: capacity(rate),
+    capacityUnit: "mAh-g-1" as const,
+  }))) as ReadonlyArray<Readonly<RatePoint>>;
 
   return Object.freeze({
     id,
@@ -37,8 +44,8 @@ export const THICKNESS_KINETICS_EXAMPLE: Readonly<ThicknessKineticsExample> = Ob
   name: "Illustrative electrode thickness series",
   isExample: true,
   samples: Object.freeze([
-    Object.freeze({ id: "thin", sampleName: "Thin electrode", thickness: 30, thicknessUnit: "um" as const, dataset: exampleDataset("thin", 1) }),
-    Object.freeze({ id: "medium", sampleName: "Medium electrode", thickness: 60, thicknessUnit: "um" as const, dataset: exampleDataset("medium", 0.96) }),
-    Object.freeze({ id: "thick", sampleName: "Thick electrode", thickness: 100, thicknessUnit: "um" as const, dataset: exampleDataset("thick", 0.9) }),
+    Object.freeze({ id: "thin", sampleName: "Thin electrode", thickness: 30, thicknessUnit: "um" as const, massLoading: 2.1, dataset: exampleDataset("thin", 0.46, 310) }),
+    Object.freeze({ id: "medium", sampleName: "Medium electrode", thickness: 60, thicknessUnit: "um" as const, massLoading: 4.2, dataset: exampleDataset("medium", 1.54, 305) }),
+    Object.freeze({ id: "thick", sampleName: "Thick electrode", thickness: 100, thicknessUnit: "um" as const, massLoading: 7.0, dataset: exampleDataset("thick", 4.1, 298) }),
   ]),
 });

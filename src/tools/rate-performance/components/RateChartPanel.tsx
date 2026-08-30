@@ -50,8 +50,8 @@ export function RateChartPanel({
       metadata={metadata}
     />
     {sampled ? <p className="rate-chart-sampling-notice">{t("rate.chart.samplingNotice", {
-      raw: rawPointCount,
-      displayed: displayedPointCount,
+      raw: rawPointCount.toLocaleString("en-US"),
+      displayed: displayedPointCount.toLocaleString("en-US"),
     })}</p> : null}
   </section>;
 }
