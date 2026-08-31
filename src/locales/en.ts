@@ -317,6 +317,8 @@ export const en = {
   "crystalSystem.cubic": "cubic",
   "tools.title": "Materials Research Tools",
   "tools.description": "Online tools for electrochemistry and materials research.",
+  "tools.contactPrompt": "Found an issue, got an unexpected result, or have a suggestion? Contact Dr. Wu at",
+  "tools.contactEmail": "{{display}}: {{email}}",
   "tools.cv.title": "CV Kinetics Analysis",
   "tools.cv.description": "b-value and Dunn capacitive contribution analysis from multi-scan-rate CV data.",
   "tools.capacity.title": "Theoretical Capacity Calculator",

@@ -319,6 +319,8 @@ export const zh = {
   "crystalSystem.cubic": "立方晶系",
   "tools.title": "材料研究工具",
   "tools.description": "用于电化学与材料研究的在线工具。",
+  "tools.contactPrompt": "Found an issue, got an unexpected result, or have a suggestion? Contact Dr. Wu at",
+  "tools.contactEmail": "{{display}}: {{email}}",
   "tools.cv.title": "CV 动力学分析",
   "tools.cv.description": "基于多扫描速率 CV 数据进行 b 值与 Dunn 电容贡献分析。",
   "tools.capacity.title": "理论容量计算器",
