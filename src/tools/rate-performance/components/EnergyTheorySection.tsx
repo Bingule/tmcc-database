@@ -6,6 +6,7 @@ export function EnergyTheorySection() {
   const content: RateTheoryContent = {
     title: t("rate.energy.theory.title"),
     equation: "E = ∫ V dQ;  P_avg = E / Δt",
+    equationTex: String.raw`E=\int V\,\mathrm{d}Q\qquad P_{\mathrm{avg}}=\frac{E}{\Delta t}`,
     equationDescription: t("rate.energy.theory.equationDescription"),
     parameters: [
       { symbol: "V", name: t("rate.energy.theory.voltage"), meaning: t("rate.energy.theory.voltageMeaning"), unit: "V", type: "measured" },

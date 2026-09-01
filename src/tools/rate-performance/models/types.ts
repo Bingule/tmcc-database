@@ -131,6 +131,7 @@ export interface RateModelDefinition {
   readonly family: string;
   readonly status: RateModelStatus;
   readonly equation: string;
+  readonly equationTex?: string;
   readonly independentVariable: Readonly<RateModelIndependentVariableDefinition>;
   readonly parameters: ReadonlyArray<Readonly<RateModelParameterDefinition>>;
   readonly applicability: ReadonlyArray<string>;

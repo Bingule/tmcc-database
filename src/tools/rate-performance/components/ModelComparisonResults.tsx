@@ -11,6 +11,7 @@ import { translatedRateModelFamily, translatedRateModelName } from "../utils/rat
 import { ExportToolbar, type RateCsvExportItem } from "./ExportToolbar";
 import { RateChartPanel } from "./RateChartPanel";
 import type { RateDataInputValue } from "./RateDataInput";
+import { ScientificMath } from "./ScientificTypography";
 
 const modelColors = ["#a45d2b", "#2f6f7f", "#6e5a94", "#47764c"] as const;
 const DISPLAY_POINT_LIMIT = 2_000;
@@ -48,7 +49,9 @@ export function ModelComparisonResults({ input, normalized, result, chart, onCha
         <th>{t("rate.modelComparison.table.delta", { criterion })}</th><th>{t("rate.modelComparison.table.convergence")}</th><th>{t("rate.modelComparison.table.rank")}</th>
       </tr></thead><tbody>{result.rows.map((row) => <tr key={row.modelId}>
         <th scope="row">{translatedRateModelName(row.modelId, t)}</th><td>{translatedRateModelFamily(row.equationType, t)}</td>
-        <td>{formatParameters(row, unavailable)}</td><td>{row.parameterCount}</td>
+        <td>{row.parameters
+          ? <ScientificMath tex={String.raw`Q_{\mathrm{M}}=${formatRateValue(row.parameters.qM)};\ \tau=${formatRateValue(row.parameters.tau)};\ n=${formatRateValue(row.parameters.n)}`} source={formatParameters(row, unavailable)} />
+          : unavailable}</td><td>{row.parameterCount}</td>
         <td>{formatOptionalRateValue(row.statistics?.rSquared ?? null, unavailable)}</td>
         <td>{formatOptionalRateValue(row.statistics?.adjustedRSquared ?? null, unavailable)}</td>
         <td>{formatOptionalRateValue(row.statistics?.rmse ?? null, unavailable)}</td>

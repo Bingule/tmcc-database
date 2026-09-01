@@ -1,5 +1,6 @@
 import { useI18n } from "../../../i18n/I18nProvider";
 import type { CapacityUnit, RateUnit } from "../models/types";
+import { formatScientificUnitCode } from "./ScientificTypography";
 
 export interface RateImportSummary {
   readonly fileName: string;
@@ -34,8 +35,8 @@ export function DatasetSummary({ summary }: { summary: Readonly<RateImportSummar
       <SummaryItem label={t("rate.import.valid")} value={summary.validPoints} />
       <SummaryItem label={t("rate.import.invalid")} value={summary.invalidRows} />
       <SummaryItem label={t("rate.import.missing")} value={summary.missingValues} />
-      <SummaryItem label={t("rate.import.rateRange")} value={range(summary.rateRange, summary.rateUnit)} />
-      <SummaryItem label={t("rate.import.capacityRange")} value={range(summary.capacityRange, summary.capacityUnit)} />
+      <SummaryItem label={t("rate.import.rateRange")} value={range(summary.rateRange, formatScientificUnitCode(summary.rateUnit))} />
+      <SummaryItem label={t("rate.import.capacityRange")} value={range(summary.capacityRange, formatScientificUnitCode(summary.capacityUnit))} />
     </dl>
     <p className="rate-import-counts">
       {t("rate.import.counts", {

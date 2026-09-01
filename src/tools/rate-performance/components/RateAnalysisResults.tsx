@@ -20,6 +20,7 @@ import type { RateDataInputValue } from "./RateDataInput";
 import { ExportToolbar, type RateCsvExportItem } from "./ExportToolbar";
 import { RateChartPanel } from "./RateChartPanel";
 import { ResultCards, type RateResultCardItem } from "./ResultCards";
+import { ScientificSymbol, ScientificUnit } from "./ScientificTypography";
 
 const MODEL_ID = "tian-characteristic-time";
 const DISPLAY_POINT_LIMIT = 2_000;
@@ -219,7 +220,7 @@ function AdvancedStatistics({ result }: { result: Extract<RateFitResult, { statu
       <th>{t("rate.analysis.standardError")}</th>
       <th>{t("rate.analysis.confidenceInterval")}</th>
     </tr></thead><tbody>{uncertaintyRows.map((row) => <tr key={row.id}>
-      <th scope="row">{row.label}</th><td>{row.unit}</td><td>{row.standardError}</td><td>{row.interval}</td>
+      <th scope="row"><ScientificSymbol value={row.label} /></th><td><ScientificUnit value={row.unit} /></td><td>{row.standardError}</td><td>{row.interval}</td>
     </tr>)}</tbody></table></div>
   </section>;
 }

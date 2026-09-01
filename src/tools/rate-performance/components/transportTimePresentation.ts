@@ -62,6 +62,20 @@ export const TERM_LABELS: Readonly<Record<TransportTermId, TranslationKey>> = Ob
   kinetic: "rate.transport.term.kinetic",
 });
 
+const TERM_EQUATIONS_TEX: Readonly<Record<TransportTermId, string>> = Object.freeze({
+  "electrode-electronic": String.raw`\frac{L_{\mathrm{E}}^2 C_{\mathrm{V,eff}}}{2\sigma_{\mathrm{E}}}`,
+  "pore-ionic-electrical": String.raw`\frac{L_{\mathrm{E}}^2 C_{\mathrm{V,eff}}}{2\sigma_{\mathrm{BL}}P_{\mathrm{E}}^{3/2}}`,
+  "pore-diffusion": String.raw`\frac{L_{\mathrm{E}}^2}{D_{\mathrm{BL}}P_{\mathrm{E}}^{3/2}}`,
+  "separator-ionic-electrical": String.raw`\frac{L_{\mathrm{E}}L_{\mathrm{S}}C_{\mathrm{V,eff}}}{\sigma_{\mathrm{BL}}P_{\mathrm{S}}^{3/2}}`,
+  "separator-diffusion": String.raw`\frac{L_{\mathrm{S}}^2}{D_{\mathrm{BL}}P_{\mathrm{S}}^{3/2}}`,
+  "active-material-diffusion": String.raw`\frac{L_{\mathrm{AM}}^2}{D_{\mathrm{AM}}}`,
+  kinetic: String.raw`t_{\mathrm{c}}`,
+});
+
+export function transportEquationTex(id: TransportTermId): string {
+  return TERM_EQUATIONS_TEX[id];
+}
+
 export function buildTransportInput(form: Readonly<FormState>, t: TransportTranslator): TransportTimeInput {
   const entries = FIELD_DEFINITIONS.flatMap((definition) => {
     const field = form.fields[definition.key];
@@ -126,10 +140,10 @@ export function displayTransportUnit(unit: TransportUnit): string {
     case "um": return "µm";
     case "nm": return "nm";
     case "m": return "m";
-    case "F-cm-3": return "F cm^-3";
-    case "F-m-3": return "F m^-3";
-    case "S-m-1": return "S m^-1";
-    case "m2-s-1": return "m^2 s^-1";
+    case "F-cm-3": return "F cm⁻³";
+    case "F-m-3": return "F m⁻³";
+    case "S-m-1": return "S m⁻¹";
+    case "m2-s-1": return "m² s⁻¹";
     case "fraction": return "1";
     case "s": return "s";
     case "h": return "h";

@@ -24,6 +24,7 @@ import {
 import { RatePerformanceNav } from "../components/RatePerformanceNav";
 import { ReferenceList } from "../components/ReferenceList";
 import { ResultCards, type RateResultCardItem } from "../components/ResultCards";
+import { ScientificMath, ScientificSymbol, ScientificUnit } from "../components/ScientificTypography";
 import { RATE_PERFORMANCE_EXAMPLE } from "../data/rateExamples";
 import { getRateModel } from "../models/registry";
 import type { NormalizedRatePoint, RateModelDefinition } from "../models/types";
@@ -208,12 +209,12 @@ export default function RatePerformanceAnalysisPage() {
     </section>
     <section className="tool-section rate-analysis-equation">
       <h2>{t("rate.analysis.modelEquation")}</h2>
-      <div className="rate-equation" role="math" aria-label={t("rate.analysis.equationDescription")}>{model.equation}</div>
+      <ScientificMath className="rate-equation" tex={model.equationTex ?? model.equation} source={model.equation} label={t("rate.analysis.equationDescription")} display />
     </section>
     <section className="tool-section rate-analysis-parameters">
       <h2>{t("rate.analysis.parameterMeaning")}</h2>
       <dl>{theory.parameters.map((parameter) => <div key={parameter.symbol}>
-        <dt>{parameter.symbol}</dt><dd>{parameter.meaning} ({parameter.unit})</dd>
+        <dt><ScientificSymbol value={parameter.symbol} /></dt><dd>{parameter.meaning} (<ScientificUnit value={parameter.unit} />)</dd>
       </div>)}</dl>
     </section>
     <ModelTheoryPanel content={theory} />
@@ -260,6 +261,7 @@ function theoryContent(t: ReturnType<typeof useI18n>["t"]): RateTheoryContent {
   return {
     title: t("rate.analysis.modelName"),
     equation: model.equation,
+    equationTex: model.equationTex,
     equationDescription: t("rate.analysis.equationDescription"),
     parameters: model.parameters.map((parameter) => ({
       symbol: parameter.symbol,

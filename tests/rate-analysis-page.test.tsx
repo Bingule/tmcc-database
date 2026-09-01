@@ -153,8 +153,11 @@ describe("RatePerformanceAnalysisPage", () => {
     expect(options.signal).toBeInstanceOf(AbortSignal);
 
     expect(view.textContent).toContain("USER RESULTS");
-    for (const label of ["Q_M", "τ", "n", "R_T", "R²", "RMSE"]) {
+    for (const label of ["τ", "n", "R²", "RMSE"]) {
       expect(view.querySelector(".rate-results-user")?.textContent).toContain(label);
+    }
+    for (const label of ["Q_M", "R_T"]) {
+      expect(view.querySelector(`.rate-results-user [aria-label="${label}"]`)).not.toBeNull();
     }
     expect(view.querySelector(".rate-results-user")?.textContent).toContain("0.125");
     for (const label of ["Adjusted R²", "SSE", "AIC", "AICc", "BIC", "95% CI", "Standard error", "Iterations"]) {
@@ -197,7 +200,7 @@ describe("RatePerformanceAnalysisPage", () => {
     expect(exports[3]).toContain("R_T,0.12500000000000003,h^-1,derived");
     expect(exports[3]).toContain(",76,3.559026,0.9912,0.9824,21.2,45.2,20.6,converged,37,true,");
     const uncertaintyTable = view.querySelector(".rate-analysis-advanced table")!;
-    for (const unit of ["mAh g^-1", "h", "dimensionless"]) expect(uncertaintyTable.textContent).toContain(unit);
+    for (const unit of ["mAh g⁻¹", "h", "dimensionless"]) expect(uncertaintyTable.textContent).toContain(unit);
     expect(button(view, "Export SVG")).toBeTruthy();
     expect(button(view, "Export PNG")).toBeTruthy();
   });
@@ -264,7 +267,7 @@ describe("RatePerformanceAnalysisPage", () => {
     await click(button(view, "Analyze Data"));
 
     expect(fitRatePerformance).not.toHaveBeenCalled();
-    expect(view.textContent).toContain("Confirm that h^-1 values use the measured-discharge-time rate definition");
+    expect(view.textContent).toContain("Confirm that h⁻¹ values use the measured-discharge-time rate definition");
   });
 
   it("aborts stale fits when the unit or input mode changes", async () => {

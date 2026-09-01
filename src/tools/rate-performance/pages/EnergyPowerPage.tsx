@@ -14,6 +14,7 @@ import { EnergySummaryInput, createEnergySummaryDraft, type EnergySummaryDraft }
 import { EnergyTheorySection } from "../components/EnergyTheorySection";
 import { RatePerformanceNav } from "../components/RatePerformanceNav";
 import { ResultCards } from "../components/ResultCards";
+import { ScientificMath, ScientificUnit } from "../components/ScientificTypography";
 import { ENERGY_POWER_EXAMPLE } from "../data/energyExamples";
 import {
   serializeEnergyCurvesCsv,
@@ -91,9 +92,9 @@ function EnergyEmptyState({ onLoadExample }: { onLoadExample: () => void }) {
   const { t } = useI18n();
   return <section className="energy-empty-grid">
     <section className="tool-section"><h2>{t("rate.energy.empty.example")}</h2><p>{t("rate.energy.empty.exampleText")}</p><button type="button" onClick={onLoadExample}>{t("rate.energy.input.loadExample")}</button></section>
-    <section className="tool-section"><h2>{t("rate.energy.empty.outputs")}</h2><ul><li>Wh kg^-1 / W kg^-1</li><li>{t("rate.energy.empty.volumetric")}</li><li>{t("rate.energy.empty.ragone")}</li></ul></section>
+    <section className="tool-section"><h2>{t("rate.energy.empty.outputs")}</h2><ul><li><ScientificUnit value="Wh kg^-1 / W kg^-1" /></li><li>{t("rate.energy.empty.volumetric")}</li><li>{t("rate.energy.empty.ragone")}</li></ul></section>
     <section className="tool-section"><h2>{t("rate.energy.empty.preview")}</h2><ResultCards kind="example" items={[{ id: "energy-preview", label: t("rate.energy.result.energy"), value: "≈ 936", unit: "Wh kg^-1", type: "derived" }, { id: "power-preview", label: t("rate.energy.result.power"), value: "≈ 187", unit: "W kg^-1", type: "derived" }]} /></section>
-    <section className="tool-section"><h2>{t("rate.energy.empty.explanation")}</h2><p>{t("rate.energy.empty.explanationText")}</p><p className="rate-equation">E = ∫ V dQ</p></section>
+    <section className="tool-section"><h2>{t("rate.energy.empty.explanation")}</h2><p>{t("rate.energy.empty.explanationText")}</p><ScientificMath className="rate-equation" tex={String.raw`E=\int V\,\mathrm{d}Q`} source="E = ∫ V dQ" display /></section>
   </section>;
 }
 
