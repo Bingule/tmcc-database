@@ -51,6 +51,11 @@ export function ReviewerTwoPage() {
       <section className="reviewer-two-version" aria-labelledby="reviewer-two-version-title">
         <h2 id="reviewer-two-version-title">{t("reviewerTwo.version.title")}</h2>
         <p>{t("reviewerTwo.version.body")}</p>
+        <p>
+          <a href={REPOSITORY_URL} target="_blank" rel="noopener noreferrer">
+            github.com/Bingule/reviewer-two
+          </a>
+        </p>
         <p><span>{t("reviewerTwo.version.commit")}</span> <code>{COMMIT}</code></p>
       </section>
     </section>

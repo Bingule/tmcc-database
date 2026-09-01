@@ -67,6 +67,10 @@ it("links to the independent fixed source without manuscript controls", async ()
     expect(link.rel.split(/\s+/)).toEqual(expect.arrayContaining(["noopener", "noreferrer"]));
   }
 
+  const visibleSource = view.querySelector<HTMLAnchorElement>(".reviewer-two-version a");
+  expect(visibleSource?.textContent).toBe("github.com/Bingule/reviewer-two");
+  expect(visibleSource?.href).toBe("https://github.com/Bingule/reviewer-two");
+
   expect(view.textContent).toContain("9ff847d0b23a23c87b24e5340907df4c45f32ffc");
   expect(view.querySelector('input[type="file"]')).toBeNull();
   expect(view.querySelector("textarea")).toBeNull();
