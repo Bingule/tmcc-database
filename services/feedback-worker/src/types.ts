@@ -19,6 +19,13 @@ export interface RateLimitBinding {
   limit(options: { key: string }): Promise<{ success: boolean }>;
 }
 
+export type Fetcher = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+
+export interface FeedbackLogger {
+  info(entry: Record<string, unknown>): void;
+  error(entry: Record<string, unknown>): void;
+}
+
 export interface WorkerEnv {
   ALLOWED_ORIGINS: string;
   FEEDBACK_FROM: string;
