@@ -16,7 +16,7 @@ const expectedKeys = [
 ];
 const categories = new Set<FeedbackCategory>(["issue", "unexpected_result", "suggestion"]);
 const languages = new Set<FeedbackLanguage>(["en", "zh"]);
-const toolsPathPattern = /^\/tools(?:\/[a-z0-9-]+)*$/;
+const toolsPathPattern = /^\/tools(?:\/[a-z0-9-]+)*\/?$/;
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function parseFeedbackPayload(value: unknown): ValidationResult {
