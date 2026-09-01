@@ -10,6 +10,7 @@ const ToolsPage = lazy(() => import("./pages/ToolsPage"));
 const CvKineticsPage = lazy(() => import("./pages/CvKineticsPage"));
 const TheoreticalCapacityPage = lazy(() => import("./pages/TheoreticalCapacityPage"));
 const MolecularWeightPage = lazy(() => import("./pages/MolecularWeightPage"));
+const ReviewerTwoPage = lazy(() => import("./tools/reviewer-two/pages/ReviewerTwoPage"));
 const RatePerformanceAnalysisPage = lazy(() => import("./tools/rate-performance/pages/RatePerformanceAnalysisPage"));
 const ModelComparisonPage = lazy(() => import("./tools/rate-performance/pages/ModelComparisonPage"));
 const TransportLimitationPage = lazy(() => import("./tools/rate-performance/pages/TransportLimitationPage"));
@@ -30,6 +31,7 @@ export default function App() {
   if (route === "cvKinetics") return renderInShell(<CvKineticsPage />);
   if (route === "theoreticalCapacity") return renderInShell(<TheoreticalCapacityPage />);
   if (route === "molecularWeight") return renderInShell(<MolecularWeightPage />);
+  if (route === "reviewerTwo") return renderInShell(<ReviewerTwoPage />);
   if (route === "ratePerformance") return renderInShell(<RatePerformanceAnalysisPage />);
   if (route === "rateModelComparison") return renderInShell(<ModelComparisonPage />);
   if (route === "rateTransportLimitations") return renderInShell(<TransportLimitationPage />);
