@@ -1,5 +1,6 @@
 // @vitest-environment node
 
+// @ts-expect-error Node types are intentionally absent from the frontend build.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
