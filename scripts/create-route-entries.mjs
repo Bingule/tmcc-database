@@ -7,6 +7,7 @@ const routeEntries = [
   "tools/cv-kinetics/index.html",
   "tools/theoretical-capacity/index.html",
   "tools/molecular-weight/index.html",
+  "tools/reviewer-two/index.html",
   "tools/rate-performance/index.html",
   "tools/rate-performance/model-comparison/index.html",
   "tools/rate-performance/transport-limitations/index.html",
