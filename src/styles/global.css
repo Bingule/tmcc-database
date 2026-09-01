@@ -2441,6 +2441,83 @@ td button {
   line-height: 1.55;
 }
 
+.reviewer-two-header {
+  max-width: 82ch;
+}
+
+.reviewer-two-eyebrow {
+  color: #285b70;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.reviewer-two-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.reviewer-two-actions a {
+  text-decoration: none;
+}
+
+.reviewer-two-privacy {
+  margin: 24px 0;
+  padding: 20px;
+  border: 1px solid #dce2df;
+  border-left: 4px solid #366c75;
+  border-radius: 8px;
+  background: #f5f8f6;
+}
+
+.reviewer-two-privacy h2,
+.reviewer-two-section h2,
+.reviewer-two-version h2 {
+  margin-top: 0;
+  color: #111b25;
+}
+
+.reviewer-two-privacy p,
+.reviewer-two-steps p,
+.reviewer-two-version p {
+  color: #52666e;
+  line-height: 1.6;
+}
+
+.reviewer-two-section,
+.reviewer-two-version {
+  margin-top: 28px;
+}
+
+.reviewer-two-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  padding: 0;
+  list-style: none;
+  counter-reset: reviewer-step;
+}
+
+.reviewer-two-steps li {
+  padding: 20px;
+  border: 1px solid #dce2df;
+  border-radius: 8px;
+  background: #fff;
+  counter-increment: reviewer-step;
+}
+
+.reviewer-two-steps h3::before {
+  content: counter(reviewer-step) ". ";
+  color: #366c75;
+}
+
+.reviewer-two-version code {
+  overflow-wrap: anywhere;
+}
+
 .tool-contact-note {
   margin-top: 28px;
   padding-top: 18px;
@@ -3892,6 +3969,10 @@ sub {
     grid-template-columns: 1fr;
   }
 
+  .reviewer-two-steps {
+    grid-template-columns: 1fr;
+  }
+
   .tool-section-wide {
     grid-column: auto;
   }
@@ -3971,6 +4052,15 @@ sub {
 
   .tools-page {
     padding: 16px;
+  }
+
+  .reviewer-two-actions {
+    display: grid;
+  }
+
+  .reviewer-two-actions a {
+    width: 100%;
+    text-align: center;
   }
 
   .tool-panel,

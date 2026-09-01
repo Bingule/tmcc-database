@@ -80,3 +80,12 @@ it("keeps Reviewer Two code split from the application shell", async () => {
   expect(source).toContain('lazy(() => import("./tools/reviewer-two/pages/ReviewerTwoPage"))');
   expect(source).not.toMatch(/import\s+\{[^}]*ReviewerTwoPage[^}]*\}\s+from/);
 });
+
+it("provides responsive Reviewer Two layout hooks", async () => {
+  const css = await readFile("src/styles/global.css", "utf8");
+
+  expect(css).toMatch(/\.reviewer-two-actions\s*\{[^}]*display:\s*flex/s);
+  expect(css).toMatch(/\.reviewer-two-privacy\s*\{[^}]*border-left:/s);
+  expect(css).toMatch(/\.reviewer-two-steps\s*\{[^}]*grid-template-columns:\s*repeat\(3,/s);
+  expect(css).toMatch(/@media\s*\(max-width:\s*900px\)[\s\S]*?\.reviewer-two-steps\s*\{[^}]*grid-template-columns:\s*1fr/s);
+});
