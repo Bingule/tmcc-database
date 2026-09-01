@@ -1,5 +1,7 @@
 /// <reference types="vite/client" />
 
+declare const __TMCC_BUILD_DATE__: string;
+
 interface ImportMetaEnv {
   readonly VITE_FEEDBACK_ENDPOINT?: string;
   readonly VITE_TURNSTILE_SITE_KEY?: string;
