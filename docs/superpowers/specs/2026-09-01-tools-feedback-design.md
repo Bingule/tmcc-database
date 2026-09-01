@@ -87,6 +87,8 @@ Production secrets and configuration are supplied by the Cloudflare environment:
 - `TURNSTILE_SECRET_KEY`
 - `RESEND_API_KEY`
 - `FEEDBACK_RECIPIENT`
+- `RATE_LIMIT_SALT`
+- `FEEDBACK_FROM` (non-secret sender configuration)
 - an explicit allowed-origin list (`https://tmccdb.org` and any canonical
   production alias actually used by the deployed site)
 
@@ -129,7 +131,7 @@ JSON only and rejects unsupported methods and content types.
 3. The browser posts the JSON payload to the Worker.
 4. The Worker verifies the allowed origin, content type, schema, length limits,
    route, locale, and email syntax.
-5. The Worker applies a limit of five accepted attempts per ten minutes to a
+5. The Worker applies a limit of five accepted attempts per 60 seconds to a
    one-way-derived client key. The raw IP is not stored.
 6. The Worker submits the Turnstile token to Cloudflare Siteverify. Expired,
    invalid, replayed, or unsuccessful tokens are rejected.
@@ -143,6 +145,11 @@ JSON only and rejects unsupported methods and content types.
 Cloudflare documents server-side Siteverify as mandatory; Turnstile tokens are
 single-use and expire after five minutes:
 <https://developers.cloudflare.com/turnstile/get-started/server-side-validation/>.
+
+Cloudflare's native Worker rate-limit binding supports 10-second or 60-second
+windows, so this design uses five attempts per 60 seconds and does not introduce
+KV or Durable Objects solely to create a longer window:
+<https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/>.
 
 Resend requires a domain owned by the sender and verified with SPF and DKIM:
 <https://resend.com/docs/dashboard/domains/introduction>.
