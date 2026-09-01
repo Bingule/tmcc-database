@@ -36,7 +36,7 @@ jobs:
         run: pnpm --dir services/feedback-worker typecheck
 
       - name: Deploy production Worker
-        run: pnpm --dir services/feedback-worker deploy
+        run: pnpm --dir services/feedback-worker run deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
