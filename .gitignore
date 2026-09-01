@@ -6,3 +6,5 @@ dist/
 cluster_calculations/
 .superpowers/
 .worktrees/
+**/.dev.vars
+.wrangler/

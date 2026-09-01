@@ -1,0 +1,17 @@
+{
+  "name": "tmcc-tools-feedback-worker",
+  "version": "1.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "dev": "wrangler dev --env preview",
+    "deploy": "wrangler deploy --env production"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8",
+    "wrangler": "^4.36.0"
+  }
+}

@@ -5,6 +5,7 @@ const tools = [
   { href: "/tools/cv-kinetics", title: "tools.cv.title", description: "tools.cv.description" },
   { href: "/tools/theoretical-capacity", title: "tools.capacity.title", description: "tools.capacity.description" },
   { href: "/tools/molecular-weight", title: "tools.molecularWeight.title", description: "tools.molecularWeight.description" },
+  { href: "/tools/reviewer-two", title: "tools.reviewerTwo.title", description: "tools.reviewerTwo.description" },
   { href: "/tools/rate-performance", title: "tools.ratePerformance.title", description: "tools.ratePerformance.description" }
 ] as const;
 

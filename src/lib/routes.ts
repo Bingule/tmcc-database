@@ -4,6 +4,7 @@ export type AppRoute =
   | "cvKinetics"
   | "theoreticalCapacity"
   | "molecularWeight"
+  | "reviewerTwo"
   | "ratePerformance"
   | "rateModelComparison"
   | "rateTransportLimitations"
@@ -20,6 +21,7 @@ const routes: Record<string, AppRoute> = {
   "/tools/cv-kinetics": "cvKinetics",
   "/tools/theoretical-capacity": "theoreticalCapacity",
   "/tools/molecular-weight": "molecularWeight",
+  "/tools/reviewer-two": "reviewerTwo",
   "/tools/rate-performance": "ratePerformance",
   "/tools/rate-performance/model-comparison": "rateModelComparison",
   "/tools/rate-performance/transport-limitations": "rateTransportLimitations",
