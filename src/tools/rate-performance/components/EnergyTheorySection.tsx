@@ -1,12 +1,13 @@
 import { useI18n } from "../../../i18n/I18nProvider";
 import { ModelTheoryPanel, type RateTheoryContent } from "./ModelTheoryPanel";
+import { RATE_DISPLAY_EQUATIONS } from "../models/displayEquations";
 
 export function EnergyTheorySection() {
   const { t } = useI18n();
   const content: RateTheoryContent = {
     title: t("rate.energy.theory.title"),
-    equation: "E = ∫ V dQ;  P_avg = E / Δt",
-    equationTex: String.raw`E=\int V\,\mathrm{d}Q\qquad P_{\mathrm{avg}}=\frac{E}{\Delta t}`,
+    equation: RATE_DISPLAY_EQUATIONS.energy.source,
+    equationTex: RATE_DISPLAY_EQUATIONS.energy.tex,
     equationDescription: t("rate.energy.theory.equationDescription"),
     parameters: [
       { symbol: "V", name: t("rate.energy.theory.voltage"), meaning: t("rate.energy.theory.voltageMeaning"), unit: "V", type: "measured" },

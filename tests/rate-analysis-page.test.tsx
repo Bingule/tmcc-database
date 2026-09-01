@@ -156,8 +156,10 @@ describe("RatePerformanceAnalysisPage", () => {
     for (const label of ["τ", "n", "R²", "RMSE"]) {
       expect(view.querySelector(".rate-results-user")?.textContent).toContain(label);
     }
-    for (const label of ["Q_M", "R_T"]) {
-      expect(view.querySelector(`.rate-results-user [aria-label="${label}"]`)).not.toBeNull();
+    for (const source of ["Q_M", "R_T"]) {
+      const symbol = view.querySelector(`.rate-results-user [data-math-source="${source}"]`);
+      expect(symbol?.querySelector("math")).not.toBeNull();
+      expect(symbol?.hasAttribute("aria-label")).toBe(false);
     }
     expect(view.querySelector(".rate-results-user")?.textContent).toContain("0.125");
     for (const label of ["Adjusted R²", "SSE", "AIC", "AICc", "BIC", "95% CI", "Standard error", "Iterations"]) {

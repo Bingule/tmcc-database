@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useI18n } from "../../../i18n/I18nProvider";
 import type { RateModelParameterType } from "../models/types";
 import { ScientificSymbol, ScientificUnit } from "./ScientificTypography";
@@ -7,7 +8,7 @@ export interface RateResultCardItem {
   readonly label: string;
   readonly value: string | number;
   readonly unit?: string;
-  readonly detail?: string;
+  readonly detail?: ReactNode;
   readonly type?: RateModelParameterType;
 }
 

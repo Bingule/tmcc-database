@@ -630,7 +630,7 @@ describe("transport and characteristic-time pages", () => {
     await click(view, "Calculate Times");
     const row = view.querySelector("[data-transport-term='electrode-electronic']");
     expect(row?.textContent).toContain("Missing:");
-    expect(row?.textContent).toContain("Electrode thickness L_E");
+    expect(row?.textContent).toContain("Electrode thickness Lₑ");
     expect(row?.textContent).toContain("Invalid:");
     expect(row?.textContent).toContain("must be positive");
     await unmount();
@@ -681,10 +681,10 @@ describe("transport and characteristic-time pages", () => {
     await click(view, "Try Example Inputs");
     expect(view.textContent).toContain("Comparison total τ");
     expect(view.textContent).not.toContain("Fitted total τ");
-    expect(view.textContent).toContain("Electrical aggregate τ_Electrical");
-    expect(view.textContent).toContain("Diffusive aggregate τ_Diffusive");
-    expect(view.textContent).toContain("τ_C and τ_D: unavailable");
-    expect(view.textContent).toContain("Tian et al. (2019) does not define these symbols in Eqs. 5a–6a");
+    expect(view.textContent).toContain("Electrical aggregate time");
+    expect(view.textContent).toContain("Diffusive aggregate time");
+    expect(view.textContent).toContain("Requested C- and D-labelled characteristic times: unavailable");
+    expect(view.textContent).toContain("Tian et al. (2019) does not define those two symbols in Eqs. 5a–6a");
     expect(view.textContent).not.toMatch(/τ_C\s*=\s*\d/);
     expect(view.textContent).not.toMatch(/τ_D\s*=\s*\d/);
     await unmount();
@@ -763,13 +763,13 @@ describe("transport and characteristic-time pages", () => {
 
     const characteristic = await renderPage(<CharacteristicTimePage />, "zh");
     expect(characteristic.view.querySelector("h1")?.textContent).toBe("特征时间");
-    expect(characteristic.view.textContent).toContain("τ_C 与 τ_D：不可用");
+    expect(characteristic.view.textContent).toContain("请求的 C、D 标记特征时间：不可用");
     expect(characteristic.view.textContent).toContain("有效且依赖模型的估计值");
     await click(characteristic.view, "试用示例输入");
     expect(characteristic.view.textContent).toContain("Tian 等（2019）方程 5c 与 6a 的电学项");
     expect(characteristic.view.textContent).toContain("对比 τ 与可用方程 6a 分量之和的差值");
     expect(characteristic.view.textContent).toContain("5 个步骤");
-    expect(characteristic.view.textContent).toContain("P_E (1)");
+    expect(characteristic.view.textContent).toContain("Pₑ (1)");
     const theoryRows = [...characteristic.view.querySelectorAll(".rate-theory-panel tbody tr")];
     expect(theoryRows.find((row) => row.textContent?.includes("对比总时间 τ"))?.textContent).toContain("h");
     expect(theoryRows.find((row) => row.textContent?.includes("方程 6a 计算总时间"))?.textContent).toContain("s");

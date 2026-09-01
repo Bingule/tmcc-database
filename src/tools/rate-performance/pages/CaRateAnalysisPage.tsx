@@ -18,6 +18,8 @@ import { CA_RATE_EXAMPLE } from "../data/caExamples";
 import { getRateReference } from "../references/rateReferences";
 import { getRateModel } from "../models/registry";
 import { translatedRegistryText } from "../utils/rateModelPresentation";
+import { RATE_DISPLAY_EQUATIONS } from "../models/displayEquations";
+import { ScientificSymbol } from "../components/ScientificTypography";
 
 type CompletedFit = Extract<RateFitResult, { status: "converged" }>;
 
@@ -99,7 +101,7 @@ function CaEmptyState({ onLoadExample }: { onLoadExample: () => void }) {
   const { t } = useI18n();
   return <section className="ca-empty-grid">
     <section className="tool-section"><h2>{t("rate.ca.empty.example")}</h2><p>{t("rate.ca.empty.exampleText")}</p><button type="button" onClick={onLoadExample}>{t("rate.ca.input.loadExample")}</button></section>
-    <section className="tool-section"><h2>{t("rate.ca.empty.outputs")}</h2><ul><li>I(t), Q(t), R(t), Q(R)</li><li>Q_M, τ, n, R², RMSE</li><li>{t("rate.ca.empty.exports")}</li></ul></section>
+    <section className="tool-section"><h2>{t("rate.ca.empty.outputs")}</h2><ul><li>I(t), Q(t), R(t), Q(R)</li><li><ScientificSymbol value="Q_M" />, <ScientificSymbol value="τ" />, n, R², RMSE</li><li>{t("rate.ca.empty.exports")}</li></ul></section>
     <section className="tool-section"><h2>{t("rate.ca.empty.preview")}</h2><ResultCards kind="example" items={[{ id: "qM", label: "Q_M", value: "≈ 300", unit: "mAh g^-1", type: "fitted" }, { id: "tau", label: "τ", value: "≈ 0.4", unit: "h", type: "fitted" }]} /></section>
     <RateChartPanel title={t("rate.ca.chart.current")} xLabel={t("rate.ca.axis.time", { unit: "s" })} yLabel={t("rate.ca.axis.current", { unit: "mA" })} series={[{ id: "ca-example-preview", label: "I(t)", color: "#1f6f78", points: CA_RATE_EXAMPLE.points.map((point) => ({ x: point.time, y: point.current })) }]} />
     <section className="tool-section"><h2>{t("rate.ca.empty.explanation")}</h2><p>{t("rate.ca.empty.explanationText")}</p></section>
@@ -109,8 +111,8 @@ function CaEmptyState({ onLoadExample }: { onLoadExample: () => void }) {
 function CaTheory() {
   const { t } = useI18n();
   const theory: RateTheoryContent = {
-    title: t("rate.ca.theory.name"), equation: "Q(t) = (1/m) ∫₀ᵗ I_adj(t') dt';  R(t) = [I_adj(t)/m] / Q(t);  Q(R) = Q_M / [1 + 2(Rτ)^n]",
-    equationTex: String.raw`Q(t)=\frac{1}{m}\int_0^t I_{\mathrm{adj}}(t')\,\mathrm{d}t'\qquad R(t)=\frac{I_{\mathrm{adj}}(t)/m}{Q(t)}\qquad Q(R)=\frac{Q_{\mathrm{M}}}{1+2(R\tau)^n}`,
+    title: t("rate.ca.theory.name"), equation: RATE_DISPLAY_EQUATIONS.ca.source,
+    equationTex: RATE_DISPLAY_EQUATIONS.ca.tex,
     equationDescription: t("rate.ca.theory.equationDescription"),
     parameters: [{ symbol: "I_adj", name: t("rate.ca.chart.adjustedCurrent"), meaning: `${t("rate.ca.processing.sign")} → ${t("rate.ca.processing.baseline")} (${t("rate.ca.processing.baselineValue", { unit: "mA" })})`, unit: "mA", type: "derived" }, { symbol: "m", name: t("rate.ca.theory.mass"), meaning: t("rate.ca.theory.massMeaning"), unit: "g", type: "user-input" }, { symbol: "R", name: t("rate.ca.theory.rate"), meaning: t("rate.ca.theory.rateMeaning"), unit: "h^-1", type: "derived" }, { symbol: "Q_M", name: t("rate.ca.theory.qM"), meaning: t("rate.ca.theory.qMMeaning"), unit: "mAh g^-1", type: "fitted" }, { symbol: "τ", name: t("rate.ca.theory.tau"), meaning: t("rate.ca.theory.tauMeaning"), unit: "h", type: "fitted" }, { symbol: "n", name: t("rate.ca.theory.n"), meaning: t("rate.ca.theory.nMeaning"), unit: "dimensionless", type: "fitted" }],
     physicalMeaning: t("rate.ca.theory.physical"), limitingBehavior: t("rate.ca.theory.limits"), applicability: t("rate.ca.theory.applicability"), assumptions: [t("rate.ca.theory.assumption1"), t("rate.ca.theory.assumption2")], limitations: (getRateModel("rational-characteristic-time")?.limitations ?? []).map((value) => translatedRegistryText(value, t)), citationGuidance: t("rate.ca.theory.cite"),
