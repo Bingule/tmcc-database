@@ -15,4 +15,5 @@ declare module "node:path" {
 
 declare module "*.mjs" {
   export function createRouteEntries(distPath: string): Promise<void>;
+  export function findProtectedPaths(paths: string[]): string[];
 }
