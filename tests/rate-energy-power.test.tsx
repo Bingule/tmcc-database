@@ -140,7 +140,8 @@ describe("curve validation shared by analysis and export", () => {
 describe("EnergyPowerPage", () => {
   it("explains example outputs, equations, assumptions and limitations before analysis", async () => {
     const view = await renderPage();
-    for (const text of ["Data Input", "Example Dataset", "What You Will Get", "Example Results Preview", "E = ∫ V dQ", "Assumptions", "Limitations"]) expect(view.textContent).toContain(text);
+    for (const text of ["Data Input", "Example Dataset", "What You Will Get", "Example Results Preview", "Assumptions", "Limitations"]) expect(view.textContent).toContain(text);
+    expect(view.querySelector('[data-math-source="E = ∫ V dQ"] .katex')).not.toBeNull();
     expect(view.textContent).toContain("EXAMPLE RESULTS"); expect(view.textContent).not.toContain("rate.energy.");
   });
 
@@ -149,7 +150,7 @@ describe("EnergyPowerPage", () => {
     expect(view.textContent).toContain("EXAMPLE RESULTS"); expect(view.textContent).toContain("Active material basis");
     const chart = view.querySelector('[data-export-id="energy-ragone-chart"]');
     expect(chart).toBeTruthy(); expect(chart?.querySelectorAll('[data-point-series-id="ragone-active-material"]')).toHaveLength(2);
-    expect(chart?.textContent).toContain("Specific power (W kg^-1)");
+    expect(chart?.textContent).toContain("Specific power (W kg⁻¹)");
     for (const label of ["Export Original Data", "Export Results", "Export Ragone Data"]) expect(button(view, label)).toBeTruthy();
   });
 

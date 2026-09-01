@@ -553,7 +553,7 @@ describe("transport and characteristic-time pages", () => {
     expect(view.textContent).toContain("No transport calculation has been run");
     expect(view.textContent).toContain("User Input");
     expect(view.textContent).toContain("Value entered in this tool");
-    expect(view.textContent).toContain("Tian Eq. 6a");
+    expect(view.querySelector(".rate-theory-panel [data-math-source]")?.getAttribute("data-math-source")).toContain("Tian Eq. 6a");
     expect(view.textContent).toContain("10.1038/s41467-019-09792-9");
     expect(view.textContent).toContain("effective, model-dependent estimates");
     await unmount();
@@ -717,12 +717,13 @@ describe("transport and characteristic-time pages", () => {
 
   it("shows the complete verified Eq. 6a form and marks relative and sensitivity outputs as derived", async () => {
     const { view, unmount } = await renderPage(<TransportLimitationPage />);
-    expect(view.textContent).toContain("L_E^2 [C_V,eff / (2 sigma_E)");
-    expect(view.textContent).toContain("Eq. 5a: τ = τ_Electrical + τ_Diffusive + t_c");
-    expect(view.textContent).toContain("Eq. 5b: τ_Diffusive = L_E^2 / D_P + L_S^2 / D_S + L_AM^2 / D_AM");
-    expect(view.textContent).toContain("Eq. 5c: τ_Electrical = C_eff (R_E,E + R_I,P + R_I,S)");
-    expect(view.textContent).toContain("Eq. 5d: τ = C_eff (R_E,E + R_I,P + R_I,S)");
-    expect(view.textContent).toContain("Eq. 6b: τ = a L_E^2 + b L_E + c");
+    const equationSource = view.querySelector(".rate-theory-panel [data-math-source]")?.getAttribute("data-math-source") ?? "";
+    expect(equationSource).toContain("L_E^2 [C_V,eff / (2 sigma_E)");
+    expect(equationSource).toContain("Eq. 5a: τ = τ_Electrical + τ_Diffusive + t_c");
+    expect(equationSource).toContain("Eq. 5b: τ_Diffusive = L_E^2 / D_P + L_S^2 / D_S + L_AM^2 / D_AM");
+    expect(equationSource).toContain("Eq. 5c: τ_Electrical = C_eff (R_E,E + R_I,P + R_I,S)");
+    expect(equationSource).toContain("Eq. 5d: τ = C_eff (R_E,E + R_I,P + R_I,S)");
+    expect(equationSource).toContain("Eq. 6b: τ = a L_E^2 + b L_E + c");
     expect(view.textContent).toContain("a groups Eq. 6a terms 1–3");
     expect(view.textContent).toContain("b is term 4");
     expect(view.textContent).toContain("c groups terms 5–7");

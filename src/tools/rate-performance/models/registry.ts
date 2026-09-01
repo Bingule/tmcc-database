@@ -87,6 +87,7 @@ const rateModels: ReadonlyArray<Readonly<RateModelDefinition>> = Object.freeze([
     family: "characteristic time",
     status: "validated",
     equation: "Q(R) = Q_M [1 - (R tau)^n (1 - exp(-(R tau)^(-n)))]",
+    equationTex: String.raw`Q(R)=Q_{\mathrm{M}}\left[1-(R\tau)^n\left(1-\exp\left(-(R\tau)^{-n}\right)\right)\right]`,
     independentVariable: measuredRate,
     parameters: characteristicTimeParameters,
     applicability: Object.freeze([
@@ -113,6 +114,7 @@ const rateModels: ReadonlyArray<Readonly<RateModelDefinition>> = Object.freeze([
     family: "characteristic time",
     status: "validated",
     equation: "Q(R) = Q_M / [1 + 2 (R tau)^n]",
+    equationTex: String.raw`Q(R)=\frac{Q_{\mathrm{M}}}{1+2(R\tau)^n}`,
     independentVariable: measuredRate,
     parameters: characteristicTimeParameters,
     applicability: Object.freeze([

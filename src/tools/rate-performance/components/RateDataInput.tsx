@@ -143,16 +143,16 @@ export function RateDataInput({
     <div className="rate-unit-controls">
       <label>{t("rate.input.rateUnit")}
         <select aria-label={t("rate.input.rateUnit")} value={rateUnit} onChange={(event) => setRateUnit(event.target.value as RateUnit)}>
-          <option value="h-1">h^-1</option>
+          <option value="h-1">h⁻¹</option>
           <option value="C-rate">C-rate</option>
-          <option value="A-g-1">A g^-1</option>
-          <option value="mA-g-1">mA g^-1</option>
+          <option value="A-g-1">A g⁻¹</option>
+          <option value="mA-g-1">mA g⁻¹</option>
         </select>
       </label>
       <label>{t("rate.input.capacityUnit")}
         <select aria-label={t("rate.input.capacityUnit")} value={capacityUnit} onChange={(event) => setCapacityUnit(event.target.value as CapacityUnit)}>
-          <option value="mAh-g-1">mAh g^-1</option>
-          <option value="Ah-kg-1">Ah kg^-1</option>
+          <option value="mAh-g-1">mAh g⁻¹</option>
+          <option value="Ah-kg-1">Ah kg⁻¹</option>
         </select>
       </label>
     </div>
@@ -193,8 +193,8 @@ export function RateDataInput({
             } : {},
           })}
         >
-          <option value="mAh-g-1">mAh g^-1</option>
-          <option value="Ah-kg-1">Ah kg^-1</option>
+          <option value="mAh-g-1">mAh g⁻¹</option>
+          <option value="Ah-kg-1">Ah kg⁻¹</option>
         </select>
       </label>
     </div> : null}

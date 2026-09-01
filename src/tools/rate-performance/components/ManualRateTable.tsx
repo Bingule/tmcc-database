@@ -2,6 +2,7 @@ import { useState } from "react";
 import { parseDelimitedTable, TabularParseError } from "../../../lib/tabularParsing";
 import { useI18n } from "../../../i18n/I18nProvider";
 import type { CapacityUnit, RatePoint, RateUnit } from "../models/types";
+import { formatScientificUnitCode } from "./ScientificTypography";
 
 export const DEFAULT_RATE_INPUT_ROWS = 6;
 
@@ -67,8 +68,8 @@ export function ManualRateTable({
       <table>
         <thead><tr>
           <th>{t("rate.input.row")}</th>
-          <th>{t("rate.input.rate")} ({rateUnit})</th>
-          <th>{t("rate.input.capacity")} ({capacityUnit})</th>
+          <th>{t("rate.input.rate")} ({formatScientificUnitCode(rateUnit)})</th>
+          <th>{t("rate.input.capacity")} ({formatScientificUnitCode(capacityUnit)})</th>
           <th>{t("rate.input.actions")}</th>
         </tr></thead>
         <tbody>{points.map((point, index) => <tr key={point.id}>

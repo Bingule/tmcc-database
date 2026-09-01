@@ -18,7 +18,7 @@ export function EnergyPowerResults({ results, sampleIds, ragone, kind, csv }: {
   const failures = results.filter((result): result is Extract<EnergyPowerResult, { status: "failure" }> => result.status === "failure");
   const series = (["active-material", "electrode", "device"] as const).flatMap((basis) => {
     const points = ragone.filter((point) => point.normalizationBasis === basis);
-    return points.length ? [{ id: `ragone-${basis}`, label: t(`rate.energy.basis.${basis}`), color: basisColors[basis], mode: "points" as const, points: points.map((point) => ({ x: point.powerWKg, y: point.energyWhKg, accessibilityLabel: `${point.sampleId}: ${point.powerWKg} W kg^-1, ${point.energyWhKg} Wh kg^-1` })) }] : [];
+    return points.length ? [{ id: `ragone-${basis}`, label: t(`rate.energy.basis.${basis}`), color: basisColors[basis], mode: "points" as const, points: points.map((point) => ({ x: point.powerWKg, y: point.energyWhKg, accessibilityLabel: `${point.sampleId}: ${point.powerWKg} W kg⁻¹, ${point.energyWhKg} Wh kg⁻¹` })) }] : [];
   });
   return <section className="energy-results-workspace">
     <ResultCards kind={kind} items={successes.flatMap((result) => [

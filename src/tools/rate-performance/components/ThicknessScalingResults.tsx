@@ -4,6 +4,7 @@ import { sampleRateChartPoints } from "../utils/chartSampling";
 import type { ThicknessExportContext } from "../utils/thicknessExports";
 import { RateChartPanel } from "./RateChartPanel";
 import { ThicknessExportPanel } from "./ThicknessExportPanel";
+import { ScientificMath, formatScientificUnit } from "./ScientificTypography";
 
 export interface ThicknessSampleFailure {
   readonly id: string;
@@ -77,7 +78,7 @@ export function ThicknessScalingResults({
           <th>{t("rate.thickness.rSquared")}</th><th>{t("rate.thickness.rmse")}</th>
         </tr></thead>
         <tbody>{Object.values(result.fits).map((fit) => <tr key={fit.modelId}>
-          <td>{fit.equation}</td><td>{parameters(fit)}</td><td>{format(fit.statistics.rSquared)}</td>
+          <td><ScientificMath tex={thicknessEquationTex(fit.modelId)} source={fit.equation} label={fit.equation} /></td><td>{formatScientificUnit(parameters(fit))}</td><td>{format(fit.statistics.rSquared)}</td>
           <td>{format(fit.statistics.rmse)}</td>
         </tr>)}</tbody>
       </table></div>
@@ -147,5 +148,13 @@ function parameters(fit: ThicknessScalingFit): string {
     case "linear": return `b0=${format(fit.parameters.interceptSeconds)} s; b1=${format(fit.parameters.slopeSecondsPerMetre)} s m^-1`;
     case "quadratic": return `b0=${format(fit.parameters.interceptSeconds)} s; b2=${format(fit.parameters.coefficientSecondsPerMetreSquared)} s m^-2`;
     case "power": return `a=${format(fit.parameters.amplitude)} s·m^-α; α=${format(fit.parameters.alpha)}`;
+  }
+}
+
+function thicknessEquationTex(modelId: ThicknessScalingFit["modelId"]): string {
+  switch (modelId) {
+    case "linear": return String.raw`\tau=b_0+b_1L`;
+    case "quadratic": return String.raw`\tau=b_0+b_2L^2`;
+    case "power": return String.raw`\tau=aL^\alpha`;
   }
 }

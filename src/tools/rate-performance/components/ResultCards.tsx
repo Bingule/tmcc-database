@@ -1,5 +1,6 @@
 import { useI18n } from "../../../i18n/I18nProvider";
 import type { RateModelParameterType } from "../models/types";
+import { ScientificSymbol, ScientificUnit } from "./ScientificTypography";
 
 export interface RateResultCardItem {
   readonly id: string;
@@ -24,8 +25,8 @@ export function ResultCards({
       ? <p className="rate-results-empty">{t("rate.results.empty")}</p>
       : <dl className="rate-result-grid">
         {items.map((item) => <div className="rate-result-card" key={item.id}>
-          <dt>{item.label}</dt>
-          <dd>{item.value}{item.unit ? <span className="rate-result-unit"> {item.unit}</span> : null}</dd>
+          <dt><ScientificSymbol value={item.label} /></dt>
+          <dd>{item.value}{item.unit ? <> <ScientificUnit className="rate-result-unit" value={item.unit} /></> : null}</dd>
           {item.type ? <p>{t(`rate.parameterType.${item.type}`)}</p> : null}
           {item.detail ? <p>{item.detail}</p> : null}
         </div>)}

@@ -601,7 +601,7 @@ describe("EmpiricalModelsPage", () => {
 
   it("localizes the complete library in Chinese without exposing raw keys", async () => {
     const view = await render(<EmpiricalModelsPage />, "zh");
-    for (const text of ["经验模型", "科学验证待定", "适用区间", "主引用", "使用此模型", "比较模型", "低倍率极限下趋近的容量", "正且有限的实测倍率", "拟合", "模型假设", "实测倍率（R，h^-1）"]) {
+    for (const text of ["经验模型", "科学验证待定", "适用区间", "主引用", "使用此模型", "比较模型", "低倍率极限下趋近的容量", "正且有限的实测倍率", "拟合", "模型假设", "实测倍率（R，h⁻¹）"]) {
       expect(view.textContent).toContain(text);
     }
     expect(view.textContent).not.toContain("Capacity approached in the low-rate limit.");

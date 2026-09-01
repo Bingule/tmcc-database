@@ -281,8 +281,8 @@ describe("RateDataInput", () => {
     expect(view.textContent).toContain("Missing values");
     expect(view.textContent).toContain("1");
     expect(view.textContent).toContain("0.1–2");
-    expect(view.textContent).toContain("0.1–2 h-1");
-    expect(view.textContent).toContain("200–300 mAh-g-1");
+    expect(view.textContent).toContain("0.1–2 h⁻¹");
+    expect(view.textContent).toContain("200–300 mAh g⁻¹");
 
     const imported = readValue(view).points;
     expect(imported[0]).toMatchObject({
@@ -485,8 +485,8 @@ describe("RateDataInput", () => {
     expect(onImport).toHaveBeenCalledOnce();
     expect(onImport.mock.calls[0][0]).toHaveLength(125_000);
     expect(summaryValue(view, "Rows")).toBe("125000");
-    expect(view.textContent).toContain("1–125000 h-1");
-    expect(view.textContent).toContain("2–125001 mAh-g-1");
+    expect(view.textContent).toContain("1–125000 h⁻¹");
+    expect(view.textContent).toContain("2–125001 mAh g⁻¹");
   });
 
   it("renders fully labeled Chinese manual and upload controls", async () => {

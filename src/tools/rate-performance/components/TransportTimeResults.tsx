@@ -13,11 +13,13 @@ import {
   formatTransportPercent,
   formatTransportTime,
   TERM_LABELS,
+  transportEquationTex,
   transportUnavailabilityReasonText,
   type CompletedTransportAnalysis,
   type TransportTranslator,
   type TransportWorkspaceMode,
 } from "./transportTimePresentation";
+import { ScientificMath } from "./ScientificTypography";
 
 export function TransportEmptyState({ onTryExample }: { onTryExample: () => void }) {
   const { t } = useI18n();
@@ -122,7 +124,7 @@ function TransportTermRow({ term, analysis }: { term: Readonly<TransportTerm>; a
     ? t(analysis.origin === "example" ? "rate.transport.provenance.example" : "rate.transport.provenance.user")
     : t("rate.transport.provenance.derived", { term: term.equationTerm });
   return <tr data-transport-term={term.id}>
-    <th scope="row">{t(TERM_LABELS[term.id])}</th><td><code>{term.equation}</code></td>
+    <th scope="row">{t(TERM_LABELS[term.id])}</th><td><ScientificMath tex={transportEquationTex(term.id)} source={term.equation} label={term.equation} /></td>
     <td>{term.status === "available" ? status : `${t("rate.transport.unavailableGeneric")} — ${status}`}</td>
     <td>{term.status === "available" ? `${formatTransportTime(term.value)} s` : "—"}</td>
     <td>{t(`rate.parameterType.${term.type}`)} · {provenance}</td>
