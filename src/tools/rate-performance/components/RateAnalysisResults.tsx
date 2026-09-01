@@ -4,6 +4,7 @@ import type { TranslationKey } from "../../../locales/en";
 import type { RateFitResult } from "../analysis/fitRatePerformance";
 import { getRateModel } from "../models/registry";
 import { transitionRate } from "../models/tianCharacteristicTime";
+import { RATE_DISPLAY_EQUATIONS } from "../models/displayEquations";
 import type { NormalizedRatePoint, RateModelDefinition, RateModelFitFunction } from "../models/types";
 import { createSmoothRateFitPoints, formatOptionalRateValue, formatRateValue, normalizedRateExtent, type SmoothRateFitPoint } from "../utils/rateAnalysisPresentation";
 import { sampleRateChartPoints } from "../utils/chartSampling";
@@ -20,7 +21,7 @@ import type { RateDataInputValue } from "./RateDataInput";
 import { ExportToolbar, type RateCsvExportItem } from "./ExportToolbar";
 import { RateChartPanel } from "./RateChartPanel";
 import { ResultCards, type RateResultCardItem } from "./ResultCards";
-import { ScientificSymbol, ScientificUnit } from "./ScientificTypography";
+import { ScientificMath, ScientificSymbol, ScientificUnit } from "./ScientificTypography";
 
 const MODEL_ID = "tian-characteristic-time";
 const DISPLAY_POINT_LIMIT = 2_000;
@@ -56,7 +57,7 @@ export function RateAnalysisResults({
     { id: "qM", label: "Q_M", value: formatRateValue(result.parameters.qM), unit: "mAh g^-1", type: "fitted" },
     { id: "tau", label: "τ", value: formatRateValue(result.parameters.tau), unit: "h", type: "fitted" },
     { id: "n", label: "n", value: formatRateValue(result.parameters.n), type: "fitted" },
-    { id: "transition-rate", label: "R_T", value: formatRateValue(rt), unit: "h^-1", type: "derived", detail: t("rate.analysis.rtDefinition") },
+    { id: "transition-rate", label: "R_T", value: formatRateValue(rt), unit: "h^-1", type: "derived", detail: <><ScientificMath {...RATE_DISPLAY_EQUATIONS.transitionRate} />; {t("rate.analysis.rtDefinition")}</> },
     { id: "r-squared", label: "R²", value: formatOptionalRateValue(result.statistics.rSquared, t("rate.analysis.notEstimable")) },
     { id: "rmse", label: "RMSE", value: formatOptionalRateValue(result.statistics.rmse, t("rate.analysis.notEstimable")), unit: "mAh g^-1" },
   ];

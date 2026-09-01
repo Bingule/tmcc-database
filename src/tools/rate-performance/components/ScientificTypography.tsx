@@ -72,8 +72,7 @@ export function ScientificMath({ tex, source, label, display = false, className 
 
   const shared = {
     className,
-    role: "math",
-    "aria-label": label ?? source,
+    ...(label ? { role: "math", "aria-label": label } : {}),
     "data-math-source": source,
     dangerouslySetInnerHTML: { __html: html },
   } as const;
@@ -83,7 +82,7 @@ export function ScientificMath({ tex, source, label, display = false, className 
 export function ScientificSymbol({ value, className }: { value: string; className?: string }) {
   const tex = SYMBOL_TEX[value];
   return tex
-    ? <ScientificMath tex={tex} source={value} label={value} className={className} />
+    ? <ScientificMath tex={tex} source={value} className={className} />
     : <span className={className}>{value}</span>;
 }
 

@@ -4,7 +4,8 @@ import { sampleRateChartPoints } from "../utils/chartSampling";
 import type { ThicknessExportContext } from "../utils/thicknessExports";
 import { RateChartPanel } from "./RateChartPanel";
 import { ThicknessExportPanel } from "./ThicknessExportPanel";
-import { ScientificMath, formatScientificUnit } from "./ScientificTypography";
+import { ScientificMath } from "./ScientificTypography";
+import { RATE_DISPLAY_EQUATIONS } from "../models/displayEquations";
 
 export interface ThicknessSampleFailure {
   readonly id: string;
@@ -78,7 +79,7 @@ export function ThicknessScalingResults({
           <th>{t("rate.thickness.rSquared")}</th><th>{t("rate.thickness.rmse")}</th>
         </tr></thead>
         <tbody>{Object.values(result.fits).map((fit) => <tr key={fit.modelId}>
-          <td><ScientificMath tex={thicknessEquationTex(fit.modelId)} source={fit.equation} label={fit.equation} /></td><td>{formatScientificUnit(parameters(fit))}</td><td>{format(fit.statistics.rSquared)}</td>
+          <td><ScientificMath {...RATE_DISPLAY_EQUATIONS.thickness[fit.modelId]} label={fit.equation} /></td><td><ScientificMath tex={parameterTex(fit)} source={parameters(fit)} /></td><td>{format(fit.statistics.rSquared)}</td>
           <td>{format(fit.statistics.rmse)}</td>
         </tr>)}</tbody>
       </table></div>
@@ -151,10 +152,10 @@ function parameters(fit: ThicknessScalingFit): string {
   }
 }
 
-function thicknessEquationTex(modelId: ThicknessScalingFit["modelId"]): string {
-  switch (modelId) {
-    case "linear": return String.raw`\tau=b_0+b_1L`;
-    case "quadratic": return String.raw`\tau=b_0+b_2L^2`;
-    case "power": return String.raw`\tau=aL^\alpha`;
+function parameterTex(fit: ThicknessScalingFit): string {
+  switch (fit.modelId) {
+    case "linear": return String.raw`b_0=${format(fit.parameters.interceptSeconds)}\,\mathrm{s};\quad b_1=${format(fit.parameters.slopeSecondsPerMetre)}\,\mathrm{s\,m^{-1}}`;
+    case "quadratic": return String.raw`b_0=${format(fit.parameters.interceptSeconds)}\,\mathrm{s};\quad b_2=${format(fit.parameters.coefficientSecondsPerMetreSquared)}\,\mathrm{s\,m^{-2}}`;
+    case "power": return String.raw`a=${format(fit.parameters.amplitude)}\,\mathrm{s\,m^{-\alpha}};\quad \alpha=${format(fit.parameters.alpha)}`;
   }
 }
