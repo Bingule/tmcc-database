@@ -116,6 +116,7 @@ describe("Tools page markup", () => {
       { title: "CV Kinetics Analysis", description: "b-value and Dunn capacitive contribution analysis from multi-scan-rate CV data." },
       { title: "Theoretical Capacity Calculator", description: "Calculate theoretical specific capacity from chemical formula and electron transfer number." },
       { title: "Molecular Weight Calculator", description: "Calculate molar mass and elemental mass contributions from chemical formulas." },
+      { title: "Reviewer Two", description: "Launch an evidence-grounded scientific peer-review workflow in an authorized private environment." },
       { title: "Rate Performance", description: "Analyze rate capability and compare validated kinetic models." }
     ]);
 
@@ -126,6 +127,7 @@ describe("Tools page markup", () => {
       { title: "CV 动力学分析", description: "基于多扫描速率 CV 数据进行 b 值与 Dunn 电容贡献分析。" },
       { title: "理论容量计算器", description: "根据化学式和电子转移数计算理论比容量。" },
       { title: "分子量计算器", description: "根据化学式计算摩尔质量和各元素质量贡献。" },
+      { title: "科学论文预审", description: "在获得授权的私有环境中启动基于证据的科学论文审稿工作流。" },
       { title: "倍率性能", description: "分析倍率性能并比较经验证的动力学模型。" }
     ]);
   });

@@ -327,6 +327,8 @@ export const zh = {
   "tools.capacity.description": "根据化学式和电子转移数计算理论比容量。",
   "tools.molecularWeight.title": "分子量计算器",
   "tools.molecularWeight.description": "根据化学式计算摩尔质量和各元素质量贡献。",
+  "tools.reviewerTwo.title": "科学论文预审",
+  "tools.reviewerTwo.description": "在获得授权的私有环境中启动基于证据的科学论文审稿工作流。",
   "tools.ratePerformance.title": "倍率性能",
   "tools.ratePerformance.description": "分析倍率性能并比较经验证的动力学模型。",
   "rate.nav": "倍率性能导航",

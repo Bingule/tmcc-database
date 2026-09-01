@@ -325,6 +325,8 @@ export const en = {
   "tools.capacity.description": "Calculate theoretical specific capacity from chemical formula and electron transfer number.",
   "tools.molecularWeight.title": "Molecular Weight Calculator",
   "tools.molecularWeight.description": "Calculate molar mass and elemental mass contributions from chemical formulas.",
+  "tools.reviewerTwo.title": "Reviewer Two",
+  "tools.reviewerTwo.description": "Launch an evidence-grounded scientific peer-review workflow in an authorized private environment.",
   "tools.ratePerformance.title": "Rate Performance",
   "tools.ratePerformance.description": "Analyze rate capability and compare validated kinetic models.",
   "rate.nav": "Rate Performance navigation",
