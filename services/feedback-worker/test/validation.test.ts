@@ -50,4 +50,11 @@ describe("parseFeedbackPayload", () => {
       language: "zh"
     }).ok).toBe(true);
   });
+
+  it("accepts the trailing slash used by GitHub Pages Tools routes", () => {
+    expect(parseFeedbackPayload({
+      ...validPayload,
+      pagePath: "/tools/reviewer-two/"
+    }).ok).toBe(true);
+  });
 });
