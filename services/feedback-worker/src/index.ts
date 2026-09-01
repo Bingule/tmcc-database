@@ -17,7 +17,7 @@ const defaultLogger: FeedbackLogger = {
 export function createFeedbackHandler(dependencies: FeedbackHandlerDependencies = {}) {
   const fetcher = dependencies.fetcher ?? fetch;
   const logger = dependencies.logger ?? defaultLogger;
-  const createRequestId = dependencies.requestId ?? crypto.randomUUID;
+  const createRequestId = dependencies.requestId ?? (() => crypto.randomUUID());
 
   return {
     async fetch(request: Request, env: WorkerEnv): Promise<Response> {
