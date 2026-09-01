@@ -65,6 +65,26 @@ function handlerWith(fetcher: Fetcher) {
 }
 
 describe("feedback Worker endpoint", () => {
+  it("keeps the default request ID generator bound to Web Crypto", async () => {
+    const randomUuid = vi.spyOn(crypto, "randomUUID").mockImplementation(function (this: Crypto) {
+      if (this !== crypto) throw new TypeError("Illegal invocation");
+      return "00000000-0000-4000-8000-000000000000";
+    });
+
+    try {
+      const handler = createFeedbackHandler({ fetcher: successfulFetcher(), logger: silentLogger });
+      const response = await handler.fetch(request(validPayload, { method: "GET" }), fakeEnv());
+
+      expect(response.status).toBe(405);
+      expect(await body(response)).toEqual({
+        code: "method_not_allowed",
+        requestId: "00000000-0000-4000-8000-000000000000"
+      });
+    } finally {
+      randomUuid.mockRestore();
+    }
+  });
+
   it("answers an allowed CORS preflight without invoking providers", async () => {
     const fetcher = successfulFetcher();
     const handler = handlerWith(fetcher);
