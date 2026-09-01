@@ -28,6 +28,7 @@ async function renderRoute(path: string) {
     if (path === "/tools/cv-kinetics") await import("../src/pages/CvKineticsPage");
     if (path === "/tools/theoretical-capacity") await import("../src/pages/TheoreticalCapacityPage");
     if (path === "/tools/molecular-weight") await import("../src/pages/MolecularWeightPage");
+    if (path === "/tools/reviewer-two") await import("../src/tools/reviewer-two/pages/ReviewerTwoPage");
     if (path === "/tools/rate-performance") await import("../src/tools/rate-performance/pages/RatePerformanceAnalysisPage");
     if (path === "/tools/rate-performance/model-comparison") await import("../src/tools/rate-performance/pages/ModelComparisonPage");
     if (path === "/missing") await import("../src/pages/NotFoundPage");
@@ -66,24 +67,36 @@ function expectLabeledControls(view: HTMLElement) {
 }
 
 describe("Tools page markup", () => {
+  it("provides responsive and accessible feedback panel styles", async () => {
+    const css = await readFile("src/styles/global.css", "utf8");
+
+    expect(css).toMatch(/\.tool-feedback-panel\s*\{[^}]*border-top:/s);
+    expect(css).toMatch(/\.tool-feedback-grid\s*\{[^}]*display:\s*grid/s);
+    expect(css).toMatch(/\.tool-feedback-status\s*\{[^}]*min-height:/s);
+    expect(css).toMatch(/@media\s*\(max-width:\s*700px\)[\s\S]*?\.tool-feedback-grid\s*\{[^}]*grid-template-columns:\s*1fr/s);
+  });
+
   it.each([
     "/tools",
     "/tools/cv-kinetics",
     "/tools/rate-performance",
-    "/tools/rate-performance/model-comparison"
-  ])("shows the approved contact note exactly once at the bottom of %s", async (path) => {
+    "/tools/rate-performance/model-comparison",
+    "/tools/reviewer-two"
+  ])("shows the approved feedback panel exactly once at the bottom of %s", async (path) => {
     const view = await renderRoute(path);
-    const notes = view.querySelectorAll(".tool-contact-note");
+    const panels = view.querySelectorAll(".tool-feedback-panel");
 
-    expect(notes).toHaveLength(1);
-    expect(notes[0].textContent).toContain("Found an issue, got an unexpected result, or have a suggestion? Contact Dr. Wu at");
-    expect(notes[0].querySelector("a")?.getAttribute("href")).toBe("mailto:wui@vscht.cz");
-    expect(notes[0].textContent).toContain("Dr. Wu: wui@vscht.cz");
+    expect(panels).toHaveLength(1);
+    const contact = panels[0].querySelector(".tool-feedback-contact");
+    expect(contact?.tagName).toBe("P");
+    expect(contact?.textContent).toBe("Found an issue, got an unexpected result, or have a suggestion? Contact Dr. Wu at wui@vscht.cz");
+    expect(contact?.textContent?.match(/Dr\. Wu/g)).toHaveLength(1);
+    expect(contact?.querySelector("a")?.getAttribute("href")).toBe("mailto:wui@vscht.cz");
   });
 
   it("does not show the Tools contact note on non-Tools pages", async () => {
     const view = await renderRoute("/missing");
-    expect(view.querySelector(".tool-contact-note")).toBeNull();
+    expect(view.querySelector(".tool-feedback-panel")).toBeNull();
   });
 
   it.each([

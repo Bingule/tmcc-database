@@ -2518,16 +2518,174 @@ td button {
   overflow-wrap: anywhere;
 }
 
-.tool-contact-note {
-  margin-top: 28px;
-  padding-top: 18px;
+.tool-feedback-panel {
+  margin-top: 32px;
+  padding: 28px 0 8px;
   border-top: 1px solid #dce2df;
   color: #40515d;
 }
 
-.tool-contact-note a {
+.tool-feedback-heading {
+  max-width: 760px;
+}
+
+.tool-feedback-heading h2 {
+  margin: 4px 0 8px;
+  color: #173847;
+}
+
+.tool-feedback-kicker {
+  margin: 0;
+  color: #4c6d79;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tool-feedback-form {
+  display: grid;
+  gap: 18px;
+  margin-top: 20px;
+  padding: 22px;
+  border: 1px solid #d7e0dd;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.tool-feedback-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: 16px;
+}
+
+.tool-feedback-field {
+  display: grid;
+  gap: 7px;
+}
+
+.tool-feedback-field label {
+  color: #173847;
+  font-weight: 650;
+}
+
+.tool-feedback-field :is(input, select, textarea) {
+  width: 100%;
+  border: 1px solid #b9c8c8;
+  border-radius: 10px;
+  background: #fff;
+  color: #173847;
+  font: inherit;
+}
+
+.tool-feedback-field :is(input, select) {
+  min-height: 44px;
+  padding: 9px 11px;
+}
+
+.tool-feedback-field textarea {
+  min-height: 126px;
+  padding: 11px;
+  resize: vertical;
+}
+
+.tool-feedback-field :is(input, select, textarea):focus-visible,
+.tool-feedback-actions button:focus-visible,
+.tool-feedback-contact a:focus-visible {
+  outline: 2px solid #2f5f73;
+  outline-offset: 3px;
+}
+
+.tool-feedback-help,
+.tool-feedback-error,
+.tool-feedback-privacy,
+.tool-feedback-warning,
+.tool-feedback-unavailable,
+.tool-feedback-status {
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.tool-feedback-help,
+.tool-feedback-privacy {
+  color: #61737c;
+}
+
+.tool-feedback-error,
+.tool-feedback-status-error,
+.tool-feedback-warning,
+.tool-feedback-unavailable {
+  color: #8a3e2d;
+}
+
+.tool-feedback-warning,
+.tool-feedback-privacy,
+.tool-feedback-unavailable {
+  margin: 0;
+}
+
+.turnstile-widget {
+  min-height: 65px;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.tool-feedback-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.tool-feedback-actions button {
+  min-height: 44px;
+  padding: 10px 18px;
+  border: 1px solid #285b70;
+  border-radius: 999px;
+  background: #285b70;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.tool-feedback-actions button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.tool-feedback-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.tool-feedback-status {
+  min-height: 1.5em;
+  margin: 0;
+}
+
+.tool-feedback-status-success {
+  color: #2f684c;
+}
+
+.tool-feedback-contact {
+  margin: 20px 0 0;
+  color: #40515d;
+}
+
+.tool-feedback-contact a {
   color: #285b70;
   font-weight: 600;
+}
+
+@media (max-width: 700px) {
+  .tool-feedback-form {
+    padding: 18px;
+  }
+
+  .tool-feedback-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .tool-layout {
