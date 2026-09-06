@@ -7,6 +7,7 @@ import { normalizePathname } from "./lib/routes";
 import { HomePage } from "./pages/HomePage";
 
 const ToolsPage = lazy(() => import("./pages/ToolsPage"));
+const CrystalDescriptionPage = lazy(() => import("./tools/crystal-description/CrystalDescriptionPage"));
 const CvKineticsPage = lazy(() => import("./pages/CvKineticsPage"));
 const TheoreticalCapacityPage = lazy(() => import("./pages/TheoreticalCapacityPage"));
 const MolecularWeightPage = lazy(() => import("./pages/MolecularWeightPage"));
@@ -28,6 +29,7 @@ export default function App() {
 
   if (route === "home") return <main><HomePage /></main>;
   if (route === "tools") return renderInShell(<ToolsPage />);
+  if (route === "crystalDescription") return renderInShell(<CrystalDescriptionPage />);
   if (route === "cvKinetics") return renderInShell(<CvKineticsPage />);
   if (route === "theoreticalCapacity") return renderInShell(<TheoreticalCapacityPage />);
   if (route === "molecularWeight") return renderInShell(<MolecularWeightPage />);

@@ -126,6 +126,7 @@ describe("Tools page markup", () => {
     expect(view.querySelector("h1")?.textContent).toBe("Materials Research Tools");
     expect(view.querySelector(".tool-page-header p")?.textContent).toBe("Online tools for electrochemistry and materials research.");
     expect(readCards()).toEqual([
+      { title: "Crystal Structure Description", description: "Describe a CIF or Materials Project structure with Robocrys. Try the SnO₂ example, then copy or download the result." },
       { title: "CV Kinetics Analysis", description: "b-value and Dunn capacitive contribution analysis from multi-scan-rate CV data." },
       { title: "Theoretical Capacity Calculator", description: "Calculate theoretical specific capacity from chemical formula and electron transfer number." },
       { title: "Molecular Weight Calculator", description: "Calculate molar mass and elemental mass contributions from chemical formulas." },
@@ -137,6 +138,7 @@ describe("Tools page markup", () => {
     expect(view.querySelector("h1")?.textContent).toBe("材料研究工具");
     expect(view.querySelector(".tool-page-header p")?.textContent).toBe("用于电化学与材料研究的在线工具。");
     expect(readCards()).toEqual([
+      { title: "晶体结构描述", description: "用 Robocrys 描述 CIF 或 Materials Project 结构。先试 SnO₂ 示例，再复制或下载结果。" },
       { title: "CV 动力学分析", description: "基于多扫描速率 CV 数据进行 b 值与 Dunn 电容贡献分析。" },
       { title: "理论容量计算器", description: "根据化学式和电子转移数计算理论比容量。" },
       { title: "分子量计算器", description: "根据化学式计算摩尔质量和各元素质量贡献。" },
@@ -313,7 +315,7 @@ describe("Tools static integration", () => {
 
   it("keeps root metadata database-focused", async () => {
     const html = await readFile("index.html", "utf8");
-    expect(html).toContain("TMCC Database | Transition Metal Carbochalcogenide Materials");
+    expect(html).toContain("TMCC Database | Transition Metal Carbochalcogenide Database");
     expect(html).toContain('<link rel="canonical" href="https://tmccdb.org/"');
     expect(html).not.toContain("/en/");
     expect(html).not.toContain("/zh/");

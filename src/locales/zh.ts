@@ -1,6 +1,11 @@
 import type { TranslationKey } from "./en";
 
 export const zh = {
+  "tools.crystal.title": "晶体结构描述",
+  "tools.crystal.description": "用 Robocrys 描述 CIF 或 Materials Project 结构。先试 SnO₂ 示例，再复制或下载结果。",
+  "crystal.open": "在新窗口打开工具",
+  "crystal.note": "计算由免费 Streamlit 实例提供。CIF 会发送到该服务处理，MP 查询需要你自己的 API key，请勿上传保密结构。实例休眠后可能需要点击唤醒。",
+  "crystal.help": "选择 SnO₂ 示例 → 生成描述 → 复制或下载。界面支持中英切换，描述保留 Robocrys 原生英文。如果嵌入页面无法加载，请在新窗口打开工具。",
   "language.english": "EN",
   "language.chinese": "中文",
   "nav.home": "首页",

@@ -1,4 +1,9 @@
 export const en = {
+  "tools.crystal.title": "Crystal Structure Description",
+  "tools.crystal.description": "Describe a CIF or Materials Project structure with Robocrys. Try the SnO₂ example, then copy or download the result.",
+  "crystal.open": "Open tool in a new tab",
+  "crystal.note": "Free community-hosted computation. CIF files are processed by the embedded Streamlit service; MP lookup requires your own API key. Avoid uploading confidential structures. A sleeping instance may need waking up.",
+  "crystal.help": "Try SnO₂ → Generate description → Copy or download. The interface is bilingual; Robocrys generates the original English description. If the embedded page does not load, open the tool in a new tab.",
   "language.english": "EN",
   "language.chinese": "中文",
   "nav.home": "Home",

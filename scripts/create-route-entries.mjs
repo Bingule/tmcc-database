@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 
 const routeEntries = [
   "tools/index.html",
+  "tools/crystal-description/index.html",
   "tools/cv-kinetics/index.html",
   "tools/theoretical-capacity/index.html",
   "tools/molecular-weight/index.html",

@@ -18,6 +18,7 @@ afterEach(async () => {
 });
 
 async function renderHome(): Promise<HTMLElement> {
+  history.replaceState(null, "", "/");
   Element.prototype.scrollIntoView ??= () => undefined;
   await import("../src/components/StructureViewer");
   const view = document.createElement("div");

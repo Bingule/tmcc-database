@@ -5,6 +5,7 @@ export type AppRoute =
   | "theoreticalCapacity"
   | "molecularWeight"
   | "reviewerTwo"
+  | "crystalDescription"
   | "ratePerformance"
   | "rateModelComparison"
   | "rateTransportLimitations"
@@ -22,6 +23,7 @@ const routes: Record<string, AppRoute> = {
   "/tools/theoretical-capacity": "theoreticalCapacity",
   "/tools/molecular-weight": "molecularWeight",
   "/tools/reviewer-two": "reviewerTwo",
+  "/tools/crystal-description": "crystalDescription",
   "/tools/rate-performance": "ratePerformance",
   "/tools/rate-performance/model-comparison": "rateModelComparison",
   "/tools/rate-performance/transport-limitations": "rateTransportLimitations",
