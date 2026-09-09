@@ -44,6 +44,8 @@ const panelCopy: CvPeakPanelCopy = {
   exclude: "Exclude point",
   restore: "Restore automatic point",
   add: "Add peak",
+  addOxidation: "Add oxidation peak",
+  addReduction: "Add reduction peak",
   remove: "Remove peak",
   noPeaks: "No significant peaks were detected.",
   summary: "Peak summary",
@@ -127,6 +129,7 @@ describe("peak b-value charts", () => {
       onExclude={() => undefined}
       onRestore={() => undefined}
       onAddPeak={() => undefined}
+      onAddPeakBranch={() => undefined}
       onRemovePeak={() => undefined}
       copy={panelCopy}
     />));
@@ -162,6 +165,7 @@ describe("peak b-value charts", () => {
       onExclude={() => undefined}
       onRestore={() => undefined}
       onAddPeak={() => undefined}
+      onAddPeakBranch={() => undefined}
       onRemovePeak={() => undefined}
       copy={panelCopy}
     />));
@@ -236,7 +240,7 @@ describe("peak b-value charts", () => {
       series={series} result={result} selectedPeakId="peak-1" selectedSeriesIndex={0}
       onPeakChange={() => undefined} onSeriesChange={() => undefined} onPotentialSelect={() => undefined}
       onAdjustPotential={() => undefined} onConfirm={() => undefined} onExclude={() => undefined}
-      onRestore={() => undefined} onAddPeak={() => undefined} onRemovePeak={() => undefined} copy={chineseCopy}
+      onRestore={() => undefined} onAddPeak={() => undefined} onAddPeakBranch={() => undefined} onRemovePeak={() => undefined} copy={chineseCopy}
     />));
     const chineseTable = container.querySelector<HTMLTableElement>('[data-table-id="cv-peak-points"]')!;
     expect(chineseTable.querySelector('thead label[title="扫描速率"]')).not.toBeNull();
@@ -266,6 +270,7 @@ describe("peak b-value charts", () => {
       onExclude={() => undefined}
       onRestore={() => undefined}
       onAddPeak={() => undefined}
+      onAddPeakBranch={() => undefined}
       onRemovePeak={() => undefined}
       copy={panelCopy}
     />));
@@ -313,6 +318,7 @@ describe("peak b-value charts", () => {
       onExclude={onExclude}
       onRestore={onRestore}
       onAddPeak={onAddPeak}
+      onAddPeakBranch={() => undefined}
       onRemovePeak={onRemovePeak}
       copy={panelCopy}
     />));
@@ -346,6 +352,7 @@ describe("peak b-value charts", () => {
       onExclude={onExclude}
       onRestore={onRestore}
       onAddPeak={onAddPeak}
+      onAddPeakBranch={() => undefined}
       onRemovePeak={onRemovePeak}
       copy={panelCopy}
     />));
