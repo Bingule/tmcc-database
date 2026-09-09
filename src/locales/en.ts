@@ -417,6 +417,8 @@ export const en = {
   "cv.peak.exclude": "Exclude point",
   "cv.peak.restore": "Restore automatic point",
   "cv.peak.add": "Add peak",
+  "cv.peak.addOxidation": "Add oxidation peak",
+  "cv.peak.addReduction": "Add reduction peak",
   "cv.peak.remove": "Remove peak",
   "cv.peak.limit": "A maximum of 10 active peaks is supported.",
   "cv.peak.snapError": "Choose a potential on the selected scan rate and sweep branch.",

@@ -143,6 +143,37 @@ export function addManualPeakOverride(
   };
 }
 
+export function addManualPeakForBranch(
+  state: CvPeakOverrideState,
+  active: CvPeakAnalysisResult,
+  series: CvSeries[],
+  cycles: NormalizedCvCycle[],
+  anchorSeriesIndex: number,
+  branch: CvBranchKind
+): CvPeakOverrideState {
+  const cycle = cycles[anchorSeriesIndex];
+  const anchorSeries = series[anchorSeriesIndex];
+  if (!cycle || !anchorSeries) throw new CvPeakOverrideError("invalidSourceIndex");
+  const points = branch === "forward" ? cycle.forward.points : cycle.reverse.points;
+  const span = branchSpan(cycle, branch);
+  const kind = branch === "forward" ? "oxidation" : "reduction";
+  const occupied = new Set(active.fits.flatMap((fit) => fit.points.flatMap((point) =>
+    point.seriesIndex === anchorSeriesIndex && point.status !== "excluded" && point.candidate
+      ? [point.candidate.sourceIndex]
+      : []
+  )));
+  const candidate = findOriginalPeakExtrema(points, kind, 0.1 * span)
+    .filter((item) => !occupied.has(item.point.sourceIndex))
+    .sort((left, right) => right.prominence - left.prominence
+      || left.point.sourceIndex - right.point.sourceIndex)[0];
+  if (!candidate) throw new CvPeakOverrideError("invalidSourceIndex");
+  return addManualPeakOverride(state, active, series, cycles, {
+    anchorSeriesIndex,
+    branch,
+    sourceIndex: candidate.point.sourceIndex
+  });
+}
+
 export function applyPeakOverrides(
   automatic: CvPeakAnalysisResult,
   series: CvSeries[],

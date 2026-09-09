@@ -330,27 +330,13 @@ function zeroStrictPeakPageCsv() {
         const isolatedExtremum = isForward && sourceIndex === 155
           ? 0.08 * Math.pow(rate, 0.7)
           : 0;
-        return baseline + isolatedExtremum;
+        const weakReverseExtremum = !isForward && sourceIndex === 245
+          ? -1e-6 * Math.pow(rate, 0.65)
+          : 0;
+        return baseline + isolatedExtremum + weakReverseExtremum;
       })
     ].join(","))
   ].join("\n");
-}
-
-async function clickPeakOverviewSource(view: HTMLElement, seriesIndex: number, sourceIndex: number) {
-  const chart = view.querySelector<SVGSVGElement>('[data-export-id="cv-peak-overview-chart"]')!;
-  vi.spyOn(chart, "getBoundingClientRect").mockReturnValue({
-    x: 0, y: 0, left: 0, top: 0, right: 800, bottom: 450, width: 800, height: 450,
-    toJSON: () => ({})
-  });
-  const path = chart.querySelector<SVGPathElement>(`[data-cv-peak-loop="${seriesIndex}"]`)?.getAttribute("d") ?? "";
-  const point = [...path.matchAll(/[ML]\s+([^\s]+)\s+([^\s]+)/g)][sourceIndex];
-  if (!point) throw new Error(`Missing source ${sourceIndex} on series ${seriesIndex}`);
-  await act(async () => chart.querySelector<SVGRectElement>('[data-peak-click-target]')!
-    .dispatchEvent(new MouseEvent("click", {
-      bubbles: true,
-      clientX: Number(point[1]),
-      clientY: Number(point[2])
-    })));
 }
 
 describe("CV kinetics page", () => {
@@ -423,7 +409,7 @@ describe("CV kinetics page", () => {
 
     await act(async () => add!.click());
     expect(add?.getAttribute("aria-pressed")).toBe("true");
-    await clickPeakOverviewSource(view, 1, 155);
+    await click(view, "Add oxidation peak");
 
     const selector = view.querySelector<HTMLSelectElement>('select[name="selectedPeakId"]');
     expect(selector?.value).toBe("manual-1");
@@ -436,7 +422,25 @@ describe("CV kinetics page", () => {
     expect(consoleWarn).not.toHaveBeenCalled();
   }, 15_000);
 
-  it("adds a new family only after an unoccupied original extremum is clicked", async () => {
+  it("offers explicit branch actions and adds a reduction family without requiring an existing reduction peak", async () => {
+    const view = await renderPage();
+    await upload(view, zeroStrictPeakPageCsv());
+    await setValue(view.querySelector<HTMLInputElement>('input[name="cv-scan-rates"]')!, "1, 4, 9");
+    await runAnalysisInPeakMode(view);
+
+    await click(view, "Add peak");
+    expect(button(view, "Add peak").getAttribute("aria-expanded")).toBe("true");
+    expect(button(view, "Add oxidation peak")).toBeDefined();
+    expect(button(view, "Add reduction peak")).toBeDefined();
+
+    await click(view, "Add reduction peak");
+    expect(view.querySelector<HTMLSelectElement>('select[name="selectedPeakId"]')?.value).toBe("manual-1");
+    expect(view.querySelector('[data-peak-id="manual-1"][data-peak-kind="reduction"]')).not.toBeNull();
+    expect(view.querySelectorAll('[data-table-id="cv-peak-points"] [data-peak-id="manual-1"]')).toHaveLength(3);
+    expect(view.textContent).not.toContain("Add oxidation peak");
+  }, 15_000);
+
+  it("adds a new family from an explicitly chosen branch without changing existing families", async () => {
     const view = await renderPage();
     await upload(view, manualAddPeakPageCsv());
     await setValue(view.querySelector<HTMLInputElement>('input[name="cv-scan-rates"]')!, "1, 4, 9");
@@ -461,7 +465,7 @@ describe("CV kinetics page", () => {
       .map((row) => `${row.dataset.peakId}:${row.dataset.seriesIndex}:${row.dataset.sourceIndex}:${row.dataset.current}`))
       .toEqual(existingRows.map((row) => `${row.key}:${row.sourceIndex}:${row.current}`));
 
-    await clickPeakOverviewSource(view, 1, 155);
+    await click(view, "Add oxidation peak");
     expect(button(view, "Add peak").getAttribute("aria-pressed")).toBe("false");
     expect(view.querySelector<HTMLSelectElement>('select[name="selectedPeakId"]')?.value).toBe("manual-1");
     const firstManualRows = [...view.querySelectorAll<HTMLElement>('[data-table-id="cv-peak-points"] [data-peak-id="manual-1"]')];
@@ -474,7 +478,7 @@ describe("CV kinetics page", () => {
 
     await click(view, "Remove peak");
     await click(view, "Add peak");
-    await clickPeakOverviewSource(view, 1, 155);
+    await click(view, "Add oxidation peak");
     expect(view.querySelector<HTMLSelectElement>('select[name="selectedPeakId"]')?.value).toBe("manual-2");
     const labels = [...view.querySelectorAll<HTMLOptionElement>('select[name="selectedPeakId"] option')]
       .map((option) => option.textContent ?? "");

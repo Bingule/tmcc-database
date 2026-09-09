@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { CvPeakOverviewChart } from "./CvPeakOverviewChart";
 import { CvPeakRegressionChart } from "./CvPeakRegressionChart";
-import type { CvPeakAnalysisResult, CvPeakFitStatus, CvSeries } from "../lib/cvTypes";
+import type { CvBranchKind, CvPeakAnalysisResult, CvPeakFitStatus, CvSeries } from "../lib/cvTypes";
 
 export interface CvPeakPanelCopy {
   overview: string;
@@ -32,6 +32,8 @@ export interface CvPeakPanelCopy {
   exclude: string;
   restore: string;
   add: string;
+  addOxidation: string;
+  addReduction: string;
   remove: string;
   noPeaks: string;
   summary: string;
@@ -61,6 +63,7 @@ interface CvPeakAnalysisPanelProps {
   onExclude(): void;
   onRestore(): void;
   onAddPeak(): void;
+  onAddPeakBranch(branch: CvBranchKind): void;
   onRemovePeak(): void;
   pendingAdd?: boolean;
   copy: CvPeakPanelCopy;
@@ -80,6 +83,7 @@ export function CvPeakAnalysisPanel({
   onExclude,
   onRestore,
   onAddPeak,
+  onAddPeakBranch,
   onRemovePeak,
   pendingAdd = false,
   copy,
@@ -176,7 +180,13 @@ export function CvPeakAnalysisPanel({
           onClick={onAddPeak}
           disabled={result.fits.length >= result.maximumPeakCount}
           aria-pressed={pendingAdd}
+          aria-expanded={pendingAdd}
+          aria-controls="cv-peak-add-options"
         >{copy.add}</button>
+        {pendingAdd && <div id="cv-peak-add-options" className="cv-peak-add-options">
+          <button type="button" className="secondary-button" onClick={() => onAddPeakBranch("forward")}>{copy.addOxidation}</button>
+          <button type="button" className="secondary-button" onClick={() => onAddPeakBranch("reverse")}>{copy.addReduction}</button>
+        </div>}
         <button type="button" className="secondary-button" onClick={onRemovePeak} disabled={!selectedFit}>{copy.remove}</button>
       </div>
     </div>

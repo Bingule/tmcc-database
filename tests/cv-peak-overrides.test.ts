@@ -3,6 +3,7 @@ import { normalizeAlignedCvCycles } from "../src/lib/cvCycle";
 import { analyzePeakBValues, fitPeakGroups } from "../src/lib/cvPeakAnalysis";
 import {
   CvPeakOverrideError,
+  addManualPeakForBranch,
   addManualPeakOverride,
   applyPeakOverrides,
   createPeakOverrideState,
@@ -15,6 +16,29 @@ import type { CvSeries } from "../src/lib/cvTypes";
 import { makeManyPeakSeries, makeThreePeakNcpLikeSeries } from "./fixtures/cvPeakData";
 
 describe("peak overrides", () => {
+  it.each([
+    ["reverse", "forward"],
+    ["forward", "reverse"]
+  ] as const)("adds a manual %s family when automatic fits only contain the %s branch", (requestedBranch, retainedBranch) => {
+    const series = makeThreePeakNcpLikeSeries();
+    const cycles = normalizeAlignedCvCycles(series);
+    const detected = analyzePeakBValues(series, cycles, 0);
+    const automatic = {
+      ...detected,
+      fits: detected.fits.filter((fit) => fit.branch === retainedBranch)
+    };
+
+    const state = addManualPeakForBranch(
+      createPeakOverrideState(), automatic, series, cycles, 0, requestedBranch
+    );
+    const manual = applyPeakOverrides(automatic, series, cycles, 0, state)
+      .fits.find((fit) => fit.peakId === "manual-1");
+
+    expect(manual?.branch).toBe(requestedBranch);
+    expect(manual?.kind).toBe(requestedBranch === "forward" ? "oxidation" : "reduction");
+    expect(manual?.points.some((point) => point.candidate !== null)).toBe(true);
+  });
+
   it("snaps only to an original point on the selected branch", () => {
     const series = makeThreePeakNcpLikeSeries();
     const cycle = normalizeAlignedCvCycles(series)[0]!;

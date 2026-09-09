@@ -16,7 +16,7 @@ import { localCapacitiveFraction, rSquaredConfidence } from "../lib/cvDunnConfid
 import { formatSelectedPotential, isSelectableBRecord, selectRepresentativeBRecord, snapBRecordToPotential } from "../lib/cvBValueSelection";
 import { analyzeCvWorkflow } from "../lib/cvWorkflow";
 import {
-  addManualPeakOverride,
+  addManualPeakForBranch,
   applyPeakOverrides,
   createPeakOverrideState,
   CvPeakOverrideError,
@@ -26,7 +26,7 @@ import {
   snapPeakPoint,
   type CvPeakOverrideState
 } from "../lib/cvPeakOverrides";
-import { CvAnalysisError, type BValuePoint, type CvAnalysisSettings, type CvFitRecord, type CvFitStatus, type CvPeakAnalysisResult, type CvPeakFitStatus, type CvPeakPointStatus, type CvSeries, type CvWorkflowResult, type DunnBranchFitRecord, type DunnContribution, type DunnFitStatus } from "../lib/cvTypes";
+import { CvAnalysisError, type BValuePoint, type CvAnalysisSettings, type CvBranchKind, type CvFitRecord, type CvFitStatus, type CvPeakAnalysisResult, type CvPeakFitStatus, type CvPeakPointStatus, type CvSeries, type CvWorkflowResult, type DunnBranchFitRecord, type DunnContribution, type DunnFitStatus } from "../lib/cvTypes";
 import { downloadCsv, downloadPng, downloadSvg, rowsToCsv } from "../lib/toolExport";
 
 type AnalysisState = CvWorkflowResult;
@@ -419,32 +419,32 @@ export function CvKineticsPage() {
     setPeakInteractionError(null);
   }
 
-  function selectPeakOverviewPoint(potential: number, seriesIndex: number, sourceIndex: number) {
-    if (!pendingPeakAdd) {
-      adjustSelectedPeak(potential);
-      return;
-    }
+  function addSelectedPeakForBranch(branch: CvBranchKind) {
     if (!analysis || !peakResult) return setPeakInteractionError("snap");
-    const cycle = analysis.alignedGrid.cycles[seriesIndex];
-    if (!cycle) return setPeakInteractionError("snap");
-    const onForward = cycle.forward.points.some((point) => point.sourceIndex === sourceIndex);
-    const onReverse = cycle.reverse.points.some((point) => point.sourceIndex === sourceIndex);
-    const branch = onForward === onReverse ? null : onForward ? "forward" as const : "reverse" as const;
-    if (!branch) return setPeakInteractionError("snap");
+    if (peakResult.fits.length >= peakResult.maximumPeakCount) return setPeakInteractionError("limit");
     try {
-      const next = addManualPeakOverride(peakOverrides, peakResult, analysis.series, analysis.alignedGrid.cycles, {
-        anchorSeriesIndex: seriesIndex,
-        branch,
-        sourceIndex
-      });
+      const next = addManualPeakForBranch(
+        peakOverrides,
+        peakResult,
+        analysis.series,
+        analysis.alignedGrid.cycles,
+        selectedPeakSeriesIndex,
+        branch
+      );
       setPeakOverrides(next);
       setSelectedPeakId(next.manualPeaks.at(-1)?.manualPeakId ?? selectedPeakId);
-      setSelectedPeakSeriesIndex(seriesIndex);
       setPendingPeakAdd(false);
       setPeakInteractionError(null);
     } catch (error) {
       setPeakInteractionError(error instanceof CvPeakOverrideError && error.code === "peakLimit" ? "limit" : "snap");
     }
+  }
+
+  function selectPeakOverviewPoint(potential: number, seriesIndex: number, sourceIndex: number) {
+    void seriesIndex;
+    void sourceIndex;
+    if (pendingPeakAdd) return;
+    adjustSelectedPeak(potential);
   }
 
   function removeSelectedPeak() {
@@ -508,6 +508,7 @@ export function CvKineticsPage() {
             onExclude={excludeSelectedPeak}
             onRestore={restoreSelectedPeak}
             onAddPeak={addSelectedPeak}
+            onAddPeakBranch={addSelectedPeakForBranch}
             onRemovePeak={removeSelectedPeak}
             pendingAdd={pendingPeakAdd}
             copy={makePeakPanelCopy(t)}
@@ -852,6 +853,8 @@ function makePeakPanelCopy(t: ReturnType<typeof useI18n>["t"]): CvPeakPanelCopy 
     exclude: t("cv.peak.exclude"),
     restore: t("cv.peak.restore"),
     add: t("cv.peak.add"),
+    addOxidation: t("cv.peak.addOxidation"),
+    addReduction: t("cv.peak.addReduction"),
     remove: t("cv.peak.remove"),
     noPeaks: t("cv.peak.noPeaks"),
     summary: t("cv.peak.summary"),

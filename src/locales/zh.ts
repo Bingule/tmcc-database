@@ -419,6 +419,8 @@ export const zh = {
   "cv.peak.exclude": "排除该点",
   "cv.peak.restore": "恢复自动点",
   "cv.peak.add": "添加峰",
+  "cv.peak.addOxidation": "添加氧化峰",
+  "cv.peak.addReduction": "添加还原峰",
   "cv.peak.remove": "移除峰",
   "cv.peak.limit": "最多支持 10 个活动峰。",
   "cv.peak.snapError": "请选择所选扫描速率和扫描分支上的电位。",

@@ -2578,6 +2578,12 @@ td button {
   justify-content: flex-start;
 }
 
+.cv-peak-add-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .cv-peak-point-actions button,
 .cv-peak-management-actions button {
   min-width: 0;
