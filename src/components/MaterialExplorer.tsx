@@ -8,6 +8,7 @@ import {
   getIntercalantLabel,
   getLatticeSettingLabel,
   getMechanicalStabilityLabel,
+  getPhononStabilityLabel,
   getStructureTypeLabel,
   getSitesPerCellLabel,
   getSubclassLabel,
@@ -44,6 +45,7 @@ type SortKey =
   | "dft_energy"
   | "formation_energy"
   | "mechanical_stability"
+  | "phonon_stability"
   | "band_gap";
 type SortDirection = "asc" | "desc";
 
@@ -63,6 +65,8 @@ export function MaterialExplorer({
   const [anion, setAnion] = useState("all");
   const [subclass, setSubclass] = useState("all");
   const [structureType, setStructureType] = useState("all");
+  const [mechanicallyStableOnly, setMechanicallyStableOnly] = useState(false);
+  const [dynamicallyStableOnly, setDynamicallyStableOnly] = useState(false);
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState<{ key: SortKey; direction: SortDirection }>({
@@ -94,14 +98,16 @@ export function MaterialExplorer({
         (chalcogen === "all" || material.host.chalcogen === chalcogen) &&
         (anion === "all" || material.host.anion === anion) &&
         (subclass === "all" || getSubclassLabel(material) === subclass) &&
-        (structureType === "all" || getStructureTypeLabel(material) === structureType)
+        (structureType === "all" || getStructureTypeLabel(material) === structureType) &&
+        (!mechanicallyStableOnly || material.mechanical?.mechanically_stable === true) &&
+        (!dynamicallyStableOnly || material.phonons?.dynamically_stable === true)
       );
     });
     return [...matchingMaterials].sort((a, b) => compareMaterials(a, b, sort));
-  }, [query, metal, chalcogen, anion, subclass, structureType, materials, elementSearch, sort, categoryFilter]);
+  }, [query, metal, chalcogen, anion, subclass, structureType, mechanicallyStableOnly, dynamicallyStableOnly, materials, elementSearch, sort, categoryFilter]);
   useEffect(() => {
     setPage(1);
-  }, [query, metal, chalcogen, anion, subclass, structureType, pageSize, elementSearch.elements, elementSearch.mode, categoryFilter]);
+  }, [query, metal, chalcogen, anion, subclass, structureType, mechanicallyStableOnly, dynamicallyStableOnly, pageSize, elementSearch.elements, elementSearch.mode, categoryFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
@@ -166,6 +172,26 @@ export function MaterialExplorer({
         <Filter label={t("explorer.anion")} value={anion} values={anions} onChange={setAnion} />
         <Filter label={t("explorer.subclass")} value={subclass} values={subclasses} onChange={setSubclass} />
         <Filter label={t("explorer.structureType")} value={structureType} values={structureTypes} onChange={setStructureType} />
+        <div className="stability-filter-group" role="group" aria-label={t("explorer.stabilityFilters")}>
+          <label className="stability-checkbox">
+            <input
+              name="mechanically-stable-only"
+              type="checkbox"
+              checked={mechanicallyStableOnly}
+              onChange={(event) => setMechanicallyStableOnly(event.target.checked)}
+            />
+            <span>{t("explorer.mechanicallyStableOnly")}</span>
+          </label>
+          <label className="stability-checkbox">
+            <input
+              name="dynamically-stable-only"
+              type="checkbox"
+              checked={dynamicallyStableOnly}
+              onChange={(event) => setDynamicallyStableOnly(event.target.checked)}
+            />
+            <span>{t("explorer.dynamicallyStableOnly")}</span>
+          </label>
+        </div>
       </div>
       {hasTooManyElementMatches ? (
         <div className="result-limit-warning" role="status">
@@ -188,6 +214,7 @@ export function MaterialExplorer({
                   <SortHeader label="E_DFT" unit="eV/f.u." sortKey="dft_energy" activeSort={sort} onSort={handleSort} />
                   <SortHeader label="E_form" unit="eV/atom" sortKey="formation_energy" activeSort={sort} onSort={handleSort} />
                   <SortHeader label={t("explorer.mechanicalStability")} sortKey="mechanical_stability" activeSort={sort} onSort={handleSort} />
+                  <SortHeader label={t("explorer.phononStability")} sortKey="phonon_stability" activeSort={sort} onSort={handleSort} />
                   <SortHeader label={t("explorer.bandGap")} unit="eV" sortKey="band_gap" activeSort={sort} onSort={handleSort} />
                 </tr>
               </thead>
@@ -223,6 +250,7 @@ export function MaterialExplorer({
                     <td>{getDftEnergyPerFormulaUnitLabel(material)}</td>
                     <td>{getFormationEnergyPerAtomLabel(material)}</td>
                     <td><MechanicalStabilityValue material={material} /></td>
+                    <td><PhononStabilityValue material={material} /></td>
                     <td>{formatPropertyValue(material.electronic.band_gap)}</td>
                   </tr>
                 ))}
@@ -332,6 +360,8 @@ function getSortValue(material: MaterialRecord, key: SortKey): string | number {
       return numericOrInfinity(getFormationEnergyPerAtomLabel(material));
     case "mechanical_stability":
       return getMechanicalStabilityLabel(material);
+    case "phonon_stability":
+      return getPhononStabilityLabel(material);
     case "band_gap":
       return numericOrInfinity(formatPropertyValue(material.electronic.band_gap));
     default:
@@ -353,6 +383,27 @@ function MechanicalStabilityValue({ material }: { material: MaterialRecord }) {
     <a
       className="mechanical-stability-link"
       href={`/?material=${encodeURIComponent(material.slug)}#mechanical-properties`}
+      onClick={(event) => event.stopPropagation()}
+    >
+      {translatedLabel}
+    </a>
+  );
+}
+
+function PhononStabilityValue({ material }: { material: MaterialRecord }) {
+  const { t } = useI18n();
+  const label = getPhononStabilityLabel(material);
+  const translatedLabel = label === "Stable"
+    ? t("material.stable")
+    : label === "Unstable"
+      ? t("material.unstable")
+      : t("material.pending");
+  if (label === "Pending") return translatedLabel;
+
+  return (
+    <a
+      className="mechanical-stability-link"
+      href={`/?material=${encodeURIComponent(material.slug)}#phonon-properties`}
       onClick={(event) => event.stopPropagation()}
     >
       {translatedLabel}

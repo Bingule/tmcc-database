@@ -38,8 +38,11 @@ export async function downloadPng(svg: SVGSVGElement, filename: string): Promise
 function csvCell(value: string | number | null): string {
   let text = "";
   if (typeof value === "number") text = Number.isFinite(value) ? String(value) : "";
-  else if (value !== null) text = value;
-  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  else if (value !== null) {
+    const withoutLeadingSpaces = value.replace(/^ +/, "");
+    text = /^[=+\-@\t\r]/.test(withoutLeadingSpaces) ? `'${value}` : value;
+  }
+  return /[",\t\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
 function makeSvgBlob(svg: SVGSVGElement): Blob {

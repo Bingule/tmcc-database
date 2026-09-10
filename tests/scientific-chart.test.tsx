@@ -34,6 +34,50 @@ const baseProps = {
 };
 
 describe("ScientificLineChart", () => {
+  it("keeps explicit linear scales identical to the omitted-prop SVG geometry", async () => {
+    const implicit = await renderChart(baseProps);
+    const explicit = await renderChart({ ...baseProps, xScale: "linear", yScale: "linear" });
+    const geometry = (view: HTMLElement) => ({
+      paths: [...view.querySelectorAll("path")].map((path) => path.getAttribute("d")),
+      circles: [...view.querySelectorAll("circle")].map((circle) => [circle.getAttribute("cx"), circle.getAttribute("cy")]),
+      axes: view.querySelector(".scientific-chart-axes")?.textContent,
+      viewBox: view.querySelector("svg")?.getAttribute("viewBox"),
+    });
+
+    expect(geometry(explicit)).toEqual(geometry(implicit));
+  });
+
+  it("projects log axes only for display, rejecting nonpositive points without mutating raw series", async () => {
+    const rawSeries = [{
+      id: "measured",
+      label: "Measured",
+      color: "#1155cc",
+      mode: "points" as const,
+      points: [{ x: 0, y: 10 }, { x: 1, y: -2 }, { x: 10, y: 100 }, { x: 100, y: 1000 }],
+    }];
+    const snapshot = JSON.stringify(rawSeries);
+    const view = await renderChart({ ...baseProps, series: rawSeries, xScale: "log10", yScale: "log10" });
+    const visible = [...view.querySelectorAll('[data-point-series-id="measured"]')];
+
+    expect(visible).toHaveLength(2);
+    expect(visible.map((point) => point.getAttribute("data-point-x"))).toEqual(["10", "100"]);
+    expect(view.querySelector(".scientific-chart-axes")?.textContent).toContain("10");
+    expect(view.querySelector(".scientific-chart-axes")?.textContent).toContain("100");
+    expect(view.querySelector("svg")?.outerHTML).not.toMatch(/(?:NaN|Infinity)/);
+    expect(JSON.stringify(rawSeries)).toBe(snapshot);
+  });
+
+  it("shows the empty state when a requested log scale has no positive display points", async () => {
+    const view = await renderChart({
+      ...baseProps,
+      xScale: "log10",
+      series: [{ id: "invalid", label: "Invalid", color: "#1155cc", points: [{ x: 0, y: 1 }, { x: -1, y: 2 }] }],
+    });
+
+    expect(view.querySelector('[role="status"]')?.textContent).toBe("No chart data");
+    expect(view.querySelector("svg")).toBeNull();
+  });
+
   it("renders an accessible responsive chart with labeled multi-series line styles", async () => {
     const view = await renderChart({ ...baseProps, exportId: "b-value-chart" });
     const svg = view.querySelector("svg");

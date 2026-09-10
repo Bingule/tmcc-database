@@ -37,6 +37,8 @@ export interface ChartAreaSeries {
   segments: ChartAreaPoint[][];
 }
 
+export type ChartScale = "linear" | "log10";
+
 export interface ChartPolygonSeries {
   id: string;
   label: string;
@@ -61,6 +63,8 @@ export interface ScientificLineChartProps {
   xDomain?: [number, number];
   exportId?: string;
   metadata?: string | string[];
+  xScale?: ChartScale;
+  yScale?: ChartScale;
 }
 
 const dimensions = { width: 800, height: 420 };
@@ -82,18 +86,20 @@ export function ScientificLineChart({
   onSelectPointId,
   xDomain,
   exportId,
-  metadata
+  metadata,
+  xScale = "linear",
+  yScale = "linear"
 }: ScientificLineChartProps): React.ReactElement {
   const titleId = useId();
   const descriptionId = useId();
   const patternPrefix = `chart-pattern-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
   const finiteSeries = series.map((item) => ({
     ...item,
-    points: item.points.filter((point) => Number.isFinite(point.x) && (point.y === null || Number.isFinite(point.y)))
+    points: displaySeriesPoints(item.points, xScale, yScale)
   }));
   const finiteAreas = areas.map((item) => ({
     ...item,
-    segments: item.segments.flatMap(splitFiniteAreaSegment)
+    segments: item.segments.flatMap((segment) => splitFiniteAreaSegment(segment, xScale, yScale))
   }));
   const allPoints = finiteSeries.flatMap((item) => item.points.flatMap((point) => point.y === null ? [] : [{ ...point, y: point.y }]));
   const areaBounds = finiteAreas.flatMap((item) => item.segments.flatMap((segment) => segment.flatMap((point) => [
@@ -102,20 +108,32 @@ export function ScientificLineChart({
   ])));
   const finitePolygons = polygons.map((item) => ({
     ...item,
-    polygons: item.polygons.map((polygon) => polygon.filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y))).filter((polygon) => polygon.length >= 3)
+    polygons: item.polygons.map((polygon) => polygon.filter((point) =>
+      Number.isFinite(point.x)
+      && Number.isFinite(point.y)
+      && isScaleValue(point.x, xScale)
+      && isScaleValue(point.y, yScale)
+    )).filter((polygon) => polygon.length >= 3)
   }));
   const polygonBounds = finitePolygons.flatMap((item) => item.polygons.flat());
-  const domainPoints = [...allPoints, ...areaBounds, ...polygonBounds];
+  const domainPoints = [...allPoints, ...areaBounds, ...polygonBounds].map((point) => ({
+    x: projectScaleValue(point.x, xScale),
+    y: projectScaleValue(point.y, yScale)
+  }));
 
   if (domainPoints.length === 0) {
     return <div className="scientific-chart-empty" role="status">{emptyLabel}</div>;
   }
 
-  const resolvedXDomain = xDomain
+  const requestedXDomain = xDomain
     && xDomain.length === 2
     && xDomain.every(Number.isFinite)
     && xDomain[0] < xDomain[1]
-    ? xDomain
+    && xDomain.every((value) => isScaleValue(value, xScale))
+    ? xDomain.map((value) => projectScaleValue(value, xScale)) as [number, number]
+    : null;
+  const resolvedXDomain = requestedXDomain
+    ? requestedXDomain
     : expandedDomain(domainPoints, "x");
   const yDomain = expandedDomain(domainPoints, "y");
   const legendColumns = calculateLegendColumns([
@@ -130,8 +148,8 @@ export function ScientificLineChart({
   const chartMargin = { ...margin, top: Math.max(margin.top, legendTop + legendRows * 22) };
   const plotWidth = dimensions.width - chartMargin.left - chartMargin.right;
   const plotHeight = dimensions.height - chartMargin.top - chartMargin.bottom;
-  const projectX = (value: number) => chartMargin.left + normalized(value, resolvedXDomain) * plotWidth;
-  const projectY = (value: number) => dimensions.height - chartMargin.bottom - normalized(value, yDomain) * plotHeight;
+  const projectX = (value: number) => chartMargin.left + normalized(projectScaleValue(value, xScale), resolvedXDomain) * plotWidth;
+  const projectY = (value: number) => dimensions.height - chartMargin.bottom - normalized(projectScaleValue(value, yScale), yDomain) * plotHeight;
   const xTicks = ticks(resolvedXDomain);
   const yTicks = ticks(yDomain);
   const selectedPoint = selectedPointId !== undefined
@@ -158,7 +176,7 @@ export function ScientificLineChart({
         viewBox={`0 0 ${dimensions.width} ${dimensions.height}`}
         width="100%"
         height="auto"
-        data-x-domain={resolvedXDomain.join(",")}
+        data-x-domain={resolvedXDomain.map((value) => unprojectScaleValue(value, xScale)).join(",")}
         data-export-id={exportId}
         className="scientific-chart-svg"
       >
@@ -217,9 +235,9 @@ export function ScientificLineChart({
             <line
               key={`y-grid-${index}`}
               x1={chartMargin.left}
-              y1={projectY(tick)}
+              y1={projectYTick(tick, yDomain, dimensions.height - chartMargin.bottom, plotHeight)}
               x2={dimensions.width - chartMargin.right}
-              y2={projectY(tick)}
+              y2={projectYTick(tick, yDomain, dimensions.height - chartMargin.bottom, plotHeight)}
               stroke="#d7dfdc"
               strokeWidth={1}
             />
@@ -257,14 +275,17 @@ export function ScientificLineChart({
           <line x1={chartMargin.left} y1={dimensions.height - chartMargin.bottom} x2={dimensions.width - chartMargin.right} y2={dimensions.height - chartMargin.bottom} stroke="#607d8b" strokeWidth={1.25} />
           {xTicks.map((tick, index) => (
             <g key={`x-${index}`}>
-              <line x1={projectX(tick)} y1={dimensions.height - chartMargin.bottom} x2={projectX(tick)} y2={dimensions.height - chartMargin.bottom + 6} stroke="#607d8b" strokeWidth={1.25} />
-              <text x={projectX(tick)} y={dimensions.height - chartMargin.bottom + 22} textAnchor="middle" fill="#455a64" fontSize={11}>{formatEndpointTick(tick, resolvedXDomain)}</text>
+              <line x1={projectXTick(tick, resolvedXDomain, chartMargin.left, plotWidth)} y1={dimensions.height - chartMargin.bottom} x2={projectXTick(tick, resolvedXDomain, chartMargin.left, plotWidth)} y2={dimensions.height - chartMargin.bottom + 6} stroke="#607d8b" strokeWidth={1.25} />
+              <text x={projectXTick(tick, resolvedXDomain, chartMargin.left, plotWidth)} y={dimensions.height - chartMargin.bottom + 22} textAnchor="middle" fill="#455a64" fontSize={11}>{formatEndpointTick(
+                unprojectScaleValue(tick, xScale),
+                resolvedXDomain.map((value) => unprojectScaleValue(value, xScale)) as [number, number]
+              )}</text>
             </g>
           ))}
           {yTicks.map((tick, index) => (
             <g key={`y-${index}`}>
-              <line x1={chartMargin.left - 6} y1={projectY(tick)} x2={chartMargin.left} y2={projectY(tick)} stroke="#607d8b" strokeWidth={1.25} />
-              <text x={chartMargin.left - 10} y={projectY(tick) + 4} textAnchor="end" fill="#455a64" fontSize={11}>{formatTick(tick)}</text>
+              <line x1={chartMargin.left - 6} y1={projectYTick(tick, yDomain, dimensions.height - chartMargin.bottom, plotHeight)} x2={chartMargin.left} y2={projectYTick(tick, yDomain, dimensions.height - chartMargin.bottom, plotHeight)} stroke="#607d8b" strokeWidth={1.25} />
+              <text x={chartMargin.left - 10} y={projectYTick(tick, yDomain, dimensions.height - chartMargin.bottom, plotHeight) + 4} textAnchor="end" fill="#455a64" fontSize={11}>{formatTick(unprojectScaleValue(tick, yScale))}</text>
             </g>
           ))}
           <text className="scientific-chart-x-label" x={chartMargin.left + plotWidth / 2} y={dimensions.height - 12} textAnchor="middle" fill="#263238" fontSize={12}>{xLabel}</text>
@@ -419,7 +440,11 @@ function areaPath(
   return [...upper, ...lower, "Z"].join(" ");
 }
 
-function splitFiniteAreaSegment(segment: ChartAreaPoint[]): FiniteChartAreaPoint[][] {
+function splitFiniteAreaSegment(
+  segment: ChartAreaPoint[],
+  xScale: ChartScale,
+  yScale: ChartScale,
+): FiniteChartAreaPoint[][] {
   const runs: FiniteChartAreaPoint[][] = [];
   let current: FiniteChartAreaPoint[] = [];
   const flush = () => {
@@ -429,12 +454,60 @@ function splitFiniteAreaSegment(segment: ChartAreaPoint[]): FiniteChartAreaPoint
   for (const point of segment) {
     if (Number.isFinite(point.x)
       && typeof point.lower === "number" && Number.isFinite(point.lower)
-      && typeof point.upper === "number" && Number.isFinite(point.upper)) {
+      && typeof point.upper === "number" && Number.isFinite(point.upper)
+      && isScaleValue(point.x, xScale)
+      && isScaleValue(point.lower, yScale)
+      && isScaleValue(point.upper, yScale)) {
       current.push({ x: point.x, lower: point.lower, upper: point.upper });
     } else flush();
   }
   flush();
   return runs;
+}
+
+function displaySeriesPoints(
+  points: ReadonlyArray<ChartPoint>,
+  xScale: ChartScale,
+  yScale: ChartScale,
+): ChartPoint[] {
+  return points.flatMap((point) => {
+    if (!Number.isFinite(point.x) || (point.y !== null && !Number.isFinite(point.y))) return [];
+    if (!isScaleValue(point.x, xScale)
+      || (point.y !== null && !isScaleValue(point.y, yScale))) {
+      return [{ ...point, y: null }];
+    }
+    return [point];
+  });
+}
+
+function isScaleValue(value: number, scale: ChartScale) {
+  return scale === "linear" || value > 0;
+}
+
+function projectScaleValue(value: number, scale: ChartScale) {
+  return scale === "log10" ? Math.log10(value) : value;
+}
+
+function unprojectScaleValue(value: number, scale: ChartScale) {
+  return scale === "log10" ? 10 ** value : value;
+}
+
+function projectXTick(
+  value: number,
+  domain: [number, number],
+  left: number,
+  width: number,
+) {
+  return left + normalized(value, domain) * width;
+}
+
+function projectYTick(
+  value: number,
+  domain: [number, number],
+  bottom: number,
+  height: number,
+) {
+  return bottom - normalized(value, domain) * height;
 }
 
 function countNullRuns(points: Array<{ y: number | null }>) {

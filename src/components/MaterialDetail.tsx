@@ -12,6 +12,7 @@ import {
   getIntercalantLabel,
   getLatticeSettingLabel,
   getMechanicalStabilityLabel,
+  getPhononStabilityLabel,
   getNumberOfSitesLabel,
   getSpaceGroupLabel,
   getSpaceGroupSymbol,
@@ -106,6 +107,8 @@ export function MaterialDetail({ material }: { material: MaterialRecord }) {
           <Data label={t("material.storageData")} value="-" />
         </Panel>
 
+        <PhononProperties material={material} />
+
         <ElasticProperties material={material} />
 
         <Panel title={t("material.experimentalData")}>
@@ -128,6 +131,32 @@ export function MaterialDetail({ material }: { material: MaterialRecord }) {
         </Panel>
       </div>
     </section>
+  );
+}
+
+function PhononProperties({ material }: { material: MaterialRecord }) {
+  const { t } = useI18n();
+  const stability = getPhononStabilityLabel(material);
+  const resultHref = publicAssetPath(material.files.phonon);
+  const hasResult = stability !== "Pending" || material.phonons.phonon_calculated === true || resultHref !== null;
+  if (!hasResult) return null;
+
+  const stabilityLabel = stability === "Stable"
+    ? t("material.stable")
+    : stability === "Unstable"
+      ? t("material.unstable")
+      : t("material.pending");
+
+  return (
+    <Panel id="phonon-properties" title={t("material.phononProperties")}>
+      <Data label={t("material.dynamicallyStable")} value={stabilityLabel} />
+      {resultHref && (
+        <Data
+          label={t("material.phononResult")}
+          value={<a className="reference-link" href={resultHref} target="_blank" rel="noreferrer">{t("material.openPhononResult")}</a>}
+        />
+      )}
+    </Panel>
   );
 }
 

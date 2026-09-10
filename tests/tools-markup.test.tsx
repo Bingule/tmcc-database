@@ -28,6 +28,10 @@ async function renderRoute(path: string) {
     if (path === "/tools/cv-kinetics") await import("../src/pages/CvKineticsPage");
     if (path === "/tools/theoretical-capacity") await import("../src/pages/TheoreticalCapacityPage");
     if (path === "/tools/molecular-weight") await import("../src/pages/MolecularWeightPage");
+    if (path === "/tools/reviewer-two") await import("../src/tools/reviewer-two/pages/ReviewerTwoPage");
+    if (path === "/tools/rate-performance") await import("../src/tools/rate-performance/pages/RatePerformanceAnalysisPage");
+    if (path === "/tools/rate-performance/model-comparison") await import("../src/tools/rate-performance/pages/ModelComparisonPage");
+    if (path === "/missing") await import("../src/pages/NotFoundPage");
   });
   return view;
 }
@@ -63,11 +67,44 @@ function expectLabeledControls(view: HTMLElement) {
 }
 
 describe("Tools page markup", () => {
+  it("provides responsive and accessible feedback panel styles", async () => {
+    const css = await readFile("src/styles/global.css", "utf8");
+
+    expect(css).toMatch(/\.tool-feedback-panel\s*\{[^}]*border-top:/s);
+    expect(css).toMatch(/\.tool-feedback-grid\s*\{[^}]*display:\s*grid/s);
+    expect(css).toMatch(/\.tool-feedback-status\s*\{[^}]*min-height:/s);
+    expect(css).toMatch(/@media\s*\(max-width:\s*700px\)[\s\S]*?\.tool-feedback-grid\s*\{[^}]*grid-template-columns:\s*1fr/s);
+  });
+
+  it.each([
+    "/tools",
+    "/tools/cv-kinetics",
+    "/tools/rate-performance",
+    "/tools/rate-performance/model-comparison",
+    "/tools/reviewer-two"
+  ])("shows the approved feedback panel exactly once at the bottom of %s", async (path) => {
+    const view = await renderRoute(path);
+    const panels = view.querySelectorAll(".tool-feedback-panel");
+
+    expect(panels).toHaveLength(1);
+    const contact = panels[0].querySelector(".tool-feedback-contact");
+    expect(contact?.tagName).toBe("P");
+    expect(contact?.textContent).toBe("Found an issue, got an unexpected result, or have a suggestion? Contact Dr. Wu at wui@vscht.cz");
+    expect(contact?.textContent?.match(/Dr\. Wu/g)).toHaveLength(1);
+    expect(contact?.querySelector("a")?.getAttribute("href")).toBe("mailto:wui@vscht.cz");
+  });
+
+  it("does not show the Tools contact note on non-Tools pages", async () => {
+    const view = await renderRoute("/missing");
+    expect(view.querySelector(".tool-feedback-panel")).toBeNull();
+  });
+
   it.each([
     "/tools",
     "/tools/cv-kinetics",
     "/tools/theoretical-capacity",
-    "/tools/molecular-weight"
+    "/tools/molecular-weight",
+    "/tools/rate-performance"
   ])("provides one page heading, breadcrumb navigation, and native keyboard controls on %s", async (path) => {
     const view = await renderRoute(path);
 
@@ -89,18 +126,24 @@ describe("Tools page markup", () => {
     expect(view.querySelector("h1")?.textContent).toBe("Materials Research Tools");
     expect(view.querySelector(".tool-page-header p")?.textContent).toBe("Online tools for electrochemistry and materials research.");
     expect(readCards()).toEqual([
+      { title: "Crystal Structure Description", description: "Describe a CIF structure with Robocrys. Try the SnO₂ example, then copy or download the result." },
       { title: "CV Kinetics Analysis", description: "b-value and Dunn capacitive contribution analysis from multi-scan-rate CV data." },
       { title: "Theoretical Capacity Calculator", description: "Calculate theoretical specific capacity from chemical formula and electron transfer number." },
-      { title: "Molecular Weight Calculator", description: "Calculate molar mass and elemental mass contributions from chemical formulas." }
+      { title: "Molecular Weight Calculator", description: "Calculate molar mass and elemental mass contributions from chemical formulas." },
+      { title: "Reviewer Two", description: "Launch an evidence-grounded scientific peer-review workflow in an authorized private environment." },
+      { title: "Rate Performance", description: "Analyze rate capability and compare validated kinetic models." }
     ]);
 
     await switchToChinese(view);
     expect(view.querySelector("h1")?.textContent).toBe("材料研究工具");
     expect(view.querySelector(".tool-page-header p")?.textContent).toBe("用于电化学与材料研究的在线工具。");
     expect(readCards()).toEqual([
+      { title: "晶体结构描述", description: "用 Robocrys 描述 CIF 结构。先试 SnO₂ 示例，再复制或下载结果。" },
       { title: "CV 动力学分析", description: "基于多扫描速率 CV 数据进行 b 值与 Dunn 电容贡献分析。" },
       { title: "理论容量计算器", description: "根据化学式和电子转移数计算理论比容量。" },
-      { title: "分子量计算器", description: "根据化学式计算摩尔质量和各元素质量贡献。" }
+      { title: "分子量计算器", description: "根据化学式计算摩尔质量和各元素质量贡献。" },
+      { title: "科学论文预审", description: "在获得授权的私有环境中启动基于证据的科学论文审稿工作流。" },
+      { title: "倍率性能", description: "分析倍率性能并比较经验证的动力学模型。" }
     ]);
   });
 
@@ -108,7 +151,8 @@ describe("Tools page markup", () => {
     ["/tools", "Materials Research Tools", "材料研究工具"],
     ["/tools/cv-kinetics", "CV Kinetics Analysis", "CV 动力学分析"],
     ["/tools/theoretical-capacity", "Theoretical Capacity Calculator", "理论容量计算器"],
-    ["/tools/molecular-weight", "Molecular Weight Calculator", "分子量计算器"]
+    ["/tools/molecular-weight", "Molecular Weight Calculator", "分子量计算器"],
+    ["/tools/rate-performance", "Rate Performance Analysis", "倍率性能分析"]
   ])("uses full bilingual titles and the correct breadcrumb depth on %s", async (path, englishTitle, chineseTitle) => {
     const view = await renderRoute(path);
     const breadcrumb = view.querySelector<HTMLElement>("nav.breadcrumb-nav")!;
@@ -271,7 +315,7 @@ describe("Tools static integration", () => {
 
   it("keeps root metadata database-focused", async () => {
     const html = await readFile("index.html", "utf8");
-    expect(html).toContain("TMCC Database | Transition Metal Carbochalcogenide Materials");
+    expect(html).toContain("TMCC Database | Transition Metal Carbochalcogenide Database");
     expect(html).toContain('<link rel="canonical" href="https://tmccdb.org/"');
     expect(html).not.toContain("/en/");
     expect(html).not.toContain("/zh/");

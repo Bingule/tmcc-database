@@ -432,7 +432,7 @@ describe("parseCvFile", () => {
     new DataView(malformed.buffer).setUint32(30, 0x12345678, true);
     await expectAsyncParseError(() => parseSharedFile(new File([malformed], "bad-central.xlsx")), "malformedFile", { reason: "invalidXlsx" });
   });
-  it("parses CSV and TXT File objects through the shared delimited parser", async () => {
+  it("parses CSV and TXT File objects through the generic tabular reader and CV adapter", async () => {
     const csv = new File(["Potential,1,2\n0,10,20\n1,11,21"], "example.csv", { type: "text/csv" });
     const txt = new File(["Potential\t1\t2\n0\t10\t20\n1\t11\t21"], "example.txt", { type: "text/plain" });
 
@@ -603,6 +603,39 @@ describe("parseCvFile", () => {
 
     expect(table.headers).toEqual(["Potential", "1 mV/s", "2 mV/s"]);
     expect(table.rows).toEqual([[0, 10, 20], [1, 11, 21]]);
+  });
+
+  it("skips an invalid unrelated XLSX sheet before selecting a later useful CV sheet", async () => {
+    const file = makeMinimalXlsxFile();
+    readXlsxFileSpy.mockResolvedValueOnce([
+      { name: "Invalid", data: [[Number.POSITIVE_INFINITY]] },
+      {
+        name: "CV data",
+        data: [["Potential", "1", "2"], [0, 10, 20], [1, 11, 21]]
+      }
+    ]);
+
+    const table = await parseSharedFile(file);
+
+    expect(table.headers).toEqual(["Potential", "1", "2"]);
+    expect(table.rows).toEqual([[0, 10, 20], [1, 11, 21]]);
+  });
+
+  it("does not skip XLSX resource-limit failures while tolerating invalid unrelated sheets", async () => {
+    const file = makeMinimalXlsxFile();
+    readXlsxFileSpy.mockResolvedValueOnce([
+      { name: "Too wide", data: [Array.from({ length: MAX_COLUMNS + 1 }, () => 1)] },
+      {
+        name: "CV data",
+        data: [["Potential", "1", "2"], [0, 10, 20], [1, 11, 21]]
+      }
+    ]);
+
+    await expectAsyncParseError(
+      () => parseSharedFile(file),
+      "resourceLimitExceeded",
+      { resource: "columns", limit: MAX_COLUMNS }
+    );
   });
 
   it("selects the first XLSX sheet that satisfies explicit paired headerless options", async () => {

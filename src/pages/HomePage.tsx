@@ -20,8 +20,9 @@ export function HomePage() {
   const stats = useMemo(() => getMaterialStats(materials), []);
 
   useEffect(() => {
-    if (window.location.hash !== "#mechanical-properties") return;
-    const frame = window.requestAnimationFrame(() => document.getElementById("mechanical-properties")?.scrollIntoView({ block: "start" }));
+    const targetId = window.location.hash.slice(1);
+    if (!new Set(["mechanical-properties", "phonon-properties"]).has(targetId)) return;
+    const frame = window.requestAnimationFrame(() => document.getElementById(targetId)?.scrollIntoView({ block: "start" }));
     return () => window.cancelAnimationFrame(frame);
   }, [selectedMaterial.material_id]);
 

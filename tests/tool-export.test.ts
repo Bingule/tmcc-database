@@ -31,6 +31,21 @@ describe("rowsToCsv", () => {
     );
     expect(localeSpy).not.toHaveBeenCalled();
   });
+
+  it("neutralizes spreadsheet formulas and control prefixes while preserving real negative numbers", () => {
+    const csv = rowsToCsv(
+      ["formula", "spaced", "tabbed", "carriage", "tab control", "carriage control", "plus", "minus text", "at", "number"],
+      [["=1+1", "  =SUM(A1:A2)", "\t+cmd", "\r-evil", "\tDDE", "\rDDE", "+2", "-2", "@name", -2]],
+    );
+
+    expect(csv).toContain("'=1+1");
+    expect(csv).toContain("'  =SUM(A1:A2)");
+    expect(csv).toContain("\"'\t+cmd\"");
+    expect(csv).toContain("\"'\r-evil\"");
+    expect(csv).toContain("\"'\tDDE\"");
+    expect(csv).toContain("\"'\rDDE\"");
+    expect(csv).toContain("'+2,'-2,'@name,-2");
+  });
 });
 
 describe("browser downloads", () => {

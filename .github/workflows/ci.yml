@@ -1,0 +1,49 @@
+name: Pull request checks
+
+on:
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Worker dependencies
+        run: pnpm --dir services/feedback-worker install --frozen-lockfile --ignore-workspace
+
+      - name: Test frontend
+        run: pnpm test
+
+      - name: Build frontend
+        run: pnpm build
+
+      - name: Test Worker
+        run: pnpm --dir services/feedback-worker test
+
+      - name: Typecheck Worker
+        run: pnpm --dir services/feedback-worker typecheck
+
+      - name: Audit protected scientific and data paths
+        run: node scripts/check-protected-paths.mjs "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}"
