@@ -115,7 +115,66 @@
     },
     "reference_energies_per_atom": {}
   },
-  "phonons": {},
+  "phonons": {
+    "phonon_calculated": true,
+    "dynamically_stable": false,
+    "minimum_frequency_thz": -5.1543624865883455,
+    "maximum_imaginary_frequency_thz": 5.1543624865883455,
+    "imaginary_mode_tolerance_thz": 0.2,
+    "band_data": "/phonons/TMCC-16123.json",
+    "calculation": {
+      "method": "Phonopy finite displacement with GPAW forces",
+      "exchange_correlation": "PBE",
+      "plane_wave_cutoff_ev": 520,
+      "fermi_width_ev": 0.05,
+      "k_points": {
+        "density": 2.5,
+        "gamma": true
+      },
+      "spin_polarized": true,
+      "magnetic_order": "ferromagnetic",
+      "initial_magnetic_moments": {
+        "Co": 2
+      },
+      "reference_magnetic_moment_muB": 0.398952,
+      "reference_max_local_moment_muB": null,
+      "dft_u": null,
+      "setups": null,
+      "gpaw_symmetry": "off",
+      "displacement_angstrom": 0.01,
+      "primitive_atoms": 5,
+      "supercell": [
+        2,
+        2,
+        2
+      ],
+      "supercell_atoms": 40,
+      "displaced_force_calculations": 15,
+      "reference_force_calculations": 1,
+      "symmetry_reduction": true,
+      "residual_force_correction": "equilibrium-supercell forces subtracted from every displaced force set",
+      "acoustic_sum_rule": "Phonopy force-constant symmetrization",
+      "q_mesh": [
+        21,
+        21,
+        11
+      ],
+      "band_path": "G-M-K-G-A-L-H-A | L-M | K-H",
+      "source_structure": "input/final_structure.cif"
+    },
+    "provenance": {
+      "workflow": "tmcc-phonopy-gpaw-p-series-v1",
+      "magnetic_reference_source": "work/03_static_single_point.txt, final Total magnetic moment line; original spin-polarized PBE calculation",
+      "database_updated": false,
+      "phonopy_version": "2.9.1",
+      "source_structure_sha256": "353db9863972960328bb43fbe80c96fbac0efa0385f30efee8cadb79b90f2eab",
+      "metacentrum_job_id": "24005696.pbs-m1.metacentrum.cz",
+      "completed_at": "2026-09-25T13:31:32.072952+00:00",
+      "source_result_path": "Co2Se2As-Pbar3m1/phonopy_magnetic_batch_2x2x2/phonopy_results.json",
+      "classification_source": "completed_phonon_frequency_override"
+    },
+    "classification_note": "Source classification null; classified from completed full-q minimum frequency using -0.2 THz tolerance."
+  },
   "mechanical": {
     "mechanically_stable": true,
     "crystal_class": "trigonal (-3m)",
@@ -144,46 +203,46 @@
           67.9437004801852,
           78.68030318270736,
           -4.7187056006321,
-          0.0,
-          0.0
+          0,
+          0
         ],
         [
           67.9437004801852,
           120.78097856716317,
           78.68030318270736,
           4.7187056006321,
-          0.0,
-          0.0
+          0,
+          0
         ],
         [
           78.68030318270736,
           78.68030318270736,
           131.97824162358467,
-          0.0,
-          0.0,
-          0.0
+          0,
+          0,
+          0
         ],
         [
           -4.7187056006321,
           4.7187056006321,
-          0.0,
+          0,
           24.859210728698272,
-          0.0,
-          0.0
+          0,
+          0
         ],
         [
-          0.0,
-          0.0,
-          0.0,
-          0.0,
+          0,
+          0,
+          0,
+          0,
           24.859210728698272,
           -4.7187056006321
         ],
         [
-          0.0,
-          0.0,
-          0.0,
-          0.0,
+          0,
+          0,
+          0,
+          0,
           -4.7187056006321,
           26.418639043488987
         ]

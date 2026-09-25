@@ -115,7 +115,65 @@
     },
     "reference_energies_per_atom": {}
   },
-  "phonons": {},
+  "phonons": {
+    "phonon_calculated": true,
+    "dynamically_stable": false,
+    "minimum_frequency_thz": -4.145064674905357,
+    "maximum_imaginary_frequency_thz": 4.145064674905357,
+    "imaginary_mode_tolerance_thz": 0.2,
+    "band_data": "/phonons/TMCC-16501.json",
+    "calculation": {
+      "method": "Phonopy finite displacement with GPAW forces",
+      "exchange_correlation": "PBE",
+      "plane_wave_cutoff_ev": 520,
+      "fermi_width_ev": 0.05,
+      "k_points": {
+        "density": 2.5,
+        "gamma": true
+      },
+      "spin_polarized": true,
+      "magnetic_order": "spin_polarized_collapsed",
+      "initial_magnetic_moments": {
+        "Ni": 1
+      },
+      "reference_magnetic_moment_muB": 0,
+      "reference_max_local_moment_muB": 0,
+      "dft_u": null,
+      "setups": null,
+      "gpaw_symmetry": "off",
+      "displacement_angstrom": 0.01,
+      "primitive_atoms": 5,
+      "supercell": [
+        2,
+        2,
+        2
+      ],
+      "supercell_atoms": 40,
+      "displaced_force_calculations": 10,
+      "reference_force_calculations": 1,
+      "symmetry_reduction": true,
+      "residual_force_correction": "equilibrium-supercell forces subtracted from every displaced force set",
+      "acoustic_sum_rule": "Phonopy force-constant symmetrization",
+      "q_mesh": [
+        21,
+        21,
+        11
+      ],
+      "band_path": "G-M-K-G-A-L-H-A | L-M | K-H",
+      "source_structure": "input/final_structure.cif"
+    },
+    "provenance": {
+      "workflow": "tmcc-phonopy-gpaw-p-series-v1",
+      "magnetic_reference_source": "work/03_static_single_point.txt, final total and five local moments; original spin-polarized PBE calculation",
+      "database_updated": false,
+      "phonopy_version": "2.9.1",
+      "source_structure_sha256": "42ed7036c3b25010645d84df1cbbe148f5fac19beac3367314c97c9c1cb10095",
+      "metacentrum_job_id": "23990783.pbs-m1.metacentrum.cz",
+      "completed_at": "2026-09-25T04:45:27.301376+00:00",
+      "source_result_path": "Ni2Te2Ge-Pbar3m1/phonopy_spin_collapsed_2x2x2/phonopy_results.json",
+      "classification_source": "phonopy_result"
+    }
+  },
   "mechanical": {
     "mechanically_stable": true,
     "crystal_class": "trigonal (-3m)",
@@ -144,46 +202,46 @@
           128.67371492085545,
           182.7557614582288,
           -19.001013441627236,
-          0.0,
-          0.0
+          0,
+          0
         ],
         [
           128.67371492085545,
           246.7345233052763,
           182.7557614582288,
           19.001013441627236,
-          0.0,
-          0.0
+          0,
+          0
         ],
         [
           182.7557614582288,
           182.7557614582288,
           252.56565280006333,
-          0.0,
-          0.0,
-          0.0
+          0,
+          0,
+          0
         ],
         [
           -19.001013441627236,
           19.001013441627236,
-          0.0,
+          0,
           75.96686062611016,
-          0.0,
-          0.0
+          0,
+          0
         ],
         [
-          0.0,
-          0.0,
-          0.0,
-          0.0,
+          0,
+          0,
+          0,
+          0,
           75.96686062611016,
           -19.001013441627236
         ],
         [
-          0.0,
-          0.0,
-          0.0,
-          0.0,
+          0,
+          0,
+          0,
+          0,
           -19.001013441627236,
           59.030404192210426
         ]

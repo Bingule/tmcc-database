@@ -1,338 +1,378 @@
 {
-    "material_id":  "TMCC-0104",
-    "slug":  "v2te2c-p-3m1",
-    "family":  "TMCC",
-    "material_type":  "pristine",
-    "formula":  "V2Te2C",
-    "host":  {
-                 "formula":  "V2Te2C",
-                 "metal":  "V",
-                 "chalcogen":  "Te",
-                 "anion":  "C"
-             },
-    "intercalation":  null,
-    "experimental_status":  "computational",
-    "calculation_status":  "calculated",
-    "structure":  {
-                      "space_group_symbol":  "P-3m1",
-                      "space_group_number":  164,
-                      "crystal_system":  "trigonal",
-                      "lattice_parameters":  {
-                                                 "a":  {
-                                                           "value":  3.269,
-                                                           "unit":  "angstrom"
-                                                       },
-                                                 "b":  {
-                                                           "value":  3.269,
-                                                           "unit":  "angstrom"
-                                                       },
-                                                 "c":  {
-                                                           "value":  8.547,
-                                                           "unit":  "angstrom"
-                                                       }
-                                             },
-                      "angles":  {
-                                     "alpha":  {
-                                                   "value":  90.0,
-                                                   "unit":  "degree"
-                                               },
-                                     "beta":  {
-                                                  "value":  90.0,
-                                                  "unit":  "degree"
-                                              },
-                                     "gamma":  {
-                                                   "value":  119.99999999999997,
-                                                   "unit":  "degree"
-                                               }
-                                 },
-                      "layer_thickness":  {
-                                              "value":  5.712,
-                                              "unit":  "angstrom"
-                                          },
-                      "vdw_gap":  {
-                                      "value":  2.835,
-                                      "unit":  "angstrom"
-                                  },
-                      "atomic_sites":  [
-                                           {
-                                               "label":  "V1",
-                                               "element":  "V",
-                                               "fract_x":  0.66667,
-                                               "fract_y":  0.33334,
-                                               "fract_z":  0.8863,
-                                               "occupancy":  1
-                                           },
-                                           {
-                                               "label":  "V2",
-                                               "element":  "V",
-                                               "fract_x":  0.33333,
-                                               "fract_y":  0.66666,
-                                               "fract_z":  0.1137,
-                                               "occupancy":  1
-                                           },
-                                           {
-                                               "label":  "Te1",
-                                               "element":  "Te",
-                                               "fract_x":  0.66666,
-                                               "fract_y":  0.33333,
-                                               "fract_z":  0.33416,
-                                               "occupancy":  1
-                                           },
-                                           {
-                                               "label":  "Te2",
-                                               "element":  "Te",
-                                               "fract_x":  0.33334,
-                                               "fract_y":  0.66667,
-                                               "fract_z":  0.66584,
-                                               "occupancy":  1
-                                           },
-                                           {
-                                               "label":  "C1",
-                                               "element":  "C",
-                                               "fract_x":  0.0,
-                                               "fract_y":  0.0,
-                                               "fract_z":  0.0,
-                                               "occupancy":  1
-                                           }
-                                       ]
-                  },
-    "thermodynamics":  {
-                           "total_energy":  {
-                                                "value":  -34.0280947066819,
-                                                "unit":  "eV/cell"
-                                            },
-                           "formation_energy":  {
-                                                    "value":  null,
-                                                    "unit":  "eV/formula"
-                                                },
-                           "energy_above_hull":  {
-                                                     "value":  null,
-                                                     "unit":  "eV/atom"
-                                                 },
-                           "relative_structure_energy":  {
-                                                             "value":  null,
-                                                             "unit":  "meV/f.u."
-                                                         },
-                           "reference_energies_per_atom":  {
-
-                                                           }
-                       },
-    "phonons":  {
-
-                },
-    "mechanical": {
-      "mechanically_stable": true,
-      "crystal_class": "trigonal (-3m)",
-      "elastic_constants": {
-        "unit": "GPa",
-        "voigt_order": [
-          "xx",
-          "yy",
-          "zz",
-          "yz",
-          "xz",
-          "xy"
-        ],
-        "independent": {
-          "C11": 256.1434934327415,
-          "C12": 85.88252199590895,
-          "C13": 77.63665635994924,
-          "C14": -5.113436082256272,
-          "C33": 221.913021882975,
-          "C44": 99.40833028002268,
-          "C66": 85.13048571841627
-        },
-        "tensor": [
-          [
-            256.1434934327415,
-            85.88252199590895,
-            77.63665635994924,
-            -5.113436082256272,
-            0.0,
-            0.0
-          ],
-          [
-            85.88252199590895,
-            256.1434934327415,
-            77.63665635994924,
-            5.113436082256272,
-            0.0,
-            0.0
-          ],
-          [
-            77.63665635994924,
-            77.63665635994924,
-            221.913021882975,
-            0.0,
-            0.0,
-            0.0
-          ],
-          [
-            -5.113436082256272,
-            5.113436082256272,
-            0.0,
-            99.40833028002268,
-            0.0,
-            0.0
-          ],
-          [
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            99.40833028002268,
-            -5.113436082256272
-          ],
-          [
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            -5.113436082256272,
-            85.13048571841627
-          ]
-        ],
-        "raw_tensor": [
-          [
-            256.17800433034387,
-            85.904094148111,
-            72.3879119506542,
-            -1.7640754713003317,
-            -0.007488919707157495,
-            -0.0007579075067631768
-          ],
-          [
-            85.86094984370689,
-            256.10898253513903,
-            72.3903412884961,
-            3.1204217676128727,
-            -0.048850537646182975,
-            0.0004040713401565533
-          ],
-          [
-            82.89925359376646,
-            82.86911860688024,
-            221.913021882975,
-            1.592104003791448,
-            -0.06215694851640302,
-            0.002478889425567788
-          ],
-          [
-            -7.562035543436425,
-            7.579652750974087,
-            0.00044283726398691123,
-            99.62662923525316,
-            0.0389004523361065,
-            4.4359317637675893e-05
-          ],
-          [
-            -0.0015291884038544166,
-            -0.0018132363470265938,
-            0.0008476008012550987,
-            -0.0007162414872298212,
-            99.1900313247922,
-            -8.195770885317156
-          ],
-          [
-            -0.0009419682452465843,
-            -1.0323948312429969e-05,
-            -0.0003889678644446512,
-            -0.0017645261138847714,
-            -2.4586600748967617,
-            85.69397565262958
-          ]
-        ]
+  "material_id": "TMCC-0104",
+  "slug": "v2te2c-p-3m1",
+  "family": "TMCC",
+  "material_type": "pristine",
+  "formula": "V2Te2C",
+  "host": {
+    "formula": "V2Te2C",
+    "metal": "V",
+    "chalcogen": "Te",
+    "anion": "C"
+  },
+  "intercalation": null,
+  "experimental_status": "computational",
+  "calculation_status": "calculated",
+  "structure": {
+    "space_group_symbol": "P-3m1",
+    "space_group_number": 164,
+    "crystal_system": "trigonal",
+    "lattice_parameters": {
+      "a": {
+        "value": 3.269,
+        "unit": "angstrom"
       },
-      "born_stability": {
-        "stable": true,
-        "criterion": "Born criteria for trigonal crystals",
-        "criteria_margins": {
-          "C11_minus_abs_C12": 170.26097143683253,
-          "C44": 99.40833028002268,
-          "axial": 63845.12582485915,
-          "shear_coupling": 16873.064425255514
-        },
-        "tensor_eigenvalues": [
-          83.48809603011891,
-          98.6777891741144,
-          101.05071996832005,
-          156.82287017439486,
-          170.9915125427407,
-          407.1161671372305
-        ]
+      "b": {
+        "value": 3.269,
+        "unit": "angstrom"
       },
-      "calculation": {
-        "method": "relaxed-ion finite-strain stress fit",
-        "software": "GPAW",
-        "exchange_correlation": "PBE",
-        "plane_wave_cutoff_ev": 520,
-        "k_point_density": 2.5,
-        "fermi_width_ev": 0.02,
-        "internal_relaxation_fmax_ev_ang": 0.01,
-        "strain_magnitudes": [
-          -0.01,
-          -0.005,
-          0.005,
-          0.01
-        ],
-        "fit_rmse_gpa": 0.025605695561852247,
-        "source_structure": "work/final.cif",
-        "source_result": "elastic/elastic_constants.json",
-        "metacentrum_job_id": "23167797.pbs-m1.metacentrum.cz",
-        "calculation_date": "2026-08-25"
+      "c": {
+        "value": 8.547,
+        "unit": "angstrom"
       }
     },
-    "electronic":  {
-                       "band_gap":  {
-                                        "value":  0,
-                                        "unit":  "eV"
-                                    },
-                       "fermi_level":  {
-                                           "value":  10.23798304824278,
-                                           "unit":  "eV"
-                                       },
-                       "dos_calculated":  true,
-                       "band_structure_calculated":  false
-                   },
-    "energy_storage":  {
-
-                       },
-    "files":  {
-                  "cif":  "/structures/TMCC-0104/structure.cif",
-                  "poscar":  "/structures/TMCC-0104/POSCAR",
-                  "dos":  "/figures/TMCC-0104/dos.csv",
-                  "band_structure":  null
-              },
-    "provenance":  {
-                       "software":  "GPAW",
-                       "software_version":  null,
-                       "ase_version":  null,
-                       "exchange_correlation":  "PBE",
-                       "pseudopotential":  null,
-                       "plane_wave_cutoff":  {
-                                                 "value":  520,
-                                                 "unit":  "eV"
-                                             },
-                       "k_points":  {
-                                        "density":  2.5,
-                                        "gamma":  true
-                                    },
-                       "spin_polarization":  false,
-                       "initial_magnetic_moments":  {
-
-                                                    },
-                       "dft_u":  null,
-                       "setups":  null,
-                       "soc":  false,
-                       "convergence_criteria":  {
-                                                    "density":  5E-07
-                                                },
-                       "calculation_date":  "2026-08-13",
-                       "workflow_version":  "tmcc-generated-te-p-v0.1",
-                       "source":  "cluster calculation",
-                       "formation_energy_reference_note":  null,
-                       "doi":  null
-                   },
-    "subclass":  "TMCDC",
-    "structure_type":  "M2X2C"
+    "angles": {
+      "alpha": {
+        "value": 90,
+        "unit": "degree"
+      },
+      "beta": {
+        "value": 90,
+        "unit": "degree"
+      },
+      "gamma": {
+        "value": 119.99999999999997,
+        "unit": "degree"
+      }
+    },
+    "layer_thickness": {
+      "value": 5.712,
+      "unit": "angstrom"
+    },
+    "vdw_gap": {
+      "value": 2.835,
+      "unit": "angstrom"
+    },
+    "atomic_sites": [
+      {
+        "label": "V1",
+        "element": "V",
+        "fract_x": 0.66667,
+        "fract_y": 0.33334,
+        "fract_z": 0.8863,
+        "occupancy": 1
+      },
+      {
+        "label": "V2",
+        "element": "V",
+        "fract_x": 0.33333,
+        "fract_y": 0.66666,
+        "fract_z": 0.1137,
+        "occupancy": 1
+      },
+      {
+        "label": "Te1",
+        "element": "Te",
+        "fract_x": 0.66666,
+        "fract_y": 0.33333,
+        "fract_z": 0.33416,
+        "occupancy": 1
+      },
+      {
+        "label": "Te2",
+        "element": "Te",
+        "fract_x": 0.33334,
+        "fract_y": 0.66667,
+        "fract_z": 0.66584,
+        "occupancy": 1
+      },
+      {
+        "label": "C1",
+        "element": "C",
+        "fract_x": 0,
+        "fract_y": 0,
+        "fract_z": 0,
+        "occupancy": 1
+      }
+    ]
+  },
+  "thermodynamics": {
+    "total_energy": {
+      "value": -34.0280947066819,
+      "unit": "eV/cell"
+    },
+    "formation_energy": {
+      "value": null,
+      "unit": "eV/formula"
+    },
+    "energy_above_hull": {
+      "value": null,
+      "unit": "eV/atom"
+    },
+    "relative_structure_energy": {
+      "value": null,
+      "unit": "meV/f.u."
+    },
+    "reference_energies_per_atom": {}
+  },
+  "phonons": {
+    "phonon_calculated": true,
+    "dynamically_stable": true,
+    "minimum_frequency_thz": -4.8092719321184715e-8,
+    "maximum_imaginary_frequency_thz": 4.8092719321184715e-8,
+    "imaginary_mode_tolerance_thz": 0.2,
+    "band_data": "/phonons/TMCC-0104.json",
+    "calculation": {
+      "method": "Phonopy finite displacement with GPAW forces",
+      "exchange_correlation": "PBE",
+      "plane_wave_cutoff_ev": 520,
+      "fermi_width_ev": 0.05,
+      "k_points": {
+        "density": 2.5,
+        "gamma": true
+      },
+      "gpaw_symmetry": "off",
+      "displacement_angstrom": 0.01,
+      "primitive_atoms": 5,
+      "supercell": [
+        2,
+        2,
+        2
+      ],
+      "supercell_atoms": 40,
+      "displaced_force_calculations": 15,
+      "reference_force_calculations": 1,
+      "symmetry_reduction": true,
+      "residual_force_correction": "equilibrium-supercell forces subtracted from every displaced force set",
+      "acoustic_sum_rule": "Phonopy force-constant symmetrization",
+      "q_mesh": [
+        21,
+        21,
+        11
+      ],
+      "band_path": "G-M-K-G-A-L-H-A | L-M | K-H",
+      "source_structure": "input/final_structure.cif"
+    },
+    "provenance": {
+      "workflow": "tmcc-phonopy-gpaw-p-series-v1",
+      "database_updated": false,
+      "phonopy_version": "2.9.1",
+      "source_structure_sha256": "a382f4fd6e3482308f76bb46c1f6fd679e23b07be5c25806107765029dc1d1f1",
+      "metacentrum_job_id": "23919139.pbs-m1.metacentrum.cz",
+      "completed_at": "2026-09-23T15:41:03.375622+00:00",
+      "source_result_path": "V2Te2C-Pbar3m1/phonopy_batch_2x2x2/phonopy_results.json",
+      "classification_source": "phonopy_result"
+    }
+  },
+  "mechanical": {
+    "mechanically_stable": true,
+    "crystal_class": "trigonal (-3m)",
+    "elastic_constants": {
+      "unit": "GPa",
+      "voigt_order": [
+        "xx",
+        "yy",
+        "zz",
+        "yz",
+        "xz",
+        "xy"
+      ],
+      "independent": {
+        "C11": 256.1434934327415,
+        "C12": 85.88252199590895,
+        "C13": 77.63665635994924,
+        "C14": -5.113436082256272,
+        "C33": 221.913021882975,
+        "C44": 99.40833028002268,
+        "C66": 85.13048571841627
+      },
+      "tensor": [
+        [
+          256.1434934327415,
+          85.88252199590895,
+          77.63665635994924,
+          -5.113436082256272,
+          0,
+          0
+        ],
+        [
+          85.88252199590895,
+          256.1434934327415,
+          77.63665635994924,
+          5.113436082256272,
+          0,
+          0
+        ],
+        [
+          77.63665635994924,
+          77.63665635994924,
+          221.913021882975,
+          0,
+          0,
+          0
+        ],
+        [
+          -5.113436082256272,
+          5.113436082256272,
+          0,
+          99.40833028002268,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          99.40833028002268,
+          -5.113436082256272
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          -5.113436082256272,
+          85.13048571841627
+        ]
+      ],
+      "raw_tensor": [
+        [
+          256.17800433034387,
+          85.904094148111,
+          72.3879119506542,
+          -1.7640754713003317,
+          -0.007488919707157495,
+          -0.0007579075067631768
+        ],
+        [
+          85.86094984370689,
+          256.10898253513903,
+          72.3903412884961,
+          3.1204217676128727,
+          -0.048850537646182975,
+          0.0004040713401565533
+        ],
+        [
+          82.89925359376646,
+          82.86911860688024,
+          221.913021882975,
+          1.592104003791448,
+          -0.06215694851640302,
+          0.002478889425567788
+        ],
+        [
+          -7.562035543436425,
+          7.579652750974087,
+          0.00044283726398691123,
+          99.62662923525316,
+          0.0389004523361065,
+          0.000044359317637675893
+        ],
+        [
+          -0.0015291884038544166,
+          -0.0018132363470265938,
+          0.0008476008012550987,
+          -0.0007162414872298212,
+          99.1900313247922,
+          -8.195770885317156
+        ],
+        [
+          -0.0009419682452465843,
+          -0.000010323948312429969,
+          -0.0003889678644446512,
+          -0.0017645261138847714,
+          -2.4586600748967617,
+          85.69397565262958
+        ]
+      ]
+    },
+    "born_stability": {
+      "stable": true,
+      "criterion": "Born criteria for trigonal crystals",
+      "criteria_margins": {
+        "C11_minus_abs_C12": 170.26097143683253,
+        "C44": 99.40833028002268,
+        "axial": 63845.12582485915,
+        "shear_coupling": 16873.064425255514
+      },
+      "tensor_eigenvalues": [
+        83.48809603011891,
+        98.6777891741144,
+        101.05071996832005,
+        156.82287017439486,
+        170.9915125427407,
+        407.1161671372305
+      ]
+    },
+    "calculation": {
+      "method": "relaxed-ion finite-strain stress fit",
+      "software": "GPAW",
+      "exchange_correlation": "PBE",
+      "plane_wave_cutoff_ev": 520,
+      "k_point_density": 2.5,
+      "fermi_width_ev": 0.02,
+      "internal_relaxation_fmax_ev_ang": 0.01,
+      "strain_magnitudes": [
+        -0.01,
+        -0.005,
+        0.005,
+        0.01
+      ],
+      "fit_rmse_gpa": 0.025605695561852247,
+      "source_structure": "work/final.cif",
+      "source_result": "elastic/elastic_constants.json",
+      "metacentrum_job_id": "23167797.pbs-m1.metacentrum.cz",
+      "calculation_date": "2026-08-25"
+    }
+  },
+  "electronic": {
+    "band_gap": {
+      "value": 0,
+      "unit": "eV"
+    },
+    "fermi_level": {
+      "value": 10.23798304824278,
+      "unit": "eV"
+    },
+    "dos_calculated": true,
+    "band_structure_calculated": false
+  },
+  "energy_storage": {},
+  "files": {
+    "cif": "/structures/TMCC-0104/structure.cif",
+    "poscar": "/structures/TMCC-0104/POSCAR",
+    "dos": "/figures/TMCC-0104/dos.csv",
+    "band_structure": null
+  },
+  "provenance": {
+    "software": "GPAW",
+    "software_version": null,
+    "ase_version": null,
+    "exchange_correlation": "PBE",
+    "pseudopotential": null,
+    "plane_wave_cutoff": {
+      "value": 520,
+      "unit": "eV"
+    },
+    "k_points": {
+      "density": 2.5,
+      "gamma": true
+    },
+    "spin_polarization": false,
+    "initial_magnetic_moments": {},
+    "dft_u": null,
+    "setups": null,
+    "soc": false,
+    "convergence_criteria": {
+      "density": 5e-7
+    },
+    "calculation_date": "2026-08-13",
+    "workflow_version": "tmcc-generated-te-p-v0.1",
+    "source": "cluster calculation",
+    "formation_energy_reference_note": null,
+    "doi": null
+  },
+  "subclass": "TMCDC",
+  "structure_type": "M2X2C"
 }

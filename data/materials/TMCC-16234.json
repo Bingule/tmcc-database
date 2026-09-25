@@ -115,7 +115,55 @@
     },
     "reference_energies_per_atom": {}
   },
-  "phonons": {},
+  "phonons": {
+    "phonon_calculated": true,
+    "dynamically_stable": false,
+    "minimum_frequency_thz": -3.7692428625914998,
+    "maximum_imaginary_frequency_thz": 3.7692428625914998,
+    "imaginary_mode_tolerance_thz": 0.2,
+    "band_data": "/phonons/TMCC-16234.json",
+    "calculation": {
+      "method": "Phonopy finite displacement with GPAW forces",
+      "exchange_correlation": "PBE",
+      "plane_wave_cutoff_ev": 520,
+      "fermi_width_ev": 0.05,
+      "k_points": {
+        "density": 2.5,
+        "gamma": true
+      },
+      "gpaw_symmetry": "off",
+      "displacement_angstrom": 0.01,
+      "primitive_atoms": 5,
+      "supercell": [
+        2,
+        2,
+        2
+      ],
+      "supercell_atoms": 40,
+      "displaced_force_calculations": 15,
+      "reference_force_calculations": 1,
+      "symmetry_reduction": true,
+      "residual_force_correction": "equilibrium-supercell forces subtracted from every displaced force set",
+      "acoustic_sum_rule": "Phonopy force-constant symmetrization",
+      "q_mesh": [
+        21,
+        21,
+        11
+      ],
+      "band_path": "G-M-K-G-A-L-H-A | L-M | K-H",
+      "source_structure": "input/final_structure.cif"
+    },
+    "provenance": {
+      "workflow": "tmcc-phonopy-gpaw-p-series-v1",
+      "database_updated": false,
+      "phonopy_version": "2.9.1",
+      "source_structure_sha256": "a55ae70c0f542b0714765d0e0b8b034763417336bc2865b9ff50205d92d89366",
+      "metacentrum_job_id": "23979137.pbs-m1.metacentrum.cz",
+      "completed_at": "2026-09-25T01:39:30.553054+00:00",
+      "source_result_path": "Ti2Te2Sb-Pbar3m1/phonopy_batch_2x2x2/phonopy_results.json",
+      "classification_source": "phonopy_result"
+    }
+  },
   "mechanical": {
     "mechanically_stable": true,
     "crystal_class": "trigonal (-3m)",
@@ -144,46 +192,46 @@
           227.78354183779405,
           320.1227104646754,
           -32.28813965371136,
-          0.0,
-          0.0
+          0,
+          0
         ],
         [
           227.78354183779405,
           329.9184714052097,
           320.1227104646754,
           32.28813965371136,
-          0.0,
-          0.0
+          0,
+          0
         ],
         [
           320.1227104646754,
           320.1227104646754,
           535.3554948548892,
-          0.0,
-          0.0,
-          0.0
+          0,
+          0,
+          0
         ],
         [
           -32.28813965371136,
           32.28813965371136,
-          0.0,
+          0,
           127.8371054636282,
-          0.0,
-          0.0
+          0,
+          0
         ],
         [
-          0.0,
-          0.0,
-          0.0,
-          0.0,
+          0,
+          0,
+          0,
+          0,
           127.8371054636282,
           -32.28813965371136
         ],
         [
-          0.0,
-          0.0,
-          0.0,
-          0.0,
+          0,
+          0,
+          0,
+          0,
           -32.28813965371136,
           51.06746478370782
         ]
@@ -195,7 +243,7 @@
           308.9487849750688,
           -32.940944657730995,
           -0.026504860003059242,
-          -4.3548720611869415e-05
+          -0.000043548720611869415
         ],
         [
           229.70337347928833,
