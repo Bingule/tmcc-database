@@ -35,10 +35,18 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Validate public feedback configuration
+        run: test -n "$VITE_FEEDBACK_ENDPOINT" && test -n "$VITE_TURNSTILE_SITE_KEY"
+        env:
+          VITE_FEEDBACK_ENDPOINT: ${{ vars.VITE_FEEDBACK_ENDPOINT }}
+          VITE_TURNSTILE_SITE_KEY: ${{ vars.VITE_TURNSTILE_SITE_KEY }}
+
       - name: Build
         run: pnpm build
         env:
           VITE_BASE_PATH: /
+          VITE_FEEDBACK_ENDPOINT: ${{ vars.VITE_FEEDBACK_ENDPOINT }}
+          VITE_TURNSTILE_SITE_KEY: ${{ vars.VITE_TURNSTILE_SITE_KEY }}
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

@@ -4,9 +4,11 @@ import { fileURLToPath } from "node:url";
 
 const routeEntries = [
   "tools/index.html",
+  "tools/crystal-description/index.html",
   "tools/cv-kinetics/index.html",
   "tools/theoretical-capacity/index.html",
   "tools/molecular-weight/index.html",
+  "tools/reviewer-two/index.html",
   "tools/rate-performance/index.html",
   "tools/rate-performance/model-comparison/index.html",
   "tools/rate-performance/transport-limitations/index.html",
