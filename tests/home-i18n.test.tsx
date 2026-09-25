@@ -72,7 +72,10 @@ describe("homepage localization", () => {
       "References / Methodology",
       "Export CSV"
     ]);
-    expect(view.querySelector(".brand-lockup")?.textContent).toBe("TMCC Database v0.1");
+    expect(view.querySelector(".brand-lockup")?.textContent).toBe("TMCC Database v2.1.0");
+    expect(view.querySelector("footer")?.textContent).toContain("TMCC Database v2.1.0");
+    expect(view.textContent).toContain("Dr. Wu / Prof. Sofer");
+    expect(view.textContent).toContain("Prof. Sofer: soferz@vscht.cz");
     expect(view.querySelector('[aria-label="Structure viewer controls"]')).not.toBeNull();
     expect(view.querySelector('[aria-label="DOS and band structure viewer"]')).not.toBeNull();
 
@@ -88,7 +91,8 @@ describe("homepage localization", () => {
       "参考文献 / 研究方法",
       "导出 CSV"
     ]);
-    expect(view.querySelector(".brand-lockup")?.textContent).toBe("TMCC 数据库 v0.1");
+    expect(view.querySelector(".brand-lockup")?.textContent).toBe("TMCC 数据库 v2.1.0");
+    expect(view.textContent).toContain("吴博士 / Sofer 教授");
     expect(view.querySelector('[aria-label="结构查看器控件"]')).not.toBeNull();
     expect(view.querySelector('[aria-label="DOS 与能带结构查看器"]')).not.toBeNull();
     expect(view.querySelector("#material-detail")?.textContent).toContain("三方晶类（-3m）");

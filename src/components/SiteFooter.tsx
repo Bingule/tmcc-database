@@ -6,7 +6,7 @@ export function SiteFooter() {
 
   return (
     <footer>
-      <span>TMCC Database v0.1</span>
+      <span>TMCC Database v2.1.0</span>
       <span>{t("footer.lastUpdate", { date: "2026-08-12" })}</span>
       <span>{t("footer.records", { count: materials.length })}</span>
     </footer>
