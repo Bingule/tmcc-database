@@ -70,6 +70,18 @@ export type MaterialFiles = {
   aimd?: string | null;
 };
 
+export type PhononProperties = Record<string, unknown> & {
+  phonon_calculated?: boolean | null;
+  dynamically_stable?: boolean | null;
+  minimum_frequency_thz?: number | null;
+  maximum_imaginary_frequency_thz?: number | null;
+  imaginary_mode_tolerance_thz?: number | null;
+  band_data?: string | null;
+  calculation?: Record<string, unknown> | null;
+  provenance?: Record<string, unknown> | null;
+  classification_note?: string;
+};
+
 export type MaterialRecord = {
   material_id: string;
   slug: string;
@@ -84,7 +96,7 @@ export type MaterialRecord = {
   calculation_status: CalculationStatus;
   structure: StructureProperties;
   thermodynamics: ThermodynamicsProperties;
-  phonons: Record<string, unknown>;
+  phonons: PhononProperties;
   mechanical: MechanicalProperties;
   electronic: Record<string, unknown>;
   energy_storage: Record<string, unknown>;

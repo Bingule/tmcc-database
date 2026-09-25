@@ -144,7 +144,7 @@ describe("MaterialExplorer", () => {
         slug: "both-stable",
         formula: "Nb2S2C",
         mechanical: { mechanically_stable: true },
-        phonons: { dynamically_stable: true }
+        phonons: { phonon_calculated: true, dynamically_stable: true }
       },
       {
         ...baseMaterial,
@@ -152,7 +152,7 @@ describe("MaterialExplorer", () => {
         slug: "phonon-only",
         formula: "Ta2S2C",
         mechanical: { mechanically_stable: false },
-        phonons: { dynamically_stable: true }
+        phonons: { phonon_calculated: true, dynamically_stable: true }
       },
       {
         ...baseMaterial,
@@ -160,7 +160,7 @@ describe("MaterialExplorer", () => {
         slug: "phonon-pending",
         formula: "V2S2C",
         mechanical: { mechanically_stable: true },
-        phonons: {}
+        phonons: { dynamically_stable: true }
       }
     ] as MaterialRecord[];
 
@@ -200,13 +200,15 @@ describe("MaterialExplorer", () => {
         ...baseMaterial,
         material_id: "TMCC-0001",
         slug: "zr2te2c-p-3m1",
-        formula: "Zr2Te2C"
+        formula: "Zr2Te2C",
+        phonons: { phonon_calculated: true, minimum_frequency_thz: -0.5 }
       },
       {
         ...baseMaterial,
         material_id: "TMCC-0002",
         slug: "hf2te2c-p-3m1",
-        formula: "Hf2Te2C"
+        formula: "Hf2Te2C",
+        phonons: { phonon_calculated: true, minimum_frequency_thz: 0.1 }
       },
       {
         ...baseMaterial,
@@ -229,6 +231,13 @@ describe("MaterialExplorer", () => {
 
     const firstMaterialId = () => container.querySelector("tbody tr td button")?.textContent;
     expect(firstMaterialId()).toBe("TMCC-0001");
+
+    const phononHeader = [...container.querySelectorAll("button")].find((button) => button.textContent?.includes("Min. Phonon Freq."));
+    await act(async () => phononHeader?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    expect(firstMaterialId()).toBe("TMCC-0001");
+    await act(async () => phononHeader?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    expect(firstMaterialId()).toBe("TMCC-0002");
+    expect(container.querySelector("tbody tr:last-child td button")?.textContent).toBe("TMCC-0003");
 
     const formulaHeader = [...container.querySelectorAll("button")].find((button) => button.textContent?.includes("Formula"));
     await act(async () => {
@@ -288,10 +297,12 @@ describe("MaterialExplorer", () => {
     );
 
     expect(markup).toContain("<span class=\"column-heading-text\"><span>E_DFT</span><small class=\"column-unit\">eV/f.u.</small></span>");
-    expect(markup).toContain("<span class=\"column-heading-text\"><span>E_form</span><small class=\"column-unit\">eV/atom</small></span>");
+    expect(markup).toContain("<span class=\"column-heading-text\"><span>Min. Phonon Freq.</span><small class=\"column-unit\">THz</small></span>");
     expect(markup).toContain("<span>Mech. Stab.</span>");
-    expect(markup).not.toContain("<span>E_hull</span>");
-    expect(markup).toContain("<span>Phonon Stab.</span>");
+    expect(markup).not.toContain("<span>E_form</span>");
+    expect(markup).toContain("<span>Dynamic Stab.</span>");
+    expect(markup.indexOf("<span>Mech. Stab.</span>")).toBeLessThan(markup.indexOf("<span>Min. Phonon Freq.</span>"));
+    expect(markup.indexOf("<span>Min. Phonon Freq.</span>")).toBeLessThan(markup.indexOf("<span>Dynamic Stab.</span>"));
     expect(markup).toContain("<span class=\"column-heading-text\"><span>Band Gap</span><small class=\"column-unit\">eV</small></span>");
   });
 
@@ -330,7 +341,7 @@ describe("MaterialExplorer", () => {
       material_id: "TMCC-0001",
       slug: "nb2s2c-p-3m1",
       formula: "Nb2S2C",
-      phonons: { dynamically_stable: true }
+      phonons: { phonon_calculated: true, dynamically_stable: true }
     } as MaterialRecord;
     const pendingMaterial = {
       ...baseMaterial,
@@ -353,7 +364,7 @@ describe("MaterialExplorer", () => {
     expect(markup).not.toContain('href="/?material=nb2s2c-r-3m#phonon-properties"');
   });
 
-  it("shows DFT energy per formula unit and dashes for missing table values", () => {
+  it("shows DFT energy and a phonon-frequency dash without the old formation-energy table value", () => {
     const markup = renderWithI18n(
       <MaterialExplorer
         materials={[
@@ -381,7 +392,8 @@ describe("MaterialExplorer", () => {
     );
 
     expect(markup).toContain("-42.637173");
-    expect(markup).toContain("-0.25");
+    expect(markup).not.toContain("-0.25");
+    expect(markup).toContain("<td>—</td>");
     expect(markup).toContain("<td>-</td>");
     expect(markup).not.toContain("Not calculated");
   });

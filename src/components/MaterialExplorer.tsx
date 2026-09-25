@@ -4,7 +4,7 @@ import {
   filterMaterialsByElementSet,
   formatPropertyValue,
   getDftEnergyPerFormulaUnitLabel,
-  getFormationEnergyPerAtomLabel,
+  getMinimumPhononFrequency,
   getIntercalantLabel,
   getLatticeSettingLabel,
   getMechanicalStabilityLabel,
@@ -43,7 +43,7 @@ type SortKey =
   | "intercalant"
   | "sites"
   | "dft_energy"
-  | "formation_energy"
+  | "minimum_phonon_frequency"
   | "mechanical_stability"
   | "phonon_stability"
   | "band_gap";
@@ -100,7 +100,7 @@ export function MaterialExplorer({
         (subclass === "all" || getSubclassLabel(material) === subclass) &&
         (structureType === "all" || getStructureTypeLabel(material) === structureType) &&
         (!mechanicallyStableOnly || material.mechanical?.mechanically_stable === true) &&
-        (!dynamicallyStableOnly || material.phonons?.dynamically_stable === true)
+        (!dynamicallyStableOnly || (material.phonons?.phonon_calculated === true && material.phonons.dynamically_stable === true))
       );
     });
     return [...matchingMaterials].sort((a, b) => compareMaterials(a, b, sort));
@@ -212,8 +212,8 @@ export function MaterialExplorer({
                   <SortHeader label={t("explorer.intercalant")} sortKey="intercalant" activeSort={sort} onSort={handleSort} />
                   <SortHeader label={t("explorer.sitesPerCell")} sortKey="sites" activeSort={sort} onSort={handleSort} />
                   <SortHeader label="E_DFT" unit="eV/f.u." sortKey="dft_energy" activeSort={sort} onSort={handleSort} />
-                  <SortHeader label="E_form" unit="eV/atom" sortKey="formation_energy" activeSort={sort} onSort={handleSort} />
                   <SortHeader label={t("explorer.mechanicalStability")} sortKey="mechanical_stability" activeSort={sort} onSort={handleSort} />
+                  <SortHeader label={t("explorer.minimumPhononFrequency")} unit="THz" sortKey="minimum_phonon_frequency" activeSort={sort} onSort={handleSort} />
                   <SortHeader label={t("explorer.phononStability")} sortKey="phonon_stability" activeSort={sort} onSort={handleSort} />
                   <SortHeader label={t("explorer.bandGap")} unit="eV" sortKey="band_gap" activeSort={sort} onSort={handleSort} />
                 </tr>
@@ -248,8 +248,8 @@ export function MaterialExplorer({
                     <td>{getIntercalantLabel(material)}</td>
                     <td>{getSitesPerCellLabel(material)}</td>
                     <td>{getDftEnergyPerFormulaUnitLabel(material)}</td>
-                    <td>{getFormationEnergyPerAtomLabel(material)}</td>
                     <td><MechanicalStabilityValue material={material} /></td>
+                    <td>{formatMinimumPhononFrequency(material)}</td>
                     <td><PhononStabilityValue material={material} /></td>
                     <td>{formatPropertyValue(material.electronic.band_gap)}</td>
                   </tr>
@@ -321,6 +321,10 @@ function compareMaterials(
   const left = getSortValue(a, sort.key);
   const right = getSortValue(b, sort.key);
   const multiplier = sort.direction === "asc" ? 1 : -1;
+  if (sort.key === "minimum_phonon_frequency") {
+    if (left === null && right !== null) return 1;
+    if (right === null && left !== null) return -1;
+  }
   let result = 0;
 
   if (typeof left === "number" || typeof right === "number") {
@@ -338,7 +342,7 @@ function compareMaterials(
   return result * multiplier;
 }
 
-function getSortValue(material: MaterialRecord, key: SortKey): string | number {
+function getSortValue(material: MaterialRecord, key: SortKey): string | number | null {
   switch (key) {
     case "material_id":
       return material.material_id;
@@ -356,8 +360,8 @@ function getSortValue(material: MaterialRecord, key: SortKey): string | number {
       return numericOrInfinity(getSitesPerCellLabel(material));
     case "dft_energy":
       return numericOrInfinity(getDftEnergyPerFormulaUnitLabel(material));
-    case "formation_energy":
-      return numericOrInfinity(getFormationEnergyPerAtomLabel(material));
+    case "minimum_phonon_frequency":
+      return getMinimumPhononFrequency(material);
     case "mechanical_stability":
       return getMechanicalStabilityLabel(material);
     case "phonon_stability":
@@ -367,6 +371,11 @@ function getSortValue(material: MaterialRecord, key: SortKey): string | number {
     default:
       return "";
   }
+}
+
+function formatMinimumPhononFrequency(material: MaterialRecord) {
+  const value = getMinimumPhononFrequency(material);
+  return value === null ? "—" : String(Number(value.toPrecision(6)));
 }
 
 function MechanicalStabilityValue({ material }: { material: MaterialRecord }) {

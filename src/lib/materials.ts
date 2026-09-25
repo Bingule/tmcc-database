@@ -158,10 +158,18 @@ export function getNumberOfSitesLabel(material: MaterialRecord) {
 }
 
 export function getPhononStabilityLabel(material: MaterialRecord) {
+  if (material.phonons?.phonon_calculated !== true) return "Pending";
   const dynamicallyStable = material.phonons?.dynamically_stable;
   if (dynamicallyStable === true) return "Stable";
   if (dynamicallyStable === false) return "Unstable";
   return "Pending";
+}
+
+export function getMinimumPhononFrequency(material: MaterialRecord): number | null {
+  const value = material.phonons?.minimum_frequency_thz;
+  return material.phonons?.phonon_calculated === true && typeof value === "number" && Number.isFinite(value)
+    ? value
+    : null;
 }
 
 function inferSubclass(material: MaterialRecord) {
@@ -245,7 +253,7 @@ export function getMaterialStats(materials: MaterialRecord[]) {
     (material) => material.calculation_status === "calculation_in_progress"
   );
   const dynamicallyStable = materials.filter(
-    (material) => material.phonons && material.phonons.dynamically_stable === true
+    (material) => material.phonons?.phonon_calculated === true && material.phonons.dynamically_stable === true
   );
 
   return {
