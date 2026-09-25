@@ -177,9 +177,30 @@ describe("MaterialDetail", () => {
   });
 
   it("does not render an empty phonon-properties section", () => {
-    const markup = renderWithI18n(<MaterialDetail material={materials[0]} />);
+    const markup = renderWithI18n(<MaterialDetail material={materials[1]} />);
 
     expect(markup).not.toContain('id="phonon-properties"');
+  });
+
+  it("shows a completed Phonopy minimum, tolerance, method and source", () => {
+    const material = {
+      ...materials[0],
+      phonons: {
+        phonon_calculated: true, dynamically_stable: true,
+        minimum_frequency_thz: -0.03, imaginary_mode_tolerance_thz: 0.2,
+        band_data: "/phonons/TMCC-0001.json",
+        calculation: { method: "Phonopy finite displacement", supercell: [2, 2, 2], displacement_angstrom: 0.01 },
+        provenance: { source_result_path: "Nb2S2C/phonopy_results.json", metacentrum_job_id: "23916611.pbs" }
+      }
+    };
+    const markup = renderWithI18n(<MaterialDetail material={material} />);
+    expect(markup).toContain("Min. phonon frequency");
+    expect(markup).toContain("-0.03 THz");
+    expect(markup).toContain("0.2 THz");
+    expect(markup).toContain("Phonopy finite displacement");
+    expect(markup).toContain("2 × 2 × 2");
+    expect(markup).toContain("Nb2S2C/phonopy_results.json");
+    expect(markup).toContain("phonon-dispersion");
   });
 
   it("shows the rhombohedral setting note for R-3m materials", () => {

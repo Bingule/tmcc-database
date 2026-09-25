@@ -2067,6 +2067,41 @@ td button {
   stroke-width: 0.8;
 }
 
+.phonon-dispersion {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.phonon-chart {
+  width: 100%;
+}
+
+.phonon-chart polyline {
+  opacity: 0.78;
+  stroke-width: 1;
+}
+
+.phonon-chart .phonon-path-tick line {
+  stroke: #d4dfda;
+  stroke-dasharray: 3 3;
+}
+
+.phonon-chart .phonon-path-tick text,
+.phonon-chart .phonon-x-label {
+  text-anchor: middle;
+}
+
+.phonon-chart .phonon-y-tick {
+  text-anchor: end;
+}
+
+.phonon-chart .phonon-zero-line {
+  stroke: #c93434;
+  stroke-dasharray: 4 4;
+  stroke-width: 0.9;
+}
+
 .electronic-chart .fermi-label {
   fill: #c93434;
   font-size: 13px;

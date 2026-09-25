@@ -1,6 +1,7 @@
 import { Download } from "lucide-react";
 import { lazy, Suspense } from "react";
 import { ElectronicStructureViewer } from "./ElectronicStructureViewer";
+import { PhononDispersionViewer } from "./PhononDispersionViewer";
 import { Formula } from "./Formula";
 import { XrdViewer } from "./XrdViewer";
 import {
@@ -12,6 +13,7 @@ import {
   getIntercalantLabel,
   getLatticeSettingLabel,
   getMechanicalStabilityLabel,
+  getMinimumPhononFrequency,
   getPhononStabilityLabel,
   getNumberOfSitesLabel,
   getSpaceGroupLabel,
@@ -95,7 +97,7 @@ export function MaterialDetail({ material }: { material: MaterialRecord }) {
 
         <Panel title={t("material.stabilityProperties")}>
           <Data label={t("material.phononCalculated")} value={formatOptionalBoolean(material.phonons.phonon_calculated, t("common.yes"), t("common.no"))} />
-          <Data label={t("material.dynamicallyStable")} value={formatOptionalBoolean(material.phonons.dynamically_stable, t("common.yes"), t("common.no"))} />
+          <Data label={t("material.dynamicallyStable")} value={getPhononStabilityLabel(material) === "Pending" ? t("material.pending") : formatOptionalBoolean(material.phonons.dynamically_stable, t("common.yes"), t("common.no"))} />
           <Data label={t("material.mechanicalStability")} value={mechanicalStability === "Stable" ? t("material.stable") : mechanicalStability === "Unstable" ? t("material.unstable") : t("material.pending")} />
           <Data label={t("material.electronicCharacter")} value={formatElectronicCharacter(
             material.electronic.electronic_character,
@@ -146,10 +148,28 @@ function PhononProperties({ material }: { material: MaterialRecord }) {
     : stability === "Unstable"
       ? t("material.unstable")
       : t("material.pending");
+  const minimum = getMinimumPhononFrequency(material);
+  const calculation = material.phonons.calculation ?? {};
+  const provenance = material.phonons.provenance ?? {};
+  const supercell = calculation.supercell;
+  const supercellLabel = Array.isArray(supercell) && supercell.length === 3 && supercell.every((n) => typeof n === "number")
+    ? supercell.join(" × ")
+    : "-";
 
   return (
     <Panel id="phonon-properties" title={t("material.phononProperties")}>
       <Data label={t("material.dynamicallyStable")} value={stabilityLabel} />
+      <Data label={t("phonon.minimumFrequency")} value={minimum === null ? "—" : `${Number(minimum.toPrecision(8))} THz`} />
+      <Data label={t("phonon.imaginaryTolerance")} value={typeof material.phonons.imaginary_mode_tolerance_thz === "number"
+        ? `${material.phonons.imaginary_mode_tolerance_thz} THz` : "—"} />
+      <Data label={t("phonon.method")} value={typeof calculation.method === "string" ? calculation.method : "—"} />
+      <Data label={t("phonon.supercell")} value={supercellLabel} />
+      <Data label={t("phonon.displacement")} value={typeof calculation.displacement_angstrom === "number"
+        ? `${calculation.displacement_angstrom} Å` : "—"} />
+      <Data label={t("phonon.source")} value={typeof provenance.source_result_path === "string" ? provenance.source_result_path : "—"} />
+      <Data label={t("phonon.jobId")} value={typeof provenance.metacentrum_job_id === "string" ? provenance.metacentrum_job_id : "—"} />
+      {material.phonons.classification_note && <Data label={t("phonon.classificationNote")} value={material.phonons.classification_note} />}
+      {material.phonons.phonon_calculated === true && material.phonons.band_data && <PhononDispersionViewer material={material} />}
       {resultHref && (
         <Data
           label={t("material.phononResult")}
